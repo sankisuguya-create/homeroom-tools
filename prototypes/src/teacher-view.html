@@ -3,80 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
 <style>
-/* ▼ src/tokens.css から。直すのは src のほう ▼ */
-/* 色トークン — 両画面が読む。@dark{} は build.py が
-   @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
-   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
-:root{
-  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
-  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
-  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
-
-  /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
-  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
-  --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
-  --warn:#B0392B; --warn-bg:#FBEEEC;
-  --ok:#2F6E4E;
-
-  /* 教師の貫通・ロック・スケール外の記号 */
-  --open:#2E7D8A; --open-bg:#EAF5F6;
-  --open-cell:#FFF4E4; --open-line:#DFAE62;
-  --lock-ink:#A29C90;
-  --off-bg:#EFEDE8; --off-ink:#8A8578; --skip-line:rgba(29,33,38,.42);
-  --stripe:rgba(29,33,38,.07);
-
-  /* 単元の20色。色相を 126° ずつ飛ばしてあるので連番でも近づかない
-     （20 と 126 は互いに素）。明度は色相ごとに補正済み */
-  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
-  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
-  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
-  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
-    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
-    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-
-    --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
-    --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
-    --warn:#E5776A; --warn-bg:#2E1C1A;
-    --ok:#6FBF92;
-
-    --open:#6FBECC; --open-bg:#182C30;
-    --open-cell:#33270F; --open-line:#7E6224;
-    --lock-ink:#6A727C;
-    --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
-    --stripe:rgba(232,235,239,.09);
-
-    --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
-    --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
-    --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
-    --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
-  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
-  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-
-  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
-  --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
-  --warn:#E5776A; --warn-bg:#2E1C1A;
-  --ok:#6FBF92;
-
-  --open:#6FBECC; --open-bg:#182C30;
-  --open-cell:#33270F; --open-line:#7E6224;
-  --lock-ink:#6A727C;
-  --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
-  --stripe:rgba(232,235,239,.09);
-
-  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
-  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
-  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
-  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
-}
-/* ▲ src/tokens.css ここまで ▲ */
+/* @include tokens.css */
 
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);
@@ -387,71 +314,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 </div>
 
 <script>
-/* ▼ src/scale.js から。直すのは src のほう ▼ */
-/* ==================================================================
-   評価スケール — プロジェクトの正本。
-   児童画面と教師画面がこの1ファイルを読む。build.py が両方に差し込む。
-   実装では GAS の scale.html になり、サーバとクライアントの両方から読む。
-
-   基本字5 × ニュアンス4（− / 無 / + / ++）＝ 20段。
-   ++ は + とは別の段。A++ は A+ と Z− のあいだに座る。
-   保存は記号の文字列で行い、計算のときだけ値に変換する。
-================================================================== */
-
-/* 基本字は下から上へ並べる。上位が増えたら末尾に足すだけでよい（例：…,"Z","Y"）。
-   途中に差し込むと既存の内部値がずれて過去の記録の意味が変わる。追加は末尾だけ。 */
-const BASES = ["D","C","B","A","Z"];
-const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
-const NMOD   = MODS.length;
-const NBASE  = BASES.length;
-const NLEVEL = NBASE * NMOD;            // 20
-
-/* 層の境目もここだけで決める。Z の上に Y を足したら、Y も自動で突破層に入る。
-   コードのどこにも "Z" を直接書かない。書いた瞬間に取り残される。 */
-const TOP_FROM = "Z";                   // これ以上は突破層
-const WARN_TO  = "C";                   // これ以下は警告層
-
-/* 突破層の見た目は基本字ごとに1つ。段（− / 無 / + / ++）では変えない。
-   字を足したらここに1行足す。未登録の字は金の箔にする。
-   実体は material.css にある。 */
-const BASE_LOOK = { "Z":"foil-gold", "Y":"foil-cosmic" };
-
-/* スケールに乗らない記号。どちらも集計から外すが、理由が違うので分けて数える。
-   休：児童がいなかった（個人の欠測）
-   / ：その授業を評価に含めない（授業側の都合。行事・テスト・予備時間など）
-   / は教師だけが設定する。 */
-const OFF = "休", SKIP = "/";
-const isMark = sym => sym === OFF || sym === SKIP;
-
-const iTop  = BASES.indexOf(TOP_FROM);
-const iWarn = BASES.indexOf(WARN_TO);
-/* 記号 → 基本字の位置。スケール外（休・/・空）は -1 を返す。 */
-const iOf   = sym => (!sym || isMark(sym)) ? -1 : BASES.indexOf(sym[0]);
-
-const isTopSym  = sym => iOf(sym) >= iTop;
-const isWarnSym = sym => { const i = iOf(sym); return i >= 0 && i <= iWarn; };
-const isTopVal  = v => Math.floor((v-1)/NMOD) >= iTop;
-const isWarnVal = v => Math.floor((v-1)/NMOD) <= iWarn;
-
-function valueOf(sym){                             // "A++" → 16／スケール外は null
-  const b = iOf(sym);
-  if(b < 0) return null;
-  const m = MODS.find(m => m.s === sym.slice(1));
-  return m ? b*NMOD + m.v + 1 : null;
-}
-const symbolOf = v => BASES[Math.floor((v-1)/NMOD)] + MODS[(v-1)%NMOD].s;   // 16 → "A++"
-const baseOf   = v => BASES[Math.floor((v-1)/NMOD)];
-const modIdx   = v => (v-1)%NMOD;
-/* 材質のクラス名。基本字ごとに1つ。 */
-const lookOf   = sym => BASE_LOOK[sym[0]] || "foil-gold";
-
-const ALL_SYMS = [];
-BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b + m.s)));
-
-/* 中央値が2段の間に落ちたときは下側を採る（水増ししない）。
-   順序尺度なので平均は取れない。 */
-const symbolOfMedian = m => (m == null) ? null : symbolOf(Math.floor(m));
-/* ▲ src/scale.js ここまで ▲ */
+/* @include scale.js */
 
 /* ================= 集計の式 =================
    D は含めるのが既定。測っているのは「主体的に学習に取り組む態度」なので、
@@ -484,50 +347,7 @@ const NAMES = ["あおい","あさひ","いつき","うみ","えいた","かえ�
                "すみれ","そら","たいが","ちひろ","つむぎ","てるき","なぎさ","なつき","はると","ひなた",
                "ふうか","ほのか","みなと","むぎ","めい","もえぎ","ゆうと","りく","れん"];
 
-/* ▼ src/units.js から。直すのは src のほう ▼ */
-/* ==================================================================
-   教科と単元のマスタ — 両画面が読む正本。
-   実装では「教科マスタ」と「単元マスタ」の2枚のシートになる。
-
-   open  … false の教科は児童の画面に出ない。教師だけが選べる。
-           単元と授業の区切りを入れ終わってから公開する。
-           画面に出さないのは誘導であって権限ではないので、
-           実装ではサーバ側でも児童からの非公開教科への保存を弾く。
-   c     … 単元の色（0〜19）。教師画面の設定タブが書き換える。
-           両画面がこの番号を見るので、変えれば児童の表にも同じ色が出る。
-   term  … 学期（1／2／3）。期末評定は選んだ学期の単元だけで計算する。
-           No の順に戻らないこと・同じ学期が連続することを設定画面で検算する。
-================================================================== */
-const SUBJECTS = {
-  "算数": { open:true, total:70, units:[
-    {name:"九九の表とかけ算",     from:1,  to:14,  c:0, term:1},
-    {name:"わり算",               from:15, to:30,  c:1, term:1},
-    {name:"たし算とひき算の筆算", from:31, to:48,  c:2, term:2},
-    {name:"時こくと時間",         from:49, to:70,  c:3, term:3}]},
-
-  "国語": { open:true, total:60, units:[
-    {name:"きつつきの商売",       from:1,  to:12,  c:0, term:1},
-    {name:"こまを楽しむ",         from:13, to:26,  c:1, term:1},
-    {name:"まいごのかぎ",         from:27, to:42,  c:2, term:2},
-    {name:"すがたをかえる大豆",   from:43, to:60,  c:3, term:3}]},
-
-  /* 単元は仮置き。実際の年間計画で差し替える。 */
-  "体育": { open:false, total:105, units:[
-    {name:"体つくり運動",         from:1,   to:12,  c:0, term:1},
-    {name:"かけっこ・リレー",     from:13,  to:26,  c:1, term:1},
-    {name:"水泳運動",             from:27,  to:42,  c:2, term:1},
-    {name:"マット運動",           from:43,  to:58,  c:3, term:2},
-    {name:"ゲーム（ゴール型）",   from:59,  to:78,  c:4, term:2},
-    {name:"表現運動",             from:79,  to:92,  c:5, term:3},
-    {name:"跳び箱運動",           from:93,  to:105, c:6, term:3}]},
-
-  "社会": { open:false, total:70, units:[
-    {name:"わたしたちの市の様子", from:1,  to:24,  c:0, term:1},
-    {name:"店ではたらく人",       from:25, to:44,  c:1, term:2},
-    {name:"安全なくらしを守る",   from:45, to:58,  c:2, term:2},
-    {name:"市のうつりかわり",     from:59, to:70,  c:3, term:3}]}
-};
-/* ▲ src/units.js ここまで ▲ */
+/* @include units.js */
 
 function rng(seed){ let s = seed >>> 0;
   return () => { s = (s*1664525 + 1013904223) >>> 0; return s / 4294967296; }; }

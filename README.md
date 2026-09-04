@@ -1,16 +1,25 @@
 # homeroom-tools
 
-小学校の学級担任業務を効率化する道具置き場。
+小学校の校務を効率化する道具。2026年度 3年3組。
 
-## 授業評価・単元評価
+## ノート評価
 
-児童が返却されたノートの評価記号をサイトに転写し、その蓄積から単元評価を組み立てる仕組み。
+教師がノートに書いた記号を児童がサイトへ転写し、その蓄積から単元評価と期末評定を組み立てる。
+評価する観点は**主体的に学習に取り組む態度**。
 
-- [`docs/evaluation-format.md`](docs/evaluation-format.md) — 評価スケール（D〜Z+ の9段階）、集約規則、画面設計の決定事項
-- [`docs/implementation-plan.md`](docs/implementation-plan.md) — GAS 実装手順
-- [`prototypes/scale.md`](prototypes/scale.md) — スケール・ロック・集約の仕様（正本）
-- [`prototypes/grid-sheet.html`](prototypes/grid-sheet.html) — 児童の転写画面
-- [`prototypes/teacher-view.html`](prototypes/teacher-view.html) — 教師の確定画面
-- [`prototypes/student-transcribe.html`](prototypes/student-transcribe.html) — 転写画面の別案（1画面1操作）
+| ファイル | 内容 |
+|---|---|
+| [`docs/spec.md`](docs/spec.md) | **仕様の正本（仮決定版 v1）。まずここを読む** |
+| [`docs/implementation-plan.md`](docs/implementation-plan.md) | GAS + スプレッドシートへの載せ方 |
+| [`docs/history.md`](docs/history.md) | 決定の経緯と、取り下げた判断 |
+| `prototypes/grid-sheet.html` | 児童画面（生成物） |
+| `prototypes/teacher-view.html` | 教師画面（生成物） |
+| `prototypes/src/` | 上の2つの元。**直すのはこちら** |
 
-実装は Google Apps Script + スプレッドシート。Classroom API は使わない。
+```
+python3 build.py           src/ から prototypes/*.html を生成する
+python3 build.py --check   生成物が src と一致するか調べる
+```
+
+スケールの定義・色トークン・単元マスタは `prototypes/src/` に1箇所ずつしか置いていない。
+両画面がそれを読む。`prototypes/*.html` を直接編集すると次のビルドで消える。

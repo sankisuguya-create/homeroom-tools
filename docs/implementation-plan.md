@@ -1,6 +1,6 @@
 # GAS 実装手順
 
-プロトタイプ（`prototypes/`）を Google Apps Script + スプレッドシートに載せる手順。仕様の正本は `prototypes/scale.md`。
+プロトタイプ（`prototypes/`）を Google Apps Script + スプレッドシートに載せる手順。仕様の正本は [`spec.md`](spec.md)。
 
 ## 0. 先に読むところ
 
@@ -113,7 +113,9 @@ student.html   児童画面
 teacher.html   教師画面
 ```
 
-**`scale.html` はサーバとクライアントの両方から使う。** 記号と内部値の変換はクライアントの表示にもサーバの集計にも要る。二重に書くと必ずずれるので、1ファイルにして両方から読む。
+**`scale.html` はサーバとクライアントの両方から使う。** 記号と内部値の変換はクライアントの表示にもサーバの集計にも要る。二重に書くと必ずずれるので、1ファイルにして両方から読む。中身は `prototypes/src/scale.js` がそのまま入る。
+
+同じ理由で、単元マスタ（`prototypes/src/units.js` にあたる）もサーバが持つ1つのシートから両画面へ配る。**プロトタイプでは以前ここが割れていて、教師が設定した単元の色が児童画面に届いていなかった。**
 
 ```js
 // サーバ側
@@ -135,7 +137,7 @@ eval(HtmlService.createHtmlOutputFromFile('scale').getContent().replace(/<\/?scr
 5枚を手で作り、設定・名簿・単元マスタ・授業マスタを埋める。記録と確定は見出し行だけ。
 
 ### Step 2 — Scale.gs を移植して検算
-`prototypes/grid-sheet.html` のスケール部分をそのまま移す。GAS エディタで往復テストを書く。
+`prototypes/src/scale.js` を **そのまま** `scale.html` にする。プロトタイプ側で既に1ファイルに切り出してあるので、写経でよい。GAS エディタで往復テストを書く。
 
 ```js
 function testScale(){

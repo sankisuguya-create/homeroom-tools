@@ -1,0 +1,49 @@
+/* 色トークン — 両画面が読む。@dark{} は build.py が
+   @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
+   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
+:root{
+  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
+  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
+  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
+
+  /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
+  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
+  --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
+  --warn:#B0392B; --warn-bg:#FBEEEC;
+  --ok:#2F6E4E;
+
+  /* 教師の貫通・ロック・スケール外の記号 */
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --open-cell:#FFF4E4; --open-line:#DFAE62;
+  --lock-ink:#A29C90;
+  --off-bg:#EFEDE8; --off-ink:#8A8578; --skip-line:rgba(29,33,38,.42);
+  --stripe:rgba(29,33,38,.07);
+
+  /* 単元の20色。色相を 126° ずつ飛ばしてあるので連番でも近づかない
+     （20 と 126 は互いに素）。明度は色相ごとに補正済み */
+  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
+  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
+  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
+  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
+}
+@dark{
+  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+
+  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+  --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+  --warn:#E5776A; --warn-bg:#2E1C1A;
+  --ok:#6FBF92;
+
+  --open:#6FBECC; --open-bg:#182C30;
+  --open-cell:#33270F; --open-line:#7E6224;
+  --lock-ink:#6A727C;
+  --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
+  --stripe:rgba(232,235,239,.09);
+
+  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
+}
