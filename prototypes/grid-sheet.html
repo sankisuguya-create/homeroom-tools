@@ -200,7 +200,7 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   background-color:var(--a-bg);color:var(--a-ink);
   border-left-color:var(--a-line);border-right-color:var(--a-line);border-bottom-color:var(--a-line);
 }
-.cell select.is-z{
+.cell select.is-top{
   background-color:var(--z-bg);color:var(--z-ink);
   border-left-color:var(--z-line);border-right-color:var(--z-line);border-bottom-color:var(--z-line);
   text-shadow:0 0 7px rgba(255,246,214,.95),0 1px 0 rgba(255,255,255,.7);
@@ -223,37 +223,8 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   background-position:0 0, 0 0, 0 0, 0 0, 0 0, -60% 0, 0 0;
   animation:foil 5.2s linear infinite;
 }
-/* Z+ / Z++ は虹の膜を足して、さらに希少に見せる */
-.cell select.is-zp{
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),
-             inset 0 -8px 14px rgba(170,110,180,.22),
-             0 0 0 1px rgba(214,180,97,.5), 0 0 9px rgba(226,170,220,.35);
-  text-shadow:0 0 8px rgba(255,255,255,1),0 1px 0 rgba(255,255,255,.85);
-  background-image:
-    var(--stripe-layer),
-    radial-gradient(1.8px 1.8px at 16% 26%,rgba(255,255,255,1),transparent 60%),
-    radial-gradient(1.3px 1.3px at 58% 20%,rgba(255,255,255,.9),transparent 60%),
-    radial-gradient(1.6px 1.6px at 84% 66%,rgba(255,255,255,.95),transparent 60%),
-    radial-gradient(1.2px 1.2px at 36% 78%,rgba(255,255,255,.85),transparent 60%),
-    linear-gradient(108deg,
-      rgba(255,255,255,0) 28%, rgba(255,255,255,.95) 43%,
-      rgba(255,232,180,.6) 50%, rgba(255,255,255,0) 65%),
-    linear-gradient(108deg,
-      rgba(226,104,186,.46) 0%, rgba(255,178,92,.42) 18%,
-      rgba(120,222,168,.42) 36%, rgba(96,166,244,.46) 56%,
-      rgba(176,116,238,.44) 76%, rgba(226,104,186,.46) 100%),
-    linear-gradient(108deg,
-      #F2DFA8 0%, #FDF4D8 16%, #E6C877 30%, #FFFAEC 44%,
-      #E2C069 58%, #FBF0CE 72%, #EAD08A 86%, #F2DFA8 100%);
-  background-size:auto, auto, auto, auto, auto, 220% 100%, 300% 100%, 200% 100%;
-  background-position:0 0, 0 0, 0 0, 0 0, 0 0, -60% 0, 0 0, 0 0;
-  animation:foil 3.4s linear infinite, rainbow 6s linear infinite;
-}
 @keyframes foil{
   to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 0 0}
-}
-@keyframes rainbow{
-  to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 300% 0, 0 0}
 }
 .cell select.is-warn{color:var(--warn)}
 
@@ -358,9 +329,22 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
    ++ は + とは別の段。A++ は A+ と Z− のあいだに座る。
    保存は記号の文字列。計算のときだけ値に変換する。
 ================================================================== */
+/* 基本字は下から上へ並べる。上位が増えたら末尾に足すだけでよい（例：…,"Z","Y"）。
+   途中に差し込むと既存の内部値がずれるので、追加は末尾だけにする。 */
 const BASES = ["D","C","B","A","Z"];
 const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
 const NMOD  = MODS.length;
+const NBASE = BASES.length;
+
+/* 層の境目もここだけで決める。Z の上に Y を足したら、Y も自動で突破層に入る。 */
+const TOP_FROM = "Z";       // これ以上は突破層（箔をかける）
+const WARN_TO  = "C";       // これ以下は警告層（文字を赤にする）
+const iTop  = BASES.indexOf(TOP_FROM);
+const iWarn = BASES.indexOf(WARN_TO);
+const iOf   = sym => BASES.indexOf(sym[0]);
+const isTopSym  = sym => iOf(sym) >= iTop;
+const isWarnSym = sym => { const i = iOf(sym); return i >= 0 && i <= iWarn; };
+const isTopVal  = v => Math.floor((v-1)/NMOD) >= iTop;
 
 function valueOf(sym){
   const b = BASES.indexOf(sym[0]);
@@ -478,16 +462,12 @@ function optionsHTML(){
   return h;
 }
 function paint(sel, sym){
-  sel.classList.remove("is-a","is-z","is-zp","is-warn","is-off");
+  sel.classList.remove("is-a","is-top","is-warn","is-off");
   if(!sym) return;
   if(sym === "休"){ sel.classList.add("is-off"); return; }
-  const b = sym[0];
-  if(b === "A")                   sel.classList.add("is-a");
-  else if(b === "Z"){
-    sel.classList.add("is-z");
-    if(sym.slice(1).startsWith("+")) sel.classList.add("is-zp");   // Z+ / Z++
-  }
-  else if(b === "C" || b === "D") sel.classList.add("is-warn");
+  if(isTopSym(sym))       sel.classList.add("is-top");   // 突破層はすべて同じ箔
+  else if(isWarnSym(sym)) sel.classList.add("is-warn");
+  else if(sym[0] === "A") sel.classList.add("is-a");
 }
 
 function renderGrid(){
@@ -552,8 +532,8 @@ function summarize(u){
     n:    entered.length,
     prov: medianVal(late),
     all:  medianVal(scored),
-    top:  scored.length ? Math.max(...scored) : null,
-    z:    scored.filter(v => baseOf(v)==="Z").length,
+    high: scored.length ? Math.max(...scored) : null,
+    top:  scored.filter(isTopVal).length,
     c:    scored.filter(v => baseOf(v)==="C").length,
     d:    scored.filter(v => baseOf(v)==="D").length,
     off
@@ -568,7 +548,7 @@ function renderUnits(){
     let cls = "none";
     if(p){
       const b = p.sym[0];
-      cls = b==="A" ? "is-a" : b==="Z" ? "is-z" : (b==="C"||b==="D") ? "is-warn" : "";
+      cls = isTopSym(p.sym) ? "is-z" : isWarnSym(p.sym) ? "is-warn" : b==="A" ? "is-a" : "";
     }
     const card = document.createElement("div");
     card.className = "unit-card";
@@ -582,8 +562,8 @@ function renderUnits(){
         (p ? (done ? "せんせいが かくにんちゅう" : "とちゅう") : "まだ ありません") + '</span></div>' +
       '<div class="meta">' +
         '<span>入力 ' + s.n + '/' + (u.to-u.from+1) + '</span>' +
-        (s.top ? '<span>いちばん ' + symbolOf(s.top) + '</span>' : '') +
-        (s.z ? '<span>Z ' + s.z + '回</span>' : '') +
+        (s.high ? '<span>いちばん ' + symbolOf(s.high) + '</span>' : '') +
+        (s.top ? '<span>' + TOP_FROM + 'いじょう ' + s.top + '回</span>' : '') +
         (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
       '</div>';
     box.appendChild(card);
@@ -597,12 +577,12 @@ function drawTrend(){
   const data = rows().filter(l => l.sym && l.sym !== "休")
                      .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
-  const iw=W-L-R, ih=H-T-B, slot=ih/20;
+  const iw=W-L-R, ih=H-T-B, slot=ih/(NBASE*NMOD);
   const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
   const y = v => T + ih - (v - 0.5)*slot;
 
   let s = "";
-  for(let bi=0; bi<5; bi++){
+  for(let bi=0; bi<NBASE; bi++){
     if(bi % 2 === 0)
       s += '<rect class="band" x="'+L+'" y="'+(T+ih-(bi+1)*slot*NMOD)+'" width="'+iw+'" height="'+(slot*NMOD)+'"/>';
     const cy = T + ih - (bi*NMOD + 2)*slot;                       // 帯の中央
@@ -628,9 +608,9 @@ function drawTrend(){
   if(data.length)
     s += '<polyline class="path" points="' + data.map((d,i)=>x(i)+","+y(d.v)).join(" ") + '"/>';
   data.forEach((d,i)=>{
-    const isZ = d.sym[0]==="Z";
-    s += '<circle class="dot'+(isZ?" z":"")+'" cx="'+x(i)+'" cy="'+y(d.v)+'" r="'+(isZ?5.5:3.5)+'"/>';
-    if(i % 2 === 0 || isZ)
+    const isTop = isTopSym(d.sym);
+    s += '<circle class="dot'+(isTop?" z":"")+'" cx="'+x(i)+'" cy="'+y(d.v)+'" r="'+(isTop?5.5:3.5)+'"/>';
+    if(i % 2 === 0 || isTop)
       s += '<text class="xlab" x="'+x(i)+'" y="'+(T+ih+16)+'" text-anchor="middle">'+d.no+'</text>';
   });
   $("trend").innerHTML = s;

@@ -333,10 +333,24 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 <script>
 /* ================= 評価スケール（scale.md と同じ規則） ================= */
+/* 基本字は下から上へ。上位が増えたら末尾に足すだけでよい（例：…,"Z","Y"）。
+   途中に差し込むと既存の内部値がずれるので、追加は末尾だけにする。 */
 const BASES = ["D","C","B","A","Z"];
 const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
-const NMOD  = MODS.length;                 // ++ は + とは別の段。全20段。
+const NMOD  = MODS.length;                 // ++ は + とは別の段
+const NBASE = BASES.length;
 const OFF   = "休";                        // 欠席。評価ではない。
+
+/* 層の境目もここだけで決める。Z の上に Y を足したら、Y も自動で突破層に入る。 */
+const TOP_FROM = "Z";       // これ以上は突破層
+const WARN_TO  = "C";       // これ以下は警告層
+const iTop  = BASES.indexOf(TOP_FROM);
+const iWarn = BASES.indexOf(WARN_TO);
+const isTopVal  = v => Math.floor((v-1)/NMOD) >= iTop;
+const isWarnVal = v => Math.floor((v-1)/NMOD) <= iWarn;
+const isTopSym  = sym => sym && sym !== OFF && BASES.indexOf(sym[0]) >= iTop;
+const isWarnSym = sym => { if(!sym || sym === OFF) return false;
+  const i = BASES.indexOf(sym[0]); return i >= 0 && i <= iWarn; };
 
 const valueOf = sym => {
   if(!sym || sym === OFF) return null;
@@ -373,7 +387,7 @@ const FIELDS = [
 
 /* 評定への写像。既定は基本字がそのまま評定になる境目。
    A/Z系(10以上)→A、B系(7〜9)→B、C/D系(6以下)→C */
-const R = { aFrom:15, cTo:8, stat:"median" };   // 20段。A は A+(15) 以上、C は C系の上限 C++(8) 以下
+const R = { aFrom:valueOf("A+"), cTo:valueOf("C++"), stat:"median" };
 const RANK_FIELDS = [
   {key:"aFrom", label:"A とする下限", opts:null},   // 記号セレクタ
   {key:"cTo",   label:"C とする上限", opts:null},
@@ -474,13 +488,13 @@ function summarize(ni, u){
   return {
     seq, n: entered.length, total: u.to - u.from + 1, off,
     prov, all: medianVal(scored), top: scored.length ? Math.max(...scored) : null,
-    z: vals.filter(v => baseOf(v)==="Z").length,
+    z: vals.filter(isTopVal).length,
     c: vals.filter(v => baseOf(v)==="C").length,
     d: vals.filter(v => baseOf(v)==="D").length
   };
 }
 const clsOf = sym => !sym ? "none" : sym === OFF ? "off"
-  : sym[0]==="A" ? "a" : sym[0]==="Z" ? "z" : (sym[0]==="C"||sym[0]==="D") ? "w" : "";
+  : isTopSym(sym) ? "z" : isWarnSym(sym) ? "w" : sym[0]==="A" ? "a" : "";
 
 /* 単元の確定値（採用があればそれ、なければ仮値） */
 function settled(ni, u){
@@ -569,7 +583,8 @@ function renderFormula(){
     "評価しているのは態度なので、<b>D「やるべきことを何もしていない」は欠測ではなく最も重い観測値</b>。" +
     "本物の欠測は <code>休</code> のほうで、こちらは常に除外する。" +
     "<code>++</code> は <code>+</code> とは別の段で、次の文字の一つ手前に座る（A++ は A+ と Z− のあいだ）。" +
-    "中央値が2段の間に落ちたときは下側を採る。";
+    "中央値が2段の間に落ちたときは下側を採る。" +
+    "基本字は上に足せる（<code>Z</code> の上に <code>Y</code> など）。足しても既存の段の値は動かない。";
   box.appendChild(p);
 }
 
@@ -584,7 +599,7 @@ function renderTable(){
     '<th style="width:74px">仮値</th>' +
     '<th style="width:64px">全体</th>' +
     '<th style="width:56px">最高</th>' +
-    '<th style="width:40px">Z</th><th style="width:40px">C</th><th style="width:40px">D</th>' +
+    '<th style="width:40px">' + TOP_FROM + '↑</th><th style="width:40px">C</th><th style="width:40px">D</th>' +
     '<th style="width:96px">採用値</th></tr></thead><tbody>';
 
   NAMES.forEach((name, ni)=>{
@@ -834,7 +849,7 @@ function renderOut(){
   if(mode === "unit"){
     const u = unit(), fin = finOf();
     lines = [["児童","教科","単元","観点","入力数","休","仮値","採用値","全体中央値","最高",
-              "Z回数","C回数","D回数","集計の式"].join("\t")];
+              TOP_FROM+"以上の回数","C回数","D回数","集計の式"].join("\t")];
     NAMES.forEach((name, ni)=>{
       const s = summarize(ni);
       const p = symbolOfMedian(s.prov);
