@@ -1,4 +1,4 @@
-<title>評価シート 3年3組</title>
+<title>ノート評価</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
@@ -83,14 +83,10 @@ body{
 }
 .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
 
-.note{
-  font-size:12.5px;color:var(--ink-soft);
-  border:1px dashed var(--rule);border-radius:8px;padding:7px 13px;background:var(--sheet);
-}
-.note b{color:var(--ink);font-weight:600}
 
 /* ---- 役割・教科の切り替え ---- */
 .controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.controls #roleBtn{margin-left:auto}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
 .seg button{
   appearance:none;border:none;background:transparent;color:var(--ink-soft);
@@ -380,15 +376,10 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 </style>
 
 <div class="wrap">
-  <div class="note">
-    <b>案2・ためしの画面</b>　児童名と評価はダミー。もとの一覧表と同じ形で、各セルをプルダウンにした。
-    役割は実際には Google アカウントで判定する。
-    <button class="mini" id="roleBtn" style="margin-left:8px">教師として見る</button>
-  </div>
-
   <div class="controls">
     <span class="seg-label">教科</span>
     <div class="seg" id="subjSeg"></div>
+    <button class="mini" id="roleBtn">教師として見る</button>
   </div>
 
   <div class="lockbar" id="lockbar"></div>
