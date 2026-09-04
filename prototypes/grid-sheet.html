@@ -145,7 +145,8 @@ body{
 section{display:flex;flex-direction:column;gap:12px}
 h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
   display:flex;align-items:center;gap:12px;color:var(--ink-soft)}
-h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+h2::after{content:"";flex:1;height:1px;background:var(--rule);order:1}
+h2 .fold{order:2;font-weight:600}
 
 /* ---- 授業の表 ---- */
 .sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
@@ -215,13 +216,15 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell.opened select{border-left:1px dashed var(--open);border-right:1px dashed var(--open);
   border-bottom:1px dashed var(--open)}
 .cell.edited{box-shadow:inset 3px 0 0 var(--open)}
+/* / は「この欄は無い」ことを示す記号なので、書き換えの印も出さない */
+.cell.skipcell{box-shadow:none}
 
 /* 休み */
-.cell select.is-off{background-color:var(--off-bg);color:var(--off-ink)}
+.mat.is-off{background-color:var(--off-bg);color:var(--off-ink)}
 /* / は休と同じ地色。記号は出さず、欄を斜めに1本横切る線で示す。
    閉じた select は選択中の選択肢の文字をそのまま出すので、文字は透明にする。
    開いたリストの中では option 側の色が効くので読める。 */
-.cell select.is-skip{
+.mat.is-skip{
   background-color:var(--off-bg);
   color:transparent;
   background-image:var(--stripe-layer),
@@ -230,13 +233,14 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
       var(--skip-line) calc(50% + 1px), transparent calc(50% + 1px));
 }
 .cell select option{color:var(--ink)}
+.mat{--stripe-layer:none}
 
 /* A と Z にだけ色を置く */
-.cell select.is-a{
+.mat.is-a{
   background-color:var(--a-bg);color:var(--a-ink);
   border-left-color:var(--a-line);border-right-color:var(--a-line);border-bottom-color:var(--a-line);
 }
-.cell select.foil-gold{
+.mat.foil-gold{
   background-color:var(--z-bg);color:var(--z-ink);
   border-left-color:var(--z-line);border-right-color:var(--z-line);border-bottom-color:var(--z-line);
   text-shadow:0 0 7px rgba(255,246,214,.95),0 1px 0 rgba(255,255,255,.7);
@@ -260,7 +264,7 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   animation:foil 5.2s linear infinite;
 }
 /* Y 系：宇宙。黒い地に星と星雲を重ね、星雲をゆっくり流す */
-.cell select.foil-cosmic{
+.mat.foil-cosmic{
   color:#EFE9FF;
   border-left-color:#4A3A7A;border-right-color:#4A3A7A;border-bottom-color:#4A3A7A;
   text-shadow:0 0 9px rgba(196,176,255,.95),0 0 3px rgba(120,90,220,.9),0 1px 2px rgba(0,0,0,.95);
@@ -296,9 +300,10 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 @keyframes foil{
   to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 0 0}
 }
-.cell select.is-warn{color:var(--warn)}
+.mat.is-warn{color:var(--warn)}
 
 /* ---- 単元の評価 ---- */
+.hidden{display:none!important}
 .units{display:flex;flex-direction:column;gap:18px}
 .term-block{display:flex;flex-direction:column;gap:9px}
 .term-head{
@@ -337,11 +342,14 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .unit-card[data-u="19"]{--ucol:var(--u19)}
 .unit-card .name{font-size:14px;font-weight:600}
 .unit-card .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.unit-card .val{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;letter-spacing:-.01em}
-.unit-card .val.is-a{color:var(--a-ink)}
-.unit-card .val.is-z{color:var(--z-ink)}
-.unit-card .val.is-warn{color:var(--warn)}
-.unit-card .val.none{color:var(--ink-faint);font-size:20px}
+.unit-card .valbox{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-width:92px;padding:6px 14px 7px;border-radius:6px;
+  border:1px solid var(--rule);border-top:3px solid var(--ucol,var(--rule));
+  font-family:"IBM Plex Mono",monospace;font-size:26px;font-weight:600;letter-spacing:-.01em;
+  position:relative;overflow:hidden;background-color:var(--sheet);color:var(--ink);
+}
+.unit-card .valbox.none{border-top-color:var(--rule);color:var(--ink-faint);font-size:20px}
 .tag{
   font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
   border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap;
@@ -373,15 +381,11 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 <div class="wrap">
   <div class="note">
     <b>案2・ためしの画面</b>　児童名と評価はダミー。もとの一覧表と同じ形で、各セルをプルダウンにした。
-    役割の切り替えは動作を見るための仮のもので、実際は Google アカウントで判定する。
+    役割は実際には Google アカウントで判定する。
+    <button class="mini" id="roleBtn" style="margin-left:8px">教師として見る</button>
   </div>
 
   <div class="controls">
-    <span class="seg-label">ひらいている人</span>
-    <div class="seg role" id="roleSeg">
-      <button type="button" data-role="student" aria-pressed="true">児童</button>
-      <button type="button" data-role="teacher" aria-pressed="false">教師</button>
-    </div>
     <span class="seg-label">教科</span>
     <div class="seg" id="subjSeg"></div>
   </div>
@@ -402,7 +406,9 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   </section>
 
   <section>
-    <h2>単元の評価</h2>
+    <h2>単元の評価
+      <button class="mini fold" id="foldUnits" aria-expanded="true" aria-controls="units">かくす</button>
+    </h2>
     <div class="units" id="units"></div>
   </section>
 
@@ -562,7 +568,7 @@ function optionsHTML(cur){
   let h = '<option value="">‥</option>' +
           '<optgroup label="評価に入れない">' +
           '<option value="' + OFF + '">' + OFF + '</option>' +
-          (withSkip ? '<option value="' + SKIP + '">' + SKIP + '（この授業は数えない）</option>' : '') +
+          (withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : '') +
           '</optgroup>';
   BASES.forEach(b=>{
     h += '<optgroup label="' + b + '">';
@@ -597,13 +603,14 @@ function renderGrid(){
       + (open && !l.sym ? " empty" : "")
       + (locked ? " locked" : "")
       + (locked && role === "teacher" ? " opened" : "")
-      + (l.edited ? " edited" : "");
+      + (l.edited ? " edited" : "")
+      + (l.sym === SKIP ? " skipcell" : "");
     c.dataset.u = ui;
 
     c.innerHTML =
       '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
       '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
-      '<select aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML(l.sym) + '</select>';
+      '<select class="mat" aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML(l.sym) + '</select>';
 
     const sel = c.querySelector("select");
     sel.disabled = !editable;
@@ -668,10 +675,17 @@ function renderUnits(){
   conf().units.forEach((u, ui)=>{
     const s = summarize(u);
     const p = symbolOfMedian(s.prov);
+    /* 単元評価は「1段階上」の材質で見せる。単元で高い値を取るのは1時間より難しいので、
+       同じ記号でも授業のセルより上に見えるようにする（A なら Z の箔、Z なら Y の宇宙）。
+       ただし警告帯（D・C）は上げない。上げると単元での警告が消えてしまう。 */
     let cls = "none";
     if(p){
-      const b = p.sym[0];
-      cls = isTopSym(p.sym) ? "is-z" : isWarnSym(p.sym) ? "is-warn" : b==="A" ? "is-a" : "";
+      if(isWarnSym(p.sym)) cls = "is-warn";
+      else{
+        const j = Math.min(BASES.indexOf(p.sym[0]) + 1, NBASE - 1);
+        const nb = BASES[j];
+        cls = (j >= iTop) ? (BASE_LOOK[nb] || "foil-gold") : (nb === "A" ? "is-a" : "");
+      }
     }
     const card = document.createElement("div");
     card.className = "unit-card";
@@ -680,7 +694,7 @@ function renderUnits(){
     const done = s.n >= (u.to - u.from + 1);
     card.innerHTML =
       '<div class="name">' + u.name + '</div>' +
-      '<div class="row"><span class="val ' + cls + '">' + (p ? p.sym : "—") + '</span>' +
+      '<div class="row"><span class="valbox mat ' + cls + '">' + (p ? p.sym : "—") + '</span>' +
         '<span class="tag">' +
         (p ? (done ? "せんせいが かくにんちゅう" : "とちゅう") : "まだ ありません") + '</span></div>' +
       '<div class="meta">' +
@@ -818,13 +832,11 @@ function refresh(){
 }
 
 /* ---- 切り替え ---- */
-$("roleSeg").querySelectorAll("button").forEach(b=>{
-  b.addEventListener("click", ()=>{
-    role = b.dataset.role; scrolled = false;
-    $("roleSeg").querySelectorAll("button").forEach(x =>
-      x.setAttribute("aria-pressed", String(x === b)));
-    refresh();
-  });
+$("roleBtn").addEventListener("click", ()=>{
+  role = (role === "student") ? "teacher" : "student";
+  scrolled = false;
+  $("roleBtn").textContent = (role === "student") ? "教師として見る" : "児童として見る";
+  refresh();
 });
 Object.keys(SUBJECTS).forEach((name,i)=>{
   const b = document.createElement("button");
@@ -838,6 +850,12 @@ Object.keys(SUBJECTS).forEach((name,i)=>{
     refresh();
   });
   $("subjSeg").appendChild(b);
+});
+
+$("foldUnits").addEventListener("click", ()=>{
+  const box = $("units"), open = box.classList.toggle("hidden");
+  $("foldUnits").textContent = open ? "ひらく" : "かくす";
+  $("foldUnits").setAttribute("aria-expanded", String(!open));
 });
 
 refresh();
