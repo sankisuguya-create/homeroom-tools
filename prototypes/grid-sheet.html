@@ -16,11 +16,11 @@
   --a-bg:#DCE8F6;   --a-line:#8FB4DC;   --a-ink:#173E70;
   --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
   --warn:#B0392B;
-  --todo-bg:#FFF6E8; --todo-line:#E0B36A;
-  --fresh-bg:#E8F6EE; --fresh-line:#7FC4A0; --fresh-ink:#1E6647;
+  --open-cell:#FFF4E4; --open-line:#DFAE62;
   --lock-ink:#A29C90;
   --open:#2E7D8A; --open-bg:#EAF5F6;
   --off-bg:#EFEDE8; --off-ink:#8A8578;
+  --pat-ink:rgba(29,33,38,.075);
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -36,11 +36,11 @@
     --a-bg:#1E3352;   --a-line:#3F6598;   --a-ink:#BDD5F0;
     --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
     --warn:#E5776A;
-    --todo-bg:#332811; --todo-line:#7A5F22;
-    --fresh-bg:#163024; --fresh-line:#3E7F5D; --fresh-ink:#8FD8B2;
+    --open-cell:#33270F; --open-line:#7E6224;
     --lock-ink:#6A727C;
     --open:#6FBECC; --open-bg:#182C30;
     --off-bg:#22262B; --off-ink:#767E88;
+    --pat-ink:rgba(232,235,239,.095);
   }
 }
 :root[data-theme="dark"]{
@@ -56,11 +56,11 @@
   --a-bg:#1E3352;   --a-line:#3F6598;   --a-ink:#BDD5F0;
   --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
   --warn:#E5776A;
-  --todo-bg:#332811; --todo-line:#7A5F22;
-  --fresh-bg:#163024; --fresh-line:#3E7F5D; --fresh-ink:#8FD8B2;
+  --open-cell:#33270F; --open-line:#7E6224;
   --lock-ink:#6A727C;
   --open:#6FBECC; --open-bg:#182C30;
   --off-bg:#22262B; --off-ink:#767E88;
+  --pat-ink:rgba(232,235,239,.095);
 }
 
 *{box-sizing:border-box}
@@ -139,7 +139,18 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
 .grid{display:grid;grid-template-columns:repeat(10,minmax(90px,1fr));gap:1px;background:var(--rule-soft);
   border:1px solid var(--rule-soft);min-width:930px}
-.cell{background:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative}
+.cell{
+  background-color:var(--sheet);
+  background-image:var(--pat,none);background-repeat:repeat;background-size:var(--pat-size,auto);
+  padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative;
+}
+/* 単元ごとの薄いパターン。色ではなく地紋で単元のまとまりを示す */
+.cell[data-pat="0"]{--pat:radial-gradient(var(--pat-ink) 1.5px,transparent 1.7px);--pat-size:7px 7px}
+.cell[data-pat="1"]{--pat:repeating-conic-gradient(var(--pat-ink) 0% 25%,transparent 0% 50%);--pat-size:11px 11px}
+.cell[data-pat="2"]{--pat:repeating-linear-gradient(45deg,var(--pat-ink) 0 1px,transparent 1px 7px)}
+.cell[data-pat="3"]{--pat:repeating-linear-gradient(0deg,var(--pat-ink) 0 1px,transparent 1px 8px)}
+.cell[data-pat="4"]{--pat:repeating-linear-gradient(0deg,var(--pat-ink) 0 1px,transparent 1px 9px),
+                          repeating-linear-gradient(90deg,var(--pat-ink) 0 1px,transparent 1px 9px)}
 .cell .no{
   font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
   color:var(--ink-faint);letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;gap:4px;
@@ -154,21 +165,19 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cell select:hover:not(:disabled){border-color:var(--accent)}
 
-.cell.todo{background:var(--todo-bg)}
-.cell.todo select{border:1.5px dashed var(--todo-line);background:transparent}
-.cell.future select{background:var(--rule-soft);color:var(--ink-faint);border-style:dotted;cursor:not-allowed}
+/* ひらいている（未記入・入力済みでまだ変えられる）＝ひとつの色。
+   未記入は破線、入力済みは実線で分ける。 */
+.cell.open{background-color:var(--open-cell)}
+.cell.open select{border-color:var(--open-line)}
+.cell.open.empty select{border:1.5px dashed var(--open-line);background:transparent}
 
-/* まだ変えられる＝明るく。確定済み＝静かに。 */
-.cell.fresh{background:var(--fresh-bg)}
-.cell.fresh select{border-color:var(--fresh-line)}
-.cell .freshmark{font-size:9px;color:var(--fresh-ink);font-weight:700;line-height:1;letter-spacing:.02em}
-
+/* 確定済みは地紋のまま沈める。印は置かない。 */
 .cell.locked select:disabled{opacity:1;cursor:default;border-color:var(--rule-soft);color:var(--ink-soft)}
-.cell .lockmark{font-size:9.5px;color:var(--lock-ink);line-height:1}
+
+.cell.future select{background:var(--rule-soft);color:var(--ink-faint);border-style:dotted;cursor:not-allowed}
 
 /* 教師が確定済みを開いているとき：破線で「本来は閉じている」を示す */
 .cell.opened select{border-style:dashed;border-color:var(--open)}
-.cell .lockmark.bypass{color:var(--open);font-weight:700}
 .cell.edited{box-shadow:inset 3px 0 0 var(--open)}
 
 /* 休み */
@@ -414,24 +423,22 @@ function renderGrid(){
   rows().forEach(l=>{
     const u = unitOf(l.no);
     const locked = isLocked(l);
-    const fresh  = !!l.sym && !locked;                 // 入力済みで、まだ変えられる
+    const open   = l.state !== "future" && !locked;    // まだ変えられる（未記入も入力済みも）
     const editable = l.state !== "future" && canEdit(l);
+    const pat = u ? conf().units.indexOf(u) % 5 : 0;
 
     const c = document.createElement("div");
     c.className = "cell " + l.state
-      + (fresh ? " fresh" : "")
+      + (open ? " open" : "")
+      + (open && !l.sym ? " empty" : "")
       + (locked ? " locked" : "")
       + (locked && role === "teacher" ? " opened" : "")
       + (l.edited ? " edited" : "");
-
-    let mark = "";
-    if(fresh)                        mark = '<span class="freshmark">なおせる</span>';
-    else if(locked && role === "student") mark = '<span class="lockmark">🔒</span>';
-    else if(locked && role === "teacher") mark = '<span class="lockmark bypass">🔓</span>';
+    c.dataset.pat = pat;
 
     c.innerHTML =
       '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
-      mark + '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+      '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
       '<select aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML() + '</select>';
 
     const sel = c.querySelector("select");
@@ -571,7 +578,7 @@ function renderLockbar(){
     bar.innerHTML =
       '<span class="icon">🔓</span>' +
       '<span class="msg">教師アカウントは<b>ロックを貫通して</b>操作できる。' +
-        '確定済みのセルは枠が破線。書き換えたセルは左端に線が残る。</span>' +
+        '確定済みのセルは枠が破線になる。書き換えたセルは左端に線が残る。</span>' +
       '<label class="seg-label" for="lockTime">ロック時刻</label>' +
       '<input type="time" id="lockTime" value="' +
         String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
@@ -595,7 +602,7 @@ function renderLockbar(){
             String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
             'つぎは <span class="when">' + hhmm(nb) + '</span>。'
           : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
-        '　みどりの セルは まだ なおせます。🔒 は きまった ひょうかです。' +
+        '　いろの ついた セルは まだ なおせます。それ いがいは きまった ひょうかです。' +
       '</span>';
   }
 }
