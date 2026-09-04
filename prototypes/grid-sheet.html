@@ -86,7 +86,8 @@ body{
 
 /* ---- 役割・教科の切り替え ---- */
 .controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-.controls #roleBtn{margin-left:auto}
+.controls #teacherLink{margin-left:auto;text-decoration:none;display:inline-block}
+.controls #teacherLink.hidden + #roleBtn{margin-left:auto}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
 .seg button{
   appearance:none;border:none;background:transparent;color:var(--ink-soft);
@@ -383,6 +384,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
     <span class="seg-label">教科</span>
     <div class="seg" id="subjSeg"></div>
     <button class="mini hidden" id="openBtn"></button>
+    <a class="mini hidden" id="teacherLink" target="_blank" rel="noopener">集計と設定 →</a>
     <button class="mini" id="roleBtn">教師として見る</button>
   </div>
 
@@ -541,6 +543,13 @@ const SUBJECTS = {
     seed: ["B","B+","A−","B+","A","B+","B","A−","/","A","B+","A−"]
   }
 };
+
+/* 教師画面（集計・確定・設定）の場所。ローカルで開いたときは隣のファイル、
+   公開したプロトタイプではアーティファクトの URL。
+   実装では同じ Web アプリの ?p=teacher になるので、ここは1行で差し替わる。 */
+const TEACHER_URL = (location.protocol === "file:")
+  ? "teacher-view.html"
+  : "https://claude.ai/code/artifact/e9026be6-5155-4a8e-83e3-9d306b6e371a";
 
 let role    = "student";
 let subject = "算数";
@@ -836,6 +845,10 @@ function renderSubjSeg(){
   const ob = $("openBtn");
   ob.classList.toggle("hidden", role !== "teacher");
   ob.textContent = SUBJECTS[subject].open ? "児童に 見せない" : "児童に 見せる";
+
+  const tl = $("teacherLink");
+  tl.classList.toggle("hidden", role !== "teacher");
+  tl.href = TEACHER_URL;
 }
 
 function refresh(){
