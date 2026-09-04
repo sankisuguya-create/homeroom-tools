@@ -1,0 +1,546 @@
+<title>ノートの きごう</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;500;700;800&family=Outfit:wght@600;700;800&display=swap">
+<style>
+:root{
+  --paper:#FAF8F3;
+  --surface:#FFFFFF;
+  --ink:#20242B;
+  --ink-soft:#606A76;
+  --ink-faint:#98A1AC;
+  --line:#E4E0D6;
+  --line-strong:#CFC9BB;
+  --accent:#2F5FA8;
+  --gold:#B98F1E;
+  --shadow:0 1px 2px rgba(32,36,43,.06),0 6px 18px rgba(32,36,43,.07);
+
+  --l1-bg:#AE3B2D; --l1-fg:#FFF1ED;
+  --l2-bg:#D8887B; --l2-fg:#46201A;
+  --l3-bg:#A5BCD1; --l3-fg:#26323E;
+  --l4-bg:#86A5C6; --l4-fg:#1B2733;
+  --l5-bg:#658EBA; --l5-fg:#FFFFFF;
+  --l6-bg:#4A76AC; --l6-fg:#FFFFFF;
+  --l7-bg:#355E9C; --l7-fg:#FFFFFF;
+  --l8-bg:#3C4A97; --l8-fg:#FFFFFF;
+  --l9-bg:#4B398F; --l9-fg:#FFFFFF;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#14171C;
+    --surface:#1C2027;
+    --ink:#EAEDF1;
+    --ink-soft:#A2ADBA;
+    --ink-faint:#6B7684;
+    --line:#2A2F38;
+    --line-strong:#3A414C;
+    --accent:#7FAEE8;
+    --gold:#E0BC55;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+
+    --l1-bg:#8C2F24; --l1-fg:#FFD8D0;
+    --l2-bg:#B4675B; --l2-fg:#1B0E0B;
+    --l3-bg:#374D63; --l3-fg:#B6C6D5;
+    --l4-bg:#3F607E; --l4-fg:#CBD9E6;
+    --l5-bg:#48769B; --l5-fg:#E4EDF5;
+    --l6-bg:#548CB8; --l6-fg:#0F141A;
+    --l7-bg:#67A4D4; --l7-fg:#0F141A;
+    --l8-bg:#7F9CE8; --l8-fg:#0F141A;
+    --l9-bg:#9C8DF0; --l9-fg:#0F141A;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#14171C;
+  --surface:#1C2027;
+  --ink:#EAEDF1;
+  --ink-soft:#A2ADBA;
+  --ink-faint:#6B7684;
+  --line:#2A2F38;
+  --line-strong:#3A414C;
+  --accent:#7FAEE8;
+  --gold:#E0BC55;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+
+  --l1-bg:#8C2F24; --l1-fg:#FFD8D0;
+  --l2-bg:#B4675B; --l2-fg:#1B0E0B;
+  --l3-bg:#374D63; --l3-fg:#B6C6D5;
+  --l4-bg:#3F607E; --l4-fg:#CBD9E6;
+  --l5-bg:#48769B; --l5-fg:#E4EDF5;
+  --l6-bg:#548CB8; --l6-fg:#0F141A;
+  --l7-bg:#67A4D4; --l7-fg:#0F141A;
+  --l8-bg:#7F9CE8; --l8-fg:#0F141A;
+  --l9-bg:#9C8DF0; --l9-fg:#0F141A;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI",sans-serif;
+  font-size:16px;
+  line-height:1.7;
+  -webkit-text-size-adjust:100%;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:20px 20px 56px;display:flex;flex-direction:column;gap:24px;min-height:100vh}
+
+/* ---- ダミーデータ帯 ---- */
+.demo-note{
+  display:flex;align-items:center;gap:10px;
+  font-size:13px;color:var(--ink-soft);
+  background:var(--surface);border:1px dashed var(--line-strong);
+  border-radius:10px;padding:8px 14px;
+}
+.demo-note b{color:var(--ink);font-weight:700}
+
+/* ---- ヘッダ ---- */
+.bar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.who{font-size:20px;font-weight:700;letter-spacing:.02em}
+.who small{font-size:14px;font-weight:500;color:var(--ink-soft);margin-left:2px}
+.left{
+  font-family:"Outfit",sans-serif;font-weight:700;font-size:14px;
+  color:var(--ink-soft);letter-spacing:.06em;
+  display:flex;align-items:center;gap:8px;
+}
+.pips{display:flex;gap:5px}
+.pip{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.pip.on{background:var(--accent)}
+
+/* ---- 授業カード ---- */
+.lesson{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:22px 26px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:22px;flex-wrap:wrap;
+}
+.lesson .no{
+  font-family:"Outfit",sans-serif;font-weight:800;font-size:15px;
+  letter-spacing:.1em;color:var(--accent);
+  border:2px solid var(--accent);border-radius:999px;padding:3px 14px;white-space:nowrap;
+}
+.lesson .unit{font-size:26px;font-weight:800;letter-spacing:.01em}
+.lesson .hour{font-size:16px;color:var(--ink-soft);font-weight:500}
+
+/* ---- 問い ---- */
+.ask{font-size:19px;font-weight:700;margin:0}
+.ask span{color:var(--ink-soft);font-weight:500;font-size:15px;display:block;margin-top:2px}
+
+/* ---- 9段の帯 ---- */
+.scaleblock{display:flex;flex-direction:column;gap:10px}
+.axis{
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:13px;color:var(--ink-faint);font-weight:500;letter-spacing:.04em;
+}
+.axis .rule{flex:1;height:1px;background:linear-gradient(to right,var(--line),var(--line-strong));margin:0 12px}
+.scale{display:grid;grid-template-columns:repeat(9,1fr);gap:8px}
+.lv{
+  appearance:none;border:2px solid transparent;border-radius:14px;
+  min-height:104px;padding:6px 4px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:"Outfit",sans-serif;font-weight:800;
+  font-size:clamp(24px,3.2vw,40px);letter-spacing:-.01em;
+  transition:transform .14s ease,box-shadow .14s ease,opacity .14s ease;
+}
+.lv:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.lv:hover{transform:translateY(-3px)}
+/* --- 警告層：ベタ塗り。装飾を与えない --- */
+.lv[data-lv="1"]{background:var(--l1-bg);color:var(--l1-fg)}
+.lv[data-lv="2"]{background:var(--l2-bg);color:var(--l2-fg)}
+
+/* --- 通常層の下側：ベタ塗り --- */
+.lv[data-lv="3"]{background:var(--l3-bg);color:var(--l3-fg)}
+.lv[data-lv="4"]{background:var(--l4-bg);color:var(--l4-fg)}
+
+/* --- A系列：金属的な光沢。段が上がるほど強くなる --- */
+.lv[data-lv="5"]{--lv-base:var(--l5-bg);color:var(--l5-fg)}
+.lv[data-lv="6"]{--lv-base:var(--l6-bg);color:var(--l6-fg)}
+.lv[data-lv="7"]{--lv-base:var(--l7-bg);color:var(--l7-fg);border-color:var(--gold)}
+.lv.sheen{
+  position:relative;overflow:hidden;
+  background:linear-gradient(158deg,
+    color-mix(in srgb,var(--lv-base) 74%,#ffffff) 0%,
+    color-mix(in srgb,var(--lv-base) 92%,#ffffff) 34%,
+    var(--lv-base) 62%,
+    color-mix(in srgb,var(--lv-base) 84%,#000000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 -10px 22px rgba(0,0,0,.14);
+  text-shadow:0 1px 3px rgba(10,20,40,.35);
+}
+.lv.sheen .sym{position:relative;z-index:3}
+.lv.sheen .sweep{
+  position:absolute;inset:-60%;z-index:1;pointer-events:none;
+  background:linear-gradient(112deg,transparent 40%,rgba(255,255,255,.30) 48%,transparent 58%);
+  animation:sweep 6.4s linear infinite;
+}
+.lv[data-lv="6"] .sweep{animation-duration:5.2s;
+  background:linear-gradient(112deg,transparent 39%,rgba(255,255,255,.40) 48%,transparent 59%)}
+.lv[data-lv="7"] .sweep{animation-duration:4.2s;
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.50) 47%,rgba(255,255,255,.14) 53%,transparent 61%)}
+/* A++ だけ、突破層へ橋を架ける控えめな粒 */
+.lv[data-lv="7"] .grain{
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(1.6px 1.6px at 24% 30%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(1.3px 1.3px at 62% 24%,rgba(255,255,255,.7),transparent 62%),
+    radial-gradient(1.5px 1.5px at 44% 76%,rgba(255,255,255,.75),transparent 62%),
+    radial-gradient(1.2px 1.2px at 82% 66%,rgba(255,255,255,.65),transparent 62%);
+  animation:twinkle 3.4s ease-in-out infinite;
+}
+
+/* --- 突破層：素材そのものを変える（ホログラムのラメ） --- */
+.lv.gem{
+  position:relative;overflow:hidden;border-color:var(--gold);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -10px 24px rgba(0,0,0,.18);
+}
+.lv.gem .sym{position:relative;z-index:4;
+  text-shadow:0 2px 12px rgba(10,4,28,.9),0 1px 3px rgba(10,4,28,.95),
+              0 0 2px rgba(10,4,28,.9),0 0 22px rgba(10,4,28,.55)}
+.lv[data-lv="8"]{background:linear-gradient(112deg,
+  #333F9E 0%,#6473D6 15%,#A3B2F5 26%,#4553B4 39%,#28328A 53%,
+  #6E7EDC 67%,#9EADF4 79%,#37439F 100%)}
+.lv[data-lv="9"]{background:linear-gradient(112deg,
+  #55299B 0%,#9639C6 11%,#DC3F94 23%,#E8842B 35%,#3FBE8C 47%,
+  #2F8CE0 59%,#7B3ED4 73%,#CE3AA6 86%,#55299B 100%)}
+/* 回転する虹の膜 */
+.lv.gem .holo{
+  position:absolute;inset:-38%;z-index:1;pointer-events:none;
+  mix-blend-mode:screen;filter:blur(10px);opacity:.26;
+  background:conic-gradient(from 0deg,#8FA6FF,#CFDCFF,#7E92F0,#B9C6FF,#8FA6FF);
+  animation:spin 9s linear infinite;
+}
+.lv[data-lv="9"] .holo{
+  opacity:.32;filter:blur(12px);animation-duration:6s;
+  background:conic-gradient(from 0deg,#FF9EC4,#FFD79A,#B9F5C8,#9ECDFF,#C4A3FF,#FF9EC4);
+}
+/* ラメの粒 */
+.lv.gem .grain{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:
+    radial-gradient(2.2px 2.2px at 14% 26%,rgba(255,255,255,.98),transparent 62%),
+    radial-gradient(1.4px 1.4px at 33% 69%,rgba(255,255,255,.88),transparent 62%),
+    radial-gradient(2.6px 2.6px at 59% 21%,rgba(255,255,255,.95),transparent 62%),
+    radial-gradient(1.5px 1.5px at 77% 61%,rgba(255,255,255,.82),transparent 62%),
+    radial-gradient(2.1px 2.1px at 88% 33%,rgba(255,255,255,.94),transparent 62%),
+    radial-gradient(1.6px 1.6px at 45% 85%,rgba(255,255,255,.78),transparent 62%),
+    radial-gradient(1.9px 1.9px at 23% 51%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(1.4px 1.4px at 69% 82%,rgba(255,255,255,.74),transparent 62%),
+    radial-gradient(2px 2px at 50% 42%,rgba(255,255,255,.82),transparent 62%);
+  animation:twinkle 2.6s ease-in-out infinite;
+}
+.lv[data-lv="9"] .grain{
+  animation-duration:1.7s;
+  background:
+    radial-gradient(2.4px 2.4px at 12% 22%,rgba(255,255,255,1),transparent 62%),
+    radial-gradient(1.5px 1.5px at 30% 66%,rgba(255,255,255,.92),transparent 62%),
+    radial-gradient(2.8px 2.8px at 56% 18%,rgba(255,255,255,1),transparent 62%),
+    radial-gradient(1.6px 1.6px at 74% 58%,rgba(255,255,255,.88),transparent 62%),
+    radial-gradient(2.3px 2.3px at 86% 30%,rgba(255,255,255,.97),transparent 62%),
+    radial-gradient(1.7px 1.7px at 42% 82%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(2px 2px at 20% 48%,rgba(255,255,255,.9),transparent 62%),
+    radial-gradient(1.5px 1.5px at 66% 79%,rgba(255,255,255,.8),transparent 62%),
+    radial-gradient(2.2px 2.2px at 48% 38%,rgba(255,255,255,.9),transparent 62%),
+    radial-gradient(1.4px 1.4px at 92% 74%,rgba(255,255,255,.8),transparent 62%),
+    radial-gradient(1.8px 1.8px at 8% 68%,rgba(255,255,255,.85),transparent 62%);
+}
+.lv.gem .sweep{
+  position:absolute;inset:-60%;z-index:2;pointer-events:none;
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.55) 47%,
+    rgba(255,255,255,.16) 53%,transparent 62%);
+  animation:sweep 3.6s linear infinite;
+}
+.lv[data-lv="9"] .sweep{animation-duration:2.5s;
+  background:linear-gradient(112deg,transparent 37%,rgba(255,255,255,.68) 46%,
+    rgba(255,255,255,.2) 53%,transparent 63%)}
+
+@keyframes twinkle{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes sweep{0%{transform:translateX(-45%)}100%{transform:translateX(45%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 層の切れ目を余白で示す（文字を足さずに構造を出す） */
+.lv.layer-end{margin-right:14px}
+.lv.layer-start{margin-left:14px}
+.scale.picked .lv{opacity:.5}
+.scale.picked .lv.gem{opacity:.62}
+.scale.picked .lv.sheen{opacity:.58}
+.scale.picked .lv.on{opacity:1;transform:translateY(-6px) scale(1.04);box-shadow:0 10px 26px rgba(32,36,43,.22)}
+
+/* ---- 確認 ---- */
+.confirm{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:18px 24px;box-shadow:var(--shadow);
+}
+.confirm p{margin:0;font-size:19px;font-weight:700}
+.confirm p em{font-family:"Outfit",sans-serif;font-style:normal;font-weight:800;font-size:26px;color:var(--accent);margin:0 4px}
+.confirm p.idle{font-weight:500;color:var(--ink-faint);font-size:16px}
+.btn{
+  appearance:none;border:none;border-radius:999px;cursor:pointer;
+  font-family:"M PLUS Rounded 1c",sans-serif;font-weight:800;font-size:19px;
+  padding:14px 40px;background:var(--accent);color:#fff;letter-spacing:.04em;
+  transition:filter .14s ease,transform .14s ease;
+}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:scale(.97)}
+.btn:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.btn[disabled]{background:var(--line);color:var(--ink-faint);cursor:not-allowed;filter:none;transform:none}
+.btn.ghost{background:transparent;color:var(--ink-soft);border:2px solid var(--line-strong);padding:12px 26px;font-size:16px}
+
+/* ---- 名前えらび ---- */
+.names{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:10px}
+.name{
+  appearance:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:12px;padding:16px 8px;font-family:inherit;font-size:18px;font-weight:700;
+  cursor:pointer;transition:border-color .14s ease,transform .14s ease;
+}
+.name:hover{border-color:var(--accent);transform:translateY(-2px)}
+.name:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.name .num{display:block;font-family:"Outfit",sans-serif;font-size:12px;font-weight:600;color:var(--ink-faint);letter-spacing:.08em}
+
+/* ---- おわり ---- */
+.done-head{text-align:center;display:flex;flex-direction:column;gap:4px;padding:8px 0}
+.done-head h2{margin:0;font-size:30px;font-weight:800;letter-spacing:.02em}
+.done-head p{margin:0;color:var(--ink-soft);font-size:16px}
+.chartcard{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  padding:22px 24px 18px;box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:12px;
+}
+.chartcard h3{margin:0;font-size:17px;font-weight:700}
+.chartcard h3 span{font-weight:500;color:var(--ink-soft);font-size:14px;margin-left:8px}
+.chartscroll{overflow-x:auto}
+svg.trend{display:block;min-width:520px;width:100%;height:auto}
+svg.trend .band{fill:var(--line);opacity:.35}
+svg.trend .gridline{stroke:var(--line);stroke-width:1}
+svg.trend .ylab{fill:var(--ink-faint);font-family:"Outfit",sans-serif;font-size:11px;font-weight:700;letter-spacing:.04em}
+svg.trend .xlab{fill:var(--ink-faint);font-family:"Outfit",sans-serif;font-size:10px;font-weight:600}
+svg.trend .path{fill:none;stroke:var(--accent);stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+svg.trend .dot{fill:var(--accent)}
+svg.trend .dot.new{fill:var(--gold);stroke:var(--surface);stroke-width:2.5}
+
+.foot{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+.hidden{display:none!important}
+.stack{display:flex;flex-direction:column;gap:24px}
+
+@media (max-width:720px){
+  .scale{grid-template-columns:repeat(3,1fr)}
+  .lv{min-height:78px;font-size:30px}
+  .axis{display:none}
+  .lesson .unit{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+  .lv:hover,.scale.picked .lv.on{transform:none}
+}
+</style>
+
+<div class="wrap">
+  <div class="demo-note">
+    <b>ためしの画面</b><span>児童名・評価はダミー。実際は名簿とスプレッドシートから読み込む。</span>
+  </div>
+
+  <!-- 1. 名前えらび -->
+  <section id="screen-name">
+    <div class="bar" style="margin-bottom:16px">
+      <div class="who">じぶんの なまえを えらぼう</div>
+    </div>
+    <div class="names" id="names"></div>
+  </section>
+
+  <!-- 2. 転写 -->
+  <section id="screen-write" class="hidden stack">
+    <div class="bar">
+      <div class="who" id="whoName">—</div>
+      <div class="left">のこり <span id="leftNum">0</span><div class="pips" id="pips"></div></div>
+    </div>
+
+    <div class="lesson">
+      <span class="no" id="lsNo">No.—</span>
+      <span class="unit" id="lsUnit">—</span>
+      <span class="hour" id="lsHour">—</span>
+    </div>
+
+    <p class="ask">ノートに かいてある きごうを えらぼう<span>おなじ かたちを さがして タップ</span></p>
+
+    <div class="scaleblock">
+      <div class="axis"><span>ここから</span><span class="rule"></span><span>ここまで</span></div>
+      <div class="scale" id="scale"></div>
+    </div>
+
+    <div class="confirm">
+      <p class="idle" id="confirmText">きごうを えらぶと ボタンが おせるよ</p>
+      <button class="btn" id="submit" disabled>これで けってい</button>
+    </div>
+  </section>
+
+  <!-- 3. おわり -->
+  <section id="screen-done" class="hidden stack">
+    <div class="done-head">
+      <h2>ぜんぶ おわりました</h2>
+      <p id="doneSub">3つ しゃしんに うつしました</p>
+    </div>
+
+    <div class="chartcard">
+      <h3>これまでの きろく<span>わり算 の たんげん</span></h3>
+      <div class="chartscroll"><svg class="trend" id="trend" viewBox="0 0 720 300" role="img" aria-label="授業ごとの記号の うつりかわり"></svg></div>
+    </div>
+
+    <div class="foot">
+      <button class="btn ghost" id="restart">はじめから ためす</button>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ------------------------------------------------------------------
+   ダミーデータ。GAS 版ではスプレッドシートから供給する。
+   LEVELS の並びが「ただの序列」の正本。index+1 が内部値 1..9。
+------------------------------------------------------------------ */
+const LEVELS = ["D","C","B","B+","A","A+","A++","Z","Z+"];
+
+const NAMES = ["あおい","あさひ","いつき","うみ","えいた","かえで","かんな","こはる","さくら","しおん",
+               "すみれ","そら","たいが","ちひろ","つむぎ","てるき","なぎさ","なつき","はると","ひなた",
+               "ふうか","ほのか","みなと","むぎ","めい","もえぎ","ゆうと","りく","れん"];
+
+/* 未転写の授業（写真1の No. 体系にそろえる） */
+const PENDING = [
+  {no:21, unit:"わり算", hour:3},
+  {no:22, unit:"わり算", hour:4},
+  {no:23, unit:"わり算", hour:5}
+];
+
+/* これまでの記録（内部値 1..9） */
+const HISTORY = [
+  {no:14, lv:3},{no:15, lv:4},{no:16, lv:4},{no:17, lv:3},
+  {no:18, lv:5},{no:19, lv:5},{no:20, lv:6}
+];
+
+const $ = id => document.getElementById(id);
+let student = null, queue = [], picked = null, recorded = [];
+
+/* ---- 名前えらび ---- */
+NAMES.forEach((n,i)=>{
+  const b = document.createElement("button");
+  b.className = "name";
+  b.type = "button";
+  b.innerHTML = '<span class="num">' + String(i+1).padStart(2,"0") + '</span>' + n;
+  b.addEventListener("click", ()=>start(n));
+  $("names").appendChild(b);
+});
+
+/* ---- 9段の帯 ---- */
+LEVELS.forEach((sym,i)=>{
+  const b = document.createElement("button");
+  b.className = "lv";
+  b.type = "button";
+  b.dataset.lv = i+1;
+  const lv = i+1;
+  let deco = "";
+  if(lv >= 5 && lv <= 7){                       // A系列：光沢
+    b.classList.add("sheen");
+    deco = '<span class="sweep"></span>' + (lv === 7 ? '<span class="grain"></span>' : "");
+  }else if(lv >= 8){                            // Z系列：ホログラムのラメ
+    b.classList.add("gem");
+    deco = '<span class="holo"></span><span class="sweep"></span><span class="grain"></span>';
+  }
+  b.innerHTML = deco + '<span class="sym">' + sym + '</span>';
+  if(i+1 === 2) b.classList.add("layer-end");  // C のあとで警告層が終わる
+  if(i+1 === 8) b.classList.add("layer-start");// Z のまえで突破層が始まる
+  b.setAttribute("aria-label", sym);
+  b.addEventListener("click", ()=>pick(i+1));
+  $("scale").appendChild(b);
+});
+
+function show(which){
+  ["name","write","done"].forEach(s=>$("screen-"+s).classList.toggle("hidden", s!==which));
+  window.scrollTo({top:0});
+}
+
+function start(name){
+  student = name;
+  queue = PENDING.slice();
+  recorded = [];
+  $("whoName").innerHTML = name + '<small> さん</small>';
+  renderPips();
+  next();
+  show("write");
+}
+
+function renderPips(){
+  $("leftNum").textContent = queue.length;
+  $("pips").innerHTML = "";
+  const total = PENDING.length;
+  for(let i=0;i<total;i++){
+    const d = document.createElement("span");
+    d.className = "pip" + (i < total - queue.length ? " on" : "");
+    $("pips").appendChild(d);
+  }
+}
+
+function next(){
+  picked = null;
+  $("scale").classList.remove("picked");
+  document.querySelectorAll(".lv").forEach(el=>el.classList.remove("on"));
+  $("submit").disabled = true;
+  const t = $("confirmText");
+  t.className = "idle";
+  t.textContent = "きごうを えらぶと ボタンが おせるよ";
+
+  if(queue.length === 0){ finish(); return; }
+  const l = queue[0];
+  $("lsNo").textContent   = "No." + l.no;
+  $("lsUnit").textContent = l.unit;
+  $("lsHour").textContent = "第" + l.hour + "時";
+  renderPips();
+}
+
+function pick(v){
+  picked = v;
+  $("scale").classList.add("picked");
+  document.querySelectorAll(".lv").forEach(el=>el.classList.toggle("on", Number(el.dataset.lv)===v));
+  const t = $("confirmText");
+  t.className = "";
+  t.innerHTML = '<em>' + LEVELS[v-1] + '</em> を えらびました';
+  $("submit").disabled = false;
+}
+
+$("submit").addEventListener("click", ()=>{
+  if(!picked) return;
+  const l = queue.shift();
+  recorded.push({no:l.no, lv:picked});   // GAS 版はここで保存
+  next();
+});
+
+function finish(){
+  $("doneSub").textContent = recorded.length + "つ しゃしんに うつしました";
+  drawTrend(HISTORY.concat(recorded));
+  show("done");
+}
+
+$("restart").addEventListener("click", ()=>{ show("name"); });
+
+/* ---- きろくの うつりかわり ---- */
+function drawTrend(data){
+  const W = 720, H = 300, L = 46, R = 16, T = 14, B = 30;
+  const iw = W - L - R, ih = H - T - B;
+  const rowH = ih / 9;
+  const x = i => L + (data.length === 1 ? iw/2 : iw * i / (data.length - 1));
+  const y = lv => T + ih - (lv - 0.5) * rowH;
+
+  let s = "";
+  for(let i=0;i<9;i++){
+    if(i % 2 === 0) s += '<rect class="band" x="'+L+'" y="'+(T+i*rowH)+'" width="'+iw+'" height="'+rowH+'"/>';
+    const ly = T + ih - (i + 0.5) * rowH;
+    s += '<text class="ylab" x="'+(L-10)+'" y="'+(ly+4)+'" text-anchor="end">'+LEVELS[i]+'</text>';
+  }
+  s += '<line class="gridline" x1="'+L+'" y1="'+(T+ih)+'" x2="'+(L+iw)+'" y2="'+(T+ih)+'"/>';
+
+  s += '<polyline class="path" points="' +
+       data.map((d,i)=>x(i)+","+y(d.lv)).join(" ") + '"/>';
+
+  const firstNew = HISTORY.length;
+  data.forEach((d,i)=>{
+    s += '<circle class="dot'+(i>=firstNew?" new":"")+'" cx="'+x(i)+'" cy="'+y(d.lv)+'" r="'+(i>=firstNew?6:4.5)+'"/>';
+    s += '<text class="xlab" x="'+x(i)+'" y="'+(T+ih+18)+'" text-anchor="middle">'+d.no+'</text>';
+  });
+
+  $("trend").innerHTML = s;
+}
+</script>

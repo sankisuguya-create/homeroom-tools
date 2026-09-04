@@ -1,0 +1,724 @@
+<title>評価シート 3年3組</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#FCFBF7;
+  --sheet:#FFFFFF;
+  --ink:#1D2126;
+  --ink-soft:#5A6470;
+  --ink-faint:#9AA3AD;
+  --rule:#DFDCD2;
+  --rule-soft:#EDEAE2;
+  --accent:#2C5C9E;
+
+  --a-bg:#DCE8F6;   --a-line:#8FB4DC;   --a-ink:#173E70;
+  --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
+  --warn:#B0392B;
+  --open-cell:#FFF4E4; --open-line:#DFAE62;
+  --lock-ink:#A29C90;
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --off-bg:#EFEDE8; --off-ink:#8A8578;
+  --stripe:rgba(29,33,38,.07);
+  --u0:#A78BC4; --u1:#7FB07A; --u2:#5FA8A0; --u3:#D48CA8; --u4:#A89468;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131619;
+    --sheet:#1A1E23;
+    --ink:#E8EBEF;
+    --ink-soft:#A0A9B4;
+    --ink-faint:#6A727C;
+    --rule:#2E343B;
+    --rule-soft:#242A30;
+    --accent:#7BAAE4;
+
+    --a-bg:#1E3352;   --a-line:#3F6598;   --a-ink:#BDD5F0;
+    --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
+    --warn:#E5776A;
+    --open-cell:#33270F; --open-line:#7E6224;
+    --lock-ink:#6A727C;
+    --open:#6FBECC; --open-bg:#182C30;
+    --off-bg:#22262B; --off-ink:#767E88;
+    --stripe:rgba(232,235,239,.09);
+    --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131619;
+  --sheet:#1A1E23;
+  --ink:#E8EBEF;
+  --ink-soft:#A0A9B4;
+  --ink-faint:#6A727C;
+  --rule:#2E343B;
+  --rule-soft:#242A30;
+  --accent:#7BAAE4;
+
+  --a-bg:#1E3352;   --a-line:#3F6598;   --a-ink:#BDD5F0;
+  --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
+  --warn:#E5776A;
+  --open-cell:#33270F; --open-line:#7E6224;
+  --lock-ink:#6A727C;
+  --open:#6FBECC; --open-bg:#182C30;
+  --off-bg:#22262B; --off-ink:#767E88;
+  --stripe:rgba(232,235,239,.09);
+  --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+  font-size:15px;line-height:1.7;
+}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
+
+.note{
+  font-size:12.5px;color:var(--ink-soft);
+  border:1px dashed var(--rule);border-radius:8px;padding:7px 13px;background:var(--sheet);
+}
+.note b{color:var(--ink);font-weight:600}
+
+/* ---- 役割・教科の切り替え ---- */
+.controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{
+  appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  border-right:1px solid var(--rule);
+}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg.role button[aria-pressed="true"]{background:var(--open);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
+
+/* ---- ロック帯 ---- */
+.lockbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border:1px solid var(--rule);border-left:4px solid var(--lock-ink);
+  border-radius:8px;padding:10px 15px;background:var(--sheet);font-size:13.5px;
+}
+.lockbar.teacher{border-left-color:var(--open);background:var(--open-bg)}
+.lockbar .icon{font-size:16px;line-height:1}
+.lockbar .msg{flex:1;min-width:220px}
+.lockbar .msg b{font-weight:700}
+.lockbar .when{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--ink)}
+.lockbar input[type="time"]{
+  font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:4px 8px;
+  background:var(--sheet);color:var(--ink);
+}
+.mini{
+  appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:5px 12px;
+  background:var(--sheet);color:var(--ink-soft);cursor:pointer;white-space:nowrap;
+}
+.mini:hover{border-color:var(--accent);color:var(--accent)}
+.mini:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* ---- 見出し ---- */
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding-bottom:10px}
+.head h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.02em}
+.head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px;letter-spacing:0}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
+  border:1.5px solid currentColor;border-radius:6px;padding:2px 10px;
+}
+.badge.todo{color:var(--warn)}
+.badge.todo.clear{color:var(--ink-faint)}
+.badge.locked{color:var(--lock-ink)}
+
+/* ---- セクション ---- */
+section{display:flex;flex-direction:column;gap:12px}
+h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
+  display:flex;align-items:center;gap:12px;color:var(--ink-soft)}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+
+/* ---- 授業の表 ---- */
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(90px,1fr));gap:1px;background:var(--rule-soft);
+  border:1px solid var(--rule-soft);min-width:930px}
+.cell{
+  background-color:var(--sheet);
+  padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative;
+}
+/* 単元の色も、まだ変えられるかどうかも、プルダウンの上だけで示す。
+   セルの地は常に紙。 */
+.cell[data-u="0"]{--ucol:var(--u0)}
+.cell[data-u="1"]{--ucol:var(--u1)}
+.cell[data-u="2"]{--ucol:var(--u2)}
+.cell[data-u="3"]{--ucol:var(--u3)}
+.cell[data-u="4"]{--ucol:var(--u4)}
+.cell .no{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  color:var(--ink-faint);letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;gap:4px;
+}
+.cell .unit{font-size:9.5px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44px}
+.cell select{
+  width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
+  font-size:17px;font-weight:600;text-align:center;text-align-last:center;
+  padding:4px 2px 5px;border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:5px;
+  --stripe-layer:none;
+  background-color:var(--sheet);background-image:var(--stripe-layer);
+  background-repeat:repeat;color:var(--ink);cursor:pointer;
+}
+.cell select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.cell select:hover:not(:disabled){
+  border-left-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ひらいている（まだ変えられる）＝色ではなく縞。プルダウンの中だけに敷く。
+   縞は半透明なので、評価の色（青・金）の上でも透けて見える。
+   未記入は左右下の枠が破線。 */
+.cell.open select{
+  --stripe-layer:repeating-linear-gradient(45deg,
+    var(--stripe) 0 5px, transparent 5px 10px);
+}
+.cell.open.empty select{border-left-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
+
+/* 確定済みは紙のまま沈める。印は置かない。 */
+.cell.locked select:disabled{opacity:1;cursor:default;color:var(--ink-soft);
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+
+.cell.future select{background-color:var(--rule-soft);color:var(--ink-faint);
+  border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
+
+/* 教師が確定済みを開いているとき：破線で「本来は閉じている」を示す */
+.cell.opened select{border-left:1px dashed var(--open);border-right:1px dashed var(--open);
+  border-bottom:1px dashed var(--open)}
+.cell.edited{box-shadow:inset 3px 0 0 var(--open)}
+
+/* 休み */
+.cell select.is-off{background-color:var(--off-bg);color:var(--off-ink)}
+
+/* A と Z にだけ色を置く */
+.cell select.is-a{
+  background-color:var(--a-bg);color:var(--a-ink);
+  border-left-color:var(--a-line);border-right-color:var(--a-line);border-bottom-color:var(--a-line);
+}
+.cell select.is-z{
+  background-color:var(--z-bg);color:var(--z-ink);
+  border-left-color:var(--z-line);border-right-color:var(--z-line);border-bottom-color:var(--z-line);
+  text-shadow:0 0 7px rgba(255,246,214,.95),0 1px 0 rgba(255,255,255,.7);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),
+             inset 0 -7px 12px rgba(190,150,50,.22),
+             0 0 0 1px rgba(214,180,97,.35);
+  background-image:
+    var(--stripe-layer),
+    radial-gradient(1.6px 1.6px at 18% 30%,rgba(255,255,255,.95),transparent 60%),
+    radial-gradient(1.2px 1.2px at 62% 22%,rgba(255,255,255,.85),transparent 60%),
+    radial-gradient(1.4px 1.4px at 82% 68%,rgba(255,255,255,.9),transparent 60%),
+    radial-gradient(1.1px 1.1px at 38% 76%,rgba(255,255,255,.8),transparent 60%),
+    linear-gradient(108deg,
+      rgba(255,255,255,0) 30%, rgba(255,255,255,.85) 44%,
+      rgba(255,236,190,.55) 50%, rgba(255,255,255,0) 64%),
+    linear-gradient(108deg,
+      #F2DFA8 0%, #FBF0CE 16%, #E6C877 30%, #FDF6DF 44%,
+      #E2C069 58%, #F8EAC2 72%, #EAD08A 86%, #F2DFA8 100%);
+  background-size:auto, auto, auto, auto, auto, 220% 100%, 200% 100%;
+  background-position:0 0, 0 0, 0 0, 0 0, 0 0, -60% 0, 0 0;
+  animation:foil 5.2s linear infinite;
+}
+/* Z+ / Z++ は虹の膜を足して、さらに希少に見せる */
+.cell select.is-zp{
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),
+             inset 0 -8px 14px rgba(170,110,180,.22),
+             0 0 0 1px rgba(214,180,97,.5), 0 0 9px rgba(226,170,220,.35);
+  text-shadow:0 0 8px rgba(255,255,255,1),0 1px 0 rgba(255,255,255,.85);
+  background-image:
+    var(--stripe-layer),
+    radial-gradient(1.8px 1.8px at 16% 26%,rgba(255,255,255,1),transparent 60%),
+    radial-gradient(1.3px 1.3px at 58% 20%,rgba(255,255,255,.9),transparent 60%),
+    radial-gradient(1.6px 1.6px at 84% 66%,rgba(255,255,255,.95),transparent 60%),
+    radial-gradient(1.2px 1.2px at 36% 78%,rgba(255,255,255,.85),transparent 60%),
+    linear-gradient(108deg,
+      rgba(255,255,255,0) 28%, rgba(255,255,255,.95) 43%,
+      rgba(255,232,180,.6) 50%, rgba(255,255,255,0) 65%),
+    linear-gradient(108deg,
+      rgba(226,104,186,.46) 0%, rgba(255,178,92,.42) 18%,
+      rgba(120,222,168,.42) 36%, rgba(96,166,244,.46) 56%,
+      rgba(176,116,238,.44) 76%, rgba(226,104,186,.46) 100%),
+    linear-gradient(108deg,
+      #F2DFA8 0%, #FDF4D8 16%, #E6C877 30%, #FFFAEC 44%,
+      #E2C069 58%, #FBF0CE 72%, #EAD08A 86%, #F2DFA8 100%);
+  background-size:auto, auto, auto, auto, auto, 220% 100%, 300% 100%, 200% 100%;
+  background-position:0 0, 0 0, 0 0, 0 0, 0 0, -60% 0, 0 0, 0 0;
+  animation:foil 3.4s linear infinite, rainbow 6s linear infinite;
+}
+@keyframes foil{
+  to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 0 0}
+}
+@keyframes rainbow{
+  to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 300% 0, 0 0}
+}
+.cell select.is-warn{color:var(--warn)}
+
+/* ---- 単元の評価 ---- */
+.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px}
+.unit-card{
+  background:var(--sheet);border:1px solid var(--rule);border-radius:10px;
+  padding:16px 16px 14px;position:relative;overflow:hidden;
+  display:flex;flex-direction:column;gap:8px;
+}
+.unit-card::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:4px;background:var(--ucol,transparent);
+}
+.unit-card[data-u="0"]{--ucol:var(--u0)}
+.unit-card[data-u="1"]{--ucol:var(--u1)}
+.unit-card[data-u="2"]{--ucol:var(--u2)}
+.unit-card[data-u="3"]{--ucol:var(--u3)}
+.unit-card[data-u="4"]{--ucol:var(--u4)}
+.unit-card .name{font-size:14px;font-weight:600}
+.unit-card .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.unit-card .val{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;letter-spacing:-.01em}
+.unit-card .val.is-a{color:var(--a-ink)}
+.unit-card .val.is-z{color:var(--z-ink)}
+.unit-card .val.is-warn{color:var(--warn)}
+.unit-card .val.none{color:var(--ink-faint);font-size:20px}
+.tag{
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
+  border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap;
+}
+.tag.mid{color:var(--z-ink);border-color:var(--z-line)}
+.unit-card .meta{font-size:11.5px;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;
+  display:flex;gap:11px;flex-wrap:wrap}
+
+/* ---- 折れ線 ---- */
+.chartcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px 12px;overflow-x:auto}
+svg.trend{display:block;min-width:820px;width:100%;height:auto}
+svg.trend .band{fill:var(--rule-soft)}
+svg.trend .baseline{stroke:var(--rule);stroke-width:1}
+svg.trend .ylab{fill:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600}
+svg.trend .ysub{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9px}
+svg.trend .xlab{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9.5px}
+svg.trend .unitlab{fill:var(--ink-soft);font-family:"IBM Plex Sans JP",sans-serif;font-size:11px;font-weight:600}
+svg.trend .sep{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
+svg.trend .path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+svg.trend .dot{fill:var(--accent)}
+svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
+
+@media (max-width:640px){
+  .grid{grid-template-columns:repeat(5,minmax(90px,1fr));min-width:470px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div class="wrap">
+  <div class="note">
+    <b>案2・ためしの画面</b>　児童名と評価はダミー。もとの一覧表と同じ形で、各セルをプルダウンにした。
+    役割の切り替えは動作を見るための仮のもので、実際は Google アカウントで判定する。
+  </div>
+
+  <div class="controls">
+    <span class="seg-label">ひらいている人</span>
+    <div class="seg role" id="roleSeg">
+      <button type="button" data-role="student" aria-pressed="true">児童</button>
+      <button type="button" data-role="teacher" aria-pressed="false">教師</button>
+    </div>
+    <span class="seg-label">教科</span>
+    <div class="seg" id="subjSeg"></div>
+  </div>
+
+  <div class="lockbar" id="lockbar"></div>
+
+  <div class="head">
+    <h1 id="title">さくら<small>3年3組　2026年度</small></h1>
+    <div class="badges">
+      <span class="badge todo" id="todoBadge">未入力 0</span>
+      <span class="badge locked" id="lockBadge">確定 0</span>
+    </div>
+  </div>
+
+  <section>
+    <h2>授業の評価</h2>
+    <div class="sheet"><div class="grid" id="grid"></div></div>
+  </section>
+
+  <section>
+    <h2>単元の評価</h2>
+    <div class="units" id="units"></div>
+  </section>
+
+  <section>
+    <h2>きろくの うつりかわり</h2>
+    <div class="chartcard">
+      <svg class="trend" id="trend" viewBox="0 0 1040 300" role="img" aria-label="授業ごとの評価の推移"></svg>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ==================================================================
+   1. 評価スケール
+   基本字5 × ニュアンス4（− / 無 / + / ++）＝ 20段。
+   ++ は + とは別の段。A++ は A+ と Z− のあいだに座る。
+   保存は記号の文字列。計算のときだけ値に変換する。
+================================================================== */
+const BASES = ["D","C","B","A","Z"];
+const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
+const NMOD  = MODS.length;
+
+function valueOf(sym){
+  const b = BASES.indexOf(sym[0]);
+  if(b < 0) return null;
+  const m = MODS.find(m => m.s === sym.slice(1));
+  return m ? b*NMOD + m.v + 1 : null;
+}
+function symbolOf(v){                              // 1..20 → "A++" など
+  return BASES[Math.floor((v-1)/NMOD)] + MODS[(v-1)%NMOD].s;
+}
+function baseOf(v){ return BASES[Math.floor((v-1)/NMOD)]; }
+
+/* 中央値が2段の間に落ちたときは下側を採る（水増ししない）。
+   ++ が実段になったので、「+ と次の文字の中間」を別扱いする必要はなくなった。 */
+function symbolOfMedian(m){
+  return m == null ? null : {sym:symbolOf(Math.floor(m)), mid:false};
+}
+
+/* ==================================================================
+   2. ロック
+   状態として持たず、保存時刻から毎回引く。
+   「直近のロック境界」より前に保存された評価はロック済み。
+   トリガが落ちてもズレないし、書き戻す状態がない。
+================================================================== */
+const LOCK = { h:17, m:0, override:null };   // override はためし用の即時ロック
+
+function lastBoundary(){
+  if(LOCK.override) return LOCK.override;
+  const now = new Date();
+  const b = new Date(now);
+  b.setHours(LOCK.h, LOCK.m, 0, 0);
+  if(b > now) b.setDate(b.getDate() - 1);    // 今日の定時前なら、昨日の定時が直近
+  return b;
+}
+function nextBoundary(){
+  if(LOCK.override) return null;
+  const now = new Date();
+  const b = new Date(now);
+  b.setHours(LOCK.h, LOCK.m, 0, 0);
+  if(b <= now) b.setDate(b.getDate() + 1);
+  return b;
+}
+const isLocked = e => !!(e.savedAt && e.savedAt < lastBoundary());
+const canEdit  = e => role === "teacher" || !isLocked(e);   // 教師は貫通する
+
+/* ==================================================================
+   3. ダミーデータ
+================================================================== */
+const SUBJECTS = {
+  "算数": {
+    total: 70,
+    units: [
+      {name:"九九の表とかけ算", from:1,  to:14},
+      {name:"わり算",           from:15, to:30},
+      {name:"たし算とひき算の筆算", from:31, to:48},
+      {name:"時こくと時間",     from:49, to:70}
+    ],
+    seed: ["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z",
+           "B","B−","C","B+","A−","A++","A","A+"]
+  },
+  "国語": {
+    total: 60,
+    units: [
+      {name:"きつつきの商売",   from:1,  to:12},
+      {name:"こまを楽しむ",     from:13, to:26},
+      {name:"まいごのかぎ",     from:27, to:42},
+      {name:"すがたをかえる大豆", from:43, to:60}
+    ],
+    seed: ["B+","A−","B+","B","A","A","A+","A−","休","B+","A","A+",
+           "A−","B+","A","A++","A+","A","Z−"]
+  }
+};
+
+let role    = "student";
+let subject = "算数";
+let DATA    = {};        // 教科ごとの授業配列
+
+const DAY = 86400000;
+function buildData(){
+  Object.entries(SUBJECTS).forEach(([name, s])=>{
+    const rows = [];
+    for(let no=1; no<=s.total; no++){
+      if(no <= s.seed.length){
+        // 直近2件は「今日 入れたばかり」＝まだ変えられる。それ以前は確定済み。
+        const recent = no > s.seed.length - 2;
+        rows.push({no, state:"done", sym:s.seed[no-1],
+                   savedAt: recent ? new Date()
+                                   : new Date(Date.now() - (s.seed.length - no + 2) * DAY)});
+      }else if(no <= s.seed.length + 3){
+        rows.push({no, state:"todo", sym:null, savedAt:null});
+      }else{
+        rows.push({no, state:"future", sym:null, savedAt:null});
+      }
+    }
+    DATA[name] = rows;
+  });
+}
+buildData();
+
+const conf   = () => SUBJECTS[subject];
+const rows   = () => DATA[subject];
+const unitOf = no => conf().units.find(u => no >= u.from && no <= u.to);
+const $ = id => document.getElementById(id);
+
+/* ==================================================================
+   4. 授業の表
+================================================================== */
+function optionsHTML(){
+  let h = '<option value="">‥</option><option value="休">休</option>';
+  BASES.forEach(b=>{
+    h += '<optgroup label="' + b + '">';
+    MODS.forEach(m => { h += '<option value="' + b+m.s + '">' + b+m.s + '</option>'; });
+    h += '</optgroup>';
+  });
+  return h;
+}
+function paint(sel, sym){
+  sel.classList.remove("is-a","is-z","is-zp","is-warn","is-off");
+  if(!sym) return;
+  if(sym === "休"){ sel.classList.add("is-off"); return; }
+  const b = sym[0];
+  if(b === "A")                   sel.classList.add("is-a");
+  else if(b === "Z"){
+    sel.classList.add("is-z");
+    if(sym.slice(1).startsWith("+")) sel.classList.add("is-zp");   // Z+ / Z++
+  }
+  else if(b === "C" || b === "D") sel.classList.add("is-warn");
+}
+
+function renderGrid(){
+  const g = $("grid");
+  g.innerHTML = "";
+  rows().forEach(l=>{
+    const u = unitOf(l.no);
+    const locked = isLocked(l);
+    const open   = l.state !== "future" && !locked;    // まだ変えられる（未記入も入力済みも）
+    const editable = l.state !== "future" && canEdit(l);
+    const ui = u ? conf().units.indexOf(u) % 5 : 0;
+
+    const c = document.createElement("div");
+    c.className = "cell " + l.state
+      + (open ? " open" : "")
+      + (open && !l.sym ? " empty" : "")
+      + (locked ? " locked" : "")
+      + (locked && role === "teacher" ? " opened" : "")
+      + (l.edited ? " edited" : "");
+    c.dataset.u = ui;
+
+    c.innerHTML =
+      '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
+      '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+      '<select aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML() + '</select>';
+
+    const sel = c.querySelector("select");
+    sel.disabled = !editable;
+    if(l.sym){ sel.value = l.sym; paint(sel, l.sym); }
+    sel.addEventListener("change", ()=>{
+      const wasLocked = isLocked(l);
+      l.sym = sel.value || null;
+      if(wasLocked && role === "teacher"){
+        l.edited = true;                       // 貫通した記録を残す
+      }else{
+        l.savedAt = new Date();                // 次の境界までは書き換えられる
+      }
+      if(l.state === "todo" && l.sym) l.state = "done";
+      refresh();
+    });
+    g.appendChild(c);
+  });
+}
+
+/* ==================================================================
+   5. 単元の評価（仮値）
+   平均は取らない。D は到達度の欠測として除外する。
+================================================================== */
+function medianVal(a){
+  if(!a.length) return null;
+  const s = a.slice().sort((x,y)=>x-y);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;   // 偶数個は中間（.5 を許す）
+}
+function summarize(u){
+  const entered = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
+  const off     = entered.filter(l => l.sym === "休").length;   // 休＝本物の欠測
+  const scored  = entered.filter(l => l.sym !== "休").map(l => valueOf(l.sym));
+  // D は含める。態度を評価しているので「やらなかった」は欠測ではなく最も重い観測。
+  const late = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
+  return {
+    n:    entered.length,
+    prov: medianVal(late),
+    all:  medianVal(scored),
+    top:  scored.length ? Math.max(...scored) : null,
+    z:    scored.filter(v => baseOf(v)==="Z").length,
+    c:    scored.filter(v => baseOf(v)==="C").length,
+    d:    scored.filter(v => baseOf(v)==="D").length,
+    off
+  };
+}
+function renderUnits(){
+  const box = $("units");
+  box.innerHTML = "";
+  conf().units.forEach((u, ui)=>{
+    const s = summarize(u);
+    const p = symbolOfMedian(s.prov);
+    let cls = "none";
+    if(p){
+      const b = p.sym[0];
+      cls = b==="A" ? "is-a" : b==="Z" ? "is-z" : (b==="C"||b==="D") ? "is-warn" : "";
+    }
+    const card = document.createElement("div");
+    card.className = "unit-card";
+    card.dataset.u = ui % 5;
+    /* 児童には集計のやり方を見せない。記号と、どれだけ入れたかだけ。 */
+    const done = s.n >= (u.to - u.from + 1);
+    card.innerHTML =
+      '<div class="name">' + u.name + '</div>' +
+      '<div class="row"><span class="val ' + cls + '">' + (p ? p.sym : "—") + '</span>' +
+        '<span class="tag">' +
+        (p ? (done ? "せんせいが かくにんちゅう" : "とちゅう") : "まだ ありません") + '</span></div>' +
+      '<div class="meta">' +
+        '<span>入力 ' + s.n + '/' + (u.to-u.from+1) + '</span>' +
+        (s.top ? '<span>いちばん ' + symbolOf(s.top) + '</span>' : '') +
+        (s.z ? '<span>Z ' + s.z + '回</span>' : '') +
+        (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
+      '</div>';
+    box.appendChild(card);
+  });
+}
+
+/* ==================================================================
+   6. 折れ線
+================================================================== */
+function drawTrend(){
+  const data = rows().filter(l => l.sym && l.sym !== "休")
+                     .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
+  const W=1040, H=300, L=54, R=14, T=16, B=34;
+  const iw=W-L-R, ih=H-T-B, slot=ih/20;
+  const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
+  const y = v => T + ih - (v - 0.5)*slot;
+
+  let s = "";
+  for(let bi=0; bi<5; bi++){
+    if(bi % 2 === 0)
+      s += '<rect class="band" x="'+L+'" y="'+(T+ih-(bi+1)*slot*NMOD)+'" width="'+iw+'" height="'+(slot*NMOD)+'"/>';
+    const cy = T + ih - (bi*NMOD + 2)*slot;                       // 帯の中央
+    s += '<text class="ylab" x="'+(L-16)+'" y="'+(cy+4)+'" text-anchor="end">'+BASES[bi]+'</text>';
+    s += '<text class="ysub" x="'+(L-16)+'" y="'+(T+ih-(bi*NMOD+0.5)*slot+3)+'" text-anchor="end">−</text>';
+    s += '<text class="ysub" x="'+(L-16)+'" y="'+(T+ih-(bi*NMOD+3.5)*slot+3)+'" text-anchor="end">++</text>';
+  }
+  s += '<line class="baseline" x1="'+L+'" y1="'+(T+ih)+'" x2="'+(L+iw)+'" y2="'+(T+ih)+'"/>';
+
+  data.forEach((d,i)=>{
+    if(i>0 && unitOf(d.no) !== unitOf(data[i-1].no)){
+      const mx = (x(i)+x(i-1))/2;
+      s += '<line class="sep" x1="'+mx+'" y1="'+T+'" x2="'+mx+'" y2="'+(T+ih)+'"/>';
+    }
+  });
+  conf().units.forEach(u=>{
+    const idx = data.map((d,i)=>({d,i})).filter(o=>unitOf(o.d.no)===u);
+    if(!idx.length) return;
+    const mid = (x(idx[0].i) + x(idx[idx.length-1].i)) / 2;
+    s += '<text class="unitlab" x="'+mid+'" y="'+(T+11)+'" text-anchor="middle">'+u.name+'</text>';
+  });
+
+  if(data.length)
+    s += '<polyline class="path" points="' + data.map((d,i)=>x(i)+","+y(d.v)).join(" ") + '"/>';
+  data.forEach((d,i)=>{
+    const isZ = d.sym[0]==="Z";
+    s += '<circle class="dot'+(isZ?" z":"")+'" cx="'+x(i)+'" cy="'+y(d.v)+'" r="'+(isZ?5.5:3.5)+'"/>';
+    if(i % 2 === 0 || isZ)
+      s += '<text class="xlab" x="'+x(i)+'" y="'+(T+ih+16)+'" text-anchor="middle">'+d.no+'</text>';
+  });
+  $("trend").innerHTML = s;
+}
+
+/* ==================================================================
+   7. ロック帯・見出し
+================================================================== */
+const hhmm = d => String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+
+function renderLockbar(){
+  const bar = $("lockbar");
+  bar.className = "lockbar" + (role === "teacher" ? " teacher" : "");
+  const nb = nextBoundary();
+
+  if(role === "teacher"){
+    bar.innerHTML =
+      '<span class="icon">🔓</span>' +
+      '<span class="msg">教師アカウントは<b>ロックを貫通して</b>操作できる。' +
+        '確定済みのセルは枠が破線になる。書き換えたセルは左端に線が残る。</span>' +
+      '<label class="seg-label" for="lockTime">ロック時刻</label>' +
+      '<input type="time" id="lockTime" value="' +
+        String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
+      '<button class="mini" id="lockNow">いま ロックする（ためし）</button>' +
+      (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "");
+
+    $("lockTime").addEventListener("change", e=>{
+      const [h,m] = e.target.value.split(":").map(Number);
+      if(!isNaN(h)){ LOCK.h = h; LOCK.m = m; LOCK.override = null; refresh(); }
+    });
+    $("lockNow").addEventListener("click", ()=>{ LOCK.override = new Date(); refresh(); });
+    const rs = $("lockReset");
+    if(rs) rs.addEventListener("click", ()=>{ LOCK.override = null; refresh(); });
+
+  }else{
+    bar.innerHTML =
+      '<span class="icon">🔒</span>' +
+      '<span class="msg">' +
+        (nb
+          ? 'まいにち <span class="when">' + String(LOCK.h).padStart(2,"0") + ':' +
+            String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
+            'つぎは <span class="when">' + hhmm(nb) + '</span>。'
+          : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
+        '　しましまの ところは まだ なおせます。それ いがいは きまった ひょうかです。' +
+      '</span>';
+  }
+}
+
+function refresh(){
+  const list = rows();
+  const todo   = list.filter(l => l.state === "todo" && !l.sym).length;
+  const locked = list.filter(l => l.sym && isLocked(l)).length;
+
+  const tb = $("todoBadge");
+  tb.textContent = todo ? "未入力 " + todo : "未入力なし";
+  tb.classList.toggle("clear", todo === 0);
+  $("lockBadge").textContent = "確定 " + locked;
+  $("title").innerHTML = (role === "teacher" ? "3年3組" : "さくら") +
+    '<small>' + subject + '　2026年度' + (role === "teacher" ? "　教師表示" : "") + '</small>';
+
+  renderLockbar();
+  renderGrid();
+  renderUnits();
+  drawTrend();
+}
+
+/* ---- 切り替え ---- */
+$("roleSeg").querySelectorAll("button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    role = b.dataset.role;
+    $("roleSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    refresh();
+  });
+});
+Object.keys(SUBJECTS).forEach((name,i)=>{
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = name;
+  b.setAttribute("aria-pressed", String(i === 0));
+  b.addEventListener("click", ()=>{
+    subject = name;
+    $("subjSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    refresh();
+  });
+  $("subjSeg").appendChild(b);
+});
+
+refresh();
+</script>
