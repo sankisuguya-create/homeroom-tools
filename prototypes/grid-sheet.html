@@ -287,7 +287,14 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell select.is-warn{color:var(--warn)}
 
 /* ---- 単元の評価 ---- */
-.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px}
+.units{display:flex;flex-direction:column;gap:18px}
+.term-block{display:flex;flex-direction:column;gap:9px}
+.term-head{
+  font-size:12.5px;font-weight:700;letter-spacing:.1em;color:var(--ink-faint);
+  display:flex;align-items:center;gap:10px;
+}
+.term-head::after{content:"";flex:1;height:1px;background:var(--rule-soft)}
+.term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));gap:12px;justify-content:start}
 .unit-card{
   background:var(--sheet);border:1px solid var(--rule);border-radius:10px;
   padding:16px 16px 14px;position:relative;overflow:hidden;
@@ -473,10 +480,10 @@ const SUBJECTS = {
   "算数": {
     total: 70,
     units: [
-      {name:"九九の表とかけ算", from:1,  to:14},
-      {name:"わり算",           from:15, to:30},
-      {name:"たし算とひき算の筆算", from:31, to:48},
-      {name:"時こくと時間",     from:49, to:70}
+      {name:"九九の表とかけ算", from:1,  to:14, term:1},
+      {name:"わり算",           from:15, to:30, term:1},
+      {name:"たし算とひき算の筆算", from:31, to:48, term:2},
+      {name:"時こくと時間",     from:49, to:70, term:3}
     ],
     seed: ["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z",
            "B","B−","C","B+","A−","A++","A","A+"]
@@ -484,10 +491,10 @@ const SUBJECTS = {
   "国語": {
     total: 60,
     units: [
-      {name:"きつつきの商売",   from:1,  to:12},
-      {name:"こまを楽しむ",     from:13, to:26},
-      {name:"まいごのかぎ",     from:27, to:42},
-      {name:"すがたをかえる大豆", from:43, to:60}
+      {name:"きつつきの商売",   from:1,  to:12, term:1},
+      {name:"こまを楽しむ",     from:13, to:26, term:1},
+      {name:"まいごのかぎ",     from:27, to:42, term:2},
+      {name:"すがたをかえる大豆", from:43, to:60, term:3}
     ],
     seed: ["B+","A−","B+","B","A","A","A+","A−","休","B+","A","A+",
            "A−","B+","A","A++","A+","A","Z−"]
@@ -618,6 +625,17 @@ function summarize(u){
 function renderUnits(){
   const box = $("units");
   box.innerHTML = "";
+  /* 学期ごとにまとめる。70時間を1列に並べると、どこまでが今学期か分からなくなる。 */
+  const terms = [...new Set(conf().units.map(u => u.term || 0))].sort((a,b)=>a-b);
+  const rowOf = {};
+  terms.forEach(t=>{
+    const block = document.createElement("div");
+    block.className = "term-block";
+    block.innerHTML = '<div class="term-head">' + (t ? t + "学期" : "学期なし") + '</div>' +
+                      '<div class="term-row"></div>';
+    box.appendChild(block);
+    rowOf[t] = block.querySelector(".term-row");
+  });
   conf().units.forEach((u, ui)=>{
     const s = summarize(u);
     const p = symbolOfMedian(s.prov);
@@ -642,7 +660,7 @@ function renderUnits(){
         (s.top ? '<span>' + TOP_FROM + 'いじょう ' + s.top + '回</span>' : '') +
         (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
       '</div>';
-    box.appendChild(card);
+    rowOf[u.term || 0].appendChild(card);
   });
 }
 
