@@ -204,7 +204,7 @@ h2 .fold{order:2;font-weight:600}
   font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
   border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap;
 }
-.tag.mid{color:var(--z-ink);border-color:var(--z-line)}
+.tag.rated{color:var(--ink);border-color:var(--ink-soft);font-weight:700}
 .unit-card .meta{font-size:11.5px;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;
   display:flex;gap:11px;flex-wrap:wrap}
 
@@ -465,7 +465,12 @@ function renderUnits(){
   });
   conf().units.forEach((u, ui)=>{
     const s = summarize(u);
-    const p = symbolOfMedian(s.prov);
+    /* 単元評価は、教師が「単元の評価をする」を押すまで児童に見せない。
+       転写を書き換えるたびに数字が動くのを見せると、事実と違う記号を入れて
+       数字を上げる遊びが成り立つ。押すまでは進み具合だけを出す。
+       実装では、押したあとに出るのは教師が採用した値で、ここでの計算結果ではない。 */
+    const shown = (role === "teacher") || u.rated;
+    const p = shown ? symbolOfMedian(s.prov) : null;
     /* 単元評価は「1段階上」の材質で見せる。単元で高い値を取るのは1時間より難しいので、
        同じ記号でも授業のセルより上に見えるようにする（A なら Z の箔、Z なら Y の宇宙）。
        ただし警告帯（D・C）は上げない。上げると単元での警告が消えてしまう。 */
@@ -482,16 +487,23 @@ function renderUnits(){
     card.className = "unit-card";
     card.dataset.u = u.c;
     /* 児童には集計のやり方を見せない。記号と、どれだけ入れたかだけ。 */
-    const done = s.n >= (u.to - u.from + 1);
+    const filled = s.n >= (u.to - u.from + 1);
+    const tag = (p && !u.rated)    ? "まだ 児童に見せていない"   // 教師表示だけで起きる
+              : p                  ? "せんせいの ひょうか"
+              : s.n === 0          ? "まだ ありません"
+              : filled             ? "せんせいが かくにんちゅう"
+              :                      "とちゅう";
     card.innerHTML =
       '<div class="name">' + u.name + '</div>' +
       '<div class="row"><span class="valbox mat ' + cls + '">' + (p || "—") + '</span>' +
-        '<span class="tag">' +
-        (p ? (done ? "せんせいが かくにんちゅう" : "とちゅう") : "まだ ありません") + '</span></div>' +
+        '<span class="tag' + (p && u.rated ? ' rated' : '') + '">' + tag + '</span></div>' +
+      /* 「いちばん」と「突破の回数」も単元の到達度の要約なので、評価と同じ旗で隠す。
+         見えていると、事実と違う記号を入れて上げる遊びが同じように成り立つ。
+         入力数と休・/ の回数は事実の記録なので、いつでも出す。 */
       '<div class="meta">' +
         '<span>入力 ' + s.n + '/' + (u.to-u.from+1) + '</span>' +
-        (s.high ? '<span>いちばん ' + symbolOf(s.high) + '</span>' : '') +
-        (s.top ? '<span>' + TOP_FROM + 'いじょう ' + s.top + '回</span>' : '') +
+        (shown && s.high ? '<span>いちばん ' + symbolOf(s.high) + '</span>' : '') +
+        (shown && s.top ? '<span>' + TOP_FROM + 'いじょう ' + s.top + '回</span>' : '') +
         (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
         (s.skip ? '<span>/ ' + s.skip + '回</span>' : '') +
       '</div>';
