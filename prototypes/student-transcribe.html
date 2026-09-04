@@ -15,8 +15,8 @@
   --gold:#B98F1E;
   --shadow:0 1px 2px rgba(32,36,43,.06),0 6px 18px rgba(32,36,43,.07);
 
-  --l1-bg:#D7DEE5; --l1-fg:#4B5661;
-  --l2-bg:#C0CEDB; --l2-fg:#39434E;
+  --l1-bg:#AE3B2D; --l1-fg:#FFF1ED;
+  --l2-bg:#D8887B; --l2-fg:#46201A;
   --l3-bg:#A5BCD1; --l3-fg:#26323E;
   --l4-bg:#86A5C6; --l4-fg:#1B2733;
   --l5-bg:#658EBA; --l5-fg:#FFFFFF;
@@ -38,8 +38,8 @@
     --gold:#E0BC55;
     --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
 
-    --l1-bg:#282E36; --l1-fg:#8B96A3;
-    --l2-bg:#2F3C4A; --l2-fg:#9FAFBE;
+    --l1-bg:#8C2F24; --l1-fg:#FFD8D0;
+    --l2-bg:#B4675B; --l2-fg:#1B0E0B;
     --l3-bg:#374D63; --l3-fg:#B6C6D5;
     --l4-bg:#3F607E; --l4-fg:#CBD9E6;
     --l5-bg:#48769B; --l5-fg:#E4EDF5;
@@ -61,8 +61,8 @@
   --gold:#E0BC55;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
 
-  --l1-bg:#282E36; --l1-fg:#8B96A3;
-  --l2-bg:#2F3C4A; --l2-fg:#9FAFBE;
+  --l1-bg:#8C2F24; --l1-fg:#FFD8D0;
+  --l2-bg:#B4675B; --l2-fg:#1B0E0B;
   --l3-bg:#374D63; --l3-fg:#B6C6D5;
   --l4-bg:#3F607E; --l4-fg:#CBD9E6;
   --l5-bg:#48769B; --l5-fg:#E4EDF5;
@@ -142,16 +142,124 @@ body{
 }
 .lv:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .lv:hover{transform:translateY(-3px)}
+/* --- 警告層：ベタ塗り。装飾を与えない --- */
 .lv[data-lv="1"]{background:var(--l1-bg);color:var(--l1-fg)}
 .lv[data-lv="2"]{background:var(--l2-bg);color:var(--l2-fg)}
+
+/* --- 通常層の下側：ベタ塗り --- */
 .lv[data-lv="3"]{background:var(--l3-bg);color:var(--l3-fg)}
 .lv[data-lv="4"]{background:var(--l4-bg);color:var(--l4-fg)}
-.lv[data-lv="5"]{background:var(--l5-bg);color:var(--l5-fg)}
-.lv[data-lv="6"]{background:var(--l6-bg);color:var(--l6-fg)}
-.lv[data-lv="7"]{background:var(--l7-bg);color:var(--l7-fg);border-color:var(--gold)}
-.lv[data-lv="8"]{background:var(--l8-bg);color:var(--l8-fg);border-color:var(--gold)}
-.lv[data-lv="9"]{background:var(--l9-bg);color:var(--l9-fg);border-color:var(--gold)}
+
+/* --- A系列：金属的な光沢。段が上がるほど強くなる --- */
+.lv[data-lv="5"]{--lv-base:var(--l5-bg);color:var(--l5-fg)}
+.lv[data-lv="6"]{--lv-base:var(--l6-bg);color:var(--l6-fg)}
+.lv[data-lv="7"]{--lv-base:var(--l7-bg);color:var(--l7-fg);border-color:var(--gold)}
+.lv.sheen{
+  position:relative;overflow:hidden;
+  background:linear-gradient(158deg,
+    color-mix(in srgb,var(--lv-base) 74%,#ffffff) 0%,
+    color-mix(in srgb,var(--lv-base) 92%,#ffffff) 34%,
+    var(--lv-base) 62%,
+    color-mix(in srgb,var(--lv-base) 84%,#000000) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 -10px 22px rgba(0,0,0,.14);
+  text-shadow:0 1px 3px rgba(10,20,40,.35);
+}
+.lv.sheen .sym{position:relative;z-index:3}
+.lv.sheen .sweep{
+  position:absolute;inset:-60%;z-index:1;pointer-events:none;
+  background:linear-gradient(112deg,transparent 40%,rgba(255,255,255,.30) 48%,transparent 58%);
+  animation:sweep 6.4s linear infinite;
+}
+.lv[data-lv="6"] .sweep{animation-duration:5.2s;
+  background:linear-gradient(112deg,transparent 39%,rgba(255,255,255,.40) 48%,transparent 59%)}
+.lv[data-lv="7"] .sweep{animation-duration:4.2s;
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.50) 47%,rgba(255,255,255,.14) 53%,transparent 61%)}
+/* A++ だけ、突破層へ橋を架ける控えめな粒 */
+.lv[data-lv="7"] .grain{
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:
+    radial-gradient(1.6px 1.6px at 24% 30%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(1.3px 1.3px at 62% 24%,rgba(255,255,255,.7),transparent 62%),
+    radial-gradient(1.5px 1.5px at 44% 76%,rgba(255,255,255,.75),transparent 62%),
+    radial-gradient(1.2px 1.2px at 82% 66%,rgba(255,255,255,.65),transparent 62%);
+  animation:twinkle 3.4s ease-in-out infinite;
+}
+
+/* --- 突破層：素材そのものを変える（ホログラムのラメ） --- */
+.lv.gem{
+  position:relative;overflow:hidden;border-color:var(--gold);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),inset 0 -10px 24px rgba(0,0,0,.18);
+}
+.lv.gem .sym{position:relative;z-index:4;
+  text-shadow:0 2px 12px rgba(10,4,28,.9),0 1px 3px rgba(10,4,28,.95),
+              0 0 2px rgba(10,4,28,.9),0 0 22px rgba(10,4,28,.55)}
+.lv[data-lv="8"]{background:linear-gradient(112deg,
+  #333F9E 0%,#6473D6 15%,#A3B2F5 26%,#4553B4 39%,#28328A 53%,
+  #6E7EDC 67%,#9EADF4 79%,#37439F 100%)}
+.lv[data-lv="9"]{background:linear-gradient(112deg,
+  #55299B 0%,#9639C6 11%,#DC3F94 23%,#E8842B 35%,#3FBE8C 47%,
+  #2F8CE0 59%,#7B3ED4 73%,#CE3AA6 86%,#55299B 100%)}
+/* 回転する虹の膜 */
+.lv.gem .holo{
+  position:absolute;inset:-38%;z-index:1;pointer-events:none;
+  mix-blend-mode:screen;filter:blur(10px);opacity:.26;
+  background:conic-gradient(from 0deg,#8FA6FF,#CFDCFF,#7E92F0,#B9C6FF,#8FA6FF);
+  animation:spin 9s linear infinite;
+}
+.lv[data-lv="9"] .holo{
+  opacity:.32;filter:blur(12px);animation-duration:6s;
+  background:conic-gradient(from 0deg,#FF9EC4,#FFD79A,#B9F5C8,#9ECDFF,#C4A3FF,#FF9EC4);
+}
+/* ラメの粒 */
+.lv.gem .grain{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+  background:
+    radial-gradient(2.2px 2.2px at 14% 26%,rgba(255,255,255,.98),transparent 62%),
+    radial-gradient(1.4px 1.4px at 33% 69%,rgba(255,255,255,.88),transparent 62%),
+    radial-gradient(2.6px 2.6px at 59% 21%,rgba(255,255,255,.95),transparent 62%),
+    radial-gradient(1.5px 1.5px at 77% 61%,rgba(255,255,255,.82),transparent 62%),
+    radial-gradient(2.1px 2.1px at 88% 33%,rgba(255,255,255,.94),transparent 62%),
+    radial-gradient(1.6px 1.6px at 45% 85%,rgba(255,255,255,.78),transparent 62%),
+    radial-gradient(1.9px 1.9px at 23% 51%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(1.4px 1.4px at 69% 82%,rgba(255,255,255,.74),transparent 62%),
+    radial-gradient(2px 2px at 50% 42%,rgba(255,255,255,.82),transparent 62%);
+  animation:twinkle 2.6s ease-in-out infinite;
+}
+.lv[data-lv="9"] .grain{
+  animation-duration:1.7s;
+  background:
+    radial-gradient(2.4px 2.4px at 12% 22%,rgba(255,255,255,1),transparent 62%),
+    radial-gradient(1.5px 1.5px at 30% 66%,rgba(255,255,255,.92),transparent 62%),
+    radial-gradient(2.8px 2.8px at 56% 18%,rgba(255,255,255,1),transparent 62%),
+    radial-gradient(1.6px 1.6px at 74% 58%,rgba(255,255,255,.88),transparent 62%),
+    radial-gradient(2.3px 2.3px at 86% 30%,rgba(255,255,255,.97),transparent 62%),
+    radial-gradient(1.7px 1.7px at 42% 82%,rgba(255,255,255,.85),transparent 62%),
+    radial-gradient(2px 2px at 20% 48%,rgba(255,255,255,.9),transparent 62%),
+    radial-gradient(1.5px 1.5px at 66% 79%,rgba(255,255,255,.8),transparent 62%),
+    radial-gradient(2.2px 2.2px at 48% 38%,rgba(255,255,255,.9),transparent 62%),
+    radial-gradient(1.4px 1.4px at 92% 74%,rgba(255,255,255,.8),transparent 62%),
+    radial-gradient(1.8px 1.8px at 8% 68%,rgba(255,255,255,.85),transparent 62%);
+}
+.lv.gem .sweep{
+  position:absolute;inset:-60%;z-index:2;pointer-events:none;
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.55) 47%,
+    rgba(255,255,255,.16) 53%,transparent 62%);
+  animation:sweep 3.6s linear infinite;
+}
+.lv[data-lv="9"] .sweep{animation-duration:2.5s;
+  background:linear-gradient(112deg,transparent 37%,rgba(255,255,255,.68) 46%,
+    rgba(255,255,255,.2) 53%,transparent 63%)}
+
+@keyframes twinkle{0%,100%{opacity:.45}50%{opacity:1}}
+@keyframes sweep{0%{transform:translateX(-45%)}100%{transform:translateX(45%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 層の切れ目を余白で示す（文字を足さずに構造を出す） */
+.lv.layer-end{margin-right:14px}
+.lv.layer-start{margin-left:14px}
 .scale.picked .lv{opacity:.5}
+.scale.picked .lv.gem{opacity:.62}
+.scale.picked .lv.sheen{opacity:.58}
 .scale.picked .lv.on{opacity:1;transform:translateY(-6px) scale(1.04);box-shadow:0 10px 26px rgba(32,36,43,.22)}
 
 /* ---- 確認 ---- */
@@ -323,7 +431,18 @@ LEVELS.forEach((sym,i)=>{
   b.className = "lv";
   b.type = "button";
   b.dataset.lv = i+1;
-  b.textContent = sym;
+  const lv = i+1;
+  let deco = "";
+  if(lv >= 5 && lv <= 7){                       // A系列：光沢
+    b.classList.add("sheen");
+    deco = '<span class="sweep"></span>' + (lv === 7 ? '<span class="grain"></span>' : "");
+  }else if(lv >= 8){                            // Z系列：ホログラムのラメ
+    b.classList.add("gem");
+    deco = '<span class="holo"></span><span class="sweep"></span><span class="grain"></span>';
+  }
+  b.innerHTML = deco + '<span class="sym">' + sym + '</span>';
+  if(i+1 === 2) b.classList.add("layer-end");  // C のあとで警告層が終わる
+  if(i+1 === 8) b.classList.add("layer-start");// Z のまえで突破層が始まる
   b.setAttribute("aria-label", sym);
   b.addEventListener("click", ()=>pick(i+1));
   $("scale").appendChild(b);
