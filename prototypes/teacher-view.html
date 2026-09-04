@@ -334,25 +334,23 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 <script>
 /* ================= 評価スケール（scale.md と同じ規則） ================= */
 const BASES = ["D","C","B","A","Z"];
-const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:2}];
+const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
+const NMOD  = MODS.length;                 // ++ は + とは別の段。全20段。
 const OFF   = "休";                        // 欠席。評価ではない。
 
 const valueOf = sym => {
   if(!sym || sym === OFF) return null;
   const b = BASES.indexOf(sym[0]); if(b<0) return null;
   const m = MODS.find(m=>m.s===sym.slice(1));
-  return m ? b*3 + m.v + 1 : null;
+  return m ? b*NMOD + m.v + 1 : null;
 };
-const symbolOf = v => BASES[Math.floor((v-1)/3)] + ["−","","+"][(v-1)%3];
-const baseOf   = v => BASES[Math.floor((v-1)/3)];
-const modIdx   = v => (v-1)%3;
+const symbolOf = v => BASES[Math.floor((v-1)/NMOD)] + MODS[(v-1)%NMOD].s;
+const baseOf   = v => BASES[Math.floor((v-1)/NMOD)];
+const modIdx   = v => (v-1)%NMOD;
 
-function symbolOfMedian(m, useMid){
-  if(m == null) return null;
-  const lo = Math.floor(m);
-  if(m === lo) return {sym:symbolOf(lo), mid:false};
-  if(useMid && modIdx(lo) === 2) return {sym:baseOf(lo)+"++", mid:true};
-  return {sym:symbolOf(lo), mid:false};
+/* 中央値が2段の間に落ちたら下側を採る（水増ししない）。 */
+function symbolOfMedian(m){
+  return m == null ? null : {sym:symbolOf(Math.floor(m)), mid:false};
 }
 const ALL_SYMS = [];
 BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b+m.s)));
@@ -362,7 +360,7 @@ BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b+m.s)));
    「やるべきことを何もしていない」は欠測ではなく最も重い観測値。
    欠測は 休 のほうで、こちらは常に除外する。
 ============================================== */
-const F = { stat:"lateMedian", late:3, dropD:false, dropC:false, useMid:true };
+const F = { stat:"lateMedian", late:3, dropD:false, dropC:false };
 
 const FIELDS = [
   {key:"stat", label:"代表値", opts:[
@@ -370,13 +368,12 @@ const FIELDS = [
     ["mode","最頻値"],["top","最高到達"]]},
   {key:"late", label:"後半の範囲", opts:[["3","後半 1/3"],["2","後半 1/2"],["1","全期間"]], num:true},
   {key:"dropD", label:"D の扱い", opts:[["false","含める（態度の観測）"],["true","除外"]], bool:true},
-  {key:"dropC", label:"C の扱い", opts:[["false","含める"],["true","除外"]], bool:true},
-  {key:"useMid",label:"中間の表示", opts:[["true","++ で中間を示す"],["false","下側を採る"]], bool:true}
+  {key:"dropC", label:"C の扱い", opts:[["false","含める"],["true","除外"]], bool:true}
 ];
 
 /* 評定への写像。既定は基本字がそのまま評定になる境目。
    A/Z系(10以上)→A、B系(7〜9)→B、C/D系(6以下)→C */
-const R = { aFrom:12, cTo:6, stat:"median" };   // 表示は実態より上振れしているため A は A+ 以上
+const R = { aFrom:15, cTo:8, stat:"median" };   // 20段。A は A+(15) 以上、C は C系の上限 C++(8) 以下
 const RANK_FIELDS = [
   {key:"aFrom", label:"A とする下限", opts:null},   // 記号セレクタ
   {key:"cTo",   label:"C とする上限", opts:null},
@@ -411,19 +408,16 @@ Object.keys(SUBJECTS).forEach((subj, si)=>{
     const r = rng(1000 + si*97 + ni*13);
     // 日々の記号は上振れしているので、中心は B+〜A+（9〜12）に置く。
     // 「A と B+ が最頻」という聞き取りと合う。1名だけ C 帯に落ちる児童を混ぜる。
-    const center = (ni === 16) ? 5 : 9 + Math.floor(r()*4);
+    const center = (ni === 16) ? 6 : 11 + Math.floor(r()*5);
     const rec = {};
     SUBJECTS[subj].units.forEach((u, ui)=>{
       if(ui >= 3) return;                        // 最後の単元はまだ未実施
       for(let no=u.from; no<=u.to; no++){
         if(r() < 0.025){ rec[no] = OFF; continue; }     // まれに休み
-        let v = Math.round(center + ui*0.5 + (r()-0.5)*3.0);
-        if(r() < 0.03) v = 1 + Math.floor(r()*3);
-        if(r() < 0.04) v = 13 + Math.floor(r()*3);
-        v = Math.max(1, Math.min(15, v));
-        let sym = symbolOf(v);
-        if(r() < 0.10 && modIdx(v) === 2) sym = baseOf(v) + "++";
-        rec[no] = sym;
+        let v = Math.round(center + ui*0.6 + (r()-0.5)*3.6);
+        if(r() < 0.03) v = 1 + Math.floor(r()*4);
+        if(r() < 0.04) v = 17 + Math.floor(r()*4);
+        rec[no] = symbolOf(Math.max(1, Math.min(20, v)));
       }
     });
     return rec;
@@ -492,7 +486,7 @@ const clsOf = sym => !sym ? "none" : sym === OFF ? "off"
 function settled(ni, u){
   const f = finOf(u)[ni];
   if(f != null && f !== "") return f;
-  const p = symbolOfMedian(summarize(ni, u).prov, F.useMid);
+  const p = symbolOfMedian(summarize(ni, u).prov);
   return p ? p.sym : null;
 }
 function rankOf(v){ return v == null ? null : v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B"; }
@@ -574,7 +568,8 @@ function renderFormula(){
     "順序尺度なので<b>平均は使わない</b>。既定は <code>後半1/3の中央値・D含む</code>。" +
     "評価しているのは態度なので、<b>D「やるべきことを何もしていない」は欠測ではなく最も重い観測値</b>。" +
     "本物の欠測は <code>休</code> のほうで、こちらは常に除外する。" +
-    "中央値が2値の間に落ちたときは、下側が <code>+</code> のときだけ <code>++</code> で中間を示す。";
+    "<code>++</code> は <code>+</code> とは別の段で、次の文字の一つ手前に座る（A++ は A+ と Z− のあいだ）。" +
+    "中央値が2段の間に落ちたときは下側を採る。";
   box.appendChild(p);
 }
 
@@ -594,8 +589,8 @@ function renderTable(){
 
   NAMES.forEach((name, ni)=>{
     const s = summarize(ni);
-    const p = symbolOfMedian(s.prov, F.useMid);
-    const a = symbolOfMedian(s.all, F.useMid);
+    const p = symbolOfMedian(s.prov);
+    const a = symbolOfMedian(s.all);
     const chosen = fin[ni] != null ? fin[ni] : (p ? p.sym : "");
     h += '<tr>' +
       '<td class="name">' + name + '</td>' +
@@ -605,7 +600,7 @@ function renderTable(){
       '<td class="num">' + s.n + '/' + s.total + '</td>' +
       '<td class="offcell">' + (s.off || "·") + '</td>' +
       '<td><span class="prov ' + (p ? clsOf(p.sym) : "none") + '">' + (p ? p.sym : "—") + '</span>' +
-        (p && p.mid ? '<span class="midmark">中間</span>' : '') + '</td>' +
+        '</td>' +
       '<td class="num">' + (a ? a.sym : "—") + '</td>' +
       '<td class="num">' + (s.top ? symbolOf(s.top) : "—") + '</td>' +
       '<td class="warncell' + (s.z ? '' : ' zero') + '">' + s.z + '</td>' +
@@ -626,7 +621,7 @@ function renderTable(){
 function renderRankForm(id){
   const box = $(id || "rankForm");
   box.innerHTML = "";
-  const symOpts = cur => ALL_SYMS.filter(x => !x.endsWith("++"))
+  const symOpts = cur => ALL_SYMS
     .map(x => '<option value="'+valueOf(x)+'"'+(valueOf(x)===cur?' selected':'')+'>'+x+'</option>').join("");
 
   RANK_FIELDS.forEach(f=>{
@@ -648,11 +643,11 @@ function renderRankForm(id){
   const p = document.createElement("p");
   p.className = "f-note";
   p.innerHTML =
-    "既定は <code>A ≧ A+</code> / <code>C ≦ C+</code>。" +
+    "既定は <code>A ≧ A+</code> / <code>C ≦ C++</code>（C系の上限）。" +
     "<b>日々の記号は児童のやる気のために実態より上へ振ってあるので、記号と評定は一致しない。</b>" +
     "実際に A 評定になるのは <code>A+</code> 以上。したがって記号の A や A− は評定では B に落ちる。" +
-    "<code>C</code> は据え置きでよい。C 評定は「ノート評価で C・D が続き、代表値が C 帯に入った」場合だけ" +
-    "という運用と、この境目（<code>C ≦ C+</code>）が一致している。動かした値は出力に残る。";
+    "<code>C</code> の境目は C 系の上限に置いてある。C 評定は「ノート評価で C・D が続き、" +
+    "代表値が C 帯に入った」場合だけという運用と一致する。動かした値は出力に残る。";
   box.appendChild(p);
 }
 /* 学級の実感に照らした目安。ここからのずれが見えるようにする。 */
@@ -842,8 +837,8 @@ function renderOut(){
               "Z回数","C回数","D回数","集計の式"].join("\t")];
     NAMES.forEach((name, ni)=>{
       const s = summarize(ni);
-      const p = symbolOfMedian(s.prov, F.useMid);
-      const a = symbolOfMedian(s.all, F.useMid);
+      const p = symbolOfMedian(s.prov);
+      const a = symbolOfMedian(s.all);
       lines.push([name, subject, u.name, "主体的に学習に取り組む態度",
         s.n + "/" + s.total, s.off,
         p ? p.sym : "", fin[ni] != null ? fin[ni] : (p ? p.sym : ""),
@@ -884,7 +879,7 @@ function renderAll(){
 $("adoptAll").addEventListener("click", ()=>{
   const fin = FINAL[keyOf()] = {};
   NAMES.forEach((n, ni)=>{
-    const p = symbolOfMedian(summarize(ni).prov, F.useMid);
+    const p = symbolOfMedian(summarize(ni).prov);
     if(p) fin[ni] = p.sym;
   });
   renderAll(); say("said", "仮値を採用した");

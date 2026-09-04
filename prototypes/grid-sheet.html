@@ -354,34 +354,29 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 <script>
 /* ==================================================================
    1. 評価スケール
-   基本字5 × ニュアンス4（− / 無 / + / ++）＝ 入力語彙20記号。
-   内部値は −=0 / 無=1 / +=2 の3段で、++ は + と同値（1..15）。
+   基本字5 × ニュアンス4（− / 無 / + / ++）＝ 20段。
+   ++ は + とは別の段。A++ は A+ と Z− のあいだに座る。
    保存は記号の文字列。計算のときだけ値に変換する。
 ================================================================== */
 const BASES = ["D","C","B","A","Z"];
-const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:2}];
+const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
+const NMOD  = MODS.length;
 
 function valueOf(sym){
   const b = BASES.indexOf(sym[0]);
   if(b < 0) return null;
   const m = MODS.find(m => m.s === sym.slice(1));
-  return m ? b*3 + m.v + 1 : null;
+  return m ? b*NMOD + m.v + 1 : null;
 }
-function symbolOf(v){                       // 1..15 → "A+" など（++ は使わない）
-  const b = BASES[Math.floor((v-1)/3)];
-  return b + ["−","","+"][(v-1)%3];
+function symbolOf(v){                              // 1..20 → "A++" など
+  return BASES[Math.floor((v-1)/NMOD)] + MODS[(v-1)%NMOD].s;
 }
-function baseOf(v){ return BASES[Math.floor((v-1)/3)]; }
-function modIndexOf(v){ return (v-1)%3; }   // 0=− 1=無 2=+
+function baseOf(v){ return BASES[Math.floor((v-1)/NMOD)]; }
 
-/* 中間値の表示。下側が + のときだけ ++ で「次の文字とのあいだ」を表す。
-   それ以外は表現手段がないので下側を採る（水増ししない）。 */
+/* 中央値が2段の間に落ちたときは下側を採る（水増ししない）。
+   ++ が実段になったので、「+ と次の文字の中間」を別扱いする必要はなくなった。 */
 function symbolOfMedian(m){
-  if(m == null) return null;
-  const lo = Math.floor(m);
-  if(m === lo) return {sym:symbolOf(lo), mid:false};
-  if(modIndexOf(lo) === 2) return {sym:baseOf(lo) + "++", mid:true};
-  return {sym:symbolOf(lo), mid:false};
+  return m == null ? null : {sym:symbolOf(Math.floor(m)), mid:false};
 }
 
 /* ==================================================================
@@ -424,7 +419,7 @@ const SUBJECTS = {
       {name:"時こくと時間",     from:49, to:70}
     ],
     seed: ["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z",
-           "B","B−","C","B+","A−","B++","A","A+"]
+           "B","B−","C","B+","A−","A++","A","A+"]
   },
   "国語": {
     total: 60,
@@ -604,18 +599,18 @@ function drawTrend(){
   const data = rows().filter(l => l.sym && l.sym !== "休")
                      .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
-  const iw=W-L-R, ih=H-T-B, slot=ih/15;
+  const iw=W-L-R, ih=H-T-B, slot=ih/20;
   const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
   const y = v => T + ih - (v - 0.5)*slot;
 
   let s = "";
   for(let bi=0; bi<5; bi++){
     if(bi % 2 === 0)
-      s += '<rect class="band" x="'+L+'" y="'+(T+ih-(bi+1)*slot*3)+'" width="'+iw+'" height="'+(slot*3)+'"/>';
-    const cy = T + ih - (bi*3 + 1.5)*slot;
-    s += '<text class="ylab" x="'+(L-14)+'" y="'+(cy+4)+'" text-anchor="end">'+BASES[bi]+'</text>';
-    s += '<text class="ysub" x="'+(L-14)+'" y="'+(cy-slot+4)+'" text-anchor="end">+</text>';
-    s += '<text class="ysub" x="'+(L-14)+'" y="'+(cy+slot+4)+'" text-anchor="end">−</text>';
+      s += '<rect class="band" x="'+L+'" y="'+(T+ih-(bi+1)*slot*NMOD)+'" width="'+iw+'" height="'+(slot*NMOD)+'"/>';
+    const cy = T + ih - (bi*NMOD + 2)*slot;                       // 帯の中央
+    s += '<text class="ylab" x="'+(L-16)+'" y="'+(cy+4)+'" text-anchor="end">'+BASES[bi]+'</text>';
+    s += '<text class="ysub" x="'+(L-16)+'" y="'+(T+ih-(bi*NMOD+0.5)*slot+3)+'" text-anchor="end">−</text>';
+    s += '<text class="ysub" x="'+(L-16)+'" y="'+(T+ih-(bi*NMOD+3.5)*slot+3)+'" text-anchor="end">++</text>';
   }
   s += '<line class="baseline" x1="'+L+'" y1="'+(T+ih)+'" x2="'+(L+iw)+'" y2="'+(T+ih)+'"/>';
 
