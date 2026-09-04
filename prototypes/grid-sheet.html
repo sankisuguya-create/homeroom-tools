@@ -341,15 +341,16 @@ h2 .fold{order:2;font-weight:600}
 .unit-card[data-u="18"]{--ucol:var(--u18)}
 .unit-card[data-u="19"]{--ucol:var(--u19)}
 .unit-card .name{font-size:14px;font-weight:600}
-.unit-card .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.unit-card .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .unit-card .valbox{
   display:inline-flex;align-items:center;justify-content:center;
-  min-width:92px;padding:6px 14px 7px;border-radius:6px;
-  border:1px solid var(--rule);border-top:3px solid var(--ucol,var(--rule));
-  font-family:"IBM Plex Mono",monospace;font-size:26px;font-weight:600;letter-spacing:-.01em;
+  flex:none;width:126px;aspect-ratio:2.97;padding:0 8px;border-radius:5px;
+  border:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:25px;font-weight:600;letter-spacing:-.01em;
   position:relative;overflow:hidden;background-color:var(--sheet);color:var(--ink);
 }
-.unit-card .valbox.none{border-top-color:var(--rule);color:var(--ink-faint);font-size:20px}
+.unit-card .valbox.none{color:var(--ink-faint);font-size:19px}
+.unit-card .row{flex-wrap:wrap;row-gap:6px}
 .tag{
   font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
   border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap;
