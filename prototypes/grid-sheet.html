@@ -565,7 +565,6 @@ function renderUnits(){
   conf().units.forEach((u, ui)=>{
     const s = summarize(u);
     const p = symbolOfMedian(s.prov);
-    const a = symbolOfMedian(s.all);
     let cls = "none";
     if(p){
       const b = p.sym[0];
@@ -574,18 +573,17 @@ function renderUnits(){
     const card = document.createElement("div");
     card.className = "unit-card";
     card.dataset.u = ui % 5;
+    /* 児童には集計のやり方を見せない。記号と、どれだけ入れたかだけ。 */
+    const done = s.n >= (u.to - u.from + 1);
     card.innerHTML =
       '<div class="name">' + u.name + '</div>' +
       '<div class="row"><span class="val ' + cls + '">' + (p ? p.sym : "—") + '</span>' +
-        '<span class="tag' + (p && p.mid ? " mid" : "") + '">' +
-        (p ? (p.mid ? "仮 / 中間" : "仮 / 後半の中央値") : "記録なし") + '</span></div>' +
+        '<span class="tag">' +
+        (p ? (done ? "せんせいが かくにんちゅう" : "とちゅう") : "まだ ありません") + '</span></div>' +
       '<div class="meta">' +
         '<span>入力 ' + s.n + '/' + (u.to-u.from+1) + '</span>' +
-        (a ? '<span>全体 ' + a.sym + '</span>' : '') +
-        (s.top ? '<span>最高 ' + symbolOf(s.top) + '</span>' : '') +
+        (s.top ? '<span>いちばん ' + symbolOf(s.top) + '</span>' : '') +
         (s.z ? '<span>Z ' + s.z + '回</span>' : '') +
-        (s.c ? '<span>C ' + s.c + '回</span>' : '') +
-        (s.d ? '<span>D ' + s.d + '回</span>' : '') +
         (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
       '</div>';
     box.appendChild(card);
