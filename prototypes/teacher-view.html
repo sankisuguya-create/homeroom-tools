@@ -1,22 +1,17 @@
-<title>単元評価の確定</title>
+<title>態度評価の確定</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
 <style>
 :root{
-  --paper:#FCFBF7;
-  --sheet:#FFFFFF;
-  --ink:#1D2126;
-  --ink-soft:#5A6470;
-  --ink-faint:#9AA3AD;
-  --rule:#DFDCD2;
-  --rule-soft:#EDEAE2;
-  --accent:#2C5C9E;
-  --teacher:#5B3E86; --teacher-bg:#F2EDF9;
-
-  --a-bg:#DCE8F6;   --a-line:#8FB4DC;   --a-ink:#173E70;
-  --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
-  --warn:#B0392B;   --warn-bg:#FBEEEC;
+  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
+  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
+  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
+  --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
+  --warn:#B0392B; --warn-bg:#FBEEEC;
+  --off-bg:#EFEDE8; --off-ink:#8A8578;
   --ok:#2F6E4E;
 }
 @media (prefers-color-scheme:dark){
@@ -24,10 +19,11 @@
     --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
     --ink-soft:#A0A9B4; --ink-faint:#6A727C;
     --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-    --teacher:#C4A9E8; --teacher-bg:#272033;
+    --open:#6FBECC; --open-bg:#182C30;
     --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
     --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
     --warn:#E5776A; --warn-bg:#2E1C1A;
+    --off-bg:#22262B; --off-ink:#767E88;
     --ok:#6FBF92;
   }
 }
@@ -35,10 +31,11 @@
   --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
   --ink-soft:#A0A9B4; --ink-faint:#6A727C;
   --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-  --teacher:#C4A9E8; --teacher-bg:#272033;
+  --open:#6FBECC; --open-bg:#182C30;
   --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
   --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
   --warn:#E5776A; --warn-bg:#2E1C1A;
+  --off-bg:#22262B; --off-ink:#767E88;
   --ok:#6FBF92;
 }
 
@@ -46,48 +43,58 @@
 body{margin:0;background:var(--paper);color:var(--ink);
   font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
   font-size:15px;line-height:1.65}
-.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:20px}
+.wrap{max-width:1280px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:20px}
 .note{font-size:12.5px;color:var(--ink-soft);border:1px dashed var(--rule);
   border-radius:8px;padding:7px 13px;background:var(--sheet)}
 .note b{color:var(--ink);font-weight:600}
 
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  border-bottom:2px solid var(--teacher);padding-bottom:10px}
+  border-bottom:2px solid var(--open);padding-bottom:10px}
 .head h1{margin:0;font-size:21px;font-weight:700;letter-spacing:.02em}
-.head h1 span{color:var(--teacher)}
+.head h1 span{color:var(--open)}
 .head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px}
+.controls{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 
-.controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
 .seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
 .seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
-  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 17px;cursor:pointer;
   border-right:1px solid var(--rule)}
 .seg button:last-child{border-right:none}
-.seg button[aria-pressed="true"]{background:var(--teacher);color:#fff}
+.seg button[aria-pressed="true"]{background:var(--open);color:#fff}
+.seg.mode button[aria-pressed="true"]{background:var(--accent)}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .lbl{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
-select.plain,input[type="time"]{
-  font-family:inherit;font-size:13.5px;font-weight:500;
+select.plain,input[type="time"]{font-family:inherit;font-size:13.5px;font-weight:500;
   border:1px solid var(--rule);border-radius:7px;padding:6px 10px;
   background:var(--sheet);color:var(--ink);cursor:pointer}
-select.plain:focus-visible,input[type="time"]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select.plain:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 h2{margin:0;font-size:14px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);
   display:flex;align-items:center;gap:12px}
 h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 section{display:flex;flex-direction:column;gap:11px}
+.hidden{display:none!important}
 
-/* ---- 計算式パネル ---- */
+/* ---- 一斉入力 ---- */
+.bulk{background:var(--open-bg);border:1px solid var(--open);border-radius:10px;
+  padding:13px 16px;display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.bulk .f{display:flex;flex-direction:column;gap:4px}
+.bulk .grow{flex:1;min-width:150px}
+.bulk .hint{font-size:12px;color:var(--ink-soft);flex-basis:100%;margin:0}
+.bulk .hint b{color:var(--ink)}
+
+/* ---- 計算式 ---- */
 .formula{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;
   display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:14px 20px}
 .f-item{display:flex;flex-direction:column;gap:4px}
-.f-item .lbl{letter-spacing:.05em}
-.f-note{grid-column:1/-1;font-size:12px;color:var(--ink-faint);border-top:1px dashed var(--rule);padding-top:9px;margin:0}
+.f-note{grid-column:1/-1;font-size:12px;color:var(--ink-faint);
+  border-top:1px dashed var(--rule);padding-top:9px;margin:0}
 .f-note code{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft)}
+.f-note b{color:var(--ink-soft)}
 
-/* ---- 一覧表 ---- */
+/* ---- 表 ---- */
 .tablecard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:960px;font-size:13.5px}
+table{border-collapse:collapse;width:100%;min-width:980px;font-size:13.5px}
 th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
 thead th{position:sticky;top:0;background:var(--sheet);z-index:2;
   font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-faint);
@@ -97,44 +104,50 @@ td.name{font-weight:600}
 td.num{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft);font-variant-numeric:tabular-nums}
 td.warncell{font-family:"IBM Plex Mono",monospace;color:var(--warn);font-weight:600}
 td.warncell.zero{color:var(--ink-faint);font-weight:500}
+td.offcell{font-family:"IBM Plex Mono",monospace;color:var(--off-ink)}
 
 .chips{display:flex;gap:2px}
-.chip{
-  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+.chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
   min-width:26px;text-align:center;padding:1px 3px;border-radius:3px;
-  background:var(--rule-soft);color:var(--ink-soft);
-}
+  background:var(--rule-soft);color:var(--ink-soft)}
 .chip.a{background:var(--a-bg);color:var(--a-ink)}
 .chip.z{background:var(--z-bg);color:var(--z-ink)}
 .chip.w{background:var(--warn-bg);color:var(--warn)}
-.chip.none{background:transparent;color:var(--ink-faint);opacity:.5}
+.chip.off{background:var(--off-bg);color:var(--off-ink)}
+.chip.none{background:transparent;color:var(--ink-faint);opacity:.45}
 
 .prov{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600}
 .prov.a{color:var(--a-ink)} .prov.z{color:var(--z-ink)} .prov.w{color:var(--warn)}
 .prov.none{color:var(--ink-faint);font-size:14px}
 .midmark{font-size:10px;color:var(--z-ink);margin-left:3px;vertical-align:2px}
 
-select.final{
-  font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;
+select.final{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;
   text-align:center;text-align-last:center;
   border:1px solid var(--rule);border-radius:6px;padding:3px 6px;min-width:74px;
   background:var(--sheet);color:var(--ink);cursor:pointer}
-select.final.changed{border-color:var(--teacher);color:var(--teacher);background:var(--teacher-bg)}
+select.final.changed{border-color:var(--open);color:var(--open);background:var(--open-bg)}
 select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
+/* 期末評定 */
+.rank{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:700;
+  display:inline-block;min-width:26px;text-align:center;border-radius:5px;padding:0 7px}
+.rank.A{background:var(--a-bg);color:var(--a-ink)}
+.rank.B{background:var(--rule-soft);color:var(--ink-soft)}
+.rank.C{background:var(--warn-bg);color:var(--warn)}
+.rank.none{color:var(--ink-faint);background:transparent;font-size:14px}
+
 .btn{appearance:none;font-family:inherit;font-size:13.5px;font-weight:600;
-  border:1px solid var(--teacher);border-radius:8px;padding:8px 18px;
-  background:var(--teacher);color:#fff;cursor:pointer}
+  border:1px solid var(--open);border-radius:8px;padding:8px 18px;
+  background:var(--open);color:#fff;cursor:pointer}
 .btn:hover{filter:brightness(1.08)}
 .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .btn.ghost{background:transparent;color:var(--ink-soft);border-color:var(--rule)}
 .btn.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none}
+.btn[disabled]{background:var(--rule-soft);border-color:var(--rule);color:var(--ink-faint);cursor:not-allowed;filter:none}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .actions .said{font-size:12.5px;color:var(--ok);font-weight:600}
 
-/* ---- 出力 ---- */
-textarea{
-  width:100%;min-height:168px;resize:vertical;
+textarea{width:100%;min-height:160px;resize:vertical;
   font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.6;
   border:1px solid var(--rule);border-radius:9px;padding:12px 14px;
   background:var(--sheet);color:var(--ink);white-space:pre;overflow-x:auto}
@@ -143,32 +156,83 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 <div class="wrap">
   <div class="note">
-    <b>教師画面・ためし</b>　児童名と評価はダミー。計算式を変えると29名分の仮値がその場で引き直される。
+    <b>教師画面・ためし</b>　児童名と評価はダミー。集計の式を変えると29名分の仮値がその場で引き直される。
     実装では下の表がそのままスプレッドシートに書き出される。
   </div>
 
   <div class="head">
-    <h1><span>3年3組</span> 単元評価の確定<small>2026年度　29名</small></h1>
+    <h1><span>3年3組</span> 主体的に学習に取り組む態度<small>2026年度　29名　粘り強さ・自己調整のノート評価</small></h1>
     <div class="controls">
+      <div class="seg mode" id="modeSeg">
+        <button type="button" data-mode="unit" aria-pressed="true">単元ごと</button>
+        <button type="button" data-mode="term" aria-pressed="false">期末評定</button>
+      </div>
       <div class="seg" id="subjSeg"></div>
       <select class="plain" id="unitSel"></select>
     </div>
   </div>
 
-  <section>
-    <h2>集計の式</h2>
-    <div class="formula" id="formula"></div>
-  </section>
+  <!-- ============ 単元ごと ============ -->
+  <div id="viewUnit">
+    <section style="margin-bottom:20px">
+      <h2>授業を選んで全員に入れる</h2>
+      <div class="bulk">
+        <div class="f grow">
+          <span class="lbl">授業</span>
+          <select class="plain" id="bulkLesson"></select>
+        </div>
+        <div class="f">
+          <span class="lbl">入れる値</span>
+          <select class="plain" id="bulkValue"></select>
+        </div>
+        <div class="f">
+          <span class="lbl">対象</span>
+          <select class="plain" id="bulkScope">
+            <option value="empty">空欄の児童だけ</option>
+            <option value="all">全員（上書きする）</option>
+          </select>
+        </div>
+        <button class="btn" id="bulkGo">29名に入れる</button>
+        <span class="said" id="bulkSaid"></span>
+        <p class="hint">
+          学級閉鎖・行事・出張などで全員が同じになる日に使う。<b>上書きは取り消せない</b>ので、
+          既定は空欄の児童だけに入る。ボタンには実際に入る人数が出る。
+        </p>
+      </div>
+    </section>
 
-  <section>
-    <h2>児童ごとの仮値と採用値</h2>
-    <div class="tablecard"><table id="tbl"></table></div>
-    <div class="actions">
-      <button class="btn" id="adoptAll">仮値を すべて採用</button>
-      <button class="btn ghost" id="resetAll">採用値を もどす</button>
-      <span class="said" id="said"></span>
-    </div>
-  </section>
+    <section style="margin-bottom:20px">
+      <h2>集計の式</h2>
+      <div class="formula" id="formula"></div>
+    </section>
+
+    <section style="margin-bottom:20px">
+      <h2>児童ごとの仮値と採用値</h2>
+      <div class="tablecard"><table id="tbl"></table></div>
+      <div class="actions">
+        <button class="btn" id="adoptAll">仮値を すべて採用</button>
+        <button class="btn ghost" id="resetAll">採用値を もどす</button>
+        <span class="said" id="said"></span>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ 期末評定 ============ -->
+  <div id="viewTerm" class="hidden">
+    <section style="margin-bottom:20px">
+      <h2>単元評価から評定への写像</h2>
+      <div class="formula" id="rankForm"></div>
+    </section>
+    <section style="margin-bottom:20px">
+      <h2>児童ごとの評定</h2>
+      <div class="tablecard"><table id="termTbl"></table></div>
+      <div class="actions">
+        <button class="btn" id="adoptRank">仮評定を すべて採用</button>
+        <button class="btn ghost" id="resetRank">採用をもどす</button>
+        <span class="said" id="rankSaid"></span>
+      </div>
+    </section>
+  </div>
 
   <section>
     <h2>スプレッドシートへの出力</h2>
@@ -187,7 +251,10 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 /* ================= 評価スケール（scale.md と同じ規則） ================= */
 const BASES = ["D","C","B","A","Z"];
 const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:2}];
+const OFF   = "休";                        // 欠席。評価ではない。
+
 const valueOf = sym => {
+  if(!sym || sym === OFF) return null;
   const b = BASES.indexOf(sym[0]); if(b<0) return null;
   const m = MODS.find(m=>m.s===sym.slice(1));
   return m ? b*3 + m.v + 1 : null;
@@ -206,23 +273,31 @@ function symbolOfMedian(m, useMid){
 const ALL_SYMS = [];
 BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b+m.s)));
 
-/* ================= 集計の式（教師が変えられる） ================= */
-const F = {
-  stat:  "lateMedian",   // lateMedian | allMedian | mode | top
-  late:  3,              // 後半 1/n
-  dropD: true,
-  dropC: false,
-  useMid:true
-};
+/* ================= 集計の式 =================
+   D は含めるのが既定。測っているのは「主体的に学習に取り組む態度」なので、
+   「やるべきことを何もしていない」は欠測ではなく最も重い観測値。
+   欠測は 休 のほうで、こちらは常に除外する。
+============================================== */
+const F = { stat:"lateMedian", late:3, dropD:false, dropC:false, useMid:true };
 
 const FIELDS = [
   {key:"stat", label:"代表値", opts:[
     ["lateMedian","後半の中央値"],["allMedian","全期間の中央値"],
     ["mode","最頻値"],["top","最高到達"]]},
   {key:"late", label:"後半の範囲", opts:[["3","後半 1/3"],["2","後半 1/2"],["1","全期間"]], num:true},
-  {key:"dropD", label:"D の扱い", opts:[["true","除外（欠測とみなす）"],["false","含める"]], bool:true},
+  {key:"dropD", label:"D の扱い", opts:[["false","含める（態度の観測）"],["true","除外"]], bool:true},
   {key:"dropC", label:"C の扱い", opts:[["false","含める"],["true","除外"]], bool:true},
   {key:"useMid",label:"中間の表示", opts:[["true","++ で中間を示す"],["false","下側を採る"]], bool:true}
+];
+
+/* 評定への写像。既定は基本字がそのまま評定になる境目。
+   A/Z系(10以上)→A、B系(7〜9)→B、C/D系(6以下)→C */
+const R = { aFrom:10, cTo:6, stat:"median" };
+const RANK_FIELDS = [
+  {key:"aFrom", label:"A とする下限", opts:null},   // 記号セレクタ
+  {key:"cTo",   label:"C とする上限", opts:null},
+  {key:"stat",  label:"単元をまとめる方法", opts:[
+    ["median","単元評価の中央値"],["mode","最頻値"],["last","最後の単元"]]}
 ];
 
 /* ================= ダミーデータ ================= */
@@ -243,27 +318,25 @@ const SUBJECTS = {
     {name:"すがたをかえる大豆", from:43, to:60}]}
 };
 
-/* 決定的な擬似乱数（毎回同じ表が出る） */
 function rng(seed){ let s = seed >>> 0;
   return () => { s = (s*1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
 
-const RECORDS = {};   // RECORDS[教科][児童index][授業No] = 記号
+const RECORDS = {};
 Object.keys(SUBJECTS).forEach((subj, si)=>{
   RECORDS[subj] = NAMES.map((n, ni)=>{
     const r = rng(1000 + si*97 + ni*13);
-    const center = 6 + Math.floor(r()*5);        // 児童ごとの中心（B− 〜 A）
+    const center = 6 + Math.floor(r()*5);
     const rec = {};
     SUBJECTS[subj].units.forEach((u, ui)=>{
-      // 3単元目までを入力済みにして、最後の単元は未入力にしておく
-      if(ui >= 3) return;
+      if(ui >= 3) return;                        // 最後の単元はまだ未実施
       for(let no=u.from; no<=u.to; no++){
-        const drift = ui * 0.6;                  // 単元が進むと少し上がる
-        let v = Math.round(center + drift + (r()-0.5)*3.2);
-        if(r() < 0.03) v = 1 + Math.floor(r()*3);   // まれに D 帯
-        if(r() < 0.02) v = 13 + Math.floor(r()*3);  // まれに Z 帯
+        if(r() < 0.025){ rec[no] = OFF; continue; }     // まれに休み
+        let v = Math.round(center + ui*0.6 + (r()-0.5)*3.2);
+        if(r() < 0.03) v = 1 + Math.floor(r()*3);
+        if(r() < 0.02) v = 13 + Math.floor(r()*3);
         v = Math.max(1, Math.min(15, v));
         let sym = symbolOf(v);
-        if(r() < 0.10 && modIdx(v) === 2) sym = baseOf(v) + "++";   // ++ も混ぜる
+        if(r() < 0.10 && modIdx(v) === 2) sym = baseOf(v) + "++";
         rec[no] = sym;
       }
     });
@@ -271,12 +344,14 @@ Object.keys(SUBJECTS).forEach((subj, si)=>{
   });
 });
 
-let subject  = "算数";
-let unitIdx  = 0;
-const FINAL  = {};    // FINAL[教科|単元名][児童index] = 採用記号
+let mode = "unit", subject = "算数", unitIdx = 0;
+const FINAL = {};    // FINAL["教科|単元"][児童index] = 記号
+const RANK  = {};    // RANK["教科"][児童index] = "A"|"B"|"C"
 const $ = id => document.getElementById(id);
-const unit = () => SUBJECTS[subject].units[unitIdx];
-const keyOf = () => subject + "|" + unit().name;
+const units  = () => SUBJECTS[subject].units;
+const unit   = () => units()[unitIdx];
+const keyOf  = (u) => subject + "|" + (u || unit()).name;
+const finOf  = (u) => FINAL[keyOf(u)] || (FINAL[keyOf(u)] = {});
 
 /* ================= 集計 ================= */
 function medianVal(a){
@@ -290,16 +365,18 @@ function modeVal(a){
   const c = {}; a.forEach(v => c[v] = (c[v]||0) + 1);
   const best = Math.max(...Object.values(c));
   const tied = Object.keys(c).filter(k => c[k] === best).map(Number);
-  return tied[tied.length - 1];      // 同数なら上位を採る
+  return tied[tied.length - 1];
 }
 
-function summarize(ni){
-  const u = unit(), rec = RECORDS[subject][ni];
+function summarize(ni, u){
+  u = u || unit();
+  const rec = RECORDS[subject][ni];
   const seq = [];
   for(let no=u.from; no<=u.to; no++) seq.push(rec[no] || null);
 
-  const filled = seq.filter(Boolean);
-  const vals   = filled.map(valueOf);
+  const entered = seq.filter(Boolean);
+  const off     = entered.filter(x => x === OFF).length;      // 休は常に除外
+  const vals    = entered.filter(x => x !== OFF).map(valueOf);
   let scored = vals;
   if(F.dropD) scored = scored.filter(v => baseOf(v) !== "D");
   if(F.dropC) scored = scored.filter(v => baseOf(v) !== "C");
@@ -315,17 +392,76 @@ function summarize(ni){
     }
   }
   return {
-    seq, n: filled.length, total: u.to - u.from + 1,
+    seq, n: entered.length, total: u.to - u.from + 1, off,
     prov, all: medianVal(scored), top: scored.length ? Math.max(...scored) : null,
     z: vals.filter(v => baseOf(v)==="Z").length,
     c: vals.filter(v => baseOf(v)==="C").length,
     d: vals.filter(v => baseOf(v)==="D").length
   };
 }
-const clsOf = sym => !sym ? "none" : sym[0]==="A" ? "a" : sym[0]==="Z" ? "z"
-                                   : (sym[0]==="C"||sym[0]==="D") ? "w" : "";
+const clsOf = sym => !sym ? "none" : sym === OFF ? "off"
+  : sym[0]==="A" ? "a" : sym[0]==="Z" ? "z" : (sym[0]==="C"||sym[0]==="D") ? "w" : "";
 
-/* ================= 描画 ================= */
+/* 単元の確定値（採用があればそれ、なければ仮値） */
+function settled(ni, u){
+  const f = finOf(u)[ni];
+  if(f != null && f !== "") return f;
+  const p = symbolOfMedian(summarize(ni, u).prov, F.useMid);
+  return p ? p.sym : null;
+}
+function rankOf(v){ return v == null ? null : v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B"; }
+function termFor(ni){
+  const vals = units().map(u => settled(ni, u)).filter(Boolean).map(valueOf).filter(v => v != null);
+  if(!vals.length) return {v:null, rank:null, per:units().map(u => settled(ni, u))};
+  let v;
+  if(R.stat === "mode")      v = modeVal(vals);
+  else if(R.stat === "last") v = vals[vals.length-1];
+  else                       v = Math.floor(medianVal(vals));
+  return {v, rank:rankOf(v), per:units().map(u => settled(ni, u))};
+}
+
+/* ================= 一斉入力 ================= */
+function renderBulk(){
+  const u = unit();
+  let ls = "";
+  for(let no=u.from; no<=u.to; no++)
+    ls += '<option value="'+no+'">No.'+no+'（'+u.name+'　第'+(no-u.from+1)+'時）</option>';
+  $("bulkLesson").innerHTML = ls;
+  $("bulkValue").innerHTML =
+    '<option value="'+OFF+'">'+OFF+'</option>' +
+    BASES.map(b => '<optgroup label="'+b+'">' +
+      MODS.map(m => '<option value="'+b+m.s+'">'+b+m.s+'</option>').join("") + '</optgroup>').join("");
+  updateBulkCount();
+}
+function bulkTargets(){
+  const no = Number($("bulkLesson").value);
+  const scope = $("bulkScope").value;
+  const rec = RECORDS[subject];
+  const idx = [];
+  NAMES.forEach((n, ni)=>{ if(scope === "all" || !rec[ni][no]) idx.push(ni); });
+  return {no, idx};
+}
+function updateBulkCount(){
+  const {idx} = bulkTargets();
+  const b = $("bulkGo");
+  b.textContent = idx.length + "名に入れる";
+  b.disabled = idx.length === 0;
+}
+["bulkLesson","bulkScope"].forEach(id => $(id).addEventListener("change", updateBulkCount));
+
+$("bulkGo").addEventListener("click", ()=>{
+  const {no, idx} = bulkTargets();
+  if(!idx.length) return;
+  const val = $("bulkValue").value;
+  const rec = RECORDS[subject];
+  let over = 0;
+  idx.forEach(ni => { if(rec[ni][no]) over++; rec[ni][no] = val; });
+  renderAll();
+  say("bulkSaid", "No." + no + " に「" + val + "」を " + idx.length + "名へ入れた"
+      + (over ? "（うち上書き " + over + "）" : ""));
+});
+
+/* ================= 描画：式 ================= */
 function renderFormula(){
   const box = $("formula");
   box.innerHTML = "";
@@ -334,7 +470,7 @@ function renderFormula(){
     const d = document.createElement("div");
     d.className = "f-item";
     d.innerHTML = '<span class="lbl">' + f.label + '</span>' +
-      '<select class="plain" data-key="' + f.key + '">' +
+      '<select class="plain" data-key="'+f.key+'">' +
       f.opts.map(([v,t]) => '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+t+'</option>').join("") +
       '</select>';
     const sel = d.querySelector("select");
@@ -349,38 +485,39 @@ function renderFormula(){
   const p = document.createElement("p");
   p.className = "f-note";
   p.innerHTML =
-    "順序尺度なので<b>平均は使わない</b>。既定は <code>後半1/3の中央値・D除外</code>。" +
-    "D は「やるべきことをしていない」＝到達度の欠測なので、含めると代表値が取り組み状況に汚染される。" +
+    "順序尺度なので<b>平均は使わない</b>。既定は <code>後半1/3の中央値・D含む</code>。" +
+    "評価しているのは態度なので、<b>D「やるべきことを何もしていない」は欠測ではなく最も重い観測値</b>。" +
+    "本物の欠測は <code>休</code> のほうで、こちらは常に除外する。" +
     "中央値が2値の間に落ちたときは、下側が <code>+</code> のときだけ <code>++</code> で中間を示す。";
   box.appendChild(p);
 }
 
+/* ================= 描画：単元ごとの表 ================= */
 function renderTable(){
-  const u = unit();
+  const u = unit(), fin = finOf();
   let h = '<thead><tr>' +
     '<th style="width:88px">児童</th>' +
     '<th>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
     '<th style="width:56px">入力</th>' +
+    '<th style="width:44px">休</th>' +
     '<th style="width:74px">仮値</th>' +
     '<th style="width:64px">全体</th>' +
     '<th style="width:56px">最高</th>' +
-    '<th style="width:44px">Z</th><th style="width:44px">C</th><th style="width:44px">D</th>' +
+    '<th style="width:40px">Z</th><th style="width:40px">C</th><th style="width:40px">D</th>' +
     '<th style="width:96px">採用値</th></tr></thead><tbody>';
-
-  const fin = FINAL[keyOf()] || (FINAL[keyOf()] = {});
 
   NAMES.forEach((name, ni)=>{
     const s = summarize(ni);
     const p = symbolOfMedian(s.prov, F.useMid);
     const a = symbolOfMedian(s.all, F.useMid);
     const chosen = fin[ni] != null ? fin[ni] : (p ? p.sym : "");
-
     h += '<tr>' +
       '<td class="name">' + name + '</td>' +
       '<td><div class="chips">' + s.seq.map(sym =>
           '<span class="chip ' + (sym ? clsOf(sym) : "none") + '">' + (sym || "·") + '</span>').join("") +
         '</div></td>' +
       '<td class="num">' + s.n + '/' + s.total + '</td>' +
+      '<td class="offcell">' + (s.off || "·") + '</td>' +
       '<td><span class="prov ' + (p ? clsOf(p.sym) : "none") + '">' + (p ? p.sym : "—") + '</span>' +
         (p && p.mid ? '<span class="midmark">中間</span>' : '') + '</td>' +
       '<td class="num">' + (a ? a.sym : "—") + '</td>' +
@@ -388,45 +525,120 @@ function renderTable(){
       '<td class="warncell' + (s.z ? '' : ' zero') + '">' + s.z + '</td>' +
       '<td class="warncell' + (s.c ? '' : ' zero') + '">' + s.c + '</td>' +
       '<td class="warncell' + (s.d ? '' : ' zero') + '">' + s.d + '</td>' +
-      '<td><select class="final' + (p && chosen !== p.sym ? ' changed' : '') + '" data-ni="' + ni + '">' +
+      '<td><select class="final' + (p && chosen !== p.sym ? ' changed' : '') + '" data-ni="'+ni+'">' +
         '<option value="">—</option>' +
         ALL_SYMS.map(x => '<option value="'+x+'"'+(x===chosen?' selected':'')+'>'+x+'</option>').join("") +
-        '</select></td>' +
-      '</tr>';
+        '</select></td></tr>';
   });
   $("tbl").innerHTML = h + '</tbody>';
-
   $("tbl").querySelectorAll("select.final").forEach(sel=>{
-    sel.addEventListener("change", ()=>{
-      fin[sel.dataset.ni] = sel.value;
-      renderTable(); renderOut();
-    });
+    sel.addEventListener("change", ()=>{ fin[sel.dataset.ni] = sel.value; renderAll(); });
   });
 }
 
-function renderOut(){
-  const u = unit(), fin = FINAL[keyOf()] || {};
-  const rule = FIELDS[0].opts.find(o => o[0] === F.stat)[1]
-    + (F.stat === "lateMedian" ? "（後半 1/" + F.late + "）" : "")
-    + (F.dropD ? " / D除外" : " / D含む")
-    + (F.dropC ? " / C除外" : "");
-  const head = ["児童","教科","単元","入力数","仮値","採用値","全体中央値","最高","Z回数","C回数","D回数","集計の式"];
-  const lines = [head.join("\t")];
-  NAMES.forEach((name, ni)=>{
-    const s = summarize(ni);
-    const p = symbolOfMedian(s.prov, F.useMid);
-    const a = symbolOfMedian(s.all, F.useMid);
-    lines.push([
-      name, subject, u.name, s.n + "/" + s.total,
-      p ? p.sym : "", fin[ni] != null ? fin[ni] : (p ? p.sym : ""),
-      a ? a.sym : "", s.top ? symbolOf(s.top) : "",
-      s.z, s.c, s.d, rule
-    ].join("\t"));
+/* ================= 描画：期末評定 ================= */
+function renderRankForm(){
+  const box = $("rankForm");
+  box.innerHTML = "";
+  const symOpts = cur => ALL_SYMS.filter(x => !x.endsWith("++"))
+    .map(x => '<option value="'+valueOf(x)+'"'+(valueOf(x)===cur?' selected':'')+'>'+x+'</option>').join("");
+
+  RANK_FIELDS.forEach(f=>{
+    const d = document.createElement("div");
+    d.className = "f-item";
+    const inner = f.opts
+      ? f.opts.map(([v,t]) => '<option value="'+v+'"'+(v===R[f.key]?' selected':'')+'>'+t+'</option>').join("")
+      : symOpts(R[f.key]);
+    d.innerHTML = '<span class="lbl">' + f.label +
+      (f.key==="aFrom" ? "（これ以上）" : f.key==="cTo" ? "（これ以下）" : "") + '</span>' +
+      '<select class="plain">' + inner + '</select>';
+    d.querySelector("select").addEventListener("change", e=>{
+      R[f.key] = f.opts ? e.target.value : Number(e.target.value);
+      if(R.cTo >= R.aFrom) R.cTo = R.aFrom - 1;      // 帯が潰れないようにする
+      renderAll();
+    });
+    box.appendChild(d);
   });
+  const p = document.createElement("p");
+  p.className = "f-note";
+  p.innerHTML =
+    "既定は <code>A ≧ A−</code> / <code>C ≦ C+</code>。この境目だと<b>基本字がそのまま評定になる</b>" +
+    "（A系・Z系→A、B系→B、C系・D系→C）。記号を決めた時点で3段階への写像が入っていたことになる。" +
+    "境目は動かせるが、動かした値は出力に残る。";
+  box.appendChild(p);
+}
+function renderTermTable(){
+  const rk = RANK[subject] || (RANK[subject] = {});
+  let h = '<thead><tr><th style="width:88px">児童</th>' +
+    units().map(u => '<th style="width:96px">'+u.name+'</th>').join("") +
+    '<th style="width:74px">まとめ</th><th style="width:64px">仮評定</th>' +
+    '<th style="width:92px">採用</th></tr></thead><tbody>';
+  NAMES.forEach((name, ni)=>{
+    const t = termFor(ni);
+    const chosen = rk[ni] != null ? rk[ni] : (t.rank || "");
+    h += '<tr><td class="name">' + name + '</td>' +
+      t.per.map(sym => '<td><span class="chip ' + (sym ? clsOf(sym) : "none") + '">' +
+        (sym || "·") + '</span></td>').join("") +
+      '<td class="num">' + (t.v ? symbolOf(t.v) : "—") + '</td>' +
+      '<td><span class="rank ' + (t.rank || "none") + '">' + (t.rank || "—") + '</span></td>' +
+      '<td><select class="final' + (t.rank && chosen !== t.rank ? ' changed' : '') + '" data-ni="'+ni+'">' +
+        ["A","B","C"].map(x => '<option value="'+x+'"'+(x===chosen?' selected':'')+'>'+x+'</option>').join("") +
+        '</select></td></tr>';
+  });
+  $("termTbl").innerHTML = h + '</tbody>';
+  $("termTbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>{ rk[sel.dataset.ni] = sel.value; renderAll(); });
+  });
+}
+
+/* ================= 出力 ================= */
+function ruleText(){
+  return FIELDS[0].opts.find(o => o[0] === F.stat)[1]
+    + (F.stat === "lateMedian" ? "（後半 1/" + F.late + "）" : "")
+    + (F.dropD ? " / D除外" : " / D含む") + (F.dropC ? " / C除外" : "") + " / 休は除外";
+}
+function renderOut(){
+  let lines;
+  if(mode === "unit"){
+    const u = unit(), fin = finOf();
+    lines = [["児童","教科","単元","観点","入力数","休","仮値","採用値","全体中央値","最高",
+              "Z回数","C回数","D回数","集計の式"].join("\t")];
+    NAMES.forEach((name, ni)=>{
+      const s = summarize(ni);
+      const p = symbolOfMedian(s.prov, F.useMid);
+      const a = symbolOfMedian(s.all, F.useMid);
+      lines.push([name, subject, u.name, "主体的に学習に取り組む態度",
+        s.n + "/" + s.total, s.off,
+        p ? p.sym : "", fin[ni] != null ? fin[ni] : (p ? p.sym : ""),
+        a ? a.sym : "", s.top ? symbolOf(s.top) : "",
+        s.z, s.c, s.d, ruleText()].join("\t"));
+    });
+  }else{
+    const rk = RANK[subject] || {};
+    lines = [["児童","教科","観点", ...units().map(u => u.name),
+              "まとめ","仮評定","採用評定","写像","集計の式"].join("\t")];
+    const map = "A≧" + symbolOf(R.aFrom) + " / C≦" + symbolOf(R.cTo) + " / "
+      + RANK_FIELDS[2].opts.find(o => o[0] === R.stat)[1];
+    NAMES.forEach((name, ni)=>{
+      const t = termFor(ni);
+      lines.push([name, subject, "主体的に学習に取り組む態度",
+        ...t.per.map(s => s || ""),
+        t.v ? symbolOf(t.v) : "", t.rank || "",
+        rk[ni] != null ? rk[ni] : (t.rank || ""), map, ruleText()].join("\t"));
+    });
+  }
   $("out").value = lines.join("\n");
 }
 
-function renderAll(){ renderFormula(); renderTable(); renderOut(); }
+/* ================= まとめて描画 ================= */
+function renderAll(){
+  $("viewUnit").classList.toggle("hidden", mode !== "unit");
+  $("viewTerm").classList.toggle("hidden", mode !== "term");
+  $("unitSel").classList.toggle("hidden", mode !== "unit");
+  if(mode === "unit"){ renderBulk(); renderFormula(); renderTable(); }
+  else               { renderRankForm(); renderTermTable(); }
+  renderOut();
+}
 
 /* ================= 操作 ================= */
 $("adoptAll").addEventListener("click", ()=>{
@@ -435,26 +647,38 @@ $("adoptAll").addEventListener("click", ()=>{
     const p = symbolOfMedian(summarize(ni).prov, F.useMid);
     if(p) fin[ni] = p.sym;
   });
-  renderTable(); renderOut();
-  say("said", "仮値を採用した");
+  renderAll(); say("said", "仮値を採用した");
 });
 $("resetAll").addEventListener("click", ()=>{
-  FINAL[keyOf()] = {};
-  renderTable(); renderOut();
-  say("said", "採用値をもどした");
+  FINAL[keyOf()] = {}; renderAll(); say("said", "採用値をもどした");
+});
+$("adoptRank").addEventListener("click", ()=>{
+  const rk = RANK[subject] = {};
+  NAMES.forEach((n, ni)=>{ const t = termFor(ni); if(t.rank) rk[ni] = t.rank; });
+  renderAll(); say("rankSaid", "仮評定を採用した");
+});
+$("resetRank").addEventListener("click", ()=>{
+  RANK[subject] = {}; renderAll(); say("rankSaid", "採用をもどした");
 });
 $("copy").addEventListener("click", async ()=>{
-  const t = $("out");
-  t.focus(); t.select();
+  const t = $("out"); t.focus(); t.select();
   try{ await navigator.clipboard.writeText(t.value); say("copied","コピーした"); }
   catch(e){ say("copied","選択したので Ctrl+C でコピー"); }
 });
 function say(id, msg){
   const el = $(id); el.textContent = msg;
-  setTimeout(()=>{ if(el.textContent === msg) el.textContent = ""; }, 2600);
+  setTimeout(()=>{ if(el.textContent === msg) el.textContent = ""; }, 3000);
 }
 
 /* ================= 切り替え ================= */
+$("modeSeg").querySelectorAll("button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    mode = b.dataset.mode;
+    $("modeSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    renderAll();
+  });
+});
 Object.keys(SUBJECTS).forEach((name,i)=>{
   const b = document.createElement("button");
   b.type = "button"; b.textContent = name;
@@ -468,7 +692,7 @@ Object.keys(SUBJECTS).forEach((name,i)=>{
   $("subjSeg").appendChild(b);
 });
 function renderUnitSel(){
-  $("unitSel").innerHTML = SUBJECTS[subject].units
+  $("unitSel").innerHTML = units()
     .map((u,i) => '<option value="'+i+'"'+(i===unitIdx?' selected':'')+'>'+u.name+'</option>').join("");
 }
 $("unitSel").addEventListener("change", e=>{ unitIdx = Number(e.target.value); renderAll(); });

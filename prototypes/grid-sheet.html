@@ -17,8 +17,10 @@
   --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
   --warn:#B0392B;
   --todo-bg:#FFF6E8; --todo-line:#E0B36A;
-  --lock-bg:#F2F1EC; --lock-ink:#8A8578;
-  --teacher:#5B3E86; --teacher-bg:#F0EAF8;
+  --fresh-bg:#E8F6EE; --fresh-line:#7FC4A0; --fresh-ink:#1E6647;
+  --lock-ink:#A29C90;
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --off-bg:#EFEDE8; --off-ink:#8A8578;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -35,8 +37,10 @@
     --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
     --warn:#E5776A;
     --todo-bg:#332811; --todo-line:#7A5F22;
-    --lock-bg:#20242A; --lock-ink:#767E88;
-    --teacher:#C4A9E8; --teacher-bg:#2A2136;
+    --fresh-bg:#163024; --fresh-line:#3E7F5D; --fresh-ink:#8FD8B2;
+    --lock-ink:#6A727C;
+    --open:#6FBECC; --open-bg:#182C30;
+    --off-bg:#22262B; --off-ink:#767E88;
   }
 }
 :root[data-theme="dark"]{
@@ -53,8 +57,10 @@
   --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
   --warn:#E5776A;
   --todo-bg:#332811; --todo-line:#7A5F22;
-  --lock-bg:#20242A; --lock-ink:#767E88;
-  --teacher:#C4A9E8; --teacher-bg:#2A2136;
+  --fresh-bg:#163024; --fresh-line:#3E7F5D; --fresh-ink:#8FD8B2;
+  --lock-ink:#6A727C;
+  --open:#6FBECC; --open-bg:#182C30;
+  --off-bg:#22262B; --off-ink:#767E88;
 }
 
 *{box-sizing:border-box}
@@ -81,7 +87,7 @@ body{
 }
 .seg button:last-child{border-right:none}
 .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
-.seg.role button[aria-pressed="true"]{background:var(--teacher);color:#fff}
+.seg.role button[aria-pressed="true"]{background:var(--open);color:#fff}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
 
@@ -91,7 +97,7 @@ body{
   border:1px solid var(--rule);border-left:4px solid var(--lock-ink);
   border-radius:8px;padding:10px 15px;background:var(--sheet);font-size:13.5px;
 }
-.lockbar.teacher{border-left-color:var(--teacher);background:var(--teacher-bg)}
+.lockbar.teacher{border-left-color:var(--open);background:var(--open-bg)}
 .lockbar .icon{font-size:16px;line-height:1}
 .lockbar .msg{flex:1;min-width:220px}
 .lockbar .msg b{font-weight:700}
@@ -152,17 +158,21 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell.todo select{border:1.5px dashed var(--todo-line);background:transparent}
 .cell.future select{background:var(--rule-soft);color:var(--ink-faint);border-style:dotted;cursor:not-allowed}
 
-/* ロック済み */
-.cell.locked{background:var(--lock-bg)}
-.cell.locked select:disabled{opacity:1;cursor:default;border-color:var(--rule)}
+/* まだ変えられる＝明るく。確定済み＝静かに。 */
+.cell.fresh{background:var(--fresh-bg)}
+.cell.fresh select{border-color:var(--fresh-line)}
+.cell .freshmark{font-size:9px;color:var(--fresh-ink);font-weight:700;line-height:1;letter-spacing:.02em}
+
+.cell.locked select:disabled{opacity:1;cursor:default;border-color:var(--rule-soft);color:var(--ink-soft)}
 .cell .lockmark{font-size:9.5px;color:var(--lock-ink);line-height:1}
-.cell.teacher-open{background:var(--teacher-bg)}
-.cell.teacher-open select{border-color:var(--teacher)}
-.cell .lockmark.bypass{color:var(--teacher);font-weight:700}
-.cell.edited::after{
-  content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;
-  background:var(--teacher);
-}
+
+/* 教師が確定済みを開いているとき：破線で「本来は閉じている」を示す */
+.cell.opened select{border-style:dashed;border-color:var(--open)}
+.cell .lockmark.bypass{color:var(--open);font-weight:700}
+.cell.edited{box-shadow:inset 3px 0 0 var(--open)}
+
+/* 休み */
+.cell select.is-off{background:var(--off-bg);color:var(--off-ink);border-style:dashed}
 
 /* A と Z にだけ色を置く */
 .cell select.is-a{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
@@ -235,7 +245,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
     <h1 id="title">さくら<small>3年3組　2026年度</small></h1>
     <div class="badges">
       <span class="badge todo" id="todoBadge">未入力 0</span>
-      <span class="badge locked" id="lockBadge">ロック済み 0</span>
+      <span class="badge locked" id="lockBadge">確定 0</span>
     </div>
   </div>
 
@@ -329,7 +339,7 @@ const SUBJECTS = {
       {name:"たし算とひき算の筆算", from:31, to:48},
       {name:"時こくと時間",     from:49, to:70}
     ],
-    seed: ["B","B+","B","A−","B+","A","A","B+","A−","A","A+","A","B+","Z",
+    seed: ["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z",
            "B","B−","C","B+","A−","B++","A","A+"]
   },
   "国語": {
@@ -340,7 +350,7 @@ const SUBJECTS = {
       {name:"まいごのかぎ",     from:27, to:42},
       {name:"すがたをかえる大豆", from:43, to:60}
     ],
-    seed: ["B+","A−","B+","B","A","A","A+","A−","A","B+","A","A+",
+    seed: ["B+","A−","B+","B","A","A","A+","A−","休","B+","A","A+",
            "A−","B+","A","A++","A+","A","Z−"]
   }
 };
@@ -355,9 +365,11 @@ function buildData(){
     const rows = [];
     for(let no=1; no<=s.total; no++){
       if(no <= s.seed.length){
-        // 過去に保存されたもの＝ロック済み（境界より前の時刻を入れる）
+        // 直近2件は「今日 入れたばかり」＝まだ変えられる。それ以前は確定済み。
+        const recent = no > s.seed.length - 2;
         rows.push({no, state:"done", sym:s.seed[no-1],
-                   savedAt:new Date(Date.now() - (s.seed.length - no + 2) * DAY)});
+                   savedAt: recent ? new Date()
+                                   : new Date(Date.now() - (s.seed.length - no + 2) * DAY)});
       }else if(no <= s.seed.length + 3){
         rows.push({no, state:"todo", sym:null, savedAt:null});
       }else{
@@ -378,7 +390,7 @@ const $ = id => document.getElementById(id);
    4. 授業の表
 ================================================================== */
 function optionsHTML(){
-  let h = '<option value="">‥</option>';
+  let h = '<option value="">‥</option><option value="休">休</option>';
   BASES.forEach(b=>{
     h += '<optgroup label="' + b + '">';
     MODS.forEach(m => { h += '<option value="' + b+m.s + '">' + b+m.s + '</option>'; });
@@ -387,8 +399,9 @@ function optionsHTML(){
   return h;
 }
 function paint(sel, sym){
-  sel.classList.remove("is-a","is-z","is-warn");
+  sel.classList.remove("is-a","is-z","is-warn","is-off");
   if(!sym) return;
+  if(sym === "休"){ sel.classList.add("is-off"); return; }
   const b = sym[0];
   if(b === "A")                   sel.classList.add("is-a");
   else if(b === "Z")              sel.classList.add("is-z");
@@ -401,17 +414,20 @@ function renderGrid(){
   rows().forEach(l=>{
     const u = unitOf(l.no);
     const locked = isLocked(l);
+    const fresh  = !!l.sym && !locked;                 // 入力済みで、まだ変えられる
     const editable = l.state !== "future" && canEdit(l);
 
     const c = document.createElement("div");
     c.className = "cell " + l.state
-      + (locked && role === "student" ? " locked" : "")
-      + (locked && role === "teacher" ? " teacher-open" : "")
+      + (fresh ? " fresh" : "")
+      + (locked ? " locked" : "")
+      + (locked && role === "teacher" ? " opened" : "")
       + (l.edited ? " edited" : "");
 
     let mark = "";
-    if(locked && role === "student") mark = '<span class="lockmark">🔒</span>';
-    if(locked && role === "teacher") mark = '<span class="lockmark bypass">🔓</span>';
+    if(fresh)                        mark = '<span class="freshmark">なおせる</span>';
+    else if(locked && role === "student") mark = '<span class="lockmark">🔒</span>';
+    else if(locked && role === "teacher") mark = '<span class="lockmark bypass">🔓</span>';
 
     c.innerHTML =
       '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
@@ -447,18 +463,20 @@ function medianVal(a){
   return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;   // 偶数個は中間（.5 を許す）
 }
 function summarize(u){
-  const filled = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
-  const vals   = filled.map(l => valueOf(l.sym));
-  const scored = vals.filter(v => baseOf(v) !== "D");          // D を除外
-  const late   = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
+  const entered = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
+  const off     = entered.filter(l => l.sym === "休").length;   // 休＝本物の欠測
+  const scored  = entered.filter(l => l.sym !== "休").map(l => valueOf(l.sym));
+  // D は含める。態度を評価しているので「やらなかった」は欠測ではなく最も重い観測。
+  const late = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
   return {
-    n:    filled.length,
+    n:    entered.length,
     prov: medianVal(late),
     all:  medianVal(scored),
     top:  scored.length ? Math.max(...scored) : null,
-    z:    vals.filter(v => baseOf(v)==="Z").length,
-    c:    vals.filter(v => baseOf(v)==="C").length,
-    d:    vals.filter(v => baseOf(v)==="D").length
+    z:    scored.filter(v => baseOf(v)==="Z").length,
+    c:    scored.filter(v => baseOf(v)==="C").length,
+    d:    scored.filter(v => baseOf(v)==="D").length,
+    off
   };
 }
 function renderUnits(){
@@ -487,6 +505,7 @@ function renderUnits(){
         (s.z ? '<span>Z ' + s.z + '回</span>' : '') +
         (s.c ? '<span>C ' + s.c + '回</span>' : '') +
         (s.d ? '<span>D ' + s.d + '回</span>' : '') +
+        (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
       '</div>';
     box.appendChild(card);
   });
@@ -496,7 +515,8 @@ function renderUnits(){
    6. 折れ線
 ================================================================== */
 function drawTrend(){
-  const data = rows().filter(l => l.sym).map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
+  const data = rows().filter(l => l.sym && l.sym !== "休")
+                     .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
   const iw=W-L-R, ih=H-T-B, slot=ih/15;
   const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
@@ -551,7 +571,7 @@ function renderLockbar(){
     bar.innerHTML =
       '<span class="icon">🔓</span>' +
       '<span class="msg">教師アカウントは<b>ロックを貫通して</b>操作できる。' +
-        'ロック済みのセルは薄紫。書き換えると右上に印が残る。</span>' +
+        '確定済みのセルは枠が破線。書き換えたセルは左端に線が残る。</span>' +
       '<label class="seg-label" for="lockTime">ロック時刻</label>' +
       '<input type="time" id="lockTime" value="' +
         String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
@@ -575,7 +595,7 @@ function renderLockbar(){
             String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
             'つぎは <span class="when">' + hhmm(nb) + '</span>。'
           : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
-        '　きまった ひょうかは 🔒 が つきます。' +
+        '　みどりの セルは まだ なおせます。🔒 は きまった ひょうかです。' +
       '</span>';
   }
 }
@@ -588,7 +608,7 @@ function refresh(){
   const tb = $("todoBadge");
   tb.textContent = todo ? "未入力 " + todo : "未入力なし";
   tb.classList.toggle("clear", todo === 0);
-  $("lockBadge").textContent = "ロック済み " + locked;
+  $("lockBadge").textContent = "確定 " + locked;
   $("title").innerHTML = (role === "teacher" ? "3年3組" : "さくら") +
     '<small>' + subject + '　2026年度' + (role === "teacher" ? "　教師表示" : "") + '</small>';
 
