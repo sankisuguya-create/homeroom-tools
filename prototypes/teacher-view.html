@@ -13,7 +13,10 @@
   --warn:#B0392B; --warn-bg:#FBEEEC;
   --off-bg:#EFEDE8; --off-ink:#8A8578;
   --ok:#2F6E4E;
-  --u0:#A78BC4; --u1:#7FB07A; --u2:#5FA8A0; --u3:#D48CA8; --u4:#A89468;
+  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
+  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
+  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
+  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -26,7 +29,10 @@
     --warn:#E5776A; --warn-bg:#2E1C1A;
     --off-bg:#22262B; --off-ink:#767E88;
     --ok:#6FBF92;
-    --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+    --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+    --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+    --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+    --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
   }
 }
 :root[data-theme="dark"]{
@@ -39,7 +45,10 @@
   --warn:#E5776A; --warn-bg:#2E1C1A;
   --off-bg:#22262B; --off-ink:#767E88;
   --ok:#6FBF92;
-  --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
 }
 
 *{box-sizing:border-box}
@@ -109,14 +118,29 @@ td.warncell{font-family:"IBM Plex Mono",monospace;color:var(--warn);font-weight:
 td.warncell.zero{color:var(--ink-faint);font-weight:500}
 td.offcell{font-family:"IBM Plex Mono",monospace;color:var(--off-ink)}
 th.unitcol{border-bottom:3px solid var(--ucol,var(--rule))}
-th.unitcol[data-u="0"]{--ucol:var(--u0)} th.unitcol[data-u="1"]{--ucol:var(--u1)}
-th.unitcol[data-u="2"]{--ucol:var(--u2)} th.unitcol[data-u="3"]{--ucol:var(--u3)}
-th.unitcol[data-u="4"]{--ucol:var(--u4)}
 .unitbar{display:inline-block;width:26px;height:4px;border-radius:2px;
   background:var(--ucol,var(--rule));vertical-align:2px;margin-right:7px}
-.unitbar[data-u="0"]{--ucol:var(--u0)} .unitbar[data-u="1"]{--ucol:var(--u1)}
-.unitbar[data-u="2"]{--ucol:var(--u2)} .unitbar[data-u="3"]{--ucol:var(--u3)}
-.unitbar[data-u="4"]{--ucol:var(--u4)}
+/* 単元の色は20色。連番の単元が隣り合っても見分くよう色相を飛ばしてある */
+th.unitcol[data-u="0"],.unitbar[data-u="0"],.rowbar[data-c="0"],.sw[data-c="0"]{--ucol:var(--u0);--swc:var(--u0)}
+th.unitcol[data-u="1"],.unitbar[data-u="1"],.rowbar[data-c="1"],.sw[data-c="1"]{--ucol:var(--u1);--swc:var(--u1)}
+th.unitcol[data-u="2"],.unitbar[data-u="2"],.rowbar[data-c="2"],.sw[data-c="2"]{--ucol:var(--u2);--swc:var(--u2)}
+th.unitcol[data-u="3"],.unitbar[data-u="3"],.rowbar[data-c="3"],.sw[data-c="3"]{--ucol:var(--u3);--swc:var(--u3)}
+th.unitcol[data-u="4"],.unitbar[data-u="4"],.rowbar[data-c="4"],.sw[data-c="4"]{--ucol:var(--u4);--swc:var(--u4)}
+th.unitcol[data-u="5"],.unitbar[data-u="5"],.rowbar[data-c="5"],.sw[data-c="5"]{--ucol:var(--u5);--swc:var(--u5)}
+th.unitcol[data-u="6"],.unitbar[data-u="6"],.rowbar[data-c="6"],.sw[data-c="6"]{--ucol:var(--u6);--swc:var(--u6)}
+th.unitcol[data-u="7"],.unitbar[data-u="7"],.rowbar[data-c="7"],.sw[data-c="7"]{--ucol:var(--u7);--swc:var(--u7)}
+th.unitcol[data-u="8"],.unitbar[data-u="8"],.rowbar[data-c="8"],.sw[data-c="8"]{--ucol:var(--u8);--swc:var(--u8)}
+th.unitcol[data-u="9"],.unitbar[data-u="9"],.rowbar[data-c="9"],.sw[data-c="9"]{--ucol:var(--u9);--swc:var(--u9)}
+th.unitcol[data-u="10"],.unitbar[data-u="10"],.rowbar[data-c="10"],.sw[data-c="10"]{--ucol:var(--u10);--swc:var(--u10)}
+th.unitcol[data-u="11"],.unitbar[data-u="11"],.rowbar[data-c="11"],.sw[data-c="11"]{--ucol:var(--u11);--swc:var(--u11)}
+th.unitcol[data-u="12"],.unitbar[data-u="12"],.rowbar[data-c="12"],.sw[data-c="12"]{--ucol:var(--u12);--swc:var(--u12)}
+th.unitcol[data-u="13"],.unitbar[data-u="13"],.rowbar[data-c="13"],.sw[data-c="13"]{--ucol:var(--u13);--swc:var(--u13)}
+th.unitcol[data-u="14"],.unitbar[data-u="14"],.rowbar[data-c="14"],.sw[data-c="14"]{--ucol:var(--u14);--swc:var(--u14)}
+th.unitcol[data-u="15"],.unitbar[data-u="15"],.rowbar[data-c="15"],.sw[data-c="15"]{--ucol:var(--u15);--swc:var(--u15)}
+th.unitcol[data-u="16"],.unitbar[data-u="16"],.rowbar[data-c="16"],.sw[data-c="16"]{--ucol:var(--u16);--swc:var(--u16)}
+th.unitcol[data-u="17"],.unitbar[data-u="17"],.rowbar[data-c="17"],.sw[data-c="17"]{--ucol:var(--u17);--swc:var(--u17)}
+th.unitcol[data-u="18"],.unitbar[data-u="18"],.rowbar[data-c="18"],.sw[data-c="18"]{--ucol:var(--u18);--swc:var(--u18)}
+th.unitcol[data-u="19"],.unitbar[data-u="19"],.rowbar[data-c="19"],.sw[data-c="19"]{--ucol:var(--u19);--swc:var(--u19)}
 
 .chips{display:flex;gap:2px}
 .chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
@@ -141,12 +165,9 @@ select.final.changed{border-color:var(--open);color:var(--open);background:var(-
 select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 /* 単元設定 */
-.swatches{display:flex;gap:5px}
-.sw{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer;
+.swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;width:186px}
+.sw{width:16px;height:16px;border-radius:4px;border:2px solid transparent;cursor:pointer;
   appearance:none;padding:0;background:var(--swc)}
-.sw[data-c="0"]{--swc:var(--u0)} .sw[data-c="1"]{--swc:var(--u1)}
-.sw[data-c="2"]{--swc:var(--u2)} .sw[data-c="3"]{--swc:var(--u3)}
-.sw[data-c="4"]{--swc:var(--u4)}
 .sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--sheet) inset}
 .sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 input.cellin{font-family:inherit;font-size:13.5px;border:1px solid var(--rule);
@@ -154,9 +175,6 @@ input.cellin{font-family:inherit;font-size:13.5px;border:1px solid var(--rule);
 input.cellin.num{font-family:"IBM Plex Mono",monospace;width:74px;text-align:center}
 input.cellin:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .rowbar{width:5px;height:26px;border-radius:3px;background:var(--swc,var(--rule));display:inline-block}
-.rowbar[data-c="0"]{--swc:var(--u0)} .rowbar[data-c="1"]{--swc:var(--u1)}
-.rowbar[data-c="2"]{--swc:var(--u2)} .rowbar[data-c="3"]{--swc:var(--u3)}
-.rowbar[data-c="4"]{--swc:var(--u4)}
 .del{appearance:none;border:1px solid var(--rule);background:var(--sheet);color:var(--ink-faint);
   border-radius:6px;padding:4px 11px;font-family:inherit;font-size:12.5px;cursor:pointer}
 .del:hover{border-color:var(--warn);color:var(--warn)}
@@ -593,7 +611,7 @@ function renderTable(){
   const u = unit(), fin = finOf();
   let h = '<thead><tr>' +
     '<th style="width:88px">児童</th>' +
-    '<th><span class="unitbar" data-u="'+(u.c%5)+'"></span>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
+    '<th><span class="unitbar" data-u="'+(u.c%20)+'"></span>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
     '<th style="width:56px">入力</th>' +
     '<th style="width:44px">休</th>' +
     '<th style="width:74px">仮値</th>' +
@@ -712,7 +730,7 @@ function renderDist(){
 function renderTermTable(){
   const rk = RANK[subject] || (RANK[subject] = {});
   let h = '<thead><tr><th style="width:88px">児童</th>' +
-    units().map(u => '<th class="unitcol" data-u="'+(u.c%5)+'" style="width:96px">'+u.name+'</th>').join("") +
+    units().map(u => '<th class="unitcol" data-u="'+(u.c%20)+'" style="width:96px">'+u.name+'</th>').join("") +
     '<th style="width:74px">まとめ</th><th style="width:64px">仮評定</th>' +
     '<th style="width:92px">採用</th></tr></thead><tbody>';
   NAMES.forEach((name, ni)=>{
@@ -768,17 +786,17 @@ function renderUnitTable(){
   let h = '<thead><tr>' +
     '<th style="width:26px"></th><th>単元名</th>' +
     '<th style="width:96px">開始 No.</th><th style="width:96px">終了 No.</th>' +
-    '<th style="width:70px">時数</th><th style="width:150px">色</th>' +
+    '<th style="width:70px">時数</th><th style="width:200px">色</th>' +
     '<th style="width:70px"></th></tr></thead><tbody>';
   us.forEach((u,i)=>{
     h += '<tr>' +
-      '<td><span class="rowbar" data-c="'+(u.c%5)+'"></span></td>' +
+      '<td><span class="rowbar" data-c="'+(u.c%20)+'"></span></td>' +
       '<td><input class="cellin" data-i="'+i+'" data-k="name" value="'+u.name.replace(/"/g,"&quot;")+'"></td>' +
       '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="from" value="'+u.from+'"></td>' +
       '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="to" value="'+u.to+'"></td>' +
       '<td class="num">' + Math.max(0, u.to - u.from + 1) + '</td>' +
       '<td><div class="swatches">' +
-        [0,1,2,3,4].map(c => '<button type="button" class="sw" data-c="'+c+'" data-i="'+i+'"' +
+        Array.from({length:20},(_,c)=>c).map(c => '<button type="button" class="sw" data-c="'+c+'" data-i="'+i+'"' +
           ' aria-pressed="'+(u.c===c)+'" aria-label="色'+(c+1)+'"></button>').join("") +
         '</div></td>' +
       '<td><button class="del" data-i="'+i+'">削除</button></td></tr>';
@@ -826,7 +844,7 @@ $("addUnit").addEventListener("click", ()=>{
   const us = units(), total = SUBJECTS[subject].total;
   const last = us.reduce((m,u) => Math.max(m, u.to), 0);
   const from = Math.min(total, last + 1);
-  us.push({name:"新しい単元", from, to:Math.min(total, from + 9), c:us.length % 5});
+  us.push({name:"新しい単元", from, to:Math.min(total, from + 9), c:us.length % 20});
   renderUnitSel(); renderAll();
   say("unitSaid", "単元を追加した");
 });

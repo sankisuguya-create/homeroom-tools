@@ -21,7 +21,10 @@
   --open:#2E7D8A; --open-bg:#EAF5F6;
   --off-bg:#EFEDE8; --off-ink:#8A8578;
   --stripe:rgba(29,33,38,.07);
-  --u0:#A78BC4; --u1:#7FB07A; --u2:#5FA8A0; --u3:#D48CA8; --u4:#A89468;
+  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
+  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
+  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
+  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -42,7 +45,10 @@
     --open:#6FBECC; --open-bg:#182C30;
     --off-bg:#22262B; --off-ink:#767E88;
     --stripe:rgba(232,235,239,.09);
-    --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+    --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+    --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+    --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+    --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
   }
 }
 :root[data-theme="dark"]{
@@ -63,7 +69,10 @@
   --open:#6FBECC; --open-bg:#182C30;
   --off-bg:#22262B; --off-ink:#767E88;
   --stripe:rgba(232,235,239,.09);
-  --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
+  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
 }
 
 *{box-sizing:border-box}
@@ -153,6 +162,21 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell[data-u="2"]{--ucol:var(--u2)}
 .cell[data-u="3"]{--ucol:var(--u3)}
 .cell[data-u="4"]{--ucol:var(--u4)}
+.cell[data-u="5"]{--ucol:var(--u5)}
+.cell[data-u="6"]{--ucol:var(--u6)}
+.cell[data-u="7"]{--ucol:var(--u7)}
+.cell[data-u="8"]{--ucol:var(--u8)}
+.cell[data-u="9"]{--ucol:var(--u9)}
+.cell[data-u="10"]{--ucol:var(--u10)}
+.cell[data-u="11"]{--ucol:var(--u11)}
+.cell[data-u="12"]{--ucol:var(--u12)}
+.cell[data-u="13"]{--ucol:var(--u13)}
+.cell[data-u="14"]{--ucol:var(--u14)}
+.cell[data-u="15"]{--ucol:var(--u15)}
+.cell[data-u="16"]{--ucol:var(--u16)}
+.cell[data-u="17"]{--ucol:var(--u17)}
+.cell[data-u="18"]{--ucol:var(--u18)}
+.cell[data-u="19"]{--ucol:var(--u19)}
 .cell .no{
   font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
   color:var(--ink-faint);letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;gap:4px;
@@ -200,7 +224,7 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   background-color:var(--a-bg);color:var(--a-ink);
   border-left-color:var(--a-line);border-right-color:var(--a-line);border-bottom-color:var(--a-line);
 }
-.cell select.is-top{
+.cell select.foil-gold{
   background-color:var(--z-bg);color:var(--z-ink);
   border-left-color:var(--z-line);border-right-color:var(--z-line);border-bottom-color:var(--z-line);
   text-shadow:0 0 7px rgba(255,246,214,.95),0 1px 0 rgba(255,255,255,.7);
@@ -223,6 +247,40 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   background-position:0 0, 0 0, 0 0, 0 0, 0 0, -60% 0, 0 0;
   animation:foil 5.2s linear infinite;
 }
+/* Y 系：宇宙。黒い地に星と星雲を重ね、星雲をゆっくり流す */
+.cell select.foil-cosmic{
+  color:#EFE9FF;
+  border-left-color:#4A3A7A;border-right-color:#4A3A7A;border-bottom-color:#4A3A7A;
+  text-shadow:0 0 9px rgba(196,176,255,.95),0 0 3px rgba(120,90,220,.9),0 1px 2px rgba(0,0,0,.95);
+  box-shadow:inset 0 1px 0 rgba(190,170,255,.30),
+             inset 0 -8px 16px rgba(0,0,0,.55),
+             0 0 0 1px rgba(126,98,196,.45);
+  background-image:
+    var(--stripe-layer),
+    radial-gradient(1.7px 1.7px at 12% 24%,#fff,transparent 62%),
+    radial-gradient(1px 1px at 34% 68%,rgba(255,255,255,.9),transparent 60%),
+    radial-gradient(2px 2px at 58% 20%,#fff,transparent 62%),
+    radial-gradient(1.1px 1.1px at 79% 62%,rgba(255,255,255,.85),transparent 60%),
+    radial-gradient(1.6px 1.6px at 90% 31%,#fff,transparent 62%),
+    radial-gradient(1px 1px at 46% 84%,rgba(255,255,255,.8),transparent 60%),
+    radial-gradient(1.2px 1.2px at 22% 52%,rgba(255,255,255,.92),transparent 60%),
+    radial-gradient(58% 82% at 25% 40%,rgba(146,88,222,.34),transparent 72%),
+    radial-gradient(70% 92% at 75% 60%,rgba(54,106,220,.30),transparent 72%),
+    radial-gradient(52% 72% at 55% 25%,rgba(214,74,170,.20),transparent 72%),
+    linear-gradient(150deg,#06060E 0%,#100E26 44%,#08071A 76%,#040308 100%);
+  background-size:auto,
+    auto,auto,auto,auto,auto,auto,auto,
+    200% 200%, 200% 200%, 200% 200%, auto;
+  background-position:0 0,
+    0 0,0 0,0 0,0 0,0 0,0 0,0 0,
+    0% 50%, 100% 50%, 50% 0%, 0 0;
+  animation:cosmos 16s linear infinite;
+}
+@keyframes cosmos{
+  to{background-position:0 0,
+    0 0,0 0,0 0,0 0,0 0,0 0,0 0,
+    200% 50%, -100% 50%, 50% 200%, 0 0}
+}
 @keyframes foil{
   to{background-position:0 0, 0 0, 0 0, 0 0, 0 0, 160% 0, 0 0}
 }
@@ -243,6 +301,21 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .unit-card[data-u="2"]{--ucol:var(--u2)}
 .unit-card[data-u="3"]{--ucol:var(--u3)}
 .unit-card[data-u="4"]{--ucol:var(--u4)}
+.unit-card[data-u="5"]{--ucol:var(--u5)}
+.unit-card[data-u="6"]{--ucol:var(--u6)}
+.unit-card[data-u="7"]{--ucol:var(--u7)}
+.unit-card[data-u="8"]{--ucol:var(--u8)}
+.unit-card[data-u="9"]{--ucol:var(--u9)}
+.unit-card[data-u="10"]{--ucol:var(--u10)}
+.unit-card[data-u="11"]{--ucol:var(--u11)}
+.unit-card[data-u="12"]{--ucol:var(--u12)}
+.unit-card[data-u="13"]{--ucol:var(--u13)}
+.unit-card[data-u="14"]{--ucol:var(--u14)}
+.unit-card[data-u="15"]{--ucol:var(--u15)}
+.unit-card[data-u="16"]{--ucol:var(--u16)}
+.unit-card[data-u="17"]{--ucol:var(--u17)}
+.unit-card[data-u="18"]{--ucol:var(--u18)}
+.unit-card[data-u="19"]{--ucol:var(--u19)}
 .unit-card .name{font-size:14px;font-weight:600}
 .unit-card .row{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
 .unit-card .val{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;letter-spacing:-.01em}
@@ -337,7 +410,10 @@ const NMOD  = MODS.length;
 const NBASE = BASES.length;
 
 /* 層の境目もここだけで決める。Z の上に Y を足したら、Y も自動で突破層に入る。 */
-const TOP_FROM = "Z";       // これ以上は突破層（箔をかける）
+const TOP_FROM = "Z";       // これ以上は突破層
+/* 突破層の見た目は基本字ごとに1つ。段（− / 無 / + / ++）では変えない。
+   字を足したらここに1行足す。未登録の字は金の箔にする。 */
+const BASE_LOOK = { "Z":"foil-gold", "Y":"foil-cosmic" };
 const WARN_TO  = "C";       // これ以下は警告層（文字を赤にする）
 const iTop  = BASES.indexOf(TOP_FROM);
 const iWarn = BASES.indexOf(WARN_TO);
@@ -462,10 +538,10 @@ function optionsHTML(){
   return h;
 }
 function paint(sel, sym){
-  sel.classList.remove("is-a","is-top","is-warn","is-off");
+  sel.classList.remove("is-a","is-warn","is-off","foil-gold","foil-cosmic");
   if(!sym) return;
   if(sym === "休"){ sel.classList.add("is-off"); return; }
-  if(isTopSym(sym))       sel.classList.add("is-top");   // 突破層はすべて同じ箔
+  if(isTopSym(sym))       sel.classList.add(BASE_LOOK[sym[0]] || "foil-gold");
   else if(isWarnSym(sym)) sel.classList.add("is-warn");
   else if(sym[0] === "A") sel.classList.add("is-a");
 }
@@ -478,7 +554,7 @@ function renderGrid(){
     const locked = isLocked(l);
     const open   = l.state !== "future" && !locked;    // まだ変えられる（未記入も入力済みも）
     const editable = l.state !== "future" && canEdit(l);
-    const ui = u ? conf().units.indexOf(u) % 5 : 0;
+    const ui = u ? conf().units.indexOf(u) % 20 : 0;
 
     const c = document.createElement("div");
     c.className = "cell " + l.state
@@ -552,7 +628,7 @@ function renderUnits(){
     }
     const card = document.createElement("div");
     card.className = "unit-card";
-    card.dataset.u = ui % 5;
+    card.dataset.u = ui % 20;
     /* 児童には集計のやり方を見せない。記号と、どれだけ入れたかだけ。 */
     const done = s.n >= (u.to - u.from + 1);
     card.innerHTML =
