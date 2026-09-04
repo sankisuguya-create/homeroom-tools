@@ -19,7 +19,7 @@
   --open-cell:#FFF4E4; --open-line:#DFAE62;
   --lock-ink:#A29C90;
   --open:#2E7D8A; --open-bg:#EAF5F6;
-  --off-bg:#EFEDE8; --off-ink:#8A8578;
+  --off-bg:#EFEDE8; --off-ink:#8A8578; --skip-line:rgba(29,33,38,.16);
   --stripe:rgba(29,33,38,.07);
   --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
   --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
@@ -43,7 +43,7 @@
     --open-cell:#33270F; --open-line:#7E6224;
     --lock-ink:#6A727C;
     --open:#6FBECC; --open-bg:#182C30;
-    --off-bg:#22262B; --off-ink:#767E88;
+    --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.2);
     --stripe:rgba(232,235,239,.09);
     --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
     --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
@@ -67,7 +67,7 @@
   --open-cell:#33270F; --open-line:#7E6224;
   --lock-ink:#6A727C;
   --open:#6FBECC; --open-bg:#182C30;
-  --off-bg:#22262B; --off-ink:#767E88;
+  --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.2);
   --stripe:rgba(232,235,239,.09);
   --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
   --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
@@ -218,6 +218,11 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 
 /* 休み */
 .cell select.is-off{background-color:var(--off-bg);color:var(--off-ink)}
+.cell select.is-skip{
+  background-color:var(--off-bg);color:var(--off-ink);
+  background-image:var(--stripe-layer),
+    repeating-linear-gradient(45deg,transparent 0 5px,var(--skip-line) 5px 6px);
+}
 
 /* A と Z にだけ色を置く */
 .cell select.is-a{
@@ -429,6 +434,12 @@ const isTopSym  = sym => iOf(sym) >= iTop;
 const isWarnSym = sym => { const i = iOf(sym); return i >= 0 && i <= iWarn; };
 const isTopVal  = v => Math.floor((v-1)/NMOD) >= iTop;
 
+/* スケールに乗らない記号。どちらも集計から外すが、理由が違うので分けて数える。
+   休：児童がいなかった（個人の欠測）
+   / ：その授業を評価に含めない（授業側の都合。行事・テスト・予備時間など） */
+const OFF = "休", SKIP = "/";
+const isMark = sym => sym === OFF || sym === SKIP;
+
 function valueOf(sym){
   const b = BASES.indexOf(sym[0]);
   if(b < 0) return null;
@@ -486,7 +497,7 @@ const SUBJECTS = {
       {name:"時こくと時間",     from:49, to:70, term:3}
     ],
     seed: ["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z",
-           "B","B−","C","B+","A−","A++","A","A+"]
+           "B","/","C","B+","A−","A++","A","A+"]
   },
   "国語": {
     total: 60,
@@ -536,7 +547,12 @@ const $ = id => document.getElementById(id);
    4. 授業の表
 ================================================================== */
 function optionsHTML(){
-  let h = '<option value="">‥</option><option value="休">休</option>';
+  /* セルの選択肢は記号そのものだけにする。閉じた状態では選んだ選択肢の文字が
+     そのまま出るため、説明を入れるとセルが説明文で埋まる。説明は見出しに置く。 */
+  let h = '<option value="">‥</option>' +
+          '<optgroup label="評価に入れない　休＝いなかった／／＝この授業は数えない">' +
+          '<option value="' + OFF + '">' + OFF + '</option>' +
+          '<option value="' + SKIP + '">' + SKIP + '</option></optgroup>';
   BASES.forEach(b=>{
     h += '<optgroup label="' + b + '">';
     MODS.forEach(m => { h += '<option value="' + b+m.s + '">' + b+m.s + '</option>'; });
@@ -545,9 +561,10 @@ function optionsHTML(){
   return h;
 }
 function paint(sel, sym){
-  sel.classList.remove("is-a","is-warn","is-off","foil-gold","foil-cosmic");
+  sel.classList.remove("is-a","is-warn","is-off","is-skip","foil-gold","foil-cosmic");
   if(!sym) return;
-  if(sym === "休"){ sel.classList.add("is-off"); return; }
+  if(sym === OFF) { sel.classList.add("is-off");  return; }
+  if(sym === SKIP){ sel.classList.add("is-skip"); return; }
   if(isTopSym(sym))       sel.classList.add(BASE_LOOK[sym[0]] || "foil-gold");
   else if(isWarnSym(sym)) sel.classList.add("is-warn");
   else if(sym[0] === "A") sel.classList.add("is-a");
@@ -607,8 +624,9 @@ function medianVal(a){
 }
 function summarize(u){
   const entered = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
-  const off     = entered.filter(l => l.sym === "休").length;   // 休＝本物の欠測
-  const scored  = entered.filter(l => l.sym !== "休").map(l => valueOf(l.sym));
+  const off     = entered.filter(l => l.sym === OFF).length;
+  const skip    = entered.filter(l => l.sym === SKIP).length;
+  const scored  = entered.filter(l => !isMark(l.sym)).map(l => valueOf(l.sym));
   // D は含める。態度を評価しているので「やらなかった」は欠測ではなく最も重い観測。
   const late = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
   return {
@@ -619,7 +637,7 @@ function summarize(u){
     top:  scored.filter(isTopVal).length,
     c:    scored.filter(v => baseOf(v)==="C").length,
     d:    scored.filter(v => baseOf(v)==="D").length,
-    off
+    off, skip
   };
 }
 function renderUnits(){
@@ -659,6 +677,7 @@ function renderUnits(){
         (s.high ? '<span>いちばん ' + symbolOf(s.high) + '</span>' : '') +
         (s.top ? '<span>' + TOP_FROM + 'いじょう ' + s.top + '回</span>' : '') +
         (s.off ? '<span>休 ' + s.off + '回</span>' : '') +
+        (s.skip ? '<span>/ ' + s.skip + '回</span>' : '') +
       '</div>';
     rowOf[u.term || 0].appendChild(card);
   });
@@ -668,7 +687,7 @@ function renderUnits(){
    6. 折れ線
 ================================================================== */
 function drawTrend(){
-  const data = rows().filter(l => l.sym && l.sym !== "休")
+  const data = rows().filter(l => l.sym && !isMark(l.sym))
                      .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
   const iw=W-L-R, ih=H-T-B, slot=ih/(NBASE*NMOD);
