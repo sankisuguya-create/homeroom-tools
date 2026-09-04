@@ -95,6 +95,9 @@ body{
 }
 .seg button:last-child{border-right:none}
 .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+/* 児童にまだ見せていない教科。教師の画面にだけ出る。 */
+.seg button.closed{color:var(--ink-faint);font-style:italic}
+.seg button.closed[aria-pressed="true"]{background:var(--lock-ink);color:#fff;font-style:italic}
 .seg.role button[aria-pressed="true"]{background:var(--open);color:#fff}
 .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 .seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
@@ -379,6 +382,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   <div class="controls">
     <span class="seg-label">教科</span>
     <div class="seg" id="subjSeg"></div>
+    <button class="mini hidden" id="openBtn"></button>
     <button class="mini" id="roleBtn">教師として見る</button>
   </div>
 
@@ -478,22 +482,17 @@ function lastBoundary(){
   if(b > now) b.setDate(b.getDate() - 1);    // 今日の定時前なら、昨日の定時が直近
   return b;
 }
-function nextBoundary(){
-  if(LOCK.override) return null;
-  const now = new Date();
-  const b = new Date(now);
-  b.setHours(LOCK.h, LOCK.m, 0, 0);
-  if(b <= now) b.setDate(b.getDate() + 1);
-  return b;
-}
 const isLocked = e => !!(e.savedAt && e.savedAt < lastBoundary());
 const canEdit  = e => role === "teacher" || !isLocked(e);   // 教師は貫通する
 
 /* ==================================================================
    3. ダミーデータ
 ================================================================== */
+/* open:false の教科は児童の画面に出ない。教師だけが選べて、教師が公開に切り替える。
+   実装では設定シートの「教科マスタ」が持つ列になる。 */
 const SUBJECTS = {
   "算数": {
+    open: true,
     total: 70,
     units: [
       {name:"九九の表とかけ算", from:1,  to:14, term:1},
@@ -505,6 +504,7 @@ const SUBJECTS = {
            "B","/","C","B+","A−","A++","A","A+"]
   },
   "国語": {
+    open: true,
     total: 60,
     units: [
       {name:"きつつきの商売",   from:1,  to:12, term:1},
@@ -514,6 +514,31 @@ const SUBJECTS = {
     ],
     seed: ["B+","A−","B+","B","A","A","A+","A−","休","B+","A","A+",
            "A−","B+","A","A++","A+","A","Z−"]
+  },
+  "体育": {
+    open: false,
+    total: 105,
+    units: [
+      {name:"体つくり運動",     from:1,   to:12,  term:1},
+      {name:"かけっこ・リレー", from:13,  to:26,  term:1},
+      {name:"水泳運動",         from:27,  to:42,  term:1},
+      {name:"マット運動",       from:43,  to:58,  term:2},
+      {name:"ゲーム（ゴール型）", from:59, to:78,  term:2},
+      {name:"表現運動",         from:79,  to:92,  term:3},
+      {name:"跳び箱運動",       from:93,  to:105, term:3}
+    ],
+    seed: ["A","B+","A−","A","A+","B+","A","休","A−","A+","A","B+","A+","A","Z−"]
+  },
+  "社会": {
+    open: false,
+    total: 70,
+    units: [
+      {name:"わたしたちの市の様子", from:1,  to:24, term:1},
+      {name:"店ではたらく人",       from:25, to:44, term:2},
+      {name:"安全なくらしを守る",   from:45, to:58, term:2},
+      {name:"市のうつりかわり",     from:59, to:70, term:3}
+    ],
+    seed: ["B","B+","A−","B+","A","B+","B","A−","/","A","B+","A−"]
   }
 };
 
@@ -749,44 +774,28 @@ function drawTrend(){
 /* ==================================================================
    7. ロック帯・見出し
 ================================================================== */
-const hhmm = d => String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
-
 function renderLockbar(){
   const bar = $("lockbar");
-  bar.className = "lockbar" + (role === "teacher" ? " teacher" : "");
-  const nb = nextBoundary();
 
-  if(role === "teacher"){
-    bar.innerHTML =
-      '<span class="icon">🔓</span>' +
-      '<span class="msg">教師アカウントは<b>ロックを貫通して</b>操作できる。' +
-        '確定済みのセルは枠が破線になる。書き換えたセルは左端に線が残る。</span>' +
-      '<label class="seg-label" for="lockTime">ロック時刻</label>' +
-      '<input type="time" id="lockTime" value="' +
-        String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
-      '<button class="mini" id="lockNow">いま ロックする（ためし）</button>' +
-      (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "");
+  /* 児童にはロックの説明を出さない。「まだ直せる」はしましまが示している。
+     教師には説明ではなく操作（時刻・ためし）だけを置く。 */
+  if(role !== "teacher"){ bar.className = "lockbar hidden"; bar.innerHTML = ""; return; }
 
-    $("lockTime").addEventListener("change", e=>{
-      const [h,m] = e.target.value.split(":").map(Number);
-      if(!isNaN(h)){ LOCK.h = h; LOCK.m = m; LOCK.override = null; refresh(); }
-    });
-    $("lockNow").addEventListener("click", ()=>{ LOCK.override = new Date(); refresh(); });
-    const rs = $("lockReset");
-    if(rs) rs.addEventListener("click", ()=>{ LOCK.override = null; refresh(); });
+  bar.className = "lockbar teacher";
+  bar.innerHTML =
+    '<label class="seg-label" for="lockTime">ロック時刻</label>' +
+    '<input type="time" id="lockTime" value="' +
+      String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
+    '<button class="mini" id="lockNow">いま ロックする（ためし）</button>' +
+    (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "");
 
-  }else{
-    bar.innerHTML =
-      '<span class="icon">🔒</span>' +
-      '<span class="msg">' +
-        (nb
-          ? 'まいにち <span class="when">' + String(LOCK.h).padStart(2,"0") + ':' +
-            String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
-            'つぎは <span class="when">' + hhmm(nb) + '</span>。'
-          : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
-        '　しましまの ところは まだ なおせます。それ いがいは きまった ひょうかです。' +
-      '</span>';
-  }
+  $("lockTime").addEventListener("change", e=>{
+    const [h,m] = e.target.value.split(":").map(Number);
+    if(!isNaN(h)){ LOCK.h = h; LOCK.m = m; LOCK.override = null; refresh(); }
+  });
+  $("lockNow").addEventListener("click", ()=>{ LOCK.override = new Date(); refresh(); });
+  const rs = $("lockReset");
+  if(rs) rs.addEventListener("click", ()=>{ LOCK.override = null; refresh(); });
 }
 
 /* 児童が開いたとき、70セルの先頭ではなく「いまやるところ」が見えるようにする。
@@ -804,7 +813,33 @@ function scrollToNow(){
   scrolled = true;
 }
 
+/* 教科タブは役割で中身が変わる。児童には open の教科だけ、教師には全部。
+   非公開の教科を見ている教師が児童表示に切り替えたら、見える教科へ戻す。 */
+function renderSubjSeg(){
+  const seg = $("subjSeg");
+  const names = Object.keys(SUBJECTS).filter(n => role === "teacher" || SUBJECTS[n].open);
+  if(!names.includes(subject)){ subject = names[0]; scrolled = false; }
+  seg.innerHTML = "";
+  names.forEach(name=>{
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = name;
+    b.classList.toggle("closed", !SUBJECTS[name].open);
+    b.setAttribute("aria-pressed", String(name === subject));
+    b.addEventListener("click", ()=>{
+      if(name === subject) return;
+      subject = name; scrolled = false; refresh();
+    });
+    seg.appendChild(b);
+  });
+
+  const ob = $("openBtn");
+  ob.classList.toggle("hidden", role !== "teacher");
+  ob.textContent = SUBJECTS[subject].open ? "児童に 見せない" : "児童に 見せる";
+}
+
 function refresh(){
+  renderSubjSeg();
   const list = rows();
   const todo   = list.filter(l => l.state === "todo" && !l.sym).length;
   const locked = list.filter(l => l.sym && isLocked(l)).length;
@@ -830,18 +865,9 @@ $("roleBtn").addEventListener("click", ()=>{
   $("roleBtn").textContent = (role === "student") ? "教師として見る" : "児童として見る";
   refresh();
 });
-Object.keys(SUBJECTS).forEach((name,i)=>{
-  const b = document.createElement("button");
-  b.type = "button";
-  b.textContent = name;
-  b.setAttribute("aria-pressed", String(i === 0));
-  b.addEventListener("click", ()=>{
-    subject = name; scrolled = false;
-    $("subjSeg").querySelectorAll("button").forEach(x =>
-      x.setAttribute("aria-pressed", String(x === b)));
-    refresh();
-  });
-  $("subjSeg").appendChild(b);
+$("openBtn").addEventListener("click", ()=>{
+  SUBJECTS[subject].open = !SUBJECTS[subject].open;
+  refresh();
 });
 
 $("foldUnits").addEventListener("click", ()=>{
