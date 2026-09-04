@@ -364,7 +364,12 @@ const BASES = ["D","C","B","A","Z"];
 const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:3}];
 const NMOD  = MODS.length;                 // ++ は + とは別の段
 const NBASE = BASES.length;
-const OFF   = "休";                        // 欠席。評価ではない。
+/* スケールに乗らない記号。どちらも集計から外すが、理由が違うので分けて数える。
+   休：児童がいなかった（個人の欠測）
+   / ：その授業を評価に含めない（授業側の都合。行事・テスト・予備時間など） */
+const OFF  = "休";
+const SKIP = "/";
+const isMark = sym => sym === OFF || sym === SKIP;
 
 /* 層の境目もここだけで決める。Z の上に Y を足したら、Y も自動で突破層に入る。 */
 const TOP_FROM = "Z";       // これ以上は突破層
@@ -373,12 +378,12 @@ const iTop  = BASES.indexOf(TOP_FROM);
 const iWarn = BASES.indexOf(WARN_TO);
 const isTopVal  = v => Math.floor((v-1)/NMOD) >= iTop;
 const isWarnVal = v => Math.floor((v-1)/NMOD) <= iWarn;
-const isTopSym  = sym => sym && sym !== OFF && BASES.indexOf(sym[0]) >= iTop;
-const isWarnSym = sym => { if(!sym || sym === OFF) return false;
+const isTopSym  = sym => sym && !isMark(sym) && BASES.indexOf(sym[0]) >= iTop;
+const isWarnSym = sym => { if(!sym || isMark(sym)) return false;
   const i = BASES.indexOf(sym[0]); return i >= 0 && i <= iWarn; };
 
 const valueOf = sym => {
-  if(!sym || sym === OFF) return null;
+  if(!sym || isMark(sym)) return null;
   const b = BASES.indexOf(sym[0]); if(b<0) return null;
   const m = MODS.find(m=>m.s===sym.slice(1));
   return m ? b*NMOD + m.v + 1 : null;
@@ -452,7 +457,8 @@ Object.keys(SUBJECTS).forEach((subj, si)=>{
     SUBJECTS[subj].units.forEach((u, ui)=>{
       if(ui >= 3) return;                        // 最後の単元はまだ未実施
       for(let no=u.from; no<=u.to; no++){
-        if(r() < 0.025){ rec[no] = OFF; continue; }     // まれに休み
+        if(r() < 0.025){ rec[no] = OFF; continue; }      // まれに休み
+        if(r() < 0.015){ rec[no] = SKIP; continue; }     // まれに評価対象外
         let v = Math.round(center + ui*0.6 + (r()-0.5)*3.6);
         if(r() < 0.03) v = 1 + Math.floor(r()*4);
         if(r() < 0.04) v = 17 + Math.floor(r()*4);
@@ -501,8 +507,9 @@ function summarize(ni, u){
   for(let no=u.from; no<=u.to; no++) seq.push(rec[no] || null);
 
   const entered = seq.filter(Boolean);
-  const off     = entered.filter(x => x === OFF).length;      // 休は常に除外
-  const vals    = entered.filter(x => x !== OFF).map(valueOf);
+  const off     = entered.filter(x => x === OFF).length;
+  const skip    = entered.filter(x => x === SKIP).length;
+  const vals    = entered.filter(x => !isMark(x)).map(valueOf);
   let scored = vals;
   if(F.dropD) scored = scored.filter(v => baseOf(v) !== "D");
   if(F.dropC) scored = scored.filter(v => baseOf(v) !== "C");
@@ -518,14 +525,14 @@ function summarize(ni, u){
     }
   }
   return {
-    seq, n: entered.length, total: u.to - u.from + 1, off,
+    seq, n: entered.length, total: u.to - u.from + 1, off, skip,
     prov, all: medianVal(scored), top: scored.length ? Math.max(...scored) : null,
     z: vals.filter(isTopVal).length,
     c: vals.filter(v => baseOf(v)==="C").length,
     d: vals.filter(v => baseOf(v)==="D").length
   };
 }
-const clsOf = sym => !sym ? "none" : sym === OFF ? "off"
+const clsOf = sym => !sym ? "none" : isMark(sym) ? "off"
   : isTopSym(sym) ? "z" : isWarnSym(sym) ? "w" : sym[0]==="A" ? "a" : "";
 
 /* 単元の確定値（採用があればそれ、なければ仮値） */
@@ -555,6 +562,7 @@ function renderBulk(){
     ls += '<option value="'+no+'">No.'+no+'（'+u.name+'　第'+(no-u.from+1)+'時）</option>';
   $("bulkLesson").innerHTML = ls;
   $("bulkValue").innerHTML =
+    '<option value="'+SKIP+'">'+SKIP+'（評価に入れない）</option>' +
     '<option value="'+OFF+'">'+OFF+'</option>' +
     BASES.map(b => '<optgroup label="'+b+'">' +
       MODS.map(m => '<option value="'+b+m.s+'">'+b+m.s+'</option>').join("") + '</optgroup>').join("");
@@ -614,7 +622,8 @@ function renderFormula(){
   p.innerHTML =
     "順序尺度なので<b>平均は使わない</b>。既定は <code>後半1/3の中央値・D含む</code>。" +
     "評価しているのは態度なので、<b>D「やるべきことを何もしていない」は欠測ではなく最も重い観測値</b>。" +
-    "本物の欠測は <code>休</code> のほうで、こちらは常に除外する。" +
+    "本物の欠測は <code>休</code>（児童がいなかった）と <code>/</code>（その授業を評価に含めない）で、" +
+    "どちらも常に除外する。" +
     "<code>++</code> は <code>+</code> とは別の段で、次の文字の一つ手前に座る（A++ は A+ と Z− のあいだ）。" +
     "中央値が2段の間に落ちたときは下側を採る。" +
     "基本字は上に足せる（<code>Z</code> の上に <code>Y</code> など）。足しても既存の段の値は動かない。";
@@ -629,6 +638,7 @@ function renderTable(){
     '<th><span class="unitbar" data-u="'+(u.c%20)+'"></span>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
     '<th style="width:56px">入力</th>' +
     '<th style="width:44px">休</th>' +
+    '<th style="width:44px">/</th>' +
     '<th style="width:74px">仮値</th>' +
     '<th style="width:64px">全体</th>' +
     '<th style="width:56px">最高</th>' +
@@ -647,6 +657,7 @@ function renderTable(){
         '</div></td>' +
       '<td class="num">' + s.n + '/' + s.total + '</td>' +
       '<td class="offcell">' + (s.off || "·") + '</td>' +
+      '<td class="offcell">' + (s.skip || "·") + '</td>' +
       '<td><span class="prov ' + (p ? clsOf(p.sym) : "none") + '">' + (p ? p.sym : "—") + '</span>' +
         '</td>' +
       '<td class="num">' + (a ? a.sym : "—") + '</td>' +
@@ -904,14 +915,14 @@ function renderOut(){
   let lines;
   if(mode === "unit"){
     const u = unit(), fin = finOf();
-    lines = [["児童","教科","単元","観点","入力数","休","仮値","採用値","全体中央値","最高",
+    lines = [["児童","教科","単元","観点","入力数","休","対象外","仮値","採用値","全体中央値","最高",
               TOP_FROM+"以上の回数","C回数","D回数","集計の式"].join("\t")];
     NAMES.forEach((name, ni)=>{
       const s = summarize(ni);
       const p = symbolOfMedian(s.prov);
       const a = symbolOfMedian(s.all);
       lines.push([name, subject, u.name, "主体的に学習に取り組む態度",
-        s.n + "/" + s.total, s.off,
+        s.n + "/" + s.total, s.off, s.skip,
         p ? p.sym : "", fin[ni] != null ? fin[ni] : (p ? p.sym : ""),
         a ? a.sym : "", s.top ? symbolOf(s.top) : "",
         s.z, s.c, s.d, ruleText()].join("\t"));
