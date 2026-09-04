@@ -140,6 +140,27 @@ select.final{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:60
 select.final.changed{border-color:var(--open);color:var(--open);background:var(--open-bg)}
 select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
+/* 評定の分布 */
+.distcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;
+  padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.distbar{display:flex;height:30px;border-radius:7px;overflow:hidden;border:1px solid var(--rule)}
+.distbar span{display:flex;align-items:center;justify-content:center;
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:700;
+  min-width:0;overflow:hidden;white-space:nowrap;transition:flex-grow .2s ease}
+.distbar .sA{background:var(--a-bg);color:var(--a-ink)}
+.distbar .sB{background:var(--rule-soft);color:var(--ink-soft)}
+.distbar .sC{background:var(--warn-bg);color:var(--warn)}
+.distrow{display:flex;gap:22px;flex-wrap:wrap;font-size:13px}
+.distrow .item{display:flex;align-items:baseline;gap:7px}
+.distrow .k{font-weight:700;font-family:"IBM Plex Mono",monospace}
+.distrow .k.A{color:var(--a-ink)} .distrow .k.B{color:var(--ink-soft)} .distrow .k.C{color:var(--warn)}
+.distrow .v{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.distrow .gap{font-size:12px;color:var(--ink-faint)}
+.distrow .gap.off{color:var(--warn);font-weight:600}
+.distnote{font-size:12px;color:var(--ink-faint);margin:0;
+  border-top:1px dashed var(--rule);padding-top:9px}
+.distnote b{color:var(--ink-soft)}
+
 /* 期末評定 */
 .rank{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:700;
   display:inline-block;min-width:26px;text-align:center;border-radius:5px;padding:0 7px}
@@ -234,6 +255,10 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     <section style="margin-bottom:20px">
       <h2>単元評価から評定への写像</h2>
       <div class="formula" id="rankForm"></div>
+    </section>
+    <section style="margin-bottom:20px">
+      <h2>評定の分布</h2>
+      <div class="distcard" id="dist"></div>
     </section>
     <section style="margin-bottom:20px">
       <h2>児童ごとの評定</h2>
@@ -337,15 +362,17 @@ const RECORDS = {};
 Object.keys(SUBJECTS).forEach((subj, si)=>{
   RECORDS[subj] = NAMES.map((n, ni)=>{
     const r = rng(1000 + si*97 + ni*13);
-    const center = 6 + Math.floor(r()*5);
+    // 日々の記号は上振れしているので、中心は B+〜A+（9〜12）に置く。
+    // 「A と B+ が最頻」という聞き取りと合う。1名だけ C 帯に落ちる児童を混ぜる。
+    const center = (ni === 16) ? 5 : 9 + Math.floor(r()*4);
     const rec = {};
     SUBJECTS[subj].units.forEach((u, ui)=>{
       if(ui >= 3) return;                        // 最後の単元はまだ未実施
       for(let no=u.from; no<=u.to; no++){
         if(r() < 0.025){ rec[no] = OFF; continue; }     // まれに休み
-        let v = Math.round(center + ui*0.6 + (r()-0.5)*3.2);
+        let v = Math.round(center + ui*0.5 + (r()-0.5)*3.0);
         if(r() < 0.03) v = 1 + Math.floor(r()*3);
-        if(r() < 0.02) v = 13 + Math.floor(r()*3);
+        if(r() < 0.04) v = 13 + Math.floor(r()*3);
         v = Math.max(1, Math.min(15, v));
         let sym = symbolOf(v);
         if(r() < 0.10 && modIdx(v) === 2) sym = baseOf(v) + "++";
@@ -577,9 +604,54 @@ function renderRankForm(){
     "既定は <code>A ≧ A+</code> / <code>C ≦ C+</code>。" +
     "<b>日々の記号は児童のやる気のために実態より上へ振ってあるので、記号と評定は一致しない。</b>" +
     "実際に A 評定になるのは <code>A+</code> 以上。したがって記号の A や A− は評定では B に落ちる。" +
-    "C の境目はまだ確認できていないため据え置きにしてある（要確認）。動かした値は出力に残る。";
+    "<code>C</code> は据え置きでよい。C 評定は「ノート評価で C・D が続き、代表値が C 帯に入った」場合だけ" +
+    "という運用と、この境目（<code>C ≦ C+</code>）が一致している。動かした値は出力に残る。";
   box.appendChild(p);
 }
+/* 学級の実感に照らした目安。ここからのずれが見えるようにする。 */
+const TARGET = {A:[0.25,0.35], B:[0.60,0.75], C:[0,1]};   // A/B は割合、C は人数
+
+function renderDist(){
+  const rk = RANK[subject] || {};
+  const cnt = {A:0,B:0,C:0}, n = NAMES.length;
+  NAMES.forEach((x, ni)=>{
+    const t = termFor(ni);
+    const r = rk[ni] != null ? rk[ni] : t.rank;
+    if(r) cnt[r]++;
+  });
+  const pct = k => n ? Math.round(cnt[k]/n*100) : 0;
+
+  const aim = k => {
+    if(k === "C") return "目安 0〜1名";
+    const [lo,hi] = TARGET[k];
+    return "目安 " + Math.round(lo*n) + "〜" + Math.round(hi*n) + "名";
+  };
+  const off = k => {
+    if(k === "C") return cnt.C > TARGET.C[1];
+    const [lo,hi] = TARGET[k];
+    return cnt[k] < Math.round(lo*n) || cnt[k] > Math.round(hi*n);
+  };
+
+  $("dist").innerHTML =
+    '<div class="distbar">' +
+      ["A","B","C"].map(k =>
+        '<span class="s'+k+'" style="flex:'+(cnt[k] || 0.001)+' 0 0">' +
+        (cnt[k] ? k + " " + cnt[k] : "") + '</span>').join("") +
+    '</div>' +
+    '<div class="distrow">' +
+      ["A","B","C"].map(k =>
+        '<span class="item"><span class="k '+k+'">'+k+'</span>' +
+        '<span class="v">'+cnt[k]+'名</span>' +
+        '<span class="v">'+pct(k)+'%</span>' +
+        '<span class="gap'+(off(k)?" off":"")+'">'+aim(k)+'</span></span>').join("") +
+    '</div>' +
+    '<p class="distnote">' +
+      'C 評定は<b>よほどのことがない限り出ない</b>。ノート評価で C・D が続き、代表値が C 帯に入った児童だけが該当する。' +
+      'しきい値を動かして、この帯が目安に近づくところを探す。' +
+      '目安から外れている数字は赤で出る。' +
+    '</p>';
+}
+
 function renderTermTable(){
   const rk = RANK[subject] || (RANK[subject] = {});
   let h = '<thead><tr><th style="width:88px">児童</th>' +
@@ -649,7 +721,7 @@ function renderAll(){
   $("viewTerm").classList.toggle("hidden", mode !== "term");
   $("unitSel").classList.toggle("hidden", mode !== "unit");
   if(mode === "unit"){ renderBulk(); renderFormula(); renderTable(); }
-  else               { renderRankForm(); renderTermTable(); }
+  else               { renderRankForm(); renderDist(); renderTermTable(); }
   renderOut();
 }
 

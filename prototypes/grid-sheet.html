@@ -20,7 +20,7 @@
   --lock-ink:#A29C90;
   --open:#2E7D8A; --open-bg:#EAF5F6;
   --off-bg:#EFEDE8; --off-ink:#8A8578;
-  --stripe:#EAE7DF;
+  --stripe:rgba(29,33,38,.07);
   --u0:#A78BC4; --u1:#7FB07A; --u2:#5FA8A0; --u3:#D48CA8; --u4:#A89468;
 }
 @media (prefers-color-scheme:dark){
@@ -41,7 +41,7 @@
     --lock-ink:#6A727C;
     --open:#6FBECC; --open-bg:#182C30;
     --off-bg:#22262B; --off-ink:#767E88;
-    --stripe:#262B32;
+    --stripe:rgba(232,235,239,.09);
     --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
   }
 }
@@ -62,7 +62,7 @@
   --lock-ink:#6A727C;
   --open:#6FBECC; --open-bg:#182C30;
   --off-bg:#22262B; --off-ink:#767E88;
-  --stripe:#262B32;
+  --stripe:rgba(232,235,239,.09);
   --u0:#9578B8; --u1:#6D9C68; --u2:#4E9089; --u3:#BC7A93; --u4:#94815B;
 }
 
@@ -144,13 +144,10 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   border:1px solid var(--rule-soft);min-width:930px}
 .cell{
   background-color:var(--sheet);
-  padding:9px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative;
+  padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative;
 }
-/* 上端の帯だけが単元の色。面積が小さいので評価の色と戦わない */
-.cell::before{
-  content:"";position:absolute;top:0;left:0;right:0;height:3px;
-  background:var(--ucol,transparent);
-}
+/* 単元の色も、まだ変えられるかどうかも、プルダウンの上だけで示す。
+   セルの地は常に紙。 */
 .cell[data-u="0"]{--ucol:var(--u0)}
 .cell[data-u="1"]{--ucol:var(--u1)}
 .cell[data-u="2"]{--ucol:var(--u2)}
@@ -164,38 +161,47 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .cell select{
   width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
   font-size:17px;font-weight:600;text-align:center;text-align-last:center;
-  padding:5px 2px;border:1px solid var(--rule);border-radius:5px;
-  background:var(--sheet);color:var(--ink);cursor:pointer;
+  padding:4px 2px 5px;border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:5px;
+  background-color:var(--sheet);background-repeat:repeat;color:var(--ink);cursor:pointer;
 }
 .cell select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.cell select:hover:not(:disabled){border-color:var(--accent)}
+.cell select:hover:not(:disabled){
+  border-left-color:var(--accent);border-right-color:var(--accent);border-bottom-color:var(--accent)}
 
-/* ひらいている（まだ変えられる）＝色ではなく縞。
-   縞は「確定＝紙」と「未実施＝灰」の2色だけでできているので、
-   色チャネルは単元の帯にそのまま残る。未記入は破線、入力済みは実線。 */
-.cell.open{
+/* ひらいている（まだ変えられる）＝色ではなく縞。プルダウンの中だけに敷く。
+   縞は半透明なので、評価の色（青・金）の上でも透けて見える。
+   未記入は左右下の枠が破線。 */
+.cell.open select{
   background-image:repeating-linear-gradient(45deg,
     var(--stripe) 0 5px, transparent 5px 10px);
 }
-.cell.open.empty select{border-style:dashed;border-width:1.5px}
+.cell.open.empty select{border-left-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
 
 /* 確定済みは紙のまま沈める。印は置かない。 */
-.cell.locked select:disabled{opacity:1;cursor:default;border-color:var(--rule-soft);color:var(--ink-soft)}
+.cell.locked select:disabled{opacity:1;cursor:default;color:var(--ink-soft);
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
 
-.cell.future select{background:var(--rule-soft);color:var(--ink-faint);border-style:dotted;cursor:not-allowed}
+.cell.future select{background-color:var(--rule-soft);color:var(--ink-faint);
+  border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
 
 /* 教師が確定済みを開いているとき：破線で「本来は閉じている」を示す */
-.cell.opened select{border-style:dashed;border-color:var(--open)}
+.cell.opened select{border-left:1px dashed var(--open);border-right:1px dashed var(--open);
+  border-bottom:1px dashed var(--open)}
 .cell.edited{box-shadow:inset 3px 0 0 var(--open)}
 
 /* 休み */
-.cell select.is-off{background:var(--off-bg);color:var(--off-ink);border-style:dashed}
+.cell select.is-off{background-color:var(--off-bg);color:var(--off-ink)}
 
 /* A と Z にだけ色を置く */
-.cell select.is-a{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
+.cell select.is-a{
+  background-color:var(--a-bg);color:var(--a-ink);
+  border-left-color:var(--a-line);border-right-color:var(--a-line);border-bottom-color:var(--a-line);
+}
 .cell select.is-z{
-  border-color:var(--z-line);color:var(--z-ink);
-  background:linear-gradient(112deg,var(--z-bg) 0%,color-mix(in srgb,var(--z-bg) 60%,#ffffff) 42%,var(--z-bg) 72%,color-mix(in srgb,var(--z-bg) 68%,#ffffff) 100%);
+  background-color:var(--z-bg);color:var(--z-ink);
+  border-left-color:var(--z-line);border-right-color:var(--z-line);border-bottom-color:var(--z-line);
+  box-shadow:inset 0 0 14px rgba(214,180,97,.35);
 }
 .cell select.is-warn{color:var(--warn)}
 
@@ -620,7 +626,7 @@ function renderLockbar(){
             String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
             'つぎは <span class="when">' + hhmm(nb) + '</span>。'
           : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
-        '　しましまの セルは まだ なおせます。それ いがいは きまった ひょうかです。' +
+        '　しましまの ところは まだ なおせます。それ いがいは きまった ひょうかです。' +
       '</span>';
   }
 }
