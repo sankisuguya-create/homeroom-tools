@@ -165,6 +165,9 @@ select.final.changed{border-color:var(--open);color:var(--open);background:var(-
 select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
 /* 単元設定 */
+tbody tr.termbrk td{border-top:2px solid var(--open)}
+select.plain.tsel{padding:4px 8px;font-size:12.5px}
+
 .swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:3px;width:186px}
 .sw{width:16px;height:16px;border-radius:4px;border:2px solid transparent;cursor:pointer;
   appearance:none;padding:0;background:var(--swc)}
@@ -245,6 +248,10 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
       </div>
       <div class="seg" id="subjSeg"></div>
       <select class="plain" id="unitSel"></select>
+      <select class="plain" id="termSel">
+        <option value="0">学年末（全学期）</option>
+        <option value="1">1学期</option><option value="2">2学期</option><option value="3">3学期</option>
+      </select>
     </div>
   </div>
 
@@ -300,7 +307,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
       <div class="formula" id="rankForm"></div>
     </section>
     <section style="margin-bottom:20px">
-      <h2>評定の分布</h2>
+      <h2>評定の分布<span id="distTerm" style="font-weight:500;color:var(--ink-faint)"></span></h2>
       <div class="distcard" id="dist"></div>
     </section>
     <section style="margin-bottom:20px">
@@ -420,15 +427,15 @@ const NAMES = ["あおい","あさひ","いつき","うみ","えいた","かえ�
 
 const SUBJECTS = {
   "算数": {total:70, units:[
-    {name:"九九の表とかけ算", from:1,  to:14, c:0},
-    {name:"わり算",           from:15, to:30, c:1},
-    {name:"たし算とひき算の筆算", from:31, to:48, c:2},
-    {name:"時こくと時間",     from:49, to:70, c:3}]},
+    {name:"九九の表とかけ算", from:1,  to:14, c:0, term:1},
+    {name:"わり算",           from:15, to:30, c:1, term:1},
+    {name:"たし算とひき算の筆算", from:31, to:48, c:2, term:2},
+    {name:"時こくと時間",     from:49, to:70, c:3, term:3}]},
   "国語": {total:60, units:[
-    {name:"きつつきの商売",   from:1,  to:12, c:0},
-    {name:"こまを楽しむ",     from:13, to:26, c:1},
-    {name:"まいごのかぎ",     from:27, to:42, c:2},
-    {name:"すがたをかえる大豆", from:43, to:60, c:3}]}
+    {name:"きつつきの商売",   from:1,  to:12, c:0, term:1},
+    {name:"こまを楽しむ",     from:13, to:26, c:1, term:1},
+    {name:"まいごのかぎ",     from:27, to:42, c:2, term:2},
+    {name:"すがたをかえる大豆", from:43, to:60, c:3, term:3}]}
 };
 
 function rng(seed){ let s = seed >>> 0;
@@ -457,13 +464,20 @@ Object.keys(SUBJECTS).forEach((subj, si)=>{
 });
 
 let mode = "unit", subject = "算数", unitIdx = 0;
+const TERMS = [1,2,3];
+let termSel = 0;                                   // 0 = 学年末（全学期）
+const termName = t => t ? t + "学期" : "学年末";
 const FINAL = {};    // FINAL["教科|単元"][児童index] = 記号
-const RANK  = {};    // RANK["教科"][児童index] = "A"|"B"|"C"
+const RANK  = {};    // RANK["教科|学期"][児童index] = "A"|"B"|"C"
 const $ = id => document.getElementById(id);
 const units  = () => SUBJECTS[subject].units;
+/* 期末評定は選んだ学期の単元だけで出す。学年末は全部。 */
+const termUnits = () => termSel ? units().filter(u => u.term === termSel) : units();
 const unit   = () => units()[unitIdx];
 const keyOf  = (u) => subject + "|" + (u || unit()).name;
 const finOf  = (u) => FINAL[keyOf(u)] || (FINAL[keyOf(u)] = {});
+const rankKey   = () => subject + "|" + termSel;      // 学期ごとに採用値を分ける
+const rankStore = () => RANK[rankKey()] || (RANK[rankKey()] = {});
 
 /* ================= 集計 ================= */
 function medianVal(a){
@@ -523,13 +537,14 @@ function settled(ni, u){
 }
 function rankOf(v){ return v == null ? null : v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B"; }
 function termFor(ni){
-  const vals = units().map(u => settled(ni, u)).filter(Boolean).map(valueOf).filter(v => v != null);
-  if(!vals.length) return {v:null, rank:null, per:units().map(u => settled(ni, u))};
+  const us = termUnits();
+  const vals = us.map(u => settled(ni, u)).filter(Boolean).map(valueOf).filter(v => v != null);
+  if(!vals.length) return {v:null, rank:null, per:us.map(u => settled(ni, u))};
   let v;
   if(R.stat === "mode")      v = modeVal(vals);
   else if(R.stat === "last") v = vals[vals.length-1];
   else                       v = Math.floor(medianVal(vals));
-  return {v, rank:rankOf(v), per:units().map(u => settled(ni, u))};
+  return {v, rank:rankOf(v), per:us.map(u => settled(ni, u))};
 }
 
 /* ================= 一斉入力 ================= */
@@ -687,7 +702,7 @@ function renderRankForm(id){
 const TARGET = {A:[0.25,0.35], B:[0.60,0.75], C:[0,1]};   // A/B は割合、C は人数
 
 function renderDist(){
-  const rk = RANK[subject] || {};
+  const rk = rankStore();
   const cnt = {A:0,B:0,C:0}, n = NAMES.length;
   NAMES.forEach((x, ni)=>{
     const t = termFor(ni);
@@ -707,6 +722,7 @@ function renderDist(){
     return cnt[k] < Math.round(lo*n) || cnt[k] > Math.round(hi*n);
   };
 
+  $("distTerm").textContent = "　" + termName(termSel);
   $("dist").innerHTML =
     '<div class="distbar">' +
       ["A","B","C"].map(k =>
@@ -728,9 +744,9 @@ function renderDist(){
 }
 
 function renderTermTable(){
-  const rk = RANK[subject] || (RANK[subject] = {});
+  const rk = rankStore();
   let h = '<thead><tr><th style="width:88px">児童</th>' +
-    units().map(u => '<th class="unitcol" data-u="'+(u.c%20)+'" style="width:96px">'+u.name+'</th>').join("") +
+    termUnits().map(u => '<th class="unitcol" data-u="'+(u.c%20)+'" style="width:96px">'+u.name+'</th>').join("") +
     '<th style="width:74px">まとめ</th><th style="width:64px">仮評定</th>' +
     '<th style="width:92px">採用</th></tr></thead><tbody>';
   NAMES.forEach((name, ni)=>{
@@ -768,6 +784,19 @@ function unitIssues(){
   us.forEach(u => { for(let n=Math.max(1,u.from); n<=Math.min(total,u.to); n++) covered.add(n); });
   const missing = [];
   for(let n=1; n<=total; n++) if(!covered.has(n)) missing.push(n);
+  const byNo = us.slice().sort((a,b) => a.from - b.from);
+  for(let i=1; i<byNo.length; i++){
+    if(byNo[i].term < byNo[i-1].term)
+      msgs.push('学期が No の順に戻っている：「'+byNo[i-1].name+'」('+termName(byNo[i-1].term)+
+                ') のあとに「'+byNo[i].name+'」('+termName(byNo[i].term)+')');
+  }
+  TERMS.forEach(t=>{
+    const inT = byNo.filter(u => u.term === t);
+    if(!inT.length) return;
+    const first = byNo.indexOf(inT[0]), last = byNo.indexOf(inT[inT.length-1]);
+    if(last - first + 1 !== inT.length)
+      msgs.push(termName(t)+'の単元が No の上で連続していない');
+  });
   if(missing.length){
     const runs = [];
     let a = missing[0], prev = missing[0];
@@ -786,15 +815,19 @@ function renderUnitTable(){
   let h = '<thead><tr>' +
     '<th style="width:26px"></th><th>単元名</th>' +
     '<th style="width:96px">開始 No.</th><th style="width:96px">終了 No.</th>' +
-    '<th style="width:70px">時数</th><th style="width:200px">色</th>' +
+    '<th style="width:70px">時数</th><th style="width:96px">学期</th><th style="width:200px">色</th>' +
     '<th style="width:70px"></th></tr></thead><tbody>';
   us.forEach((u,i)=>{
-    h += '<tr>' +
+    const brk = i > 0 && us[i-1].term !== u.term;      // 学期の切れ目
+    h += '<tr' + (brk ? ' class="termbrk"' : '') + '>' +
       '<td><span class="rowbar" data-c="'+(u.c%20)+'"></span></td>' +
       '<td><input class="cellin" data-i="'+i+'" data-k="name" value="'+u.name.replace(/"/g,"&quot;")+'"></td>' +
       '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="from" value="'+u.from+'"></td>' +
       '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="to" value="'+u.to+'"></td>' +
       '<td class="num">' + Math.max(0, u.to - u.from + 1) + '</td>' +
+      '<td><select class="plain tsel" data-i="'+i+'">' +
+        TERMS.map(t => '<option value="'+t+'"'+(u.term===t?' selected':'')+'>'+termName(t)+'</option>').join("") +
+        '</select></td>' +
       '<td><div class="swatches">' +
         Array.from({length:20},(_,c)=>c).map(c => '<button type="button" class="sw" data-c="'+c+'" data-i="'+i+'"' +
           ' aria-pressed="'+(u.c===c)+'" aria-label="色'+(c+1)+'"></button>').join("") +
@@ -817,6 +850,10 @@ function renderUnitTable(){
       if(unitIdx >= units().length) unitIdx = units().length - 1;
       renderAll();
     });
+  });
+  t.querySelectorAll("select.tsel").forEach(sel=>{
+    sel.addEventListener("change", ()=>{ units()[sel.dataset.i].term = Number(sel.value);
+      renderUnitSel(); renderAll(); });
   });
   t.querySelectorAll("button.sw").forEach(b=>{
     b.addEventListener("click", ()=>{ units()[b.dataset.i].c = Number(b.dataset.c); renderAll(); });
@@ -844,7 +881,8 @@ $("addUnit").addEventListener("click", ()=>{
   const us = units(), total = SUBJECTS[subject].total;
   const last = us.reduce((m,u) => Math.max(m, u.to), 0);
   const from = Math.min(total, last + 1);
-  us.push({name:"新しい単元", from, to:Math.min(total, from + 9), c:us.length % 20});
+  us.push({name:"新しい単元", from, to:Math.min(total, from + 9),
+           c:us.length % 20, term:(us[us.length-1] || {term:1}).term});
   renderUnitSel(); renderAll();
   say("unitSaid", "単元を追加した");
 });
@@ -879,14 +917,14 @@ function renderOut(){
         s.z, s.c, s.d, ruleText()].join("\t"));
     });
   }else{
-    const rk = RANK[subject] || {};
-    lines = [["児童","教科","観点", ...units().map(u => u.name),
+    const rk = rankStore();
+    lines = [["児童","教科","学期","観点", ...termUnits().map(u => u.name),
               "まとめ","仮評定","採用評定","写像","集計の式"].join("\t")];
     const map = "A≧" + symbolOf(R.aFrom) + " / C≦" + symbolOf(R.cTo) + " / "
       + RANK_FIELDS[2].opts.find(o => o[0] === R.stat)[1];
     NAMES.forEach((name, ni)=>{
       const t = termFor(ni);
-      lines.push([name, subject, "主体的に学習に取り組む態度",
+      lines.push([name, subject, termName(termSel), "主体的に学習に取り組む態度",
         ...t.per.map(s => s || ""),
         t.v ? symbolOf(t.v) : "", t.rank || "",
         rk[ni] != null ? rk[ni] : (t.rank || ""), map, ruleText()].join("\t"));
@@ -900,6 +938,7 @@ function renderAll(){
   $("viewUnit").classList.toggle("hidden", mode !== "unit");
   $("viewTerm").classList.toggle("hidden", mode !== "term");
   $("unitSel").classList.toggle("hidden", mode !== "unit");
+  $("termSel").classList.toggle("hidden", mode !== "term");
   $("viewSetup").classList.toggle("hidden", mode !== "setup");
   $("outSec").classList.toggle("hidden", mode === "setup");
   if(mode === "unit"){ renderBulk(); renderFormula(); renderTable(); }
@@ -921,12 +960,12 @@ $("resetAll").addEventListener("click", ()=>{
   FINAL[keyOf()] = {}; renderAll(); say("said", "採用値をもどした");
 });
 $("adoptRank").addEventListener("click", ()=>{
-  const rk = RANK[subject] = {};
+  const rk = RANK[rankKey()] = {};
   NAMES.forEach((n, ni)=>{ const t = termFor(ni); if(t.rank) rk[ni] = t.rank; });
   renderAll(); say("rankSaid", "仮評定を採用した");
 });
 $("resetRank").addEventListener("click", ()=>{
-  RANK[subject] = {}; renderAll(); say("rankSaid", "採用をもどした");
+  RANK[rankKey()] = {}; renderAll(); say("rankSaid", "採用をもどした");
 });
 $("copy").addEventListener("click", async ()=>{
   const t = $("out"); t.focus(); t.select();
@@ -960,10 +999,22 @@ Object.keys(SUBJECTS).forEach((name,i)=>{
   $("subjSeg").appendChild(b);
 });
 function renderUnitSel(){
-  $("unitSel").innerHTML = units()
-    .map((u,i) => '<option value="'+i+'"'+(i===unitIdx?' selected':'')+'>'+u.name+'</option>').join("");
+  const us = units();
+  let h = "";
+  TERMS.forEach(t=>{
+    const inT = us.map((u,i)=>({u,i})).filter(o => o.u.term === t);
+    if(!inT.length) return;
+    h += '<optgroup label="'+termName(t)+'">' +
+      inT.map(o => '<option value="'+o.i+'"'+(o.i===unitIdx?' selected':'')+'>'+o.u.name+'</option>').join("") +
+      '</optgroup>';
+  });
+  const noT = us.map((u,i)=>({u,i})).filter(o => !TERMS.includes(o.u.term));
+  if(noT.length) h += '<optgroup label="学期なし">' +
+    noT.map(o => '<option value="'+o.i+'"'+(o.i===unitIdx?' selected':'')+'>'+o.u.name+'</option>').join("") + '</optgroup>';
+  $("unitSel").innerHTML = h;
 }
 $("unitSel").addEventListener("change", e=>{ unitIdx = Number(e.target.value); renderAll(); });
+$("termSel").addEventListener("change", e=>{ termSel = Number(e.target.value); renderAll(); });
 
 renderUnitSel();
 renderAll();
