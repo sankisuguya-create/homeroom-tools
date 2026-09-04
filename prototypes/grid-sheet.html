@@ -17,6 +17,8 @@
   --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
   --warn:#B0392B;
   --todo-bg:#FFF6E8; --todo-line:#E0B36A;
+  --lock-bg:#F2F1EC; --lock-ink:#8A8578;
+  --teacher:#5B3E86; --teacher-bg:#F0EAF8;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -33,6 +35,8 @@
     --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
     --warn:#E5776A;
     --todo-bg:#332811; --todo-line:#7A5F22;
+    --lock-bg:#20242A; --lock-ink:#767E88;
+    --teacher:#C4A9E8; --teacher-bg:#2A2136;
   }
 }
 :root[data-theme="dark"]{
@@ -49,6 +53,8 @@
   --z-bg:#3D3113;   --z-line:#8A7028;   --z-ink:#F0D794;
   --warn:#E5776A;
   --todo-bg:#332811; --todo-line:#7A5F22;
+  --lock-bg:#20242A; --lock-ink:#767E88;
+  --teacher:#C4A9E8; --teacher-bg:#2A2136;
 }
 
 *{box-sizing:border-box}
@@ -57,7 +63,7 @@ body{
   font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
   font-size:15px;line-height:1.7;
 }
-.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 64px;display:flex;flex-direction:column;gap:26px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
 
 .note{
   font-size:12.5px;color:var(--ink-soft);
@@ -65,16 +71,57 @@ body{
 }
 .note b{color:var(--ink);font-weight:600}
 
+/* ---- 役割・教科の切り替え ---- */
+.controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{
+  appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  border-right:1px solid var(--rule);
+}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg.role button[aria-pressed="true"]{background:var(--teacher);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
+
+/* ---- ロック帯 ---- */
+.lockbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border:1px solid var(--rule);border-left:4px solid var(--lock-ink);
+  border-radius:8px;padding:10px 15px;background:var(--sheet);font-size:13.5px;
+}
+.lockbar.teacher{border-left-color:var(--teacher);background:var(--teacher-bg)}
+.lockbar .icon{font-size:16px;line-height:1}
+.lockbar .msg{flex:1;min-width:220px}
+.lockbar .msg b{font-weight:700}
+.lockbar .when{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--ink)}
+.lockbar input[type="time"]{
+  font-family:"IBM Plex Mono",monospace;font-size:13.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:4px 8px;
+  background:var(--sheet);color:var(--ink);
+}
+.mini{
+  appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:5px 12px;
+  background:var(--sheet);color:var(--ink-soft);cursor:pointer;white-space:nowrap;
+}
+.mini:hover{border-color:var(--accent);color:var(--accent)}
+.mini:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
 /* ---- 見出し ---- */
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
   border-bottom:2px solid var(--ink);padding-bottom:10px}
 .head h1{margin:0;font-size:22px;font-weight:700;letter-spacing:.02em}
 .head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px;letter-spacing:0}
-.todo-count{
-  font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;
-  color:var(--warn);border:1.5px solid currentColor;border-radius:6px;padding:3px 11px;
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{
+  font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
+  border:1.5px solid currentColor;border-radius:6px;padding:2px 10px;
 }
-.todo-count.clear{color:var(--ink-faint)}
+.badge.todo{color:var(--warn)}
+.badge.todo.clear{color:var(--ink-faint)}
+.badge.locked{color:var(--lock-ink)}
 
 /* ---- セクション ---- */
 section{display:flex;flex-direction:column;gap:12px}
@@ -82,16 +129,16 @@ h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
   display:flex;align-items:center;gap:12px;color:var(--ink-soft)}
 h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 
-/* ---- 70セルの表 ---- */
+/* ---- 授業の表 ---- */
 .sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
-.grid{display:grid;grid-template-columns:repeat(10,minmax(88px,1fr));gap:1px;background:var(--rule-soft);
-  border:1px solid var(--rule-soft);min-width:900px}
-.cell{background:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(90px,1fr));gap:1px;background:var(--rule-soft);
+  border:1px solid var(--rule-soft);min-width:930px}
+.cell{background:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative}
 .cell .no{
   font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
-  color:var(--ink-faint);letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;
+  color:var(--ink-faint);letter-spacing:.03em;display:flex;justify-content:space-between;align-items:center;gap:4px;
 }
-.cell .unit{font-size:9.5px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:46px}
+.cell .unit{font-size:9.5px;color:var(--ink-faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44px}
 .cell select{
   width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
   font-size:17px;font-weight:600;text-align:center;text-align-last:center;
@@ -99,26 +146,34 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
   background:var(--sheet);color:var(--ink);cursor:pointer;
 }
 .cell select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.cell select:hover{border-color:var(--accent)}
+.cell select:hover:not(:disabled){border-color:var(--accent)}
 
-/* 未入力（授業は済んでいる）: ここだけ目を引かせる */
 .cell.todo{background:var(--todo-bg)}
 .cell.todo select{border:1.5px dashed var(--todo-line);background:transparent}
-
-/* 未実施 */
 .cell.future select{background:var(--rule-soft);color:var(--ink-faint);border-style:dotted;cursor:not-allowed}
+
+/* ロック済み */
+.cell.locked{background:var(--lock-bg)}
+.cell.locked select:disabled{opacity:1;cursor:default;border-color:var(--rule)}
+.cell .lockmark{font-size:9.5px;color:var(--lock-ink);line-height:1}
+.cell.teacher-open{background:var(--teacher-bg)}
+.cell.teacher-open select{border-color:var(--teacher)}
+.cell .lockmark.bypass{color:var(--teacher);font-weight:700}
+.cell.edited::after{
+  content:"";position:absolute;top:3px;right:3px;width:6px;height:6px;border-radius:50%;
+  background:var(--teacher);
+}
 
 /* A と Z にだけ色を置く */
 .cell select.is-a{background:var(--a-bg);border-color:var(--a-line);color:var(--a-ink)}
 .cell select.is-z{
   border-color:var(--z-line);color:var(--z-ink);
-  background:linear-gradient(112deg,var(--z-bg) 0%,color-mix(in srgb,var(--z-bg) 62%,#ffffff) 42%,var(--z-bg) 72%,color-mix(in srgb,var(--z-bg) 70%,#ffffff) 100%);
+  background:linear-gradient(112deg,var(--z-bg) 0%,color-mix(in srgb,var(--z-bg) 60%,#ffffff) 42%,var(--z-bg) 72%,color-mix(in srgb,var(--z-bg) 68%,#ffffff) 100%);
 }
-/* D と C は色を塗らず、文字だけ警告色にする */
 .cell select.is-warn{color:var(--warn)}
 
 /* ---- 単元の評価 ---- */
-.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:12px}
+.units{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px}
 .unit-card{
   background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;
   display:flex;flex-direction:column;gap:8px;
@@ -131,11 +186,12 @@ h2::after{content:"";flex:1;height:1px;background:var(--rule)}
 .unit-card .val.is-warn{color:var(--warn)}
 .unit-card .val.none{color:var(--ink-faint);font-size:20px}
 .tag{
-  font-size:10.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-soft);
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
   border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap;
 }
+.tag.mid{color:var(--z-ink);border-color:var(--z-line)}
 .unit-card .meta{font-size:11.5px;color:var(--ink-faint);font-family:"IBM Plex Mono",monospace;
-  display:flex;gap:12px;flex-wrap:wrap}
+  display:flex;gap:11px;flex-wrap:wrap}
 
 /* ---- 折れ線 ---- */
 .chartcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px 12px;overflow-x:auto}
@@ -152,17 +208,35 @@ svg.trend .dot{fill:var(--accent)}
 svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 
 @media (max-width:640px){
-  .grid{grid-template-columns:repeat(5,minmax(88px,1fr));min-width:460px}
+  .grid{grid-template-columns:repeat(5,minmax(90px,1fr));min-width:470px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 
 <div class="wrap">
-  <div class="note"><b>案2・ためしの画面</b>　児童名と評価はダミー。もとの一覧表と同じ形で、各セルをプルダウンにした。</div>
+  <div class="note">
+    <b>案2・ためしの画面</b>　児童名と評価はダミー。もとの一覧表と同じ形で、各セルをプルダウンにした。
+    役割の切り替えは動作を見るための仮のもので、実際は Google アカウントで判定する。
+  </div>
+
+  <div class="controls">
+    <span class="seg-label">ひらいている人</span>
+    <div class="seg role" id="roleSeg">
+      <button type="button" data-role="student" aria-pressed="true">児童</button>
+      <button type="button" data-role="teacher" aria-pressed="false">教師</button>
+    </div>
+    <span class="seg-label">教科</span>
+    <div class="seg" id="subjSeg"></div>
+  </div>
+
+  <div class="lockbar" id="lockbar"></div>
 
   <div class="head">
-    <h1>さくら<small>3年3組　算数　2026年度</small></h1>
-    <div class="todo-count" id="todo">未入力 3</div>
+    <h1 id="title">さくら<small>3年3組　2026年度</small></h1>
+    <div class="badges">
+      <span class="badge todo" id="todoBadge">未入力 0</span>
+      <span class="badge locked" id="lockBadge">ロック済み 0</span>
+    </div>
   </div>
 
   <section>
@@ -185,138 +259,246 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 
 <script>
 /* ==================================================================
-   評価スケール：基本字 5 × ニュアンス 3 ＝ 15段
-   内部値 1..15（低→高）。児童には数値を見せない。
-   ※ 写真にあった A++ の扱いは未確定。ここでは A+ までとしている。
+   1. 評価スケール
+   基本字5 × ニュアンス4（− / 無 / + / ++）＝ 入力語彙20記号。
+   内部値は −=0 / 無=1 / +=2 の3段で、++ は + と同値（1..15）。
+   保存は記号の文字列。計算のときだけ値に変換する。
 ================================================================== */
 const BASES = ["D","C","B","A","Z"];
-const MODS  = ["−","","+"];
-const SYMBOLS = [];
-BASES.forEach(b => MODS.forEach(m => SYMBOLS.push(b + m)));   // D− D D+ C− ... Z+
-const val  = sym => SYMBOLS.indexOf(sym) + 1;
-const base = v => BASES[Math.floor((v-1)/3)];
+const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:2}];
 
-const UNITS = [
-  {name:"九九の表とかけ算", from:1,  to:14},
-  {name:"わり算",           from:15, to:30},
-  {name:"たし算とひき算の筆算", from:31, to:48},
-  {name:"時こくと時間",     from:49, to:70}
-];
-const unitOf = no => UNITS.find(u => no >= u.from && no <= u.to);
-
-/* ダミーの記録。done=入力済 / todo=授業は済んだが未入力 / future=これから */
-const LESSONS = [];
-const seed = ["B","B+","B","A−","B+","A","A","B+","A−","A","A+","A","B+","A",
-              "B","B−","C","B+","A−","B+","A","A+"];
-for(let no=1; no<=70; no++){
-  if(no <= seed.length)      LESSONS.push({no, state:"done", v:val(seed[no-1])});
-  else if(no <= seed.length+3) LESSONS.push({no, state:"todo", v:null});
-  else                       LESSONS.push({no, state:"future", v:null});
+function valueOf(sym){
+  const b = BASES.indexOf(sym[0]);
+  if(b < 0) return null;
+  const m = MODS.find(m => m.s === sym.slice(1));
+  return m ? b*3 + m.v + 1 : null;
 }
-/* 天井突破を1回混ぜておく（表示確認用） */
-LESSONS[13].v = val("Z");
+function symbolOf(v){                       // 1..15 → "A+" など（++ は使わない）
+  const b = BASES[Math.floor((v-1)/3)];
+  return b + ["−","","+"][(v-1)%3];
+}
+function baseOf(v){ return BASES[Math.floor((v-1)/3)]; }
+function modIndexOf(v){ return (v-1)%3; }   // 0=− 1=無 2=+
 
+/* 中間値の表示。下側が + のときだけ ++ で「次の文字とのあいだ」を表す。
+   それ以外は表現手段がないので下側を採る（水増ししない）。 */
+function symbolOfMedian(m){
+  if(m == null) return null;
+  const lo = Math.floor(m);
+  if(m === lo) return {sym:symbolOf(lo), mid:false};
+  if(modIndexOf(lo) === 2) return {sym:baseOf(lo) + "++", mid:true};
+  return {sym:symbolOf(lo), mid:false};
+}
+
+/* ==================================================================
+   2. ロック
+   状態として持たず、保存時刻から毎回引く。
+   「直近のロック境界」より前に保存された評価はロック済み。
+   トリガが落ちてもズレないし、書き戻す状態がない。
+================================================================== */
+const LOCK = { h:17, m:0, override:null };   // override はためし用の即時ロック
+
+function lastBoundary(){
+  if(LOCK.override) return LOCK.override;
+  const now = new Date();
+  const b = new Date(now);
+  b.setHours(LOCK.h, LOCK.m, 0, 0);
+  if(b > now) b.setDate(b.getDate() - 1);    // 今日の定時前なら、昨日の定時が直近
+  return b;
+}
+function nextBoundary(){
+  if(LOCK.override) return null;
+  const now = new Date();
+  const b = new Date(now);
+  b.setHours(LOCK.h, LOCK.m, 0, 0);
+  if(b <= now) b.setDate(b.getDate() + 1);
+  return b;
+}
+const isLocked = e => !!(e.savedAt && e.savedAt < lastBoundary());
+const canEdit  = e => role === "teacher" || !isLocked(e);   // 教師は貫通する
+
+/* ==================================================================
+   3. ダミーデータ
+================================================================== */
+const SUBJECTS = {
+  "算数": {
+    total: 70,
+    units: [
+      {name:"九九の表とかけ算", from:1,  to:14},
+      {name:"わり算",           from:15, to:30},
+      {name:"たし算とひき算の筆算", from:31, to:48},
+      {name:"時こくと時間",     from:49, to:70}
+    ],
+    seed: ["B","B+","B","A−","B+","A","A","B+","A−","A","A+","A","B+","Z",
+           "B","B−","C","B+","A−","B++","A","A+"]
+  },
+  "国語": {
+    total: 60,
+    units: [
+      {name:"きつつきの商売",   from:1,  to:12},
+      {name:"こまを楽しむ",     from:13, to:26},
+      {name:"まいごのかぎ",     from:27, to:42},
+      {name:"すがたをかえる大豆", from:43, to:60}
+    ],
+    seed: ["B+","A−","B+","B","A","A","A+","A−","A","B+","A","A+",
+           "A−","B+","A","A++","A+","A","Z−"]
+  }
+};
+
+let role    = "student";
+let subject = "算数";
+let DATA    = {};        // 教科ごとの授業配列
+
+const DAY = 86400000;
+function buildData(){
+  Object.entries(SUBJECTS).forEach(([name, s])=>{
+    const rows = [];
+    for(let no=1; no<=s.total; no++){
+      if(no <= s.seed.length){
+        // 過去に保存されたもの＝ロック済み（境界より前の時刻を入れる）
+        rows.push({no, state:"done", sym:s.seed[no-1],
+                   savedAt:new Date(Date.now() - (s.seed.length - no + 2) * DAY)});
+      }else if(no <= s.seed.length + 3){
+        rows.push({no, state:"todo", sym:null, savedAt:null});
+      }else{
+        rows.push({no, state:"future", sym:null, savedAt:null});
+      }
+    }
+    DATA[name] = rows;
+  });
+}
+buildData();
+
+const conf   = () => SUBJECTS[subject];
+const rows   = () => DATA[subject];
+const unitOf = no => conf().units.find(u => no >= u.from && no <= u.to);
 const $ = id => document.getElementById(id);
 
-/* ---------- 70セルの表 ---------- */
+/* ==================================================================
+   4. 授業の表
+================================================================== */
 function optionsHTML(){
   let h = '<option value="">‥</option>';
-  BASES.forEach((b,bi)=>{
+  BASES.forEach(b=>{
     h += '<optgroup label="' + b + '">';
-    MODS.forEach((m,mi)=>{
-      const v = bi*3 + mi + 1;
-      h += '<option value="' + v + '">' + b + m + '</option>';
-    });
+    MODS.forEach(m => { h += '<option value="' + b+m.s + '">' + b+m.s + '</option>'; });
     h += '</optgroup>';
   });
   return h;
 }
-
-function paint(sel, v){
+function paint(sel, sym){
   sel.classList.remove("is-a","is-z","is-warn");
-  if(!v) return;
-  const b = base(v);
-  if(b === "A")                    sel.classList.add("is-a");
-  else if(b === "Z")               sel.classList.add("is-z");
-  else if(b === "C" || b === "D")  sel.classList.add("is-warn");
+  if(!sym) return;
+  const b = sym[0];
+  if(b === "A")                   sel.classList.add("is-a");
+  else if(b === "Z")              sel.classList.add("is-z");
+  else if(b === "C" || b === "D") sel.classList.add("is-warn");
 }
 
-LESSONS.forEach(l=>{
-  const u = unitOf(l.no);
-  const c = document.createElement("div");
-  c.className = "cell " + l.state;
-  c.innerHTML =
-    '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
-    '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
-    '<select aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML() + '</select>';
-  const sel = c.querySelector("select");
-  if(l.state === "future") sel.disabled = true;
-  if(l.v){ sel.value = String(l.v); paint(sel, l.v); }
-  sel.addEventListener("change", ()=>{
-    l.v = sel.value ? Number(sel.value) : null;
-    if(l.state === "todo" && l.v) c.classList.remove("todo");
-    paint(sel, l.v);
-    refresh();
+function renderGrid(){
+  const g = $("grid");
+  g.innerHTML = "";
+  rows().forEach(l=>{
+    const u = unitOf(l.no);
+    const locked = isLocked(l);
+    const editable = l.state !== "future" && canEdit(l);
+
+    const c = document.createElement("div");
+    c.className = "cell " + l.state
+      + (locked && role === "student" ? " locked" : "")
+      + (locked && role === "teacher" ? " teacher-open" : "")
+      + (l.edited ? " edited" : "");
+
+    let mark = "";
+    if(locked && role === "student") mark = '<span class="lockmark">🔒</span>';
+    if(locked && role === "teacher") mark = '<span class="lockmark bypass">🔓</span>';
+
+    c.innerHTML =
+      '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
+      mark + '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+      '<select aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML() + '</select>';
+
+    const sel = c.querySelector("select");
+    sel.disabled = !editable;
+    if(l.sym){ sel.value = l.sym; paint(sel, l.sym); }
+    sel.addEventListener("change", ()=>{
+      const wasLocked = isLocked(l);
+      l.sym = sel.value || null;
+      if(wasLocked && role === "teacher"){
+        l.edited = true;                       // 貫通した記録を残す
+      }else{
+        l.savedAt = new Date();                // 次の境界までは書き換えられる
+      }
+      if(l.state === "todo" && l.sym) l.state = "done";
+      refresh();
+    });
+    g.appendChild(c);
   });
-  $("grid").appendChild(c);
-});
-
-/* ---------- 単元の評価（仮値） ----------
-   順序尺度なので平均は取らない。D は到達度の欠測として除外する。
------------------------------------------------------------------- */
-function median(arr){
-  if(!arr.length) return null;
-  const a = arr.slice().sort((x,y)=>x-y);
-  const m = Math.floor(a.length/2);
-  return a.length % 2 ? a[m] : a[m-1];   // 偶数個は下位側を採る（水増ししない）
 }
 
+/* ==================================================================
+   5. 単元の評価（仮値）
+   平均は取らない。D は到達度の欠測として除外する。
+================================================================== */
+function medianVal(a){
+  if(!a.length) return null;
+  const s = a.slice().sort((x,y)=>x-y);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;   // 偶数個は中間（.5 を許す）
+}
 function summarize(u){
-  const rows = LESSONS.filter(l => l.no>=u.from && l.no<=u.to && l.v);
-  const scored = rows.filter(l => base(l.v) !== "D").map(l => l.v);   // D は除外
-  const late = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
+  const filled = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
+  const vals   = filled.map(l => valueOf(l.sym));
+  const scored = vals.filter(v => baseOf(v) !== "D");          // D を除外
+  const late   = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
   return {
-    n: rows.length,
-    prov: median(late),
-    all:  median(scored),
+    n:    filled.length,
+    prov: medianVal(late),
+    all:  medianVal(scored),
     top:  scored.length ? Math.max(...scored) : null,
-    z:    rows.filter(l => base(l.v)==="Z").length,
-    c:    rows.filter(l => base(l.v)==="C").length,
-    d:    rows.filter(l => base(l.v)==="D").length
+    z:    vals.filter(v => baseOf(v)==="Z").length,
+    c:    vals.filter(v => baseOf(v)==="C").length,
+    d:    vals.filter(v => baseOf(v)==="D").length
   };
 }
-
 function renderUnits(){
-  $("units").innerHTML = "";
-  UNITS.forEach(u=>{
+  const box = $("units");
+  box.innerHTML = "";
+  conf().units.forEach(u=>{
     const s = summarize(u);
-    const cls = s.prov ? (base(s.prov)==="A" ? "is-a" : base(s.prov)==="Z" ? "is-z"
-                        : (base(s.prov)==="C"||base(s.prov)==="D") ? "is-warn" : "") : "none";
+    const p = symbolOfMedian(s.prov);
+    const a = symbolOfMedian(s.all);
+    let cls = "none";
+    if(p){
+      const b = p.sym[0];
+      cls = b==="A" ? "is-a" : b==="Z" ? "is-z" : (b==="C"||b==="D") ? "is-warn" : "";
+    }
     const card = document.createElement("div");
     card.className = "unit-card";
     card.innerHTML =
       '<div class="name">' + u.name + '</div>' +
-      '<div class="row"><span class="val ' + cls + '">' +
-        (s.prov ? SYMBOLS[s.prov-1] : "—") + '</span>' +
-        '<span class="tag">' + (s.prov ? "仮 / 後半の中央値" : "記録なし") + '</span></div>' +
+      '<div class="row"><span class="val ' + cls + '">' + (p ? p.sym : "—") + '</span>' +
+        '<span class="tag' + (p && p.mid ? " mid" : "") + '">' +
+        (p ? (p.mid ? "仮 / 中間" : "仮 / 後半の中央値") : "記録なし") + '</span></div>' +
       '<div class="meta">' +
         '<span>入力 ' + s.n + '/' + (u.to-u.from+1) + '</span>' +
-        (s.all ? '<span>全体 ' + SYMBOLS[s.all-1] + '</span>' : '') +
-        (s.top ? '<span>最高 ' + SYMBOLS[s.top-1] + '</span>' : '') +
+        (a ? '<span>全体 ' + a.sym + '</span>' : '') +
+        (s.top ? '<span>最高 ' + symbolOf(s.top) + '</span>' : '') +
         (s.z ? '<span>Z ' + s.z + '回</span>' : '') +
         (s.c ? '<span>C ' + s.c + '回</span>' : '') +
         (s.d ? '<span>D ' + s.d + '回</span>' : '') +
       '</div>';
-    $("units").appendChild(card);
+    box.appendChild(card);
   });
 }
 
-/* ---------- 折れ線 ---------- */
+/* ==================================================================
+   6. 折れ線
+================================================================== */
 function drawTrend(){
-  const data = LESSONS.filter(l => l.v);
+  const data = rows().filter(l => l.sym).map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
-  const iw=W-L-R, ih=H-T-B;
-  const slot = ih/15;
+  const iw=W-L-R, ih=H-T-B, slot=ih/15;
   const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
   const y = v => T + ih - (v - 0.5)*slot;
 
@@ -331,23 +513,23 @@ function drawTrend(){
   }
   s += '<line class="baseline" x1="'+L+'" y1="'+(T+ih)+'" x2="'+(L+iw)+'" y2="'+(T+ih)+'"/>';
 
-  /* 単元の切れ目 */
   data.forEach((d,i)=>{
     if(i>0 && unitOf(d.no) !== unitOf(data[i-1].no)){
       const mx = (x(i)+x(i-1))/2;
       s += '<line class="sep" x1="'+mx+'" y1="'+T+'" x2="'+mx+'" y2="'+(T+ih)+'"/>';
     }
   });
-  UNITS.forEach(u=>{
+  conf().units.forEach(u=>{
     const idx = data.map((d,i)=>({d,i})).filter(o=>unitOf(o.d.no)===u);
     if(!idx.length) return;
     const mid = (x(idx[0].i) + x(idx[idx.length-1].i)) / 2;
     s += '<text class="unitlab" x="'+mid+'" y="'+(T+11)+'" text-anchor="middle">'+u.name+'</text>';
   });
 
-  s += '<polyline class="path" points="' + data.map((d,i)=>x(i)+","+y(d.v)).join(" ") + '"/>';
+  if(data.length)
+    s += '<polyline class="path" points="' + data.map((d,i)=>x(i)+","+y(d.v)).join(" ") + '"/>';
   data.forEach((d,i)=>{
-    const isZ = base(d.v)==="Z";
+    const isZ = d.sym[0]==="Z";
     s += '<circle class="dot'+(isZ?" z":"")+'" cx="'+x(i)+'" cy="'+y(d.v)+'" r="'+(isZ?5.5:3.5)+'"/>';
     if(i % 2 === 0 || isZ)
       s += '<text class="xlab" x="'+x(i)+'" y="'+(T+ih+16)+'" text-anchor="middle">'+d.no+'</text>';
@@ -355,13 +537,89 @@ function drawTrend(){
   $("trend").innerHTML = s;
 }
 
+/* ==================================================================
+   7. ロック帯・見出し
+================================================================== */
+const hhmm = d => String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+
+function renderLockbar(){
+  const bar = $("lockbar");
+  bar.className = "lockbar" + (role === "teacher" ? " teacher" : "");
+  const nb = nextBoundary();
+
+  if(role === "teacher"){
+    bar.innerHTML =
+      '<span class="icon">🔓</span>' +
+      '<span class="msg">教師アカウントは<b>ロックを貫通して</b>操作できる。' +
+        'ロック済みのセルは薄紫。書き換えると右上に印が残る。</span>' +
+      '<label class="seg-label" for="lockTime">ロック時刻</label>' +
+      '<input type="time" id="lockTime" value="' +
+        String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
+      '<button class="mini" id="lockNow">いま ロックする（ためし）</button>' +
+      (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "");
+
+    $("lockTime").addEventListener("change", e=>{
+      const [h,m] = e.target.value.split(":").map(Number);
+      if(!isNaN(h)){ LOCK.h = h; LOCK.m = m; LOCK.override = null; refresh(); }
+    });
+    $("lockNow").addEventListener("click", ()=>{ LOCK.override = new Date(); refresh(); });
+    const rs = $("lockReset");
+    if(rs) rs.addEventListener("click", ()=>{ LOCK.override = null; refresh(); });
+
+  }else{
+    bar.innerHTML =
+      '<span class="icon">🔒</span>' +
+      '<span class="msg">' +
+        (nb
+          ? 'まいにち <span class="when">' + String(LOCK.h).padStart(2,"0") + ':' +
+            String(LOCK.m).padStart(2,"0") + '</span> に、その日 入れた ひょうかが きまります。' +
+            'つぎは <span class="when">' + hhmm(nb) + '</span>。'
+          : 'ひょうかは ロックされました。なおしたいときは 先生に つたえてください。') +
+        '　きまった ひょうかは 🔒 が つきます。' +
+      '</span>';
+  }
+}
+
 function refresh(){
-  const n = LESSONS.filter(l => l.state==="todo" && !l.v).length;
-  const t = $("todo");
-  t.textContent = n ? "未入力 " + n : "未入力なし";
-  t.classList.toggle("clear", n===0);
+  const list = rows();
+  const todo   = list.filter(l => l.state === "todo" && !l.sym).length;
+  const locked = list.filter(l => l.sym && isLocked(l)).length;
+
+  const tb = $("todoBadge");
+  tb.textContent = todo ? "未入力 " + todo : "未入力なし";
+  tb.classList.toggle("clear", todo === 0);
+  $("lockBadge").textContent = "ロック済み " + locked;
+  $("title").innerHTML = (role === "teacher" ? "3年3組" : "さくら") +
+    '<small>' + subject + '　2026年度' + (role === "teacher" ? "　教師表示" : "") + '</small>';
+
+  renderLockbar();
+  renderGrid();
   renderUnits();
   drawTrend();
 }
+
+/* ---- 切り替え ---- */
+$("roleSeg").querySelectorAll("button").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    role = b.dataset.role;
+    $("roleSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    refresh();
+  });
+});
+Object.keys(SUBJECTS).forEach((name,i)=>{
+  const b = document.createElement("button");
+  b.type = "button";
+  b.textContent = name;
+  b.setAttribute("aria-pressed", String(i === 0));
+  b.addEventListener("click", ()=>{
+    subject = name;
+    $("subjSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    refresh();
+  });
+  $("subjSeg").appendChild(b);
+});
+
 refresh();
 </script>

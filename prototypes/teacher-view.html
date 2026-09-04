@@ -1,0 +1,478 @@
+<title>単元評価の確定</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --paper:#FCFBF7;
+  --sheet:#FFFFFF;
+  --ink:#1D2126;
+  --ink-soft:#5A6470;
+  --ink-faint:#9AA3AD;
+  --rule:#DFDCD2;
+  --rule-soft:#EDEAE2;
+  --accent:#2C5C9E;
+  --teacher:#5B3E86; --teacher-bg:#F2EDF9;
+
+  --a-bg:#DCE8F6;   --a-line:#8FB4DC;   --a-ink:#173E70;
+  --z-bg:#F7EBCB;   --z-line:#D6B461;   --z-ink:#5C4408;
+  --warn:#B0392B;   --warn-bg:#FBEEEC;
+  --ok:#2F6E4E;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+    --teacher:#C4A9E8; --teacher-bg:#272033;
+    --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+    --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+    --warn:#E5776A; --warn-bg:#2E1C1A;
+    --ok:#6FBF92;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+  --teacher:#C4A9E8; --teacher-bg:#272033;
+  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+  --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+  --warn:#E5776A; --warn-bg:#2E1C1A;
+  --ok:#6FBF92;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+  font-size:15px;line-height:1.65}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:20px}
+.note{font-size:12.5px;color:var(--ink-soft);border:1px dashed var(--rule);
+  border-radius:8px;padding:7px 13px;background:var(--sheet)}
+.note b{color:var(--ink);font-weight:600}
+
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  border-bottom:2px solid var(--teacher);padding-bottom:10px}
+.head h1{margin:0;font-size:21px;font-weight:700;letter-spacing:.02em}
+.head h1 span{color:var(--teacher)}
+.head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px}
+
+.controls{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--teacher);color:#fff}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.lbl{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
+select.plain,input[type="time"]{
+  font-family:inherit;font-size:13.5px;font-weight:500;
+  border:1px solid var(--rule);border-radius:7px;padding:6px 10px;
+  background:var(--sheet);color:var(--ink);cursor:pointer}
+select.plain:focus-visible,input[type="time"]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+h2{margin:0;font-size:14px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);
+  display:flex;align-items:center;gap:12px}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+section{display:flex;flex-direction:column;gap:11px}
+
+/* ---- 計算式パネル ---- */
+.formula{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(186px,1fr));gap:14px 20px}
+.f-item{display:flex;flex-direction:column;gap:4px}
+.f-item .lbl{letter-spacing:.05em}
+.f-note{grid-column:1/-1;font-size:12px;color:var(--ink-faint);border-top:1px dashed var(--rule);padding-top:9px;margin:0}
+.f-note code{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft)}
+
+/* ---- 一覧表 ---- */
+.tablecard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:960px;font-size:13.5px}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--rule-soft);white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--sheet);z-index:2;
+  font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-faint);
+  border-bottom:1.5px solid var(--rule)}
+tbody tr:hover{background:var(--rule-soft)}
+td.name{font-weight:600}
+td.num{font-family:"IBM Plex Mono",monospace;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+td.warncell{font-family:"IBM Plex Mono",monospace;color:var(--warn);font-weight:600}
+td.warncell.zero{color:var(--ink-faint);font-weight:500}
+
+.chips{display:flex;gap:2px}
+.chip{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  min-width:26px;text-align:center;padding:1px 3px;border-radius:3px;
+  background:var(--rule-soft);color:var(--ink-soft);
+}
+.chip.a{background:var(--a-bg);color:var(--a-ink)}
+.chip.z{background:var(--z-bg);color:var(--z-ink)}
+.chip.w{background:var(--warn-bg);color:var(--warn)}
+.chip.none{background:transparent;color:var(--ink-faint);opacity:.5}
+
+.prov{font-family:"IBM Plex Mono",monospace;font-size:17px;font-weight:600}
+.prov.a{color:var(--a-ink)} .prov.z{color:var(--z-ink)} .prov.w{color:var(--warn)}
+.prov.none{color:var(--ink-faint);font-size:14px}
+.midmark{font-size:10px;color:var(--z-ink);margin-left:3px;vertical-align:2px}
+
+select.final{
+  font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:600;
+  text-align:center;text-align-last:center;
+  border:1px solid var(--rule);border-radius:6px;padding:3px 6px;min-width:74px;
+  background:var(--sheet);color:var(--ink);cursor:pointer}
+select.final.changed{border-color:var(--teacher);color:var(--teacher);background:var(--teacher-bg)}
+select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+.btn{appearance:none;font-family:inherit;font-size:13.5px;font-weight:600;
+  border:1px solid var(--teacher);border-radius:8px;padding:8px 18px;
+  background:var(--teacher);color:#fff;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--ink-soft);border-color:var(--rule)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.actions .said{font-size:12.5px;color:var(--ok);font-weight:600}
+
+/* ---- 出力 ---- */
+textarea{
+  width:100%;min-height:168px;resize:vertical;
+  font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.6;
+  border:1px solid var(--rule);border-radius:9px;padding:12px 14px;
+  background:var(--sheet);color:var(--ink);white-space:pre;overflow-x:auto}
+textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+</style>
+
+<div class="wrap">
+  <div class="note">
+    <b>教師画面・ためし</b>　児童名と評価はダミー。計算式を変えると29名分の仮値がその場で引き直される。
+    実装では下の表がそのままスプレッドシートに書き出される。
+  </div>
+
+  <div class="head">
+    <h1><span>3年3組</span> 単元評価の確定<small>2026年度　29名</small></h1>
+    <div class="controls">
+      <div class="seg" id="subjSeg"></div>
+      <select class="plain" id="unitSel"></select>
+    </div>
+  </div>
+
+  <section>
+    <h2>集計の式</h2>
+    <div class="formula" id="formula"></div>
+  </section>
+
+  <section>
+    <h2>児童ごとの仮値と採用値</h2>
+    <div class="tablecard"><table id="tbl"></table></div>
+    <div class="actions">
+      <button class="btn" id="adoptAll">仮値を すべて採用</button>
+      <button class="btn ghost" id="resetAll">採用値を もどす</button>
+      <span class="said" id="said"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>スプレッドシートへの出力</h2>
+    <textarea id="out" readonly spellcheck="false"></textarea>
+    <div class="actions">
+      <button class="btn ghost" id="copy">コピー</button>
+      <span class="said" id="copied"></span>
+      <span style="font-size:12px;color:var(--ink-faint)">
+        タブ区切り。GAS版ではこの内容を直接シートに書き込む。
+      </span>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ================= 評価スケール（scale.md と同じ規則） ================= */
+const BASES = ["D","C","B","A","Z"];
+const MODS  = [{s:"−",v:0},{s:"",v:1},{s:"+",v:2},{s:"++",v:2}];
+const valueOf = sym => {
+  const b = BASES.indexOf(sym[0]); if(b<0) return null;
+  const m = MODS.find(m=>m.s===sym.slice(1));
+  return m ? b*3 + m.v + 1 : null;
+};
+const symbolOf = v => BASES[Math.floor((v-1)/3)] + ["−","","+"][(v-1)%3];
+const baseOf   = v => BASES[Math.floor((v-1)/3)];
+const modIdx   = v => (v-1)%3;
+
+function symbolOfMedian(m, useMid){
+  if(m == null) return null;
+  const lo = Math.floor(m);
+  if(m === lo) return {sym:symbolOf(lo), mid:false};
+  if(useMid && modIdx(lo) === 2) return {sym:baseOf(lo)+"++", mid:true};
+  return {sym:symbolOf(lo), mid:false};
+}
+const ALL_SYMS = [];
+BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b+m.s)));
+
+/* ================= 集計の式（教師が変えられる） ================= */
+const F = {
+  stat:  "lateMedian",   // lateMedian | allMedian | mode | top
+  late:  3,              // 後半 1/n
+  dropD: true,
+  dropC: false,
+  useMid:true
+};
+
+const FIELDS = [
+  {key:"stat", label:"代表値", opts:[
+    ["lateMedian","後半の中央値"],["allMedian","全期間の中央値"],
+    ["mode","最頻値"],["top","最高到達"]]},
+  {key:"late", label:"後半の範囲", opts:[["3","後半 1/3"],["2","後半 1/2"],["1","全期間"]], num:true},
+  {key:"dropD", label:"D の扱い", opts:[["true","除外（欠測とみなす）"],["false","含める"]], bool:true},
+  {key:"dropC", label:"C の扱い", opts:[["false","含める"],["true","除外"]], bool:true},
+  {key:"useMid",label:"中間の表示", opts:[["true","++ で中間を示す"],["false","下側を採る"]], bool:true}
+];
+
+/* ================= ダミーデータ ================= */
+const NAMES = ["あおい","あさひ","いつき","うみ","えいた","かえで","かんな","こはる","さくら","しおん",
+               "すみれ","そら","たいが","ちひろ","つむぎ","てるき","なぎさ","なつき","はると","ひなた",
+               "ふうか","ほのか","みなと","むぎ","めい","もえぎ","ゆうと","りく","れん"];
+
+const SUBJECTS = {
+  "算数": {units:[
+    {name:"九九の表とかけ算", from:1,  to:14},
+    {name:"わり算",           from:15, to:30},
+    {name:"たし算とひき算の筆算", from:31, to:48},
+    {name:"時こくと時間",     from:49, to:70}]},
+  "国語": {units:[
+    {name:"きつつきの商売",   from:1,  to:12},
+    {name:"こまを楽しむ",     from:13, to:26},
+    {name:"まいごのかぎ",     from:27, to:42},
+    {name:"すがたをかえる大豆", from:43, to:60}]}
+};
+
+/* 決定的な擬似乱数（毎回同じ表が出る） */
+function rng(seed){ let s = seed >>> 0;
+  return () => { s = (s*1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+const RECORDS = {};   // RECORDS[教科][児童index][授業No] = 記号
+Object.keys(SUBJECTS).forEach((subj, si)=>{
+  RECORDS[subj] = NAMES.map((n, ni)=>{
+    const r = rng(1000 + si*97 + ni*13);
+    const center = 6 + Math.floor(r()*5);        // 児童ごとの中心（B− 〜 A）
+    const rec = {};
+    SUBJECTS[subj].units.forEach((u, ui)=>{
+      // 3単元目までを入力済みにして、最後の単元は未入力にしておく
+      if(ui >= 3) return;
+      for(let no=u.from; no<=u.to; no++){
+        const drift = ui * 0.6;                  // 単元が進むと少し上がる
+        let v = Math.round(center + drift + (r()-0.5)*3.2);
+        if(r() < 0.03) v = 1 + Math.floor(r()*3);   // まれに D 帯
+        if(r() < 0.02) v = 13 + Math.floor(r()*3);  // まれに Z 帯
+        v = Math.max(1, Math.min(15, v));
+        let sym = symbolOf(v);
+        if(r() < 0.10 && modIdx(v) === 2) sym = baseOf(v) + "++";   // ++ も混ぜる
+        rec[no] = sym;
+      }
+    });
+    return rec;
+  });
+});
+
+let subject  = "算数";
+let unitIdx  = 0;
+const FINAL  = {};    // FINAL[教科|単元名][児童index] = 採用記号
+const $ = id => document.getElementById(id);
+const unit = () => SUBJECTS[subject].units[unitIdx];
+const keyOf = () => subject + "|" + unit().name;
+
+/* ================= 集計 ================= */
+function medianVal(a){
+  if(!a.length) return null;
+  const s = a.slice().sort((x,y)=>x-y);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1] + s[m]) / 2;
+}
+function modeVal(a){
+  if(!a.length) return null;
+  const c = {}; a.forEach(v => c[v] = (c[v]||0) + 1);
+  const best = Math.max(...Object.values(c));
+  const tied = Object.keys(c).filter(k => c[k] === best).map(Number);
+  return tied[tied.length - 1];      // 同数なら上位を採る
+}
+
+function summarize(ni){
+  const u = unit(), rec = RECORDS[subject][ni];
+  const seq = [];
+  for(let no=u.from; no<=u.to; no++) seq.push(rec[no] || null);
+
+  const filled = seq.filter(Boolean);
+  const vals   = filled.map(valueOf);
+  let scored = vals;
+  if(F.dropD) scored = scored.filter(v => baseOf(v) !== "D");
+  if(F.dropC) scored = scored.filter(v => baseOf(v) !== "C");
+
+  let prov = null;
+  if(scored.length){
+    if(F.stat === "top")            prov = Math.max(...scored);
+    else if(F.stat === "mode")      prov = modeVal(scored);
+    else if(F.stat === "allMedian") prov = medianVal(scored);
+    else {
+      const n = Math.max(1, Math.ceil(scored.length / F.late));
+      prov = medianVal(scored.slice(-n));
+    }
+  }
+  return {
+    seq, n: filled.length, total: u.to - u.from + 1,
+    prov, all: medianVal(scored), top: scored.length ? Math.max(...scored) : null,
+    z: vals.filter(v => baseOf(v)==="Z").length,
+    c: vals.filter(v => baseOf(v)==="C").length,
+    d: vals.filter(v => baseOf(v)==="D").length
+  };
+}
+const clsOf = sym => !sym ? "none" : sym[0]==="A" ? "a" : sym[0]==="Z" ? "z"
+                                   : (sym[0]==="C"||sym[0]==="D") ? "w" : "";
+
+/* ================= 描画 ================= */
+function renderFormula(){
+  const box = $("formula");
+  box.innerHTML = "";
+  FIELDS.forEach(f=>{
+    const cur = String(F[f.key]);
+    const d = document.createElement("div");
+    d.className = "f-item";
+    d.innerHTML = '<span class="lbl">' + f.label + '</span>' +
+      '<select class="plain" data-key="' + f.key + '">' +
+      f.opts.map(([v,t]) => '<option value="'+v+'"'+(v===cur?' selected':'')+'>'+t+'</option>').join("") +
+      '</select>';
+    const sel = d.querySelector("select");
+    sel.disabled = (f.key === "late" && F.stat !== "lateMedian");
+    sel.addEventListener("change", e=>{
+      const v = e.target.value;
+      F[f.key] = f.bool ? (v === "true") : f.num ? Number(v) : v;
+      renderAll();
+    });
+    box.appendChild(d);
+  });
+  const p = document.createElement("p");
+  p.className = "f-note";
+  p.innerHTML =
+    "順序尺度なので<b>平均は使わない</b>。既定は <code>後半1/3の中央値・D除外</code>。" +
+    "D は「やるべきことをしていない」＝到達度の欠測なので、含めると代表値が取り組み状況に汚染される。" +
+    "中央値が2値の間に落ちたときは、下側が <code>+</code> のときだけ <code>++</code> で中間を示す。";
+  box.appendChild(p);
+}
+
+function renderTable(){
+  const u = unit();
+  let h = '<thead><tr>' +
+    '<th style="width:88px">児童</th>' +
+    '<th>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
+    '<th style="width:56px">入力</th>' +
+    '<th style="width:74px">仮値</th>' +
+    '<th style="width:64px">全体</th>' +
+    '<th style="width:56px">最高</th>' +
+    '<th style="width:44px">Z</th><th style="width:44px">C</th><th style="width:44px">D</th>' +
+    '<th style="width:96px">採用値</th></tr></thead><tbody>';
+
+  const fin = FINAL[keyOf()] || (FINAL[keyOf()] = {});
+
+  NAMES.forEach((name, ni)=>{
+    const s = summarize(ni);
+    const p = symbolOfMedian(s.prov, F.useMid);
+    const a = symbolOfMedian(s.all, F.useMid);
+    const chosen = fin[ni] != null ? fin[ni] : (p ? p.sym : "");
+
+    h += '<tr>' +
+      '<td class="name">' + name + '</td>' +
+      '<td><div class="chips">' + s.seq.map(sym =>
+          '<span class="chip ' + (sym ? clsOf(sym) : "none") + '">' + (sym || "·") + '</span>').join("") +
+        '</div></td>' +
+      '<td class="num">' + s.n + '/' + s.total + '</td>' +
+      '<td><span class="prov ' + (p ? clsOf(p.sym) : "none") + '">' + (p ? p.sym : "—") + '</span>' +
+        (p && p.mid ? '<span class="midmark">中間</span>' : '') + '</td>' +
+      '<td class="num">' + (a ? a.sym : "—") + '</td>' +
+      '<td class="num">' + (s.top ? symbolOf(s.top) : "—") + '</td>' +
+      '<td class="warncell' + (s.z ? '' : ' zero') + '">' + s.z + '</td>' +
+      '<td class="warncell' + (s.c ? '' : ' zero') + '">' + s.c + '</td>' +
+      '<td class="warncell' + (s.d ? '' : ' zero') + '">' + s.d + '</td>' +
+      '<td><select class="final' + (p && chosen !== p.sym ? ' changed' : '') + '" data-ni="' + ni + '">' +
+        '<option value="">—</option>' +
+        ALL_SYMS.map(x => '<option value="'+x+'"'+(x===chosen?' selected':'')+'>'+x+'</option>').join("") +
+        '</select></td>' +
+      '</tr>';
+  });
+  $("tbl").innerHTML = h + '</tbody>';
+
+  $("tbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>{
+      fin[sel.dataset.ni] = sel.value;
+      renderTable(); renderOut();
+    });
+  });
+}
+
+function renderOut(){
+  const u = unit(), fin = FINAL[keyOf()] || {};
+  const rule = FIELDS[0].opts.find(o => o[0] === F.stat)[1]
+    + (F.stat === "lateMedian" ? "（後半 1/" + F.late + "）" : "")
+    + (F.dropD ? " / D除外" : " / D含む")
+    + (F.dropC ? " / C除外" : "");
+  const head = ["児童","教科","単元","入力数","仮値","採用値","全体中央値","最高","Z回数","C回数","D回数","集計の式"];
+  const lines = [head.join("\t")];
+  NAMES.forEach((name, ni)=>{
+    const s = summarize(ni);
+    const p = symbolOfMedian(s.prov, F.useMid);
+    const a = symbolOfMedian(s.all, F.useMid);
+    lines.push([
+      name, subject, u.name, s.n + "/" + s.total,
+      p ? p.sym : "", fin[ni] != null ? fin[ni] : (p ? p.sym : ""),
+      a ? a.sym : "", s.top ? symbolOf(s.top) : "",
+      s.z, s.c, s.d, rule
+    ].join("\t"));
+  });
+  $("out").value = lines.join("\n");
+}
+
+function renderAll(){ renderFormula(); renderTable(); renderOut(); }
+
+/* ================= 操作 ================= */
+$("adoptAll").addEventListener("click", ()=>{
+  const fin = FINAL[keyOf()] = {};
+  NAMES.forEach((n, ni)=>{
+    const p = symbolOfMedian(summarize(ni).prov, F.useMid);
+    if(p) fin[ni] = p.sym;
+  });
+  renderTable(); renderOut();
+  say("said", "仮値を採用した");
+});
+$("resetAll").addEventListener("click", ()=>{
+  FINAL[keyOf()] = {};
+  renderTable(); renderOut();
+  say("said", "採用値をもどした");
+});
+$("copy").addEventListener("click", async ()=>{
+  const t = $("out");
+  t.focus(); t.select();
+  try{ await navigator.clipboard.writeText(t.value); say("copied","コピーした"); }
+  catch(e){ say("copied","選択したので Ctrl+C でコピー"); }
+});
+function say(id, msg){
+  const el = $(id); el.textContent = msg;
+  setTimeout(()=>{ if(el.textContent === msg) el.textContent = ""; }, 2600);
+}
+
+/* ================= 切り替え ================= */
+Object.keys(SUBJECTS).forEach((name,i)=>{
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = name;
+  b.setAttribute("aria-pressed", String(i===0));
+  b.addEventListener("click", ()=>{
+    subject = name; unitIdx = 0;
+    $("subjSeg").querySelectorAll("button").forEach(x =>
+      x.setAttribute("aria-pressed", String(x === b)));
+    renderUnitSel(); renderAll();
+  });
+  $("subjSeg").appendChild(b);
+});
+function renderUnitSel(){
+  $("unitSel").innerHTML = SUBJECTS[subject].units
+    .map((u,i) => '<option value="'+i+'"'+(i===unitIdx?' selected':'')+'>'+u.name+'</option>').join("");
+}
+$("unitSel").addEventListener("change", e=>{ unitIdx = Number(e.target.value); renderAll(); });
+
+renderUnitSel();
+renderAll();
+</script>
