@@ -140,6 +140,30 @@ select.final{font-family:"IBM Plex Mono",monospace;font-size:15px;font-weight:60
 select.final.changed{border-color:var(--open);color:var(--open);background:var(--open-bg)}
 select.final:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
+/* 単元設定 */
+.swatches{display:flex;gap:5px}
+.sw{width:22px;height:22px;border-radius:5px;border:2px solid transparent;cursor:pointer;
+  appearance:none;padding:0;background:var(--swc)}
+.sw[data-c="0"]{--swc:var(--u0)} .sw[data-c="1"]{--swc:var(--u1)}
+.sw[data-c="2"]{--swc:var(--u2)} .sw[data-c="3"]{--swc:var(--u3)}
+.sw[data-c="4"]{--swc:var(--u4)}
+.sw[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px var(--sheet) inset}
+.sw:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input.cellin{font-family:inherit;font-size:13.5px;border:1px solid var(--rule);
+  border-radius:6px;padding:5px 9px;background:var(--sheet);color:var(--ink);width:100%}
+input.cellin.num{font-family:"IBM Plex Mono",monospace;width:74px;text-align:center}
+input.cellin:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.rowbar{width:5px;height:26px;border-radius:3px;background:var(--swc,var(--rule));display:inline-block}
+.rowbar[data-c="0"]{--swc:var(--u0)} .rowbar[data-c="1"]{--swc:var(--u1)}
+.rowbar[data-c="2"]{--swc:var(--u2)} .rowbar[data-c="3"]{--swc:var(--u3)}
+.rowbar[data-c="4"]{--swc:var(--u4)}
+.del{appearance:none;border:1px solid var(--rule);background:var(--sheet);color:var(--ink-faint);
+  border-radius:6px;padding:4px 11px;font-family:inherit;font-size:12.5px;cursor:pointer}
+.del:hover{border-color:var(--warn);color:var(--warn)}
+.warnbox{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
+  border-radius:9px;padding:11px 14px;font-size:13px;display:flex;flex-direction:column;gap:3px}
+.warnbox b{font-weight:700}
+
 /* 評定の分布 */
 .distcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;
   padding:14px 16px;display:flex;flex-direction:column;gap:10px}
@@ -199,6 +223,7 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
       <div class="seg mode" id="modeSeg">
         <button type="button" data-mode="unit" aria-pressed="true">単元ごと</button>
         <button type="button" data-mode="term" aria-pressed="false">期末評定</button>
+        <button type="button" data-mode="setup" aria-pressed="false">設定</button>
       </div>
       <div class="seg" id="subjSeg"></div>
       <select class="plain" id="unitSel"></select>
@@ -271,7 +296,29 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
     </section>
   </div>
 
-  <section>
+  <!-- ============ 設定 ============ -->
+  <div id="viewSetup" class="hidden">
+    <section style="margin-bottom:20px">
+      <h2>評定のしきい値</h2>
+      <div class="formula" id="setupRank"></div>
+    </section>
+    <section style="margin-bottom:20px">
+      <h2>単元の範囲と色</h2>
+      <div class="tablecard"><table id="unitTbl"></table></div>
+      <div class="actions">
+        <button class="btn" id="addUnit">単元を追加</button>
+        <button class="btn ghost" id="sortUnit">開始の順に並べ替え</button>
+        <span class="said" id="unitSaid"></span>
+      </div>
+      <p class="distnote" style="border:none;padding:0">
+        範囲が重なったり、授業のどこかが<b>どの単元にも入らない</b>場合はここに警告が出る。
+        実装ではこの設定を児童画面と共有する。
+      </p>
+      <div id="unitWarn"></div>
+    </section>
+  </div>
+
+  <section id="outSec">
     <h2>スプレッドシートへの出力</h2>
     <textarea id="out" readonly spellcheck="false"></textarea>
     <div class="actions">
@@ -343,16 +390,16 @@ const NAMES = ["あおい","あさひ","いつき","うみ","えいた","かえ�
                "ふうか","ほのか","みなと","むぎ","めい","もえぎ","ゆうと","りく","れん"];
 
 const SUBJECTS = {
-  "算数": {units:[
-    {name:"九九の表とかけ算", from:1,  to:14},
-    {name:"わり算",           from:15, to:30},
-    {name:"たし算とひき算の筆算", from:31, to:48},
-    {name:"時こくと時間",     from:49, to:70}]},
-  "国語": {units:[
-    {name:"きつつきの商売",   from:1,  to:12},
-    {name:"こまを楽しむ",     from:13, to:26},
-    {name:"まいごのかぎ",     from:27, to:42},
-    {name:"すがたをかえる大豆", from:43, to:60}]}
+  "算数": {total:70, units:[
+    {name:"九九の表とかけ算", from:1,  to:14, c:0},
+    {name:"わり算",           from:15, to:30, c:1},
+    {name:"たし算とひき算の筆算", from:31, to:48, c:2},
+    {name:"時こくと時間",     from:49, to:70, c:3}]},
+  "国語": {total:60, units:[
+    {name:"きつつきの商売",   from:1,  to:12, c:0},
+    {name:"こまを楽しむ",     from:13, to:26, c:1},
+    {name:"まいごのかぎ",     from:27, to:42, c:2},
+    {name:"すがたをかえる大豆", from:43, to:60, c:3}]}
 };
 
 function rng(seed){ let s = seed >>> 0;
@@ -536,7 +583,7 @@ function renderTable(){
   const u = unit(), fin = finOf();
   let h = '<thead><tr>' +
     '<th style="width:88px">児童</th>' +
-    '<th><span class="unitbar" data-u="'+(unitIdx%5)+'"></span>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
+    '<th><span class="unitbar" data-u="'+(u.c%5)+'"></span>授業ごとの評価（No.' + u.from + '〜' + u.to + '）</th>' +
     '<th style="width:56px">入力</th>' +
     '<th style="width:44px">休</th>' +
     '<th style="width:74px">仮値</th>' +
@@ -576,8 +623,8 @@ function renderTable(){
 }
 
 /* ================= 描画：期末評定 ================= */
-function renderRankForm(){
-  const box = $("rankForm");
+function renderRankForm(id){
+  const box = $(id || "rankForm");
   box.innerHTML = "";
   const symOpts = cur => ALL_SYMS.filter(x => !x.endsWith("++"))
     .map(x => '<option value="'+valueOf(x)+'"'+(valueOf(x)===cur?' selected':'')+'>'+x+'</option>').join("");
@@ -655,7 +702,7 @@ function renderDist(){
 function renderTermTable(){
   const rk = RANK[subject] || (RANK[subject] = {});
   let h = '<thead><tr><th style="width:88px">児童</th>' +
-    units().map((u,i) => '<th class="unitcol" data-u="'+(i%5)+'" style="width:96px">'+u.name+'</th>').join("") +
+    units().map(u => '<th class="unitcol" data-u="'+(u.c%5)+'" style="width:96px">'+u.name+'</th>').join("") +
     '<th style="width:74px">まとめ</th><th style="width:64px">仮評定</th>' +
     '<th style="width:92px">採用</th></tr></thead><tbody>';
   NAMES.forEach((name, ni)=>{
@@ -675,6 +722,111 @@ function renderTermTable(){
     sel.addEventListener("change", ()=>{ rk[sel.dataset.ni] = sel.value; renderAll(); });
   });
 }
+
+/* ================= 設定：単元の範囲と色 ================= */
+function unitIssues(){
+  const us = units(), total = SUBJECTS[subject].total, msgs = [];
+  us.forEach((u,i)=>{
+    if(u.from > u.to) msgs.push('「'+u.name+'」は 開始('+u.from+') が 終了('+u.to+') より後になっている');
+    if(u.from < 1 || u.to > total)
+      msgs.push('「'+u.name+'」が 1〜'+total+' の外に出ている');
+    us.forEach((v,j)=>{
+      if(j <= i) return;
+      if(u.from <= v.to && v.from <= u.to)
+        msgs.push('「'+u.name+'」と「'+v.name+'」の範囲が重なっている');
+    });
+  });
+  const covered = new Set();
+  us.forEach(u => { for(let n=Math.max(1,u.from); n<=Math.min(total,u.to); n++) covered.add(n); });
+  const missing = [];
+  for(let n=1; n<=total; n++) if(!covered.has(n)) missing.push(n);
+  if(missing.length){
+    const runs = [];
+    let a = missing[0], prev = missing[0];
+    missing.slice(1).forEach(n => {
+      if(n === prev + 1){ prev = n; return; }
+      runs.push(a === prev ? "" + a : a + "〜" + prev); a = prev = n;
+    });
+    runs.push(a === prev ? "" + a : a + "〜" + prev);
+    msgs.push('どの単元にも入っていない授業がある：No.' + runs.join("、"));
+  }
+  return msgs;
+}
+
+function renderUnitTable(){
+  const us = units(), total = SUBJECTS[subject].total;
+  let h = '<thead><tr>' +
+    '<th style="width:26px"></th><th>単元名</th>' +
+    '<th style="width:96px">開始 No.</th><th style="width:96px">終了 No.</th>' +
+    '<th style="width:70px">時数</th><th style="width:150px">色</th>' +
+    '<th style="width:70px"></th></tr></thead><tbody>';
+  us.forEach((u,i)=>{
+    h += '<tr>' +
+      '<td><span class="rowbar" data-c="'+(u.c%5)+'"></span></td>' +
+      '<td><input class="cellin" data-i="'+i+'" data-k="name" value="'+u.name.replace(/"/g,"&quot;")+'"></td>' +
+      '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="from" value="'+u.from+'"></td>' +
+      '<td><input class="cellin num" type="number" min="1" max="'+total+'" data-i="'+i+'" data-k="to" value="'+u.to+'"></td>' +
+      '<td class="num">' + Math.max(0, u.to - u.from + 1) + '</td>' +
+      '<td><div class="swatches">' +
+        [0,1,2,3,4].map(c => '<button type="button" class="sw" data-c="'+c+'" data-i="'+i+'"' +
+          ' aria-pressed="'+(u.c===c)+'" aria-label="色'+(c+1)+'"></button>').join("") +
+        '</div></td>' +
+      '<td><button class="del" data-i="'+i+'">削除</button></td></tr>';
+  });
+  h += '</tbody>';
+  const t = $("unitTbl");
+  t.innerHTML = h;
+
+  t.querySelectorAll("input.cellin").forEach(inp=>{
+    inp.addEventListener("change", ()=>{
+      const u = units()[inp.dataset.i], k = inp.dataset.k;
+      if(k === "name") u.name = inp.value.trim() || "（名前なし）";
+      else {
+        let v = Math.round(Number(inp.value));
+        if(!Number.isFinite(v)) v = u[k];
+        u[k] = Math.min(total, Math.max(1, v));
+      }
+      if(unitIdx >= units().length) unitIdx = units().length - 1;
+      renderAll();
+    });
+  });
+  t.querySelectorAll("button.sw").forEach(b=>{
+    b.addEventListener("click", ()=>{ units()[b.dataset.i].c = Number(b.dataset.c); renderAll(); });
+  });
+  t.querySelectorAll("button.del").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const us = units();
+      if(us.length <= 1){ say("unitSaid", "単元は1つ以上必要"); return; }
+      const name = us[b.dataset.i].name;
+      us.splice(b.dataset.i, 1);
+      if(unitIdx >= us.length) unitIdx = us.length - 1;
+      renderUnitSel(); renderAll();
+      say("unitSaid", "「" + name + "」を消した（評価そのものは残る）");
+    });
+  });
+
+  const msgs = unitIssues();
+  $("unitWarn").innerHTML = msgs.length
+    ? '<div class="warnbox"><b>確認してほしいところ</b>' +
+      msgs.map(m => '<span>・' + m + '</span>').join("") + '</div>'
+    : "";
+}
+
+$("addUnit").addEventListener("click", ()=>{
+  const us = units(), total = SUBJECTS[subject].total;
+  const last = us.reduce((m,u) => Math.max(m, u.to), 0);
+  const from = Math.min(total, last + 1);
+  us.push({name:"新しい単元", from, to:Math.min(total, from + 9), c:us.length % 5});
+  renderUnitSel(); renderAll();
+  say("unitSaid", "単元を追加した");
+});
+$("sortUnit").addEventListener("click", ()=>{
+  const cur = unit();
+  units().sort((a,b) => a.from - b.from);
+  unitIdx = Math.max(0, units().indexOf(cur));
+  renderUnitSel(); renderAll();
+  say("unitSaid", "開始の順に並べ替えた");
+});
 
 /* ================= 出力 ================= */
 function ruleText(){
@@ -720,9 +872,12 @@ function renderAll(){
   $("viewUnit").classList.toggle("hidden", mode !== "unit");
   $("viewTerm").classList.toggle("hidden", mode !== "term");
   $("unitSel").classList.toggle("hidden", mode !== "unit");
+  $("viewSetup").classList.toggle("hidden", mode !== "setup");
+  $("outSec").classList.toggle("hidden", mode === "setup");
   if(mode === "unit"){ renderBulk(); renderFormula(); renderTable(); }
-  else               { renderRankForm(); renderDist(); renderTermTable(); }
-  renderOut();
+  else if(mode === "term"){ renderRankForm("rankForm"); renderDist(); renderTermTable(); }
+  else { renderRankForm("setupRank"); renderUnitTable(); }
+  if(mode !== "setup") renderOut();
 }
 
 /* ================= 操作 ================= */
