@@ -499,7 +499,9 @@ const symbolOfMedian = m => (m == null) ? null : symbolOf(Math.floor(m));
    「直近のロック境界」より前に保存された評価はロック済み。
    トリガが落ちてもズレないし、書き戻す状態がない。
 ================================================================== */
-const LOCK = { h:17, m:0, override:null };   // override はためし用の即時ロック
+/* 定時は 16:00。境界は誰も使っていない時間に置く（3年生は下校している）。
+   転写中の時間帯に境界を置くと、直前に入れた児童だけ猶予がなくなる。 */
+const LOCK = { h:16, m:0, override:null };   // override はためし用の即時ロック
 
 function lastBoundary(){
   if(LOCK.override) return LOCK.override;
