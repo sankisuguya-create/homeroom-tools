@@ -483,7 +483,7 @@ function summarize(u){
   const entered = rows().filter(l => l.no>=u.from && l.no<=u.to && l.sym);
   const off     = entered.filter(l => l.sym === OFF).length;
   const skip    = entered.filter(l => l.sym === SKIP).length;
-  const scored  = entered.filter(l => !isMark(l.sym)).map(l => valueOf(l.sym));
+  const scored  = entered.filter(l => !isMark(l.sym)).map(l => valueOfSym(l.sym));
   // D は含める。態度を評価しているので「やらなかった」は欠測ではなく最も重い観測。
   const late = scored.slice(-Math.max(1, Math.ceil(scored.length/3)));
   return {
@@ -564,7 +564,7 @@ function renderUnits(){
 ================================================================== */
 function drawTrend(){
   const data = rows().filter(l => l.sym && !isMark(l.sym))
-                     .map(l => ({no:l.no, v:valueOf(l.sym), sym:l.sym}));
+                     .map(l => ({no:l.no, v:valueOfSym(l.sym), sym:l.sym}));
   const W=1040, H=300, L=54, R=14, T=16, B=34;
   const iw=W-L-R, ih=H-T-B, slot=ih/(NBASE*NMOD);
   const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));

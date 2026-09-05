@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
-"""prototypes/src/ を組み立てて prototypes/*.html を書き出す。
+"""prototypes/src/ を組み立てて、プロトタイプと GAS の両方を書き出す。
 
-スケールの定義と色トークンは1箇所にしか置かない。両画面がそれを読む。
-出力は単一ファイルのままなので、アーティファクトへの公開手順は変わらない。
+スケールの定義と色トークンは1箇所にしか置かない。読む側が4つある。
+
+  prototypes/grid-sheet.html     児童画面（プロトタイプ）
+  prototypes/teacher-view.html   教師画面（プロトタイプ）
+  gas/Scale.gs                   GAS のサーバ側
+  gas/scale.html                 GAS のクライアント側
+
+GAS の2つは src/scale.js から機械的に作る。手順書には eval で読む書き方を
+載せていたが、トップレベルの const が eval の外へ出ない場合があるので、
+実ファイルを2つ生成する形にした。中身は同じ1つの元から出ている。
 
   python3 build.py           生成する
   python3 build.py --check   生成物が src と一致するか調べる（ずれたら終了コード1）
@@ -12,7 +20,11 @@ import sys, pathlib, re
 ROOT = pathlib.Path(__file__).resolve().parent
 SRC  = ROOT / "prototypes" / "src"
 OUT  = ROOT / "prototypes"
+GAS  = ROOT / "gas"
 PAGES = ["grid-sheet.html", "teacher-view.html"]
+
+BANNER = ("/* このファイルは prototypes/src/scale.js から build.py が作る。\n"
+          "   直すのは src のほう。ここを直しても次のビルドで消える。 */\n")
 
 INCLUDE = re.compile(r'^[ \t]*/\* @include ([\w.\-]+) \*/[ \t]*$', re.M)
 
@@ -53,6 +65,14 @@ def render(page: str) -> str:
     print("  %-18s ← %s" % (page, ", ".join(seen)))
     return out
 
+def gas_targets():
+    """GAS 側の生成物。(出力先, 中身) の組を返す。"""
+    scale = (SRC / "scale.js").read_text(encoding="utf-8")
+    yield GAS / "Scale.gs", BANNER + scale
+    yield GAS / "scale.html", ("<!-- prototypes/src/scale.js から build.py が作る。"
+                               "直すのは src のほう。 -->\n"
+                               "<script>\n" + scale + "</script>\n")
+
 def main():
     check = "--check" in sys.argv
     bad = []
@@ -66,6 +86,15 @@ def main():
                 bad.append(page)
         else:
             dest.write_text(built, encoding="utf-8")
+    if GAS.exists():
+        for dest, built in gas_targets():
+            if check:
+                cur = dest.read_text(encoding="utf-8") if dest.exists() else ""
+                if cur != built:
+                    bad.append(dest.name)
+            else:
+                dest.write_text(built, encoding="utf-8")
+                print("  %-18s ← src/scale.js" % dest.name)
     if check:
         if bad:
             print("\nsrc と一致しない: " + ", ".join(bad))

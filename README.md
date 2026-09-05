@@ -15,10 +15,12 @@
 | `prototypes/grid-sheet.html` | 児童画面（生成物） |
 | `prototypes/teacher-view.html` | 教師画面（生成物） |
 | `prototypes/src/` | 上の2つの元。**直すのはこちら** |
+| [`gas/`](gas/) | Google Apps Script 側。いまは Step 3（本人確認）まで |
 
 ```
-python3 build.py           src/ から prototypes/*.html を生成する
+python3 build.py           src/ から prototypes/*.html と gas/Scale.gs を生成する
 python3 build.py --check   生成物が src と一致するか調べる
+node gas/localcheck.js     GAS のコードを手元で走らせて確かめる
 ```
 
 スケールの定義・色トークン・単元マスタは `prototypes/src/` に1箇所ずつしか置いていない。

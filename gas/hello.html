@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+  body{margin:0;background:#FCFBF7;color:#1D2126;
+       font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.8}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 20px}
+  h1{font-size:22px;margin:0 0 4px}
+  .role{display:inline-block;border:1.5px solid currentColor;border-radius:6px;
+        padding:2px 12px;font-size:13px;font-weight:700}
+  .role.student{color:#2C5C9E}
+  .role.teacher{color:#2E7D8A}
+  .role.unknown{color:#B0392B}
+  dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:22px 0 0;
+     font-size:14px;border-top:1px solid #DFDCD2;padding-top:16px}
+  dt{color:#5A6470}
+  dd{margin:0;font-family:"IBM Plex Mono",monospace;word-break:break-all}
+  .bad{color:#B0392B;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="hello">…</h1>
+  <span class="role" id="role"></span>
+  <dl id="detail"></dl>
+</div>
+
+<!-- スケールの定義。サーバ側の Scale.gs と同じ1つの元から作られている。 -->
+<?!= include('scale') ?>
+
+<script>
+  const BOOT = <?!= boot ?>;
+
+  const w = BOOT.who;
+  document.getElementById("hello").textContent =
+    w.role === "student" ? "こんにちは、" + w.name + " さん"
+  : w.role === "teacher" ? "こんにちは、先生"
+  :                        "だれか わかりません";
+
+  const r = document.getElementById("role");
+  r.className = "role " + w.role;
+  r.textContent = w.role === "student" ? "児童" : w.role === "teacher" ? "教師" : "不明";
+
+  const rows = [
+    ["メール",        w.email || "（取れていない）"],
+    ["学級・年度",    BOOT.className + "　" + BOOT.year],
+    ["ロックの定時",  String(BOOT.lockTime.h).padStart(2,"0") + ":" +
+                      String(BOOT.lockTime.m).padStart(2,"0")],
+    ["直近の境界",    BOOT.boundary],
+    ["見える教科",    BOOT.subjects.join("、") || "（なし）"],
+    ["スケールの段数", NLEVEL + "段　1=" + symbolOf(1) + "　" + NLEVEL + "=" + symbolOf(NLEVEL)],
+    ["往復テスト",    (function(){
+        for(let v = 1; v <= NLEVEL; v++) if(valueOfSym(symbolOf(v)) !== v) return "× " + v + " で往復しない";
+        return "○ 1〜" + NLEVEL + " すべて往復する";
+      })()]
+  ];
+  if(w.reason) rows.push(["理由", w.reason]);
+
+  document.getElementById("detail").innerHTML = rows.map(function(x){
+    const bad = /^×|取れていない/.test(x[1]) ? ' class="bad"' : "";
+    return "<dt>" + x[0] + "</dt><dd" + bad + ">" + x[1] + "</dd>";
+  }).join("");
+</script>
+</body>
+</html>

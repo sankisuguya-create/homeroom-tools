@@ -351,7 +351,7 @@ const FIELDS = [
 
 /* 評定への写像。既定は基本字がそのまま評定になる境目。
    A/Z系(10以上)→A、B系(7〜9)→B、C/D系(6以下)→C */
-const R = { aFrom:valueOf("A+"), cTo:valueOf("C++"), stat:"median" };
+const R = { aFrom:valueOfSym("A+"), cTo:valueOfSym("C++"), stat:"median" };
 const RANK_FIELDS = [
   {key:"aFrom", label:"A とする下限", opts:null},   // 記号セレクタ
   {key:"cTo",   label:"C とする上限", opts:null},
@@ -432,7 +432,7 @@ function summarize(ni, u){
   const entered = seq.filter(Boolean);
   const off     = entered.filter(x => x === OFF).length;
   const skip    = entered.filter(x => x === SKIP).length;
-  const vals    = entered.filter(x => !isMark(x)).map(valueOf);
+  const vals    = entered.filter(x => !isMark(x)).map(valueOfSym);
   let scored = vals;
   if(F.dropD) scored = scored.filter(v => baseOf(v) !== "D");
   if(F.dropC) scored = scored.filter(v => baseOf(v) !== "C");
@@ -467,7 +467,7 @@ function settled(ni, u){
 function rankOf(v){ return v == null ? null : v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B"; }
 function termFor(ni){
   const us = termUnits();
-  const vals = us.map(u => settled(ni, u)).filter(Boolean).map(valueOf).filter(v => v != null);
+  const vals = us.map(u => settled(ni, u)).filter(Boolean).map(valueOfSym).filter(v => v != null);
   if(!vals.length) return {v:null, rank:null, per:us.map(u => settled(ni, u))};
   let v;
   if(R.stat === "mode")      v = modeVal(vals);
@@ -603,7 +603,7 @@ function renderRankForm(id){
   const box = $(id || "rankForm");
   box.innerHTML = "";
   const symOpts = cur => ALL_SYMS
-    .map(x => '<option value="'+valueOf(x)+'"'+(valueOf(x)===cur?' selected':'')+'>'+x+'</option>').join("");
+    .map(x => '<option value="'+valueOfSym(x)+'"'+(valueOfSym(x)===cur?' selected':'')+'>'+x+'</option>').join("");
 
   RANK_FIELDS.forEach(f=>{
     const d = document.createElement("div");

@@ -1,3 +1,5 @@
+<!-- prototypes/src/scale.js から build.py が作る。直すのは src のほう。 -->
+<script>
 /* ==================================================================
    評価スケール — プロジェクトの正本。
    児童画面と教師画面がこの1ファイルを読む。build.py が両方に差し込む。
@@ -63,3 +65,4 @@ BASES.forEach(b => MODS.forEach(m => ALL_SYMS.push(b + m.s)));
 /* 中央値が2段の間に落ちたときは下側を採る（水増ししない）。
    順序尺度なので平均は取れない。 */
 const symbolOfMedian = m => (m == null) ? null : symbolOf(Math.floor(m));
+</script>
