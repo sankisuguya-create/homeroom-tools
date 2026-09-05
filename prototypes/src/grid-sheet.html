@@ -1,7 +1,7 @@
 <title>ノート評価</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap">
+<!-- フォントの <link> はここに置かない。置くと描画が止まる。下の script で後から足す。 -->
 <style>
 /* @include tokens.css */
 
@@ -276,6 +276,24 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 </div>
 
 <script>
+/* ==================================================================
+   0. フォント
+   IBM Plex Sans JP は日本語のウェブフォントで、校内から
+   fonts.googleapis.com が遅い・届かないことがある。<link> を直接置くと
+   その間ずっと画面が白いままになる（実測：3秒かかると最初の描画も3.3秒、
+   届かないと9.3秒）。media="print" で入れて、届いてから all に変える。
+   届かなければ端末のフォント（ChromeOS なら Noto Sans CJK）で出る。
+================================================================== */
+(function(){
+  const l = document.createElement("link");
+  l.rel   = "stylesheet";
+  l.media = "print";                       // 画面の描画を止めない
+  l.href  = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600"
+          + "&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap";
+  l.onload = function(){ this.media = "all"; };
+  document.head.appendChild(l);
+})();
+
 /* @include scale.js */
 
 /* ==================================================================
@@ -388,34 +406,43 @@ function paint(sel, sym){
   else if(sym[0] === "A") sel.classList.add("is-a");
 }
 
+/* セル1つ分の見た目を、作り直さずに当て直す。
+   1タップごとに表を作り直すと、児童の端末（MT8183 相当）で 1回 140ms かかる。
+   内訳の実測では、その 135ms が select と 20 個の option を組み立て直す時間だった。
+   変わるのはクラスと選択値だけなので、そこだけ触る。 */
+function applyCellState(c, l){
+  const u = unitOf(l.no);
+  const locked = isLocked(l);
+  const open   = l.state !== "future" && !locked;    // まだ変えられる（未記入も入力済みも）
+  const editable = l.state !== "future" && canEdit(l);
+
+  c.className = "cell " + l.state
+    + (open ? " open" : "")
+    + (open && !l.sym ? " empty" : "")
+    + (locked ? " locked" : "")
+    + (locked && role === "teacher" ? " opened" : "")
+    + (l.edited ? " edited" : "")
+    + (l.sym === SKIP ? " skipcell" : "");
+  c.dataset.u = u ? u.c : 0;         // 単元の色は単元マスタが持つ
+
+  const sel = c.querySelector("select");
+  sel.disabled = !editable;
+  sel.value = l.sym || "";
+  paint(sel, l.sym);
+}
+
 function renderGrid(){
   const g = $("grid");
   g.innerHTML = "";
   rows().forEach(l=>{
     const u = unitOf(l.no);
-    const locked = isLocked(l);
-    const open   = l.state !== "future" && !locked;    // まだ変えられる（未記入も入力済みも）
-    const editable = l.state !== "future" && canEdit(l);
-    const ui = u ? u.c : 0;         // 単元の色は単元マスタが持つ
-
     const c = document.createElement("div");
-    c.className = "cell " + l.state
-      + (open ? " open" : "")
-      + (open && !l.sym ? " empty" : "")
-      + (locked ? " locked" : "")
-      + (locked && role === "teacher" ? " opened" : "")
-      + (l.edited ? " edited" : "")
-      + (l.sym === SKIP ? " skipcell" : "");
-    c.dataset.u = ui;
-
     c.innerHTML =
       '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
       '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
       '<select class="mat" aria-label="No.' + l.no + ' ' + (u?u.name:"") + ' の評価">' + optionsHTML(l.sym) + '</select>';
 
     const sel = c.querySelector("select");
-    sel.disabled = !editable;
-    if(l.sym){ sel.value = l.sym; paint(sel, l.sym); }
     sel.addEventListener("change", ()=>{
       const wasLocked = isLocked(l);
       l.sym = sel.value || null;
@@ -424,9 +451,20 @@ function renderGrid(){
       }else{
         l.savedAt = new Date();                // 次の境界までは書き換えられる
       }
-      if(l.state === "todo" && l.sym) l.state = "done";
-      refresh();
+      /* 空に戻したら「まだ入れていない」に戻す。戻さないと残数が減ったままになる。
+         state は「授業が済んだか」ではなく「転写したか」を持っている
+         （実施済みかどうかは、実装では授業マスタの実施日が持つ）。 */
+      if(l.state !== "future") l.state = l.sym ? "done" : "todo";
+      /* / は教師だけが設定する。児童の画面では、値が / でなくなった時点で
+         選択肢からも外す（表を作り直さなくなったので、ここで外す）。 */
+      if(role !== "teacher" && l.sym !== SKIP){
+        const opt = sel.querySelector('option[value="' + SKIP + '"]');
+        if(opt) opt.remove();
+      }
+      applyCellState(c, l);
+      refreshAfterEdit();
     });
+    applyCellState(c, l);
     g.appendChild(c);
   });
 }
@@ -638,8 +676,7 @@ function renderSubjSeg(){
   tl.href = TEACHER_URL;
 }
 
-function refresh(){
-  renderSubjSeg();
+function renderHead(){
   const list = rows();
   const todo   = list.filter(l => l.state === "todo" && !l.sym).length;
   const locked = list.filter(l => l.sym && isLocked(l)).length;
@@ -650,7 +687,20 @@ function refresh(){
   $("lockBadge").textContent = "確定 " + locked;
   $("title").innerHTML = (role === "teacher" ? "3年3組" : "さくら") +
     '<small>' + subject + '　2026年度' + (role === "teacher" ? "　教師表示" : "") + '</small>';
+}
 
+/* 1セル直したあと。表は作り直さない（そのセルは applyCellState で当て直し済み）。
+   残数・単元評価・折れ線だけ引き直す。実測でこの3つは合わせて 4ms。 */
+function refreshAfterEdit(){
+  renderHead();
+  renderUnits();
+  drawTrend();
+}
+
+/* 表そのものを作り直す。教科・役割が変わったときだけ。 */
+function refresh(){
+  renderSubjSeg();
+  renderHead();
   renderLockbar();
   renderGrid();
   renderUnits();
