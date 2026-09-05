@@ -208,11 +208,19 @@ h2 .fold{order:2;font-weight:600}
 }
 .cell.open.empty select{border-left-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
 
-/* 確定済みは紙のまま沈める。印は置かない。 */
-.cell.locked select:disabled{opacity:1;cursor:default;color:var(--ink-soft);
+/* 確定済みは紙のまま沈める。印は置かない。
+   :not(.is-skip) を付けているのは、/ には出す文字がないから。
+   状態ごとの文字色をそのまま当てると、詳細度で material.css の
+   color:transparent を上回って「/」の字が出てしまう。
+   状態の色は「文字がある記号」にだけ当てる。 */
+.cell.locked select:disabled:not(.is-skip){opacity:1;cursor:default;color:var(--ink-soft);
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+.cell.locked select:disabled.is-skip{opacity:1;cursor:default;
   border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
 
-.cell.future select{background-color:var(--rule-soft);color:var(--ink-faint);
+.cell.future select:not(.is-skip){background-color:var(--rule-soft);color:var(--ink-faint);
+  border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
+.cell.future select.is-skip{
   border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
 
 /* 教師が確定済みを開いているとき：破線で「本来は閉じている」を示す */
