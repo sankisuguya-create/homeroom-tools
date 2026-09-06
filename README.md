@@ -17,6 +17,20 @@
 | `prototypes/src/` | 上の2つの元。**直すのはこちら** |
 | [`gas/`](gas/) | Google Apps Script 側。いまは Step 3（本人確認）まで |
 
+## ダンスカウント表
+
+運動会・学芸会の集団演技の振り付けを、8カウント単位で書き起こして A4横 に刷る。
+曲を問わない。1行＝1エイト（8拍・2小節）で、上に言葉、下に1〜8の動きを入れる。
+
+| ファイル | 内容 |
+|---|---|
+| [`docs/dance-count.md`](docs/dance-count.md) | 何を決めて何を決めなかったか |
+| `prototypes/dance-count.html` | 本体（生成物）。ブラウザで開くだけで動く |
+| `prototypes/src/dance-count.html` | その元。**直すのはこちら** |
+
+保存はブラウザ内。端末をまたぐときは書き出したJSONを持ち運ぶ。
+**歌詞を入れたJSONはこのリポジトリにコミットしない**（公開リポジトリのため。理由は上のdocs）。
+
 ```
 python3 build.py           src/ から prototypes/*.html と gas/Scale.gs を生成する
 python3 build.py --check   生成物が src と一致するか調べる
@@ -24,4 +38,5 @@ node gas/localcheck.js     GAS のコードを手元で走らせて確かめる
 ```
 
 スケールの定義・色トークン・単元マスタは `prototypes/src/` に1箇所ずつしか置いていない。
-両画面がそれを読む。`prototypes/*.html` を直接編集すると次のビルドで消える。
+それを読む側が5つある（両画面・ダンスカウント表・GAS の2つ）。
+`prototypes/*.html` を直接編集すると次のビルドで消える。
