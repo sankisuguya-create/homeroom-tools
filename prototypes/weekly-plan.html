@@ -28,49 +28,146 @@
   --cat-none:#7A7F86;    /* 印を出さない層のための保険 */
 
   --band:#EFEDE8;        /* 休み行の地 */
-  --ui:#F1F3F5; --ui-line:#CDD2D8;
+
+  /* 机（画面の外枠）。紙の上には決して出さない色。
+     外枠を暗く保つのは装飾ではなく、**刷られる面と刷られない面を取り違えないため**。
+     白い面に出ているものは刷られる。机の上にあるものは刷られない。 */
+  --desk:#22302F; --desk-2:#2B3B3A; --desk-3:#354847;
+  --desk-line:#405553; --desk-ink:#E9EFEE; --desk-sub:#9BAEAC;
+  --pen:#E4705A;         /* 赤ペン。重なりの合図にだけ使う */
 }
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --paper:#15181B; --ink:#E9ECEF; --ink-sub:#A2AAB3; --ink-link:#8ABBEE;
-    --ui:#1E2226; --ui-line:#333A41;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#15181B; --ink:#E9ECEF; --ink-sub:#A2AAB3; --ink-link:#8ABBEE;
-  --ui:#1E2226; --ui-line:#333A41;
-}
+/* 机の色は明暗で変えない。紙は常に紙、机は常に机。
+   ここで暗い配色に切り替えると、白い面がどれかが揺れる。 */
 /* ▲ src/plan-tokens.css ここまで ▲ */
 
 *{box-sizing:border-box}
-body{margin:0;background:var(--paper);color:var(--ink);
-  font:14px/1.5 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
-  -webkit-text-size-adjust:100%}
+html,body{height:100%}
+body{margin:0;background:var(--desk);color:var(--desk-ink);
+  font:14px/1.55 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
+  -webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
 
-/* ── 画面まわり（刷らない） ───────────────────────── */
-.chrome{position:sticky;top:0;z-index:20;background:var(--ui);
-  border-bottom:1px solid var(--ui-line)}
-.bar{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:7px 12px}
-.grp{display:flex;gap:6px;align-items:center}
-.grp label{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--ink-sub)}
-button,select,input[type=date],input[type=url],input[type=text]{
-  font:inherit;font-size:13px;padding:5px 9px;border:1px solid var(--ui-line);
-  border-radius:5px;background:var(--sheet);color:var(--ink)}
-button{cursor:pointer}
-button:hover{background:var(--fill-a)}
-button.primary{background:var(--ink-link);border-color:var(--ink-link);color:#fff}
-button.primary:hover{filter:brightness(1.12)}
-#weeklabel{font-size:15px;font-weight:700;min-width:11em;text-align:center}
-.hint{padding:0 12px 7px;font-size:12px;color:var(--ink-sub)}
-.hint b{color:var(--ink-alert)}
+/* ══ 机（刷らない面）════════════════════════════════
+   紙の上に出ているものは刷られる。机の上にあるものは刷られない。
+   外枠を暗く保つのは、その2つを取り違えないための仕掛け。 */
 
-.stage{padding:14px;display:flex;justify-content:center}
+.app{display:grid;height:100%;
+  grid-template-columns:212px 1fr;
+  grid-template-rows:auto 1fr auto;
+  grid-template-areas:"top top" "rail stage" "edit edit"}
 
-/* ── 用紙 ─────────────────────────────────────────
-   画面でも刷ったときと同じ mm で並べる。倍率 --k で全体が伸縮する。 */
+/* 上の帯 */
+.top{grid-area:top;display:flex;align-items:center;gap:20px;
+  padding:11px 18px;border-bottom:1px solid var(--desk-line);background:var(--desk-2)}
+.brand{display:flex;align-items:baseline;gap:9px;letter-spacing:.09em;font-size:12px;
+  color:var(--desk-sub);white-space:nowrap}
+.brand b{font-size:16px;letter-spacing:.16em;color:var(--desk-ink);font-weight:600}
+
+.wknav{display:flex;align-items:center;gap:2px}
+.wknav .date{font-size:26px;font-weight:300;letter-spacing:.02em;
+  font-variant-numeric:tabular-nums;padding:0 12px;white-space:nowrap}
+.wknav .no{font-size:11px;color:var(--desk-sub);letter-spacing:.12em;
+  align-self:flex-end;padding-bottom:6px}
+
+.ab{display:flex;border:1px solid var(--desk-line);border-radius:7px;overflow:hidden}
+.ab button{border:0;border-radius:0;background:transparent;color:var(--desk-sub);
+  padding:5px 13px;font-size:13px;font-weight:600;letter-spacing:.06em}
+.ab button[aria-pressed=true]{background:var(--desk-ink);color:var(--desk)}
+.ab+.abcap{font-size:11px;color:var(--desk-sub);letter-spacing:.04em}
+
+.spacer{flex:1}
+.acts{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+
+button,select,input{font:inherit;color:inherit}
+.btn{background:transparent;border:1px solid var(--desk-line);border-radius:7px;
+  padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;
+  transition:background .12s,border-color .12s}
+.btn:hover{background:var(--desk-3);border-color:var(--desk-sub)}
+.btn.go{background:var(--desk-ink);color:var(--desk);border-color:var(--desk-ink);font-weight:600}
+.btn.go:hover{background:#fff}
+.btn.icon{padding:6px 10px}
+.btn:focus-visible,.role:focus-visible,select:focus-visible,input:focus-visible{
+  outline:2px solid var(--pen);outline-offset:2px}
+
+/* 左のレール ── 「だれとして書くか」と凡例を1つにしてある。
+   選ぶ行に、紙の上でそう見える見本が付いている。 */
+.rail{grid-area:rail;background:var(--desk-2);border-right:1px solid var(--desk-line);
+  padding:16px 14px;overflow:auto}
+.rail h3{margin:0 0 9px;font-size:11px;letter-spacing:.13em;color:var(--desk-sub);font-weight:600}
+.rail h3+*{margin-top:0}
+.roles{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
+.role{display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center;
+  background:transparent;border:1px solid transparent;border-radius:8px;
+  padding:7px 8px;text-align:left;cursor:pointer;width:100%}
+.role:hover{background:var(--desk-3)}
+.role[aria-pressed=true]{background:var(--desk-3);border-color:var(--desk-sub)}
+.chipx{background:#fff;border-radius:3px;height:26px;position:relative;overflow:hidden;
+  display:flex;align-items:center;padding-left:7px}
+.chipx i{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cat-none)}
+.chipx b{position:absolute;right:0;top:0;font-size:8px;line-height:1.3;padding:0 3px;
+  color:#fff;background:var(--cat-none);border-bottom-left-radius:3px;font-weight:600}
+.chipx em{font-size:10px;color:#1A1A1A;font-style:normal;font-weight:600}
+.chipx b:empty{display:none}
+.role[data-layer=school] .chipx i,.role[data-layer=school] .chipx b{background:var(--cat-school)}
+.role[data-layer=grade]  .chipx i,.role[data-layer=grade]  .chipx b{background:var(--cat-grade)}
+.role[data-layer=special] .chipx i,.role[data-layer=special] .chipx b{background:var(--cat-special)}
+.role[data-layer=school] .chipx,.role[data-layer=grade] .chipx,
+.role[data-layer=special] .chipx{background:var(--fill-a)}
+.role[data-layer=home]   .chipx i{background:transparent}
+.rname{font-size:13px;line-height:1.3}
+.rwhere{display:block;font-size:10.5px;color:var(--desk-sub);line-height:1.35;margin-top:1px}
+.role[aria-pressed=true] .rname{font-weight:600}
+
+.pick{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--desk-sub);
+  margin-bottom:20px}
+.pick select{background:var(--desk-3);border:1px solid var(--desk-line);border-radius:6px;
+  padding:5px 8px;font-size:13px}
+.pick input[type=checkbox]{accent-color:var(--desk-ink)}
+
+.legend{display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--desk-sub)}
+.legend div{display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center}
+.legend .sw{height:20px;border-radius:3px;background:#fff;position:relative;overflow:hidden}
+.legend .sw.up{background:var(--fill-a)}
+.legend .sw.cl{background:var(--fill-b)}
+.legend .sw.bs{display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:var(--ink-sub)}
+
+.zoom{margin-top:22px;font-size:11px;color:var(--desk-sub)}
+.zoom input{width:100%;accent-color:var(--desk-ink)}
+
+/* 紙が置いてある面 */
+.stage{grid-area:stage;overflow:auto;padding:22px;display:flex;justify-content:center;
+  align-items:flex-start;background:
+    radial-gradient(120% 80% at 50% 0%,#283736 0%,var(--desk) 62%)}
+.paper{}
+
+/* 下の帯（コマを選ぶと出る） */
+.edit{grid-area:edit;background:var(--desk-2);border-top:1px solid var(--desk-line);
+  padding:9px 18px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;
+  transform:translateY(0);transition:transform .14s ease-out}
+.edit[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.edit{transition:none}}
+.ewhere{font-size:13px;font-weight:600;letter-spacing:.02em;white-space:nowrap;
+  padding-right:14px;border-right:1px solid var(--desk-line)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{padding:4px 10px;font-size:12px;border:1px solid var(--desk-line);border-radius:13px;
+  background:transparent;cursor:pointer}
+.chip:hover{background:var(--desk-3);border-color:var(--desk-sub)}
+.chip.off{color:var(--desk-sub);border-style:dashed}
+.lnk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--desk-sub)}
+.lnk input{background:var(--desk-3);border:1px solid var(--desk-line);border-radius:6px;
+  padding:4px 8px;font-size:12px;width:13em}
+
+.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:60;
+  background:var(--desk-ink);color:var(--desk);padding:9px 17px;border-radius:9px;
+  font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.4);max-width:min(72ch,90vw)}
+.toast[hidden]{display:none}
+.toast b{color:#8A2314}
+
+/* ══ 用紙（刷る面）════════════════════════════════
+   画面でも刷ったときと同じ mm で並べる。--k で全体が伸縮する。 */
 .sheet{
   --k:1;
-  --pw:182mm; --ph:257mm; --pm:8mm;      /* B5・余白。設定から動く */
+  --pw:182mm; --ph:257mm; --pm:8mm;
   --labw:calc(9mm*var(--k));
   --wkw:calc(20mm*var(--k));
   --h-head:calc(8mm*var(--k));
@@ -81,7 +178,7 @@ button.primary:hover{filter:brightness(1.12)}
   --fs:calc(8.5pt*var(--k));
   --fs-s:calc(6pt*var(--k));
 
-  /* 用紙の中は暗い配色にしない。刷る紙の見えをそのまま画面に出す */
+  /* 紙の中は暗い配色にしない。刷る紙の見えをそのまま画面に出す */
   --ink:#1A1A1A; --ink-sub:#616870; --ink-link:#0F5EA8;
   background:#fff;color:#1A1A1A;
   width:calc(var(--pw) - var(--pm)*2);
@@ -89,27 +186,24 @@ button.primary:hover{filter:brightness(1.12)}
   display:grid;
   grid-template-columns:var(--labw) repeat(5,1fr) var(--wkw);
   border:1.2px solid var(--rule-week);
-  box-shadow:0 1px 10px rgba(0,0,0,.13);
+  box-shadow:0 2px 4px rgba(0,0,0,.28),0 18px 44px rgba(0,0,0,.34);
   font-size:var(--fs);
 }
 .sheet>*{border-right:.6px solid var(--rule);border-bottom:.6px solid var(--rule);
   min-width:0;position:relative}
 .sheet>.lastcol{border-right:none}
 
-/* 見出し行 */
 .hd{display:flex;align-items:center;justify-content:center;gap:.35em;
   height:var(--h-head);font-weight:700;border-bottom:1.2px solid var(--rule-week)}
 .hd .dow{font-size:var(--fs-s);color:var(--ink-sub);font-weight:400}
 .hd.sat .dow{color:#0F5EA8}
 .hd.corner{font-size:var(--fs-s);font-weight:400;color:var(--ink-sub)}
 
-/* 時程のラベル */
 .lab{display:flex;align-items:center;justify-content:center;text-align:center;
   font-size:var(--fs-s);color:var(--ink-sub);line-height:1.15;padding:0 1px}
 .lab.period{font-size:calc(11pt*var(--k));font-weight:700;color:var(--ink)}
 .row-break .lab,.row-break{background:var(--band)}
 
-/* コマ */
 .cell{display:flex;flex-direction:column;overflow:hidden}
 .cell.lesson{height:calc(var(--h-title) + var(--h-note))}
 .cell.brk{height:var(--h-break)}
@@ -122,10 +216,9 @@ button.primary:hover{filter:brightness(1.12)}
 .cell .t:focus,.cell .n:focus{background:#FFFBEA;box-shadow:inset 0 0 0 1.6px var(--ink-link)}
 .cell.sel{box-shadow:inset 0 0 0 1.6px var(--ink-link)}
 
-/* 出どころ。塗りは2色しか使わない。層はラベルの文字が運ぶ */
-.cell.from-base .t{color:var(--ink-sub);font-weight:500}   /* 基本時間割のまま */
-.cell.upper{background:var(--fill-a)}                       /* 上位から降ってきた */
-.cell.clash{background:var(--fill-b)}                       /* 重なっている */
+.cell.from-base .t{color:var(--ink-sub);font-weight:500}
+.cell.upper{background:var(--fill-a)}
+.cell.clash{background:var(--fill-b)}
 .cell.upper::before,.cell.clash::before{content:"";position:absolute;
   left:0;top:0;bottom:0;width:calc(1.6mm*var(--k));background:var(--cat-none)}
 .cell[data-layer=school]::before{background:var(--cat-school)}
@@ -141,7 +234,6 @@ button.primary:hover{filter:brightness(1.12)}
 .lk{text-decoration:underline;text-decoration-color:var(--ink-link);
   text-underline-offset:1.5px}
 
-/* 土日の列 */
 .wk{display:flex;flex-direction:column}
 .wk .cap{font-size:var(--fs-s);color:var(--ink-sub);text-align:center;
   border-bottom:.6px dashed var(--rule-soft);padding:1px 0}
@@ -149,8 +241,7 @@ button.primary:hover{filter:brightness(1.12)}
   overflow:hidden;word-break:break-word}
 .wk .t:focus{background:#FFFBEA;box-shadow:inset 0 0 0 1.6px var(--ink-link)}
 
-/* 下の帯 */
-.foot{grid-column:1/8;height:var(--h-foot);display:grid;
+.foot{grid-column:1/8;min-height:var(--h-foot);display:grid;
   grid-template-columns:var(--labw) 1fr;border-right:none}
 .foot .lab{border-right:.6px solid var(--rule)}
 .foot .t{padding:calc(1mm*var(--k)) calc(1.6mm*var(--k));outline:none;
@@ -158,42 +249,44 @@ button.primary:hover{filter:brightness(1.12)}
   background:repeating-linear-gradient(to bottom,transparent 0,transparent
     calc(4.8mm*var(--k) - .6px),var(--rule-soft) calc(4.8mm*var(--k)))}
 
-/* ── 編集バー ─────────────────────────────────── */
-.editbar{position:sticky;bottom:0;z-index:20;background:var(--ui);
-  border-top:1px solid var(--ui-line);padding:8px 12px;
-  display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
-.editbar .where{font-weight:700;font-size:13px;min-width:9em}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{padding:3px 8px;font-size:12px;border:1px solid var(--ui-line);border-radius:11px;
-  background:var(--sheet);cursor:pointer}
-.chip:hover{background:var(--fill-a)}
-.chip.off{color:var(--ink-sub)}
-.editbar input[type=url]{width:15em}
-
-dialog{border:1px solid var(--ui-line);border-radius:9px;padding:0;max-width:94vw;
-  background:var(--ui);color:var(--ink)}
-dialog::backdrop{background:rgba(0,0,0,.42)}
-.dlg{padding:16px 18px;max-height:82vh;overflow:auto}
-.dlg h2{margin:0 0 4px;font-size:16px}
-.dlg p{margin:0 0 12px;font-size:12.5px;color:var(--ink-sub);line-height:1.6}
-.dlg .row{display:flex;gap:10px;align-items:center;margin:7px 0;font-size:13px}
-.dlg .end{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+/* ══ ダイアログ ════════════════════════════════════ */
+dialog{border:1px solid var(--desk-line);border-radius:11px;padding:0;
+  max-width:min(96vw,900px);background:var(--desk-2);color:var(--desk-ink);
+  box-shadow:0 20px 60px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(10,16,16,.62)}
+.dlg{padding:20px 22px;max-height:84vh;overflow:auto}
+.dlg h2{margin:0 0 6px;font-size:17px;letter-spacing:.02em}
+.dlg p{margin:0 0 14px;font-size:12.5px;color:var(--desk-sub);line-height:1.75}
+.dlg p b{color:var(--desk-ink)}
+.dlg .row{display:flex;gap:11px;align-items:center;margin:9px 0;font-size:13px;flex-wrap:wrap}
+.dlg .row>span:first-child{min-width:5.5em;color:var(--desk-sub);font-size:12px}
+.dlg select,.dlg input[type=text],.dlg input[type=number]{background:var(--desk-3);
+  border:1px solid var(--desk-line);border-radius:6px;padding:5px 9px;font-size:13px}
+.dlg input[type=range]{accent-color:var(--desk-ink);flex:1;min-width:150px}
+.dlg .end{display:flex;gap:9px;justify-content:flex-end;margin-top:18px}
+.dlg hr{border:0;border-top:1px solid var(--desk-line);margin:18px 0}
+pre.tsv{background:#101A19;border:1px solid var(--desk-line);border-radius:8px;
+  padding:11px 13px;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+  overflow:auto;max-height:210px;white-space:pre;color:#C9D6D4}
 table.base{border-collapse:collapse;font-size:12.5px}
-table.base th,table.base td{border:1px solid var(--ui-line);padding:2px 3px;text-align:center}
-table.base th{background:var(--fill-a);color:#1A1A1A;font-weight:600}
-table.base select,table.base input{padding:2px 4px;font-size:12px;min-width:6.4em}
-ul.clashes{margin:0;padding-left:1.1em;font-size:13px;line-height:1.85}
-ul.clashes b{color:var(--ink-alert)}
+table.base th,table.base td{border:1px solid var(--desk-line);padding:2px 3px;text-align:center}
+table.base th{background:var(--desk-3);font-weight:600}
+table.base select,table.base input{padding:2px 5px;font-size:12px;min-width:6.4em}
+ul.clashes{margin:0;padding-left:1.15em;font-size:13px;line-height:1.9}
+ul.clashes b{color:var(--pen)}
+.rules{margin:0;padding-left:1.15em;font-size:12.5px;line-height:1.9;color:var(--desk-sub)}
+.rules b{color:var(--desk-ink)}
 
-/* ── 刷るとき ────────────────────────────────────
-   層の色も印も刷らない。貼った紙に要るのは中身だけ。 */
+/* ══ 刷るとき ════════════════════════════════════
+   机の上のものは何も刷らない。層の色も印も刷らない。 */
 @media print{
-  .chrome,.editbar,.stage{padding:0}
-  .chrome,.editbar{display:none!important}
+  .top,.rail,.edit,.toast{display:none!important}
+  .app{display:block;height:auto}
+  .stage{display:block;padding:0;overflow:visible;background:#fff}
+  .paper{zoom:1!important}
   body{background:#fff}
-  .stage{display:block}
   .sheet{box-shadow:none;width:auto;min-height:0;border-color:#000}
-  .cell.upper,.cell.clash,.row-break .lab,.row-break{background:transparent}
+  .cell.upper,.cell.clash{background:transparent}
   .row-break,.row-break .lab{background:#EFEFEF}
   .cell.upper::before,.cell.clash::before,.tag{display:none}
   .cell.from-base .t{color:#1A1A1A;font-weight:600}
@@ -201,72 +294,150 @@ ul.clashes b{color:var(--ink-alert)}
 }
 </style>
 
-<div class="chrome">
-  <div class="bar">
-    <div class="grp">
-      <button id="prev" title="前の週">◀</button>
-      <span id="weeklabel"></span>
-      <button id="next" title="次の週">▶</button>
-      <input type="date" id="jump" title="この日を含む週へ">
+<div class="app">
+  <header class="top">
+    <span class="brand"><b>週案</b><span id="whoCls"></span></span>
+    <div class="wknav">
+      <button class="btn icon" id="prev" aria-label="前の週">◀</button>
+      <span class="date" id="weeklabel"></span>
+      <button class="btn icon" id="next" aria-label="次の週">▶</button>
+      <span class="no" id="weekno"></span>
     </div>
-    <div class="grp">
-      <label>だれとして <select id="role"></select></label>
-      <label>クラス <select id="cls"></select></label>
-      <label id="ownWrap" hidden><input type="checkbox" id="own"> 自分の週で見る</label>
+    <div class="ab" role="group" aria-label="基本時間割のA週・B週">
+      <button id="abA" aria-pressed="true">A週</button>
+      <button id="abB" aria-pressed="false">B週</button>
     </div>
-    <div class="grp">
-      <button id="baseBtn">基本時間割</button>
-      <button id="copyBtn">時数をコピー</button>
-      <button id="tanpopoBtn">たんぽぽへ反映</button>
-      <button id="setBtn">用紙</button>
-      <button id="printBtn" class="primary">印刷</button>
+    <span class="abcap">基本時間割</span>
+    <span class="spacer"></span>
+    <div class="acts">
+      <button class="btn" id="baseBtn">基本時間割</button>
+      <button class="btn" id="copyBtn">時数をコピー</button>
+      <button class="btn" id="tanpopoBtn">たんぽぽへ反映</button>
+      <button class="btn" id="setBtn">用紙</button>
+      <button class="btn go" id="printBtn">印刷</button>
     </div>
-  </div>
-  <div class="hint" id="hint"></div>
+  </header>
+
+  <aside class="rail">
+    <h3>だれとして書くか</h3>
+    <div class="roles" id="roles"></div>
+
+    <div class="pick">
+      <label for="cls">クラス</label>
+      <select id="cls"></select>
+    </div>
+    <label class="pick" id="ownWrap" hidden>
+      <input type="checkbox" id="own"> 自分の週で見る
+    </label>
+
+    <h3>紙の上の見え方</h3>
+    <div class="legend">
+      <div><span class="sw up"></span><span>上位から降りてきた</span></div>
+      <div><span class="sw cl"></span><span>2つ以上入っている</span></div>
+      <div><span class="sw bs">国語</span><span>基本時間割のまま</span></div>
+    </div>
+
+    <div class="zoom">
+      <label for="vz">画面の大きさ <span id="vzV"></span>%</label>
+      <input type="range" id="vz" min="45" max="130" step="5">
+      <div style="margin-top:5px">印刷の倍率は「用紙」で別に決める</div>
+    </div>
+  </aside>
+
+  <main class="stage"><div class="paper" id="paper"><div class="sheet" id="sheet"></div></div></main>
+
+  <footer class="edit" id="editbar" hidden>
+    <span class="ewhere" id="ebWhere"></span>
+    <div class="chips" id="ebChips"></div>
+    <button class="btn" id="ebLink">リンク</button>
+    <button class="btn" id="ebAll" hidden>全曜日に入れる</button>
+    <button class="btn" id="ebRevert" hidden>上位に戻す</button>
+    <button class="btn" id="ebClear">空にする</button>
+  </footer>
 </div>
 
-<div class="stage"><div class="sheet" id="sheet"></div></div>
-
-<div class="editbar" id="editbar" hidden>
-  <span class="where" id="ebWhere"></span>
-  <div class="chips" id="ebChips"></div>
-  <label style="font-size:12px">題名のリンク <input type="url" id="ebTu" placeholder="https://"></label>
-  <label style="font-size:12px">詳細のリンク <input type="url" id="ebNu" placeholder="https://"></label>
-  <button id="ebAll" hidden>全曜日に入れる</button>
-  <button id="ebRevert" hidden>上位に戻す</button>
-  <button id="ebClear">空にする</button>
-</div>
+<div class="toast" id="toast" hidden></div>
 
 <dialog id="baseDlg"><div class="dlg">
   <h2>基本時間割</h2>
-  <p>ここに入れたものが、<b>週案枠を作った時点で全部のコマに流し込まれる</b>。<br>
-     担任は毎週30コマ埋めるのではなく、変わったところだけ直す。</p>
-  <div class="row">クラス <select id="baseCls"></select></div>
+  <p>ここに入れたものが、<b>週案枠を開いた時点で全部のコマに出る</b>。担任は毎週30コマ埋めるのではなく、変わったところだけ直す。<br>
+     <b>A週とB週で別に持つ。</b>年間行事計画表の「週」欄がその週のどちらかを決める。</p>
+  <div class="row"><span>クラス</span><select id="baseCls"></select>
+    <span>週</span>
+    <div class="ab"><button id="bvA" aria-pressed="true">A週</button><button id="bvB">B週</button></div>
+    <button class="btn" id="baseCopy">A週をB週へ写す</button></div>
   <div id="baseGrid"></div>
-  <div class="end"><button id="baseApply">この週に入れ直す</button>
-    <button class="primary" id="baseClose">閉じる</button></div>
+  <div class="end"><button class="btn go" id="baseClose">閉じる</button></div>
 </div></dialog>
 
 <dialog id="setDlg"><div class="dlg">
   <h2>用紙</h2>
-  <p>刷って教務必携に当て、枠が合う値を見つける。<br>
-     見つけた値は設定シートに書いて全職員で同じものを使う。</p>
-  <div class="row">用紙
+  <p>刷って教務必携に当て、枠が合う値を見つける。見つけた値は設定シートに書いて全職員で同じものを使う。</p>
+  <div class="row"><span>用紙</span>
     <select id="stPaper"><option value="B5">B5</option><option value="A4">A4</option></select></div>
-  <div class="row">余白 <input type="range" id="stMg" min="4" max="20" step="1">
+  <div class="row"><span>余白</span><input type="range" id="stMg" min="4" max="20" step="1">
     <span id="stMgV"></span> mm</div>
-  <div class="row">倍率 <input type="range" id="stK" min="0.7" max="1.15" step="0.01">
+  <div class="row"><span>印刷の倍率</span><input type="range" id="stK" min="0.7" max="1.15" step="0.01">
     <span id="stKV"></span></div>
-  <div class="row"><label><input type="checkbox" id="stHead"> 時数のコピーに見出し行を含める</label></div>
-  <div class="end"><button class="primary" id="setClose">閉じる</button></div>
+  <hr>
+  <div class="row"><span>週番号</span>
+    第1週の月曜 <input type="text" id="stW1" placeholder="2026-04-06" size="12">
+    <span style="color:var(--desk-sub);font-size:12px">時数集計表のシート名に合わせる</span></div>
+  <div class="end"><button class="btn go" id="setClose">閉じる</button></div>
+</div></dialog>
+
+<dialog id="tallyDlg"><div class="dlg">
+  <h2>時数集計表へコピー</h2>
+  <p>週ごとのシートに、<b>1回で貼れる1つの矩形</b>にしてある。空のセルも含めてあるので、貼った先の形がそのまま揃う。<br>
+     教科は1文字。<b>時数に数えない教科（行事・給食・クラブ）は空にしてある</b>——書くと Excel 側の集計が増える。</p>
+  <div class="row"><span>貼る先</span><input type="text" id="tyAnchor" size="6">
+    <span style="color:var(--desk-sub);font-size:12px">この左上のセルを選んでから貼る</span></div>
+  <div class="row"><span>クラスの順</span><input type="text" id="tyCls" size="30">
+    <span style="color:var(--desk-sub);font-size:12px">上から順に。カンマ区切り</span></div>
+  <div class="row"><span>1日ぶんの行数</span><input type="number" id="tyBlock" min="1" max="30" style="width:5em">
+    <span style="color:var(--desk-sub);font-size:12px">次の曜日が始まるまでの行数</span></div>
+  <div class="row" id="tyCols"></div>
+  <pre class="tsv" id="tyPrev"></pre>
+  <div class="end"><button class="btn" id="tyClose">閉じる</button>
+    <button class="btn go" id="tyCopy">クリップボードにコピー</button></div>
+</div></dialog>
+
+<dialog id="tpDlg"><div class="dlg">
+  <h2>たんぽぽ時間割へ反映</h2>
+  <p>「たんぽぽ時間割」の <b>週案シート</b>に、この週の各クラスの授業名を書き込む。<br>
+     木曜に各担任から週案を集めて金曜に打ち替える作業を、この1操作に置き換える。</p>
+  <ul class="rules">
+    <li><b>日ブロックの位置は決め打ちしない。</b>A列を上から見て日付の入った行を探し、そこを起点にする
+        （実物は先頭行が 2・18・36・51・69 と不揃いで、決め打ちすると別の日に書き込む）</li>
+    <li>起点からの相対行は全日で同じ：<b>1校時＋1／2校時＋3／中休み＋5／3校時＋6／4校時＋8／給食＋10／昼休み＋11／5校時＋12／6校時＋14</b></li>
+    <li><b>列見出しは日ブロックごとに読み直す。</b>同じ児童でも曜日で交流学級が変わる</li>
+    <li>見出しを正規化して「学年-組」になる列だけを対象にする。<b>支援員・ボランティアの列には書かない</b></li>
+    <li><b>書くのは授業名の行だけ。</b>担当（交：／た：／支：）の行と、セルの色分けには触れない</li>
+    <li>すでに「た」で始まる値が入っているセルは<b>たんぽぽ側で受ける時間</b>なので触れない</li>
+    <li>給食・昼休み・中休みの行にも書かない</li>
+    <li>書き込む前に「どのセルを何に変えるか」を一覧で出し、<b>教師が見てから確定する</b></li>
+  </ul>
+  <hr>
+  <p id="tpState"></p>
+  <div class="end"><button class="btn go" id="tpClose">閉じる</button></div>
+</div></dialog>
+
+<dialog id="linkDlg"><div class="dlg">
+  <h2>リンク</h2>
+  <p>題名の欄と詳細の欄に、それぞれ1つずつ付けられる。<b>欄全体がリンクになる</b>——文字の一部を選ぶ操作は要らない。<br>
+     刷ったときは下線だけが残る。URL は刷らない。</p>
+  <div class="row"><span>どのコマ</span><b id="lkWhere"></b></div>
+  <div class="row"><span>題名の欄</span><input type="text" id="ebTu" placeholder="https://" style="flex:1;min-width:22em"></div>
+  <div class="row"><span>詳細の欄</span><input type="text" id="ebNu" placeholder="https://" style="flex:1;min-width:22em"></div>
+  <div class="end"><button class="btn go" id="lkClose">閉じる</button></div>
 </div></dialog>
 
 <dialog id="warnDlg"><div class="dlg">
   <h2>重なっているコマがあります</h2>
   <p>同じコマに2つ以上の予定が入っている。<b>あとから書かれたほうが出ている。</b><br>
-     <b>閉じるとこの重なりについては二度出ない</b>（中身が変わったら出し直す）。</p>
+     閉じるとこの重なりについては二度出ない（中身が変わったら出し直す）。</p>
   <ul class="clashes" id="warnList"></ul>
-  <div class="end"><button class="primary" id="warnClose">確かめた</button></div>
+  <div class="end"><button class="btn go" id="warnClose">確かめた</button></div>
 </div></dialog>
 
 <script>
@@ -275,38 +446,37 @@ ul.clashes b{color:var(--ink-alert)}
 /* ══ 設定（本番では設定シートから来る） ══════════════════ */
 
 const SLOTS = [
-  {id:"am1",  name:"朝休み", kind:"brk"},
-  {id:"am2",  name:"朝学習", kind:"brk"},
-  {id:"p1",   name:"1",      kind:"lesson"},
-  {id:"p2",   name:"2",      kind:"lesson"},
-  {id:"br",   name:"業間",   kind:"brk"},
-  {id:"p3",   name:"3",      kind:"lesson"},
-  {id:"p4",   name:"4",      kind:"lesson"},
-  {id:"lun",  name:"昼休み", kind:"brk"},
-  {id:"p5",   name:"5",      kind:"lesson"},
-  {id:"p6",   name:"6",      kind:"lesson"}
+  {id:"am1", name:"朝休み", kind:"brk"},
+  {id:"am2", name:"朝学習", kind:"brk",    tally:"朝", chips:true},
+  {id:"p1",  name:"1",     kind:"lesson", tally:"1校時", tp:1},
+  {id:"p2",  name:"2",     kind:"lesson", tally:"2校時", tp:3},
+  {id:"br",  name:"業間",  kind:"brk",    tally:"中"},
+  {id:"p3",  name:"3",     kind:"lesson", tally:"3校時", tp:6},
+  {id:"p4",  name:"4",     kind:"lesson", tally:"4校時", tp:8},
+  {id:"lun", name:"昼休み",kind:"brk",    tally:"昼"},
+  {id:"p5",  name:"5",     kind:"lesson", tally:"5校時", tp:12},
+  {id:"p6",  name:"6",     kind:"lesson", tally:"6校時", tp:14}
 ];
 
-/* 時数表の列。学年で使わない教科も列は残す（Excel 側の列が固定のため） */
+/* short = 時数集計表に入れる1文字。数えない教科は空にする（書くと Excel の集計が増える） */
 const SUBJECTS = [
-  {code:"kokugo",  name:"国語",  count:true},
-  {code:"shakai",  name:"社会",  count:true},
-  {code:"sansu",   name:"算数",  count:true},
-  {code:"rika",    name:"理科",  count:true},
-  {code:"seikatsu",name:"生活",  count:true},
-  {code:"ongaku",  name:"音楽",  count:true},
-  {code:"zuko",    name:"図工",  count:true},
-  {code:"katei",   name:"家庭",  count:true},
-  {code:"taiiku",  name:"体育",  count:true},
-  {code:"doutoku", name:"道徳",  count:true},
-  {code:"gaikoku", name:"外国語",count:true},
-  {code:"sogo",    name:"総合",  count:true},
-  {code:"gakkatsu",name:"学活",  count:true},
-  /* 数えないもの。時数表には列を持たない */
-  {code:"gyoji",   name:"行事",  count:false},
-  {code:"kyushoku",name:"給食",  count:false},
-  {code:"club",    name:"クラブ",count:false},
-  {code:"iinkai",  name:"委員会",count:false}
+  {code:"kokugo",  name:"国語",  short:"国", count:true},
+  {code:"shakai",  name:"社会",  short:"社", count:true},
+  {code:"sansu",   name:"算数",  short:"算", count:true},
+  {code:"rika",    name:"理科",  short:"理", count:true},
+  {code:"seikatsu",name:"生活",  short:"生", count:true},
+  {code:"ongaku",  name:"音楽",  short:"音", count:true},
+  {code:"zuko",    name:"図工",  short:"図", count:true},
+  {code:"katei",   name:"家庭",  short:"家", count:true},
+  {code:"taiiku",  name:"体育",  short:"体", count:true},
+  {code:"doutoku", name:"道徳",  short:"道", count:true},
+  {code:"gaikoku", name:"外国語",short:"外", count:true},
+  {code:"sogo",    name:"総合",  short:"総", count:true},
+  {code:"gakkatsu",name:"学活",  short:"学", count:true},
+  {code:"gyoji",   name:"行事",  short:"",   count:false},
+  {code:"kyushoku",name:"給食",  short:"",   count:false},
+  {code:"club",    name:"クラブ",short:"",   count:false},
+  {code:"iinkai",  name:"委員会",short:"",   count:false}
 ];
 const SUB_BY_NAME = Object.fromEntries(SUBJECTS.map(s=>[s.name,s]));
 const SUB_BY_CODE = Object.fromEntries(SUBJECTS.map(s=>[s.code,s]));
@@ -315,30 +485,33 @@ const CLASSES = ["3-1","3-2","3-3","2-1","2-2"];
 const gradeOf = c => c.split("-")[0];
 
 const ROLES = [
-  {id:"h33", label:"担任 3年3組",     kind:"home",    cls:"3-3"},
-  {id:"h31", label:"担任 3年1組",     kind:"home",    cls:"3-1"},
-  {id:"g3",  label:"学年主任 3年",     kind:"grade",   grade:"3"},
-  {id:"kyo", label:"教務（学校全体）", kind:"school"},
-  {id:"ong", label:"音楽専科",         kind:"special", subject:"ongaku",
-             me:"ongaku@edu.nishi.or.jp", classes:CLASSES}
+  {id:"h33", label:"担任 3年3組",   kind:"home",    cls:"3-3", where:"このクラスだけに入る"},
+  {id:"h31", label:"担任 3年1組",   kind:"home",    cls:"3-1", where:"このクラスだけに入る"},
+  {id:"g3",  label:"学年主任 3年",   kind:"grade",   grade:"3", where:"3年の全クラスに入る"},
+  {id:"kyo", label:"教務",          kind:"school",             where:"全クラスに入る"},
+  {id:"ong", label:"音楽専科",       kind:"special", subject:"ongaku",
+             me:"ongaku@edu.nishi.or.jp", classes:CLASSES,
+             where:"担当クラスに入る。担任には「音楽」と出る"}
 ];
 const LAYER_NAME = {base:"", school:"全体", grade:"学年", special:"専", home:""};
-/* 警告の文の中では「担任」も名前で呼ぶ必要がある。コマの隅の印では邪魔なので空にしてある */
 const LAYER_FULL = {base:"基本時間割", school:"学校全体", grade:"学年", special:"専科", home:"担任"};
 const RANK = {base:0, home:1, special:2, grade:3, school:4};
-
 const DOW = ["月","火","水","木","金"];
 
 /* ══ 保存 ══════════════════════════════════════════ */
 
 const KEY = "weekly-plan-v0";
 const blank = () => ({
-  settings:{paper:"B5", margin:8, k:1, head:true},
+  settings:{paper:"B5", margin:8, k:1, vz:100, week1:"2026-04-06",
+    tally:{anchor:"C2", classes:"3-1,3-2,3-3", block:10,
+           cols:{am2:0, p1:2, p2:4, br:6, p3:7, p4:9, lun:11, p5:12, p6:14}}},
   base:{}, weeks:{}
 });
 let db;
 try{ db = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY)||"{}")); }
 catch(e){ db = blank(); }
+db.settings = Object.assign(blank().settings, db.settings||{});
+db.settings.tally = Object.assign(blank().settings.tally, db.settings.tally||{});
 const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} };
 
 /* ══ 週 ════════════════════════════════════════════ */
@@ -350,27 +523,31 @@ function mondayOf(d){
   x.setDate(x.getDate() - ((x.getDay()+6)%7));   // 日曜=0 を 6 に読み替える
   return x;
 }
-function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); return x; }
-
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 let monday = mondayOf(new Date());
 const wk = () => iso(monday);
 
 function week(){
   const k = wk();
-  if(!db.weeks[k]) db.weeks[k] = {school:{}, grade:{}, special:{}, home:{}, acked:[]};
+  if(!db.weeks[k]) db.weeks[k] = {school:{}, grade:{}, special:{}, home:{}, acked:[], variant:"A"};
   const w = db.weeks[k];
   for(const f of ["school","grade","special","home"]) if(!w[f]) w[f]={};
   if(!w.acked) w.acked=[];
+  if(!w.variant) w.variant="A";
   return w;
 }
-const ck = (d,s) => d+"|"+s;                      /* コマの鍵 */
+const ck = (d,s) => d+"|"+s;
 
-/* ══ 合成 ══════════════════════════════════════════
-   基本時間割 → 学校全体 → 学年 → 専科 → 担任 の順に重ねる。
-   あとのものが前のものを置き換え、置き換えたことを clash として残す。 */
+function weekNo(){
+  const w1 = mondayOf(new Date((db.settings.week1||"2026-04-06")+"T00:00:00"));
+  if(isNaN(w1)) return null;
+  return Math.round((monday - w1)/(7*86400000)) + 1;
+}
+
+/* ══ 合成 ══════════════════════════════════════════ */
 
 function baseCell(cls,d,s){
-  const v = (db.base[cls]||{})[ck(d,s)];
+  const v = ((db.base[cls]||{})[week().variant]||{})[ck(d,s)];
   if(!v) return null;
   return {title:v.title||"", note:"", subject:v.subject||null, layer:"base"};
 }
@@ -396,7 +573,6 @@ function compose(cls,d,s){
   return cur;
 }
 
-/* 書き込み先は「見ている人の層」で決まる。層は権限ではなく出どころ */
 function store(role, cls){
   const w = week();
   if(role.kind==="school")  return w.school;
@@ -405,8 +581,7 @@ function store(role, cls){
   return (w.home[cls] ||= {});
 }
 function writeCell(d,s,patch){
-  const st = store(role(), cls());
-  const key = ck(d,s);
+  const st = store(role(), cls()), key = ck(d,s);
   const cur = compose(cls(),d,s);
   const e = st[key] || {title:cur.layer==="base"?cur.title:"", note:"",
                         subject:cur.layer==="base"?cur.subject:null};
@@ -434,17 +609,17 @@ function visibleClasses(){
   return CLASSES;
 }
 
-/* ══ 描く ══════════════════════════════════════════ */
+/* ══ 紙を描く ══════════════════════════════════════ */
 
 function build(){
   const sh = $("sheet");
   sh.innerHTML = "";
+  /* 最後の行（週のメモ）に余りを渡す。渡さないと紙の下端に隙間が残る */
+  sh.style.gridTemplateRows = "auto repeat("+SLOTS.length+",auto) 1fr";
   const add = (html, cl) => {
     const el = document.createElement("div");
     el.className = cl; el.innerHTML = html; sh.appendChild(el); return el;
   };
-
-  /* 見出し */
   add("", "hd corner lab");
   for(let d=0; d<5; d++){
     const dt = addDays(monday,d);
@@ -453,23 +628,19 @@ function build(){
   }
   add("<span class='dow'>土日</span>", "hd sat lastcol");
 
-  /* 時程 */
   SLOTS.forEach((s,i)=>{
-    const brk = s.kind==="brk";
     const lab = add(s.name, "lab "+(s.kind==="lesson"?"period":""));
-    if(brk) lab.classList.add("row-break");
+    if(s.kind==="brk") lab.classList.add("row-break");
     for(let d=0; d<5; d++) sh.appendChild(cellEl(d,s));
     if(i===0) sh.appendChild(wkEl("土", 2, 8));
     if(i===7) sh.appendChild(wkEl("日", 9, 11));
   });
 
-  /* 下の帯 */
   const f = add("<div class='lab'>週の<br>メモ</div>"
-    +"<div class='t' contenteditable='plaintext-only' data-foot='1'></div>", "foot lastcol");
-  f.querySelector(".t").textContent = (week().memo||"");
-  f.querySelector(".t").addEventListener("input", ev=>{
-    week().memo = ev.target.textContent; save();
-  });
+    +"<div class='t' contenteditable='plaintext-only'></div>", "foot lastcol");
+  const ft = f.querySelector(".t");
+  ft.textContent = (week().memo||"");
+  ft.addEventListener("input", ()=>{ week().memo = ft.textContent; save(); });
 
   paint();
 }
@@ -480,12 +651,10 @@ function wkEl(cap, r1, r2){
   el.style.gridColumn = "7";
   el.style.gridRow = r1+" / "+(r2+1);
   el.innerHTML = "<div class='cap'>"+cap+"</div>"
-    +"<div class='t' contenteditable='plaintext-only' data-wk='"+cap+"'></div>";
+    +"<div class='t' contenteditable='plaintext-only'></div>";
   const t = el.querySelector(".t");
   t.textContent = (week().weekend||{})[cap] || "";
-  t.addEventListener("input", ()=>{
-    (week().weekend ||= {})[cap] = t.textContent; save();
-  });
+  t.addEventListener("input", ()=>{ (week().weekend ||= {})[cap] = t.textContent; save(); });
   return el;
 }
 
@@ -501,8 +670,7 @@ function cellEl(d, s){
   t.addEventListener("focus", focus);
   if(n) n.addEventListener("focus", focus);
   t.addEventListener("input", ()=>{
-    const v = t.textContent.trim();
-    const sub = SUB_BY_NAME[v];
+    const sub = SUB_BY_NAME[t.textContent.trim()];
     writeCell(d, s.id, {title:t.textContent, subject:sub?sub.code:null});
     paint(el);
   });
@@ -512,7 +680,6 @@ function cellEl(d, s){
   return el;
 }
 
-/* 中身を流し込む。el を渡すとそのコマだけ塗り直す */
 function paint(one){
   const list = one ? [one] : [...document.querySelectorAll(".cell")];
   const clashes = [];
@@ -527,7 +694,7 @@ function paint(one){
 
     el.dataset.layer = c.layer;
     el.classList.toggle("from-base", c.layer==="base");
-    const upper = RANK[c.layer] > RANK[role().kind==="home"?"home":role().kind];
+    const upper = RANK[c.layer] > RANK[role().kind];
     el.classList.toggle("upper", upper && !c.clash);
     el.classList.toggle("clash", !!c.clash);
     const tag = el.querySelector(".tag");
@@ -539,13 +706,11 @@ function paint(one){
   if(!one) warn(clashes);
 }
 
-/* 専科の「自分の週」。同じデータを、教科名ではなくクラス名で見る */
 function composeOwn(d,s){
   const r = role();
   for(const c of r.classes){
     const x = compose(c,d,s);
-    if(x.layer==="special" && x.teacher===r.me)
-      return Object.assign({}, x, {title:c});
+    if(x.layer==="special" && x.teacher===r.me) return Object.assign({}, x, {title:c});
   }
   return {title:"", note:"", layer:"base"};
 }
@@ -567,13 +732,12 @@ function warn(list){
       +"　いま出ている："+LAYER_FULL[c.c.layer]+"「"+(c.c.title||"（空）")+"」</li>";
   }).join("");
   $("warnDlg").showModal();
-  $("warnDlg").onclose = () => {
-    fresh.forEach(c => w.acked.push(sig(c)));
-    save();
-  };
+  $("warnDlg").onclose = () => { fresh.forEach(c => w.acked.push(sig(c))); save(); };
 }
 
-/* ══ 編集バー ══════════════════════════════════════ */
+/* ══ 下の帯 ════════════════════════════════════════ */
+
+const cellAt = (d,s) => document.querySelector(".cell[data-d='"+d+"'][data-s='"+s+"']");
 
 function select(d, sid, el){
   document.querySelectorAll(".cell.sel").forEach(x=>x.classList.remove("sel"));
@@ -586,11 +750,11 @@ function select(d, sid, el){
     + slot.name + (slot.kind==="lesson"?"校時":"");
   $("ebTu").value = c.titleUrl || "";
   $("ebNu").value = c.noteUrl || "";
+  $("ebLink").textContent = (c.titleUrl||c.noteUrl) ? "リンク ●" : "リンク";
   $("ebAll").hidden = slot.kind!=="brk";
   $("ebRevert").hidden = !(store(role(),cls())[ck(d,sid)]);
-  const useful = slot.kind==="lesson";
-  $("ebChips").innerHTML = !useful ? "" : SUBJECTS.map(s=>
-    "<span class='chip"+(s.count?"":" off")+"' data-code='"+s.code+"'>"+s.name+"</span>").join("");
+  $("ebChips").innerHTML = !(slot.kind==="lesson"||slot.chips) ? "" : SUBJECTS.map(s=>
+    "<button class='chip"+(s.count?"":" off")+"' data-code='"+s.code+"'>"+s.name+"</button>").join("");
 }
 
 $("ebChips").addEventListener("click", ev=>{
@@ -599,9 +763,14 @@ $("ebChips").addEventListener("click", ev=>{
   writeCell(sel.d, sel.s, {title:s.name, subject:s.code});
   paint(); select(sel.d, sel.s, cellAt(sel.d, sel.s));
 });
-const cellAt = (d,s) => document.querySelector(".cell[data-d='"+d+"'][data-s='"+s+"']");
-$("ebTu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{titleUrl:$("ebTu").value}); paint(); }});
-$("ebNu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{noteUrl:$("ebNu").value}); paint(); }});
+$("ebLink").addEventListener("click", ()=>{
+  if(!sel) return;
+  $("lkWhere").textContent = $("ebWhere").textContent + "　" + cls();
+  $("linkDlg").showModal();
+});
+$("lkClose").onclick = ()=>$("linkDlg").close();
+$("ebTu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{titleUrl:$("ebTu").value.trim()}); paint(); select(sel.d,sel.s,cellAt(sel.d,sel.s)); }});
+$("ebNu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{noteUrl:$("ebNu").value.trim()}); paint(); select(sel.d,sel.s,cellAt(sel.d,sel.s)); }});
 $("ebClear").addEventListener("click", ()=>{
   if(!sel) return;
   writeCell(sel.d, sel.s, {title:"", note:"", titleUrl:"", noteUrl:"", subject:null});
@@ -617,24 +786,25 @@ $("ebAll").addEventListener("click", ()=>{
   const c = compose(cls(), sel.d, sel.s);
   for(let d=0; d<5; d++) writeCell(d, sel.s, {title:c.title, note:c.note||""});
   paint();
+  toast("5日とも「"+(c.title||"（空）")+"」にした");
 });
 
-/* ══ 基本時間割 ════════════════════════════════════ */
+/* ══ 基本時間割（A週・B週） ═════════════════════════ */
 
+let baseVar = "A";
 function baseGrid(){
   const c = $("baseCls").value;
-  db.base[c] ||= {};
-  let h = "<table class='base'><tr><th></th>"
-        + DOW.map(d=>"<th>"+d+"</th>").join("") + "</tr>";
+  db.base[c] ||= {}; db.base[c][baseVar] ||= {};
+  const bank = db.base[c][baseVar];
+  let h = "<table class='base'><tr><th></th>" + DOW.map(d=>"<th>"+d+"</th>").join("") + "</tr>";
   for(const s of SLOTS){
     h += "<tr><th>"+s.name+"</th>";
     for(let d=0; d<5; d++){
-      const v = db.base[c][ck(d,s.id)] || {};
+      const v = bank[ck(d,s.id)] || {};
       h += "<td>" + (s.kind==="lesson"
         ? "<select data-k='"+ck(d,s.id)+"'><option value=''>—</option>"
           + SUBJECTS.map(x=>"<option value='"+x.code+"'"
-            +(v.subject===x.code?" selected":"")+">"+x.name+"</option>").join("")
-          + "</select>"
+            +(v.subject===x.code?" selected":"")+">"+x.name+"</option>").join("") + "</select>"
         : "<input data-k='"+ck(d,s.id)+"' value='"+(v.title||"").replace(/"/g,"&quot;")+"'>")
         + "</td>";
     }
@@ -643,82 +813,106 @@ function baseGrid(){
   $("baseGrid").innerHTML = h + "</table>";
   $("baseGrid").querySelectorAll("select").forEach(el=>el.onchange = ()=>{
     const s = SUB_BY_CODE[el.value];
-    if(s) db.base[c][el.dataset.k] = {title:s.name, subject:s.code};
-    else delete db.base[c][el.dataset.k];
+    if(s) bank[el.dataset.k] = {title:s.name, subject:s.code};
+    else delete bank[el.dataset.k];
     save();
   });
   $("baseGrid").querySelectorAll("input").forEach(el=>el.onchange = ()=>{
-    if(el.value.trim()) db.base[c][el.dataset.k] = {title:el.value, subject:null};
-    else delete db.base[c][el.dataset.k];
+    if(el.value.trim()) bank[el.dataset.k] = {title:el.value, subject:null};
+    else delete bank[el.dataset.k];
     save();
   });
+  $("bvA").setAttribute("aria-pressed", baseVar==="A");
+  $("bvB").setAttribute("aria-pressed", baseVar==="B");
 }
 
-/* ══ 時数 ══════════════════════════════════════════ */
+/* ══ 時数集計表へのコピー ═══════════════════════════
+   週ごとのシートに1回で貼れる矩形にする。空のセルも含める。
+   数えない教科は空欄にする（書くと Excel 側の集計が増える）。 */
 
-function tally(cls, upToWeek){
-  const n = {};
-  for(const k of Object.keys(db.weeks).sort()){
-    if(k > upToWeek) continue;
-    const cur = (k === upToWeek);
-    const keep = monday;
-    monday = new Date(k+"T00:00:00");
-    for(let d=0; d<5; d++) for(const s of SLOTS){
-      if(s.kind!=="lesson") continue;
-      const c = compose(cls, d, s.id);
-      const sub = c.subject ? SUB_BY_CODE[c.subject] : SUB_BY_NAME[(c.title||"").trim()];
-      if(!sub || !sub.count) continue;
-      n[sub.code] ||= {week:0, cum:0};
-      n[sub.code].cum++;
-      if(cur) n[sub.code].week++;
-    }
-    monday = keep;
-  }
-  return n;
+function tallyClasses(){
+  return (db.settings.tally.classes||"").split(",").map(s=>s.trim()).filter(Boolean);
 }
-
-function tsv(){
-  const cols = SUBJECTS.filter(s=>s.count);
-  const n = tally(cls(), wk());
-  const wRow = cols.map(s => (n[s.code]||{}).week || 0);
-  const cRow = cols.map(s => (n[s.code]||{}).cum  || 0);
-  const sum = a => a.reduce((x,y)=>x+y,0);
+function tallyGrid(){
+  const t = db.settings.tally;
+  const list = tallyClasses(), block = Math.max(1, +t.block||10);
+  const width = Math.max(...Object.values(t.cols)) + 1;
   const rows = [];
-  if(db.settings.head) rows.push([""].concat(cols.map(s=>s.name), "計"));
-  rows.push(["実施"].concat(wRow, sum(wRow)));
-  rows.push(["累計"].concat(cRow, sum(cRow)));
-  return rows.map(r=>r.join("\t")).join("\n");
+  for(let d=0; d<5; d++){
+    for(let r=0; r<block; r++){
+      const line = new Array(width).fill("");
+      const cIdx = r;
+      if(cIdx < list.length){
+        for(const s of SLOTS){
+          if(!(s.id in t.cols)) continue;
+          const c = compose(list[cIdx], d, s.id);
+          const sub = c.subject ? SUB_BY_CODE[c.subject] : SUB_BY_NAME[(c.title||"").trim()];
+          line[t.cols[s.id]] = (sub && sub.count) ? sub.short : "";
+        }
+      }
+      rows.push(line);
+    }
+  }
+  return rows;
 }
+const tallyTsv = () => tallyGrid().map(r=>r.join("\t")).join("\n");
 
-async function copyTsv(){
-  const s = tsv();
-  try{ await navigator.clipboard.writeText(s); flash("時数をコピーした。Excel の当該週シートに貼る"); }
+function tallyDlg(){
+  const t = db.settings.tally;
+  $("tyAnchor").value = t.anchor; $("tyCls").value = t.classes; $("tyBlock").value = t.block;
+  $("tyCols").innerHTML = "<span>列のずれ</span>" + SLOTS.filter(s=>s.id in t.cols).map(s=>
+    "<label style='font-size:12px;color:var(--desk-sub)'>"+(s.tally||s.name)
+    +" <input type='number' data-s='"+s.id+"' value='"+t.cols[s.id]
+    +"' min='0' max='40' style='width:4.2em'></label>").join("");
+  $("tyCols").querySelectorAll("input").forEach(el=>el.oninput = ()=>{
+    t.cols[el.dataset.s] = +el.value||0; save(); tallyPrev();
+  });
+  tallyPrev();
+  $("tallyDlg").showModal();
+}
+function tallyPrev(){
+  const g = tallyGrid(), list = tallyClasses();
+  const block = Math.max(1, +db.settings.tally.block||10);
+  const w = 10;
+  const head = g.map((r,i)=>{
+    const d = Math.floor(i/block), r0 = i % block;
+    let who = r0 < list.length ? (r0===0 ? DOW[d]+"  "+list[r0] : "   "+list[r0]) : "";
+    while(who.length < w) who += " ";
+    return who + "│ " + r.map(v=>v||"·").join(" ");
+  });
+  $("tyPrev").textContent = head.join("\n");
+}
+async function copyText(s, msg){
+  try{ await navigator.clipboard.writeText(s); }
   catch(e){
     const ta = document.createElement("textarea");
     ta.value = s; ta.style.position="fixed"; ta.style.opacity="0";
-    document.body.appendChild(ta); ta.select();
-    document.execCommand("copy"); ta.remove();
-    flash("時数をコピーした。Excel の当該週シートに貼る");
+    document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove();
   }
+  toast(msg);
 }
 
-/* ══ 画面の組み立て ════════════════════════════════ */
+/* ══ 合図 ══════════════════════════════════════════ */
 
-let flashT = 0;
-function flash(msg){
-  clearTimeout(flashT);
-  $("hint").innerHTML = msg;
-  flashT = setTimeout(hint, 4200);
+let toastT = 0;
+function toast(msg){
+  clearTimeout(toastT);
+  $("toast").innerHTML = msg; $("toast").hidden = false;
+  toastT = setTimeout(()=>{ $("toast").hidden = true; }, 4600);
 }
-function hint(){
-  const r = role();
-  const where = r.kind==="school" ? "全クラスに入る"
-    : r.kind==="grade" ? r.grade+"年の全クラスに入る"
-    : r.kind==="special" ? "担当クラスの音楽に入る（担任には「音楽」と出る）"
-    : "このクラスだけに入る";
-  $("hint").innerHTML = "いま書き込むと <b>"+(LAYER_NAME[r.kind]||"担任")
-    + "</b> の予定として "+where+"。"
-    + "　色のついたコマ＝上位から降ってきたもの。直せる。直すと右上に印が付く。";
+
+/* ══ 組み立て ══════════════════════════════════════ */
+
+function drawRoles(){
+  $("roles").innerHTML = ROLES.map(r=>
+    "<button class='role' data-id='"+r.id+"' data-layer='"+r.kind+"'"
+    +" aria-pressed='"+(r.id===roleId)+"'>"
+    +"<span class='chipx'><i></i><em>算数</em><b>"+LAYER_NAME[r.kind]+"</b></span>"
+    +"<span><span class='rname'>"+r.label+"</span>"
+    +"<span class='rwhere'>"+r.where+"</span></span></button>").join("");
+  $("roles").querySelectorAll(".role").forEach(b=>b.onclick = ()=>{
+    roleId = b.dataset.id; refreshRole();
+  });
 }
 
 function fill(sel, arr, val){
@@ -727,21 +921,25 @@ function fill(sel, arr, val){
 }
 
 function refreshRole(){
-  const r = role();
-  const list = visibleClasses();
+  const r = role(), list = visibleClasses();
   if(!list.includes(clsId)) clsId = list[0];
   fill($("cls"), list.map(c=>({v:c,t:c})), clsId);
   $("cls").disabled = list.length===1;
   $("ownWrap").hidden = r.kind!=="special";
   if(r.kind!=="special"){ ownView = false; $("own").checked = false; }
-  hint(); build();
+  drawRoles();
+  $("whoCls").textContent = clsId;
+  build();
 }
 
 function refreshWeek(){
-  const e = addDays(monday,6);
+  const e = addDays(monday,4), n = weekNo();
   $("weeklabel").textContent =
     (monday.getMonth()+1)+"/"+monday.getDate()+" → "+(e.getMonth()+1)+"/"+e.getDate();
-  $("jump").value = wk();
+  $("weekno").textContent = (n && n>0) ? "第"+n+"週" : "";
+  const v = week().variant;
+  $("abA").setAttribute("aria-pressed", v==="A");
+  $("abB").setAttribute("aria-pressed", v==="B");
   build();
 }
 
@@ -752,50 +950,75 @@ function applyPaper(){
   sh.style.setProperty("--ph", h);
   sh.style.setProperty("--pm", s.margin+"mm");
   sh.style.setProperty("--k", s.k);
-  let st = document.getElementById("pagecss");
+  let st = $("pagecss");
   if(!st){ st = document.createElement("style"); st.id="pagecss"; document.head.appendChild(st); }
   st.textContent = "@page{size:"+s.paper+" portrait;margin:"+s.margin+"mm}";
   $("stPaper").value = s.paper;
   $("stMg").value = s.margin;  $("stMgV").textContent = s.margin;
   $("stK").value  = s.k;       $("stKV").textContent  = (+s.k).toFixed(2);
-  $("stHead").checked = !!s.head;
+  $("stW1").value = s.week1;
+  applyZoom();
+}
+function applyZoom(){
+  const z = db.settings.vz || 75;
+  $("paper").style.zoom = (z/100);
+  $("vz").value = z; $("vzV").textContent = z;
 }
 
 /* 操作 */
 $("prev").onclick = ()=>{ monday = addDays(monday,-7); refreshWeek(); };
 $("next").onclick = ()=>{ monday = addDays(monday, 7); refreshWeek(); };
-$("jump").onchange = e=>{ if(e.target.value){ monday = mondayOf(new Date(e.target.value+"T00:00:00")); refreshWeek(); }};
-$("role").onchange = e=>{ roleId = e.target.value; refreshRole(); };
-$("cls").onchange  = e=>{ clsId = e.target.value; build(); };
-$("own").onchange  = e=>{ ownView = e.target.checked; build(); };
+$("abA").onclick = ()=>{ week().variant="A"; save(); refreshWeek(); };
+$("abB").onclick = ()=>{ week().variant="B"; save(); refreshWeek(); };
+$("cls").onchange = e=>{ clsId = e.target.value; $("whoCls").textContent = clsId; build(); };
+$("own").onchange = e=>{ ownView = e.target.checked; build(); };
+$("vz").oninput = e=>{ db.settings.vz = +e.target.value; save(); applyZoom(); };
 $("printBtn").onclick = ()=>window.print();
-$("copyBtn").onclick  = copyTsv;
-$("tanpopoBtn").onclick = ()=>flash(
-  "たんぽぽ時間割の<b>対応表が未設定</b>。実物のシートを見てから対応表シートを埋める（docs/weekly-plan.md 0節 c）");
 $("setBtn").onclick  = ()=>$("setDlg").showModal();
 $("setClose").onclick= ()=>$("setDlg").close();
 $("stPaper").onchange = e=>{ db.settings.paper = e.target.value; save(); applyPaper(); };
 $("stMg").oninput = e=>{ db.settings.margin = +e.target.value; save(); applyPaper(); };
 $("stK").oninput  = e=>{ db.settings.k = +e.target.value; save(); applyPaper(); };
-$("stHead").onchange = e=>{ db.settings.head = e.target.checked; save(); };
+$("stW1").onchange = e=>{ db.settings.week1 = e.target.value.trim(); save(); refreshWeek(); };
+
 $("baseBtn").onclick = ()=>{
   fill($("baseCls"), CLASSES.map(c=>({v:c,t:c})), cls());
-  baseGrid(); $("baseDlg").showModal();
+  baseVar = week().variant; baseGrid(); $("baseDlg").showModal();
 };
 $("baseCls").onchange = baseGrid;
-$("baseClose").onclick = ()=>{ $("baseDlg").close(); build(); };
-$("baseApply").onclick = ()=>{
-  const w = week(), c = $("baseCls").value;
-  delete w.home[c];
-  save(); $("baseDlg").close();
-  if(c===cls()) build();
-  flash(c+" の "+wk()+" の週を基本時間割で入れ直した（担任が入れた分は消えた）");
+$("bvA").onclick = ()=>{ baseVar="A"; baseGrid(); };
+$("bvB").onclick = ()=>{ baseVar="B"; baseGrid(); };
+$("baseCopy").onclick = ()=>{
+  const c = $("baseCls").value;
+  db.base[c] ||= {};
+  db.base[c].B = JSON.parse(JSON.stringify(db.base[c].A||{}));
+  save(); baseVar="B"; baseGrid();
+  toast(c+" のA週をB週へ写した。違うところだけ直す");
 };
+$("baseClose").onclick = ()=>{ $("baseDlg").close(); build(); };
+
+$("copyBtn").onclick = tallyDlg;
+$("tyClose").onclick = ()=>$("tallyDlg").close();
+$("tyCopy").onclick  = ()=>{
+  copyText(tallyTsv(), "コピーした。時数集計表の第"+(weekNo()||"?")+"週シートで <b>"
+    + db.settings.tally.anchor + "</b> を選んで貼る");
+  $("tallyDlg").close();
+};
+$("tyAnchor").onchange = e=>{ db.settings.tally.anchor = e.target.value.trim(); save(); };
+$("tyCls").onchange = e=>{ db.settings.tally.classes = e.target.value; save(); tallyPrev(); };
+$("tyBlock").oninput = e=>{ db.settings.tally.block = +e.target.value||10; save(); tallyPrev(); };
+
+$("tanpopoBtn").onclick = ()=>{
+  $("tpState").innerHTML = "いまは<b>書き込まない</b>。実物のたんぽぽ時間割に"
+    + "つないでいないため。上の規則のとおりに書く口だけ作ってある（docs/weekly-plan.md 6節）。";
+  $("tpDlg").showModal();
+};
+$("tpClose").onclick = ()=>$("tpDlg").close();
 $("warnClose").onclick = ()=>$("warnDlg").close();
 
 /* はじめの一回 */
-fill($("role"), ROLES.map(r=>({v:r.id,t:r.label})), roleId);
 if(!Object.keys(db.base).length) seed();
+drawRoles();
 applyPaper();
 refreshRole();
 refreshWeek();
@@ -807,17 +1030,18 @@ function seed(){
              "sansu","shakai","rika","kokugo","sansu","zuko","ongaku","taiiku",
              "sansu","kokugo","sogo","gakkatsu","kokugo","sansu","rika"];
   for(const c of CLASSES){
-    db.base[c] = {};
+    db.base[c] = {A:{}, B:{}};
     let i = 0;
     for(let d=0; d<5; d++) for(const s of SLOTS){
       if(s.kind==="brk"){
-        if(s.id==="am2") db.base[c][ck(d,s.id)] = {title:["漢字","計算","読書","漢字","計算"][d], subject:null};
-        if(s.id==="lun") db.base[c][ck(d,s.id)] = {title:"給食・そうじ", subject:null};
+        if(s.id==="am2") db.base[c].A[ck(d,s.id)] = {title:["漢字","計算","読書","漢字","計算"][d], subject:null};
+        if(s.id==="lun") db.base[c].A[ck(d,s.id)] = {title:"給食・そうじ", subject:null};
         continue;
       }
       const code = w[(i + CLASSES.indexOf(c)*7) % w.length]; i++;
-      db.base[c][ck(d,s.id)] = {title:SUB_BY_CODE[code].name, subject:code};
+      db.base[c].A[ck(d,s.id)] = {title:SUB_BY_CODE[code].name, subject:code};
     }
+    db.base[c].B = JSON.parse(JSON.stringify(db.base[c].A));
   }
   save();
 }
