@@ -41,42 +41,13 @@
 /* ▲ src/plan-tokens.css ここまで ▲ */
 
 *{box-sizing:border-box}
+/* hidden を効かせる。.gate{display:flex} や .ed{display:grid} は同じ強さなので、
+   これが無いと隠したはずの画面が残って次の画面を押し下げる。 */
+[hidden]{display:none!important}
 html,body{height:100%}
 body{margin:0;background:var(--desk);color:var(--desk-ink);
   font:14px/1.55 "Hiragino Sans","Noto Sans JP","Yu Gothic",system-ui,sans-serif;
   -webkit-text-size-adjust:100%;font-feature-settings:"palt" 1}
-
-/* ══ 机（刷らない面）════════════════════════════════
-   紙の上に出ているものは刷られる。机の上にあるものは刷られない。
-   外枠を暗く保つのは、その2つを取り違えないための仕掛け。 */
-
-.app{display:grid;height:100%;
-  grid-template-columns:212px 1fr;
-  grid-template-rows:auto 1fr auto;
-  grid-template-areas:"top top" "rail stage" "edit edit"}
-
-/* 上の帯 */
-.top{grid-area:top;display:flex;align-items:center;gap:20px;
-  padding:11px 18px;border-bottom:1px solid var(--desk-line);background:var(--desk-2)}
-.brand{display:flex;align-items:baseline;gap:9px;letter-spacing:.09em;font-size:12px;
-  color:var(--desk-sub);white-space:nowrap}
-.brand b{font-size:16px;letter-spacing:.16em;color:var(--desk-ink);font-weight:600}
-
-.wknav{display:flex;align-items:center;gap:2px}
-.wknav .date{font-size:26px;font-weight:300;letter-spacing:.02em;
-  font-variant-numeric:tabular-nums;padding:0 12px;white-space:nowrap}
-.wknav .no{font-size:11px;color:var(--desk-sub);letter-spacing:.12em;
-  align-self:flex-end;padding-bottom:6px}
-
-.ab{display:flex;border:1px solid var(--desk-line);border-radius:7px;overflow:hidden}
-.ab button{border:0;border-radius:0;background:transparent;color:var(--desk-sub);
-  padding:5px 13px;font-size:13px;font-weight:600;letter-spacing:.06em}
-.ab button[aria-pressed=true]{background:var(--desk-ink);color:var(--desk)}
-.ab+.abcap{font-size:11px;color:var(--desk-sub);letter-spacing:.04em}
-
-.spacer{flex:1}
-.acts{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
-
 button,select,input{font:inherit;color:inherit}
 .btn{background:transparent;border:1px solid var(--desk-line);border-radius:7px;
   padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;
@@ -85,79 +56,103 @@ button,select,input{font:inherit;color:inherit}
 .btn.go{background:var(--desk-ink);color:var(--desk);border-color:var(--desk-ink);font-weight:600}
 .btn.go:hover{background:#fff}
 .btn.icon{padding:6px 10px}
-.btn:focus-visible,.role:focus-visible,select:focus-visible,input:focus-visible{
-  outline:2px solid var(--pen);outline-offset:2px}
+.btn:focus-visible,.tile:focus-visible,.master:focus-visible,
+select:focus-visible,input:focus-visible{outline:2px solid var(--pen);outline-offset:2px}
 
-/* 左のレール ── 「だれとして書くか」と凡例を1つにしてある。
-   選ぶ行に、紙の上でそう見える見本が付いている。 */
-.rail{grid-area:rail;background:var(--desk-2);border-right:1px solid var(--desk-line);
-  padding:16px 14px;overflow:auto}
-.rail h3{margin:0 0 9px;font-size:11px;letter-spacing:.13em;color:var(--desk-sub);font-weight:600}
-.rail h3+*{margin-top:0}
-.roles{display:flex;flex-direction:column;gap:4px;margin-bottom:20px}
-.role{display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center;
-  background:transparent;border:1px solid transparent;border-radius:8px;
-  padding:7px 8px;text-align:left;cursor:pointer;width:100%}
-.role:hover{background:var(--desk-3)}
-.role[aria-pressed=true]{background:var(--desk-3);border-color:var(--desk-sub)}
-.chipx{background:#fff;border-radius:3px;height:26px;position:relative;overflow:hidden;
-  display:flex;align-items:center;padding-left:7px}
-.chipx i{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cat-none)}
-.chipx b{position:absolute;right:0;top:0;font-size:8px;line-height:1.3;padding:0 3px;
-  color:#fff;background:var(--cat-none);border-bottom-left-radius:3px;font-weight:600}
-.chipx em{font-size:10px;color:#1A1A1A;font-style:normal;font-weight:600}
-.chipx b:empty{display:none}
-.role[data-layer=school] .chipx i,.role[data-layer=school] .chipx b{background:var(--cat-school)}
-.role[data-layer=grade]  .chipx i,.role[data-layer=grade]  .chipx b{background:var(--cat-grade)}
-.role[data-layer=special] .chipx i,.role[data-layer=special] .chipx b{background:var(--cat-special)}
-.role[data-layer=school] .chipx,.role[data-layer=grade] .chipx,
-.role[data-layer=special] .chipx{background:var(--fill-a)}
-.role[data-layer=home]   .chipx i{background:transparent}
-.rname{font-size:13px;line-height:1.3}
-.rwhere{display:block;font-size:10.5px;color:var(--desk-sub);line-height:1.35;margin-top:1px}
-.role[aria-pressed=true] .rname{font-weight:600}
+/* 週の移動。入口とエディターの両方で同じものを使う */
+.wknav{display:flex;align-items:center;gap:2px}
+.wknav .date{font-weight:300;letter-spacing:.02em;font-variant-numeric:tabular-nums;
+  padding:0 10px;white-space:nowrap}
+.wknav .no{font-size:11px;color:var(--desk-sub);letter-spacing:.1em}
+.ab{display:flex;border:1px solid var(--desk-line);border-radius:7px;overflow:hidden}
+.ab button{border:0;border-radius:0;background:transparent;color:var(--desk-sub);
+  padding:5px 12px;font-size:13px;font-weight:600;letter-spacing:.05em;cursor:pointer}
+.ab button[aria-pressed=true]{background:var(--desk-ink);color:var(--desk)}
 
-.pick{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--desk-sub);
-  margin-bottom:20px}
-.pick select{background:var(--desk-3);border:1px solid var(--desk-line);border-radius:6px;
-  padding:5px 8px;font-size:13px}
-.pick input[type=checkbox]{accent-color:var(--desk-ink)}
+/* ══ 入口（どの週案を開くか）════════════════════════
+   この表がそのまま層になっている。
+     全学年 → 学校全体のマスター
+     ◯年   → 学年のマスター
+     ◯-◯   → そのクラスの週案
+     音楽…  → 専科の自分の週
+   「だれとして書くか」を別に選ばせない。開いたものが層を決める。 */
+.gate{min-height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:32px 24px;gap:22px}
+.gate .head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;justify-content:center}
+.gate .head b{font-size:19px;letter-spacing:.18em;font-weight:600}
+.gate .wknav .date{font-size:24px}
+.grid{display:grid;gap:7px;grid-template-columns:auto repeat(var(--cols),minmax(84px,1fr));
+  align-items:stretch;max-width:min(96vw,760px);width:100%}
+.master{background:transparent;border:1px solid var(--desk-line);border-radius:8px;
+  padding:11px 12px;font-size:14px;text-align:left;cursor:pointer;position:relative;
+  padding-left:17px;overflow:hidden;white-space:nowrap}
+.master:hover{background:var(--desk-3);border-color:var(--desk-sub)}
+.master i{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--cat-grade)}
+.master.all i{background:var(--cat-school)}
+.tile{background:#F7F6F2;color:#1A1A1A;border:1px solid #D8D5CC;border-radius:8px;
+  padding:11px 12px;font-size:15px;font-weight:600;cursor:pointer;
+  font-variant-numeric:tabular-nums;box-shadow:0 1px 2px rgba(0,0,0,.3);
+  transition:transform .1s,box-shadow .1s}
+.tile:hover{transform:translateY(-1px);box-shadow:0 3px 9px rgba(0,0,0,.4);background:#fff}
+.tile.sp{background:transparent;color:var(--desk-ink);border:1px solid var(--desk-line);
+  box-shadow:none;font-weight:400;position:relative;padding-left:17px}
+.tile.sp:hover{background:var(--desk-3);transform:none;box-shadow:none}
+.tile.sp i{position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--cat-special)}
+.tile.none{visibility:hidden}
+.gate .note{font-size:12px;color:var(--desk-sub);text-align:center;line-height:1.9;
+  max-width:56ch}
+.gate .note b{color:var(--desk-ink)}
 
-.legend{display:flex;flex-direction:column;gap:7px;font-size:11.5px;color:var(--desk-sub)}
-.legend div{display:grid;grid-template-columns:42px 1fr;gap:9px;align-items:center}
-.legend .sw{height:20px;border-radius:3px;background:#fff;position:relative;overflow:hidden}
+/* ══ エディター（左＝メニュー／右＝週案）═══════════ */
+.ed{display:grid;height:100%;grid-template-columns:242px 1fr}
+.menu{background:var(--desk-2);border-right:1px solid var(--desk-line);
+  padding:14px;overflow:auto;display:flex;flex-direction:column;gap:16px}
+.menu h3{margin:0 0 7px;font-size:10.5px;letter-spacing:.13em;color:var(--desk-sub);font-weight:600}
+.menu .sec{display:flex;flex-direction:column;gap:7px}
+.menu .btn{width:100%;text-align:left}
+.back{display:flex;align-items:center;gap:7px;font-size:13px}
+.now{background:var(--desk-3);border-radius:9px;padding:11px 12px;position:relative;
+  overflow:hidden;padding-left:16px}
+.now i{position:absolute;left:0;top:0;bottom:0;width:5px;background:transparent}
+.now[data-layer=school] i{background:var(--cat-school)}
+.now[data-layer=grade]  i{background:var(--cat-grade)}
+.now[data-layer=special] i{background:var(--cat-special)}
+.now b{display:block;font-size:17px;letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.now span{display:block;font-size:11px;color:var(--desk-sub);line-height:1.6;margin-top:3px;
+  word-break:keep-all;overflow-wrap:anywhere}
+.menu .wknav{justify-content:space-between}
+.menu .wknav .date{font-size:16px;padding:0}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--desk-sub)}
+.legend div{display:grid;grid-template-columns:32px 1fr;gap:8px;align-items:center}
+.legend .sw{height:18px;border-radius:3px;background:#fff}
 .legend .sw.up{background:var(--fill-a)}
 .legend .sw.cl{background:var(--fill-b)}
-.legend .sw.bs{display:flex;align-items:center;justify-content:center;
-  font-size:9px;color:var(--ink-sub)}
+.legend .sw.bs{display:flex;align-items:center;justify-content:center;font-size:9px;color:#616870}
+.fit{font-size:11px;color:var(--desk-sub);display:flex;flex-direction:column;gap:5px}
+.fit label{display:flex;align-items:center;gap:6px}
+.fit input[type=range]{width:100%;accent-color:var(--desk-ink)}
+.fit input[type=checkbox]{accent-color:var(--desk-ink)}
 
-.zoom{margin-top:22px;font-size:11px;color:var(--desk-sub)}
-.zoom input{width:100%;accent-color:var(--desk-ink)}
+.right{display:grid;grid-template-rows:1fr auto;min-width:0;min-height:0}
+.stage{overflow:auto;padding:14px;display:flex;justify-content:center;align-items:flex-start;
+  background:radial-gradient(120% 80% at 50% 0%,#283736 0%,var(--desk) 62%);min-height:0}
 
-/* 紙が置いてある面 */
-.stage{grid-area:stage;overflow:auto;padding:22px;display:flex;justify-content:center;
-  align-items:flex-start;background:
-    radial-gradient(120% 80% at 50% 0%,#283736 0%,var(--desk) 62%)}
-.paper{}
-
-/* 下の帯（コマを選ぶと出る） */
-.edit{grid-area:edit;background:var(--desk-2);border-top:1px solid var(--desk-line);
-  padding:9px 18px;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;
-  transform:translateY(0);transition:transform .14s ease-out}
+.edit{background:var(--desk-2);border-top:1px solid var(--desk-line);
+  padding:8px 14px;display:flex;flex-wrap:nowrap;gap:11px;align-items:center;min-width:0}
 .edit[hidden]{display:none}
-@media (prefers-reduced-motion:reduce){.edit{transition:none}}
-.ewhere{font-size:13px;font-weight:600;letter-spacing:.02em;white-space:nowrap;
-  padding-right:14px;border-right:1px solid var(--desk-line)}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
-.chip{padding:4px 10px;font-size:12px;border:1px solid var(--desk-line);border-radius:13px;
-  background:transparent;cursor:pointer}
+.edit>.btn{flex:0 0 auto}
+.ewhere{font-size:13px;font-weight:600;white-space:nowrap;padding-right:11px;
+  border-right:1px solid var(--desk-line);flex:0 0 auto}
+.chips{display:flex;flex-wrap:nowrap;gap:4px;align-items:center;
+  overflow-x:auto;min-width:0;flex:1;scrollbar-width:thin;padding-bottom:1px}
+.chip{padding:4px 9px;font-size:11.5px;border:1px solid var(--desk-line);border-radius:13px;
+  background:transparent;cursor:pointer;white-space:nowrap;flex:0 0 auto}
 .chip:hover{background:var(--desk-3);border-color:var(--desk-sub)}
 .chip.off{color:var(--desk-sub);border-style:dashed}
-.lnk{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--desk-sub)}
-.lnk input{background:var(--desk-3);border:1px solid var(--desk-line);border-radius:6px;
-  padding:4px 8px;font-size:12px;width:13em}
+.chips select{background:var(--desk-3);border:1px solid var(--desk-line);border-radius:7px;
+  padding:5px 9px;font-size:13px}
 
-.toast{position:fixed;left:50%;bottom:76px;transform:translateX(-50%);z-index:60;
+.toast{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);z-index:60;
   background:var(--desk-ink);color:var(--desk);padding:9px 17px;border-radius:9px;
   font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.4);max-width:min(72ch,90vw)}
 .toast[hidden]{display:none}
@@ -280,8 +275,9 @@ ul.clashes b{color:var(--pen)}
 /* ══ 刷るとき ════════════════════════════════════
    机の上のものは何も刷らない。層の色も印も刷らない。 */
 @media print{
-  .top,.rail,.edit,.toast{display:none!important}
-  .app{display:block;height:auto}
+  .menu,.edit,.toast,.gate{display:none!important}
+  .ed{display:block;height:auto}
+  .right{display:block}
   .stage{display:block;padding:0;overflow:visible;background:#fff}
   .paper{zoom:1!important}
   body{background:#fff}
@@ -294,70 +290,84 @@ ul.clashes b{color:var(--pen)}
 }
 </style>
 
-<div class="app">
-  <header class="top">
-    <span class="brand"><b>週案</b><span id="whoCls"></span></span>
+<!-- 入口。この表がそのまま層になっている -->
+<div class="gate" id="gate">
+  <div class="head">
+    <b>週案</b>
     <div class="wknav">
-      <button class="btn icon" id="prev" aria-label="前の週">◀</button>
-      <span class="date" id="weeklabel"></span>
-      <button class="btn icon" id="next" aria-label="次の週">▶</button>
-      <span class="no" id="weekno"></span>
+      <button class="btn icon" id="gPrev" aria-label="前の週">◀</button>
+      <span class="date" id="gWeek"></span>
+      <button class="btn icon" id="gNext" aria-label="次の週">▶</button>
+      <span class="no" id="gNo"></span>
     </div>
     <div class="ab" role="group" aria-label="基本時間割のA週・B週">
-      <button id="abA" aria-pressed="true">A週</button>
-      <button id="abB" aria-pressed="false">B週</button>
+      <button id="gA" aria-pressed="true">A週</button>
+      <button id="gB">B週</button>
     </div>
-    <span class="abcap">基本時間割</span>
-    <span class="spacer"></span>
-    <div class="acts">
-      <button class="btn" id="baseBtn">基本時間割</button>
+  </div>
+  <div class="grid" id="grid"></div>
+  <p class="note">開いたものが<b>どこに入るか</b>を決める。<br>
+    <b>◯年</b>を開くとその学年の全クラスに、<b>全学年</b>を開くと全クラスに入る。</p>
+</div>
+
+<!-- エディター。左＝メニュー、右＝週案 -->
+<div class="ed" id="editor" hidden>
+  <aside class="menu">
+    <button class="btn back" id="toGate">◀ ほかの週案へ</button>
+
+    <div class="now" id="now"><i></i><b id="nowName"></b><span id="nowWhere"></span></div>
+
+    <div class="sec">
+      <div class="wknav">
+        <button class="btn icon" id="prev" aria-label="前の週">◀</button>
+        <span class="date" id="weeklabel"></span>
+        <button class="btn icon" id="next" aria-label="次の週">▶</button>
+      </div>
+      <div class="wknav" style="gap:8px">
+        <span class="no" id="weekno"></span>
+        <div class="ab"><button id="abA" aria-pressed="true">A週</button><button id="abB">B週</button></div>
+      </div>
+    </div>
+
+    <div class="sec">
+      <button class="btn go" id="printBtn">印刷</button>
       <button class="btn" id="copyBtn">時数をコピー</button>
       <button class="btn" id="tanpopoBtn">たんぽぽへ反映</button>
+      <button class="btn" id="baseBtn">基本時間割</button>
       <button class="btn" id="setBtn">用紙</button>
-      <button class="btn go" id="printBtn">印刷</button>
-    </div>
-  </header>
-
-  <aside class="rail">
-    <h3>だれとして書くか</h3>
-    <div class="roles" id="roles"></div>
-
-    <div class="pick">
-      <label for="cls">クラス</label>
-      <select id="cls"></select>
-    </div>
-    <label class="pick" id="ownWrap" hidden>
-      <input type="checkbox" id="own"> 自分の週で見る
-    </label>
-
-    <h3>紙の上の見え方</h3>
-    <div class="legend">
-      <div><span class="sw up"></span><span>上位から降りてきた</span></div>
-      <div><span class="sw cl"></span><span>2つ以上入っている</span></div>
-      <div><span class="sw bs">国語</span><span>基本時間割のまま</span></div>
     </div>
 
-    <div class="zoom">
-      <label for="vz">画面の大きさ <span id="vzV"></span>%</label>
-      <input type="range" id="vz" min="45" max="130" step="5">
-      <div style="margin-top:5px">印刷の倍率は「用紙」で別に決める</div>
+    <div>
+      <h3>紙の上の見え方</h3>
+      <div class="legend">
+        <div><span class="sw up"></span><span>上位から降りてきた</span></div>
+        <div><span class="sw cl"></span><span>2つ以上入っている</span></div>
+        <div><span class="sw bs">国語</span><span>基本時間割のまま</span></div>
+      </div>
+    </div>
+
+    <div class="fit">
+      <label><input type="checkbox" id="fitChk"> 画面に合わせる</label>
+      <label>大きさ <span id="vzV"></span>%</label>
+      <input type="range" id="vz" min="30" max="150" step="5">
+      <div>印刷の倍率は「用紙」で別に決める</div>
     </div>
   </aside>
 
-  <main class="stage"><div class="paper" id="paper"><div class="sheet" id="sheet"></div></div></main>
-
-  <footer class="edit" id="editbar" hidden>
-    <span class="ewhere" id="ebWhere"></span>
-    <div class="chips" id="ebChips"></div>
-    <button class="btn" id="ebLink">リンク</button>
-    <button class="btn" id="ebAll" hidden>全曜日に入れる</button>
-    <button class="btn" id="ebRevert" hidden>上位に戻す</button>
-    <button class="btn" id="ebClear">空にする</button>
-  </footer>
+  <div class="right">
+    <main class="stage" id="stage"><div class="paper" id="paper"><div class="sheet" id="sheet"></div></div></main>
+    <footer class="edit" id="editbar" hidden>
+      <span class="ewhere" id="ebWhere"></span>
+      <div class="chips" id="ebChips"></div>
+      <button class="btn" id="ebLink">リンク</button>
+      <button class="btn" id="ebAll" hidden>全曜日に入れる</button>
+      <button class="btn" id="ebRevert" hidden>上位に戻す</button>
+      <button class="btn" id="ebClear">空にする</button>
+    </footer>
+  </div>
 </div>
 
 <div class="toast" id="toast" hidden></div>
-
 <dialog id="baseDlg"><div class="dlg">
   <h2>基本時間割</h2>
   <p>ここに入れたものが、<b>週案枠を開いた時点で全部のコマに出る</b>。担任は毎週30コマ埋めるのではなく、変わったところだけ直す。<br>
@@ -481,18 +491,20 @@ const SUBJECTS = [
 const SUB_BY_NAME = Object.fromEntries(SUBJECTS.map(s=>[s.name,s]));
 const SUB_BY_CODE = Object.fromEntries(SUBJECTS.map(s=>[s.code,s]));
 
-const CLASSES = ["3-1","3-2","3-3","2-1","2-2"];
-const gradeOf = c => c.split("-")[0];
-
-const ROLES = [
-  {id:"h33", label:"担任 3年3組",   kind:"home",    cls:"3-3", where:"このクラスだけに入る"},
-  {id:"h31", label:"担任 3年1組",   kind:"home",    cls:"3-1", where:"このクラスだけに入る"},
-  {id:"g3",  label:"学年主任 3年",   kind:"grade",   grade:"3", where:"3年の全クラスに入る"},
-  {id:"kyo", label:"教務",          kind:"school",             where:"全クラスに入る"},
-  {id:"ong", label:"音楽専科",       kind:"special", subject:"ongaku",
-             me:"ongaku@edu.nishi.or.jp", classes:CLASSES,
-             where:"担当クラスに入る。担任には「音楽」と出る"}
+/* クラス編成。学年でクラス数が違う（0節 f） */
+const GRADES = [
+  {g:"1", classes:["1-1","1-2","1-3"]},
+  {g:"2", classes:["2-1","2-2","2-3"]},
+  {g:"3", classes:["3-1","3-2","3-3"]},
+  {g:"4", classes:["4-1","4-2","4-3","4-4"]},
+  {g:"5", classes:["5-1","5-2","5-3","5-4"]},
+  {g:"6", classes:["6-1","6-2","6-3"]}
 ];
+const SPECIALS = [{code:"ongaku",label:"音楽"},{code:"zuko",label:"図工"},{code:"rika",label:"理科"}];
+const CLASSES = GRADES.reduce((a,x)=>a.concat(x.classes), []);
+const gradeOf = c => c.split("-")[0];
+const classesOfGrade = g => (GRADES.find(x=>x.g===g)||{classes:[]}).classes;
+
 const LAYER_NAME = {base:"", school:"全体", grade:"学年", special:"専", home:""};
 const LAYER_FULL = {base:"基本時間割", school:"学校全体", grade:"学年", special:"専科", home:"担任"};
 const RANK = {base:0, home:1, special:2, grade:3, school:4};
@@ -500,9 +512,9 @@ const DOW = ["月","火","水","木","金"];
 
 /* ══ 保存 ══════════════════════════════════════════ */
 
-const KEY = "weekly-plan-v0";
+const KEY = "weekly-plan-v1";
 const blank = () => ({
-  settings:{paper:"B5", margin:8, k:1, vz:100, week1:"2026-04-06",
+  settings:{paper:"B5", margin:8, k:1, vz:100, fit:true, week1:"2026-04-06",
     tally:{anchor:"C2", classes:"3-1,3-2,3-3", block:10,
            cols:{am2:0, p1:2, p2:4, br:6, p3:7, p4:9, lun:11, p5:12, p6:14}}},
   base:{}, weeks:{}
@@ -544,6 +556,27 @@ function weekNo(){
   return Math.round((monday - w1)/(7*86400000)) + 1;
 }
 
+/* ══ いま何を開いているか ══════════════════════════
+   開いたものが層を決める。「だれとして書くか」は別に選ばせない。 */
+
+let view = {kind:"gate"};
+const layerOf = () => ({class:"home", grade:"grade", school:"school", special:"special"})[view.kind];
+function viewName(){
+  if(view.kind==="class")   return view.cls;
+  if(view.kind==="grade")   return view.grade + "年";
+  if(view.kind==="school")  return "全学年";
+  if(view.kind==="special") return SPECIALS.find(s=>s.code===view.sp).label;
+  return "";
+}
+function viewWhere(){
+  if(view.kind==="class")   return "このクラスの週案。書いたものは " + view.cls + " だけに入る";
+  if(view.kind==="grade")   return "学年のマスター。ここに書くと " + view.grade + "年の全クラスに入る";
+  if(view.kind==="school")  return "学校全体のマスター。ここに書くと全クラスに入る";
+  if(view.kind==="special") return "自分の週。コマにクラスを入れると、そのクラスに「"
+                                 + viewName() + "」として入る";
+  return "";
+}
+
 /* ══ 合成 ══════════════════════════════════════════ */
 
 function baseCell(cls,d,s){
@@ -573,43 +606,106 @@ function compose(cls,d,s){
   return cur;
 }
 
-function store(role, cls){
+/* マスターを開いているときは、その層が入れたものだけを出す。
+   下の層まで混ぜると、どのクラスのものを見ているのか分からなくなる。 */
+function bank(){
   const w = week();
-  if(role.kind==="school")  return w.school;
-  if(role.kind==="grade")   return (w.grade[role.grade] ||= {});
-  if(role.kind==="special") return (w.special[cls] ||= {});
-  return (w.home[cls] ||= {});
+  if(view.kind==="school")  return w.school;
+  if(view.kind==="grade")   return (w.grade[view.grade] ||= {});
+  return null;
 }
+function scope(){
+  if(view.kind==="school") return CLASSES;
+  if(view.kind==="grade")  return classesOfGrade(view.grade);
+  return [];
+}
+/* このマスターのコマを、あとから直したクラスを拾う */
+function overriders(d,s){
+  const key = ck(d,s), mine = bank()[key];
+  if(!mine) return [];
+  return scope().filter(c => {
+    const x = compose(c,d,s);
+    return x.layer !== view.kind || (x.at||0) !== (mine.at||0);
+  });
+}
+
+/* 専科の自分の週。同じデータを、教科名ではなくクラス名で見る */
+function ownCell(d,s){
+  const w = week(), key = ck(d,s);
+  for(const c of CLASSES){
+    const e = (w.special[c]||{})[key];
+    if(e && e.sp === view.sp)
+      return {title:c, note:e.note||"", layer:"special", cls:c,
+              titleUrl:e.titleUrl, noteUrl:e.noteUrl, clash:null};
+  }
+  return {title:"", note:"", layer:"base", clash:null};
+}
+
+function cellFor(d,s){
+  if(view.kind==="class")   return compose(view.cls, d, s);
+  if(view.kind==="special") return ownCell(d,s);
+  const e = bank()[ck(d,s)];
+  const c = e ? Object.assign({}, e, {layer:view.kind}) : {title:"", note:"", layer:"base"};
+  c.over = e ? overriders(d,s) : [];
+  c.clash = null;
+  return c;
+}
+
+/* ══ 書く ══════════════════════════════════════════ */
+
 function writeCell(d,s,patch){
-  const st = store(role(), cls()), key = ck(d,s);
-  const cur = compose(cls(),d,s);
-  const e = st[key] || {title:cur.layer==="base"?cur.title:"", note:"",
-                        subject:cur.layer==="base"?cur.subject:null};
+  const w = week(), key = ck(d,s);
+
+  if(view.kind==="special"){          /* コマの中身は「どのクラスへ行くか」 */
+    const cur = ownCell(d,s);
+    let target = ("cls" in patch) ? patch.cls : cur.cls;
+    if("title" in patch && !("cls" in patch)) target = normCls(patch.title);
+    /* いまここに入っている自分のコマを一度どける（行き先が変わるため） */
+    for(const c of CLASSES){
+      const e = (w.special[c]||{})[key];
+      if(e && e.sp === view.sp) delete w.special[c][key];
+    }
+    if(target && CLASSES.indexOf(target) >= 0){
+      const sub = SUB_BY_CODE[view.sp];
+      const e = {title: sub ? sub.name : viewName(), subject: view.sp, sp: view.sp,
+                 note: ("note" in patch) ? patch.note : (cur.note||""),
+                 titleUrl: ("titleUrl" in patch) ? patch.titleUrl : cur.titleUrl,
+                 noteUrl:  ("noteUrl"  in patch) ? patch.noteUrl  : cur.noteUrl,
+                 at: Date.now(), by: viewName()};
+      if(!e.titleUrl) delete e.titleUrl;
+      if(!e.noteUrl)  delete e.noteUrl;
+      (w.special[target] ||= {})[key] = e;
+    }
+    save(); return;
+  }
+
+  const st = (view.kind==="class") ? (w.home[view.cls] ||= {}) : bank();
+  const cur = cellFor(d,s);
+  const e = st[key] || {title: cur.layer==="base" ? cur.title : "", note:"",
+                        subject: cur.layer==="base" ? cur.subject : null};
   Object.assign(e, patch);
-  if(role().kind==="special") e.teacher = role().me;
-  e.by = role().label;
-  e.at = Date.now();
+  e.by = viewName(); e.at = Date.now();
   if(!e.title && !e.note && !e.titleUrl && !e.noteUrl) delete st[key];
   else st[key] = e;
   save();
 }
-
-/* ══ 画面の状態 ════════════════════════════════════ */
-
-const $ = id => document.getElementById(id);
-let roleId = ROLES[0].id, clsId = "3-3", ownView = false, sel = null;
-const role = () => ROLES.find(r=>r.id===roleId);
-const cls  = () => clsId;
-
-function visibleClasses(){
-  const r = role();
-  if(r.kind==="home")   return [r.cls];
-  if(r.kind==="grade")  return CLASSES.filter(c=>gradeOf(c)===r.grade);
-  if(r.kind==="special")return r.classes;
-  return CLASSES;
+/* 1-３ ２ｰ３ ３－２ … の揺れを 3-1 の形に寄せる（たんぽぽと同じ規則） */
+function normCls(raw){
+  let x = String(raw||"");
+  if(x.normalize) x = x.normalize("NFKC");
+  x = x.trim().replace(/[-‐‑‒–—―ー−ｰ－]/g,"-");
+  return /^[1-6]-[0-9]+$/.test(x) ? x : "";
 }
 
 /* ══ 紙を描く ══════════════════════════════════════ */
+
+const $ = id => document.getElementById(id);
+let sel = null;
+/* いま打ち込んでいる欄。ここだけは塗り直しで上書きしない。
+   「フォーカスされている欄は触らない」にすると、チップや行き先の選択で
+   値を変えても字が変わらない（選んだ本人には反映されていないように見える）。
+   止めるのは打鍵のときだけにする。 */
+let typing = null;
 
 function build(){
   const sh = $("sheet");
@@ -643,6 +739,7 @@ function build(){
   ft.addEventListener("input", ()=>{ week().memo = ft.textContent; save(); });
 
   paint();
+  autoFit();
 }
 
 function wkEl(cap, r1, r2){
@@ -670,12 +767,14 @@ function cellEl(d, s){
   t.addEventListener("focus", focus);
   if(n) n.addEventListener("focus", focus);
   t.addEventListener("input", ()=>{
+    typing = t;
     const sub = SUB_BY_NAME[t.textContent.trim()];
     writeCell(d, s.id, {title:t.textContent, subject:sub?sub.code:null});
     paint(el);
+    typing = null;
   });
   if(n) n.addEventListener("input", ()=>{
-    writeCell(d, s.id, {note:n.textContent}); paint(el);
+    typing = n; writeCell(d, s.id, {note:n.textContent}); paint(el); typing = null;
   });
   return el;
 }
@@ -683,22 +782,26 @@ function cellEl(d, s){
 function paint(one){
   const list = one ? [one] : [...document.querySelectorAll(".cell")];
   const clashes = [];
+  const mine = layerOf();
   for(const el of list){
     const d = +el.dataset.d, s = el.dataset.s;
-    const c = ownView ? composeOwn(d,s) : compose(cls(), d, s);
+    const c = cellFor(d,s);
     const t = el.querySelector(".t"), n = el.querySelector(".n");
-    if(document.activeElement !== t) t.textContent = c.title || "";
-    if(n && document.activeElement !== n) n.textContent = c.note || "";
+    /* 中身が変わったときだけ書き換える。同じ字を入れ直すとカーソルが先頭へ跳ぶ */
+    const wantT = c.title || "", wantN = c.note || "";
+    if(t !== typing && t.textContent !== wantT) t.textContent = wantT;
+    if(n && n !== typing && n.textContent !== wantN) n.textContent = wantN;
     t.classList.toggle("lk", !!c.titleUrl);
     if(n) n.classList.toggle("lk", !!c.noteUrl);
 
     el.dataset.layer = c.layer;
     el.classList.toggle("from-base", c.layer==="base");
-    const upper = RANK[c.layer] > RANK[role().kind];
+    const upper = RANK[c.layer] > RANK[mine];
     el.classList.toggle("upper", upper && !c.clash);
     el.classList.toggle("clash", !!c.clash);
     const tag = el.querySelector(".tag");
-    const name = c.clash ? "！重なり" : LAYER_NAME[c.layer];
+    let name = c.clash ? "！重なり" : LAYER_NAME[c.layer];
+    if(c.over && c.over.length) name = c.over.join("・") + " が変更";
     tag.hidden = !name;
     tag.textContent = name;
     if(c.clash) clashes.push({d, s, c});
@@ -706,20 +809,11 @@ function paint(one){
   if(!one) warn(clashes);
 }
 
-function composeOwn(d,s){
-  const r = role();
-  for(const c of r.classes){
-    const x = compose(c,d,s);
-    if(x.layer==="special" && x.teacher===r.me) return Object.assign({}, x, {title:c});
-  }
-  return {title:"", note:"", layer:"base"};
-}
-
 /* ══ 重なりの警告。開いたとき1回だけ ══════════════════ */
 
 function warn(list){
   const w = week();
-  const sig = c => cls()+"|"+ck(c.d,c.s)+"|"+c.c.title+"|"
+  const sig = c => viewName()+"|"+ck(c.d,c.s)+"|"+c.c.title+"|"
                  + c.c.clash.map(p=>p.layer+":"+p.title).join(",");
   const fresh = list.filter(c => !w.acked.includes(sig(c)));
   if(!fresh.length) return;
@@ -727,7 +821,7 @@ function warn(list){
     const dt = addDays(monday, c.d), sl = SLOTS.find(x=>x.id===c.s);
     const prev = c.c.clash.map(p=>LAYER_FULL[p.layer]+"「"+(p.title||"（空）")+"」").join(" / ");
     return "<li>"+(dt.getMonth()+1)+"/"+dt.getDate()+"("+DOW[c.d]+") "+sl.name
-      +(sl.kind==="lesson"?"校時":"")+" "+cls()+"<br>"
+      +(sl.kind==="lesson"?"校時":"")+" "+viewName()+"<br>"
       +"　出ていない予定：<b>"+prev+"</b><br>"
       +"　いま出ている："+LAYER_FULL[c.c.layer]+"「"+(c.c.title||"（空）")+"」</li>";
   }).join("");
@@ -744,15 +838,27 @@ function select(d, sid, el){
   el.classList.add("sel");
   sel = {d, s:sid};
   const slot = SLOTS.find(x=>x.id===sid), dt = addDays(monday,d);
-  const c = compose(cls(), d, sid);
+  const c = cellFor(d,sid);
+  const wasHidden = $("editbar").hidden;
   $("editbar").hidden = false;
+  if(wasHidden) autoFit();      /* 帯が出た分だけ紙が縮む。取り直さないと下端が切れる */
   $("ebWhere").textContent = (dt.getMonth()+1)+"/"+dt.getDate()+"("+DOW[d]+") "
     + slot.name + (slot.kind==="lesson"?"校時":"");
   $("ebTu").value = c.titleUrl || "";
   $("ebNu").value = c.noteUrl || "";
   $("ebLink").textContent = (c.titleUrl||c.noteUrl) ? "リンク ●" : "リンク";
   $("ebAll").hidden = slot.kind!=="brk";
-  $("ebRevert").hidden = !(store(role(),cls())[ck(d,sid)]);
+  $("ebRevert").hidden = !(view.kind==="class" && (week().home[view.cls]||{})[ck(d,sid)]);
+
+  if(view.kind==="special"){
+    $("ebChips").innerHTML = "<span style='font-size:12px;color:var(--desk-sub)'>行き先</span>"
+      + "<select id='ebCls'><option value=''>—</option>"
+      + GRADES.map(gr=>"<optgroup label='"+gr.g+"年'>"
+          + gr.classes.map(c2=>"<option value='"+c2+"'"+(c2===c.title?" selected":"")+">"
+              +c2+"</option>").join("") + "</optgroup>").join("") + "</select>";
+    $("ebCls").onchange = e => { writeCell(sel.d, sel.s, {cls:e.target.value}); paint(); };
+    return;
+  }
   $("ebChips").innerHTML = !(slot.kind==="lesson"||slot.chips) ? "" : SUBJECTS.map(s=>
     "<button class='chip"+(s.count?"":" off")+"' data-code='"+s.code+"'>"+s.name+"</button>").join("");
 }
@@ -765,7 +871,7 @@ $("ebChips").addEventListener("click", ev=>{
 });
 $("ebLink").addEventListener("click", ()=>{
   if(!sel) return;
-  $("lkWhere").textContent = $("ebWhere").textContent + "　" + cls();
+  $("lkWhere").textContent = $("ebWhere").textContent + "　" + viewName();
   $("linkDlg").showModal();
 });
 $("lkClose").onclick = ()=>$("linkDlg").close();
@@ -773,21 +879,69 @@ $("ebTu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{title
 $("ebNu").addEventListener("change", ()=>{ if(sel){ writeCell(sel.d,sel.s,{noteUrl:$("ebNu").value.trim()}); paint(); select(sel.d,sel.s,cellAt(sel.d,sel.s)); }});
 $("ebClear").addEventListener("click", ()=>{
   if(!sel) return;
-  writeCell(sel.d, sel.s, {title:"", note:"", titleUrl:"", noteUrl:"", subject:null});
-  paint();
+  writeCell(sel.d, sel.s, {title:"", note:"", titleUrl:"", noteUrl:"", subject:null, cls:""});
+  paint(); select(sel.d, sel.s, cellAt(sel.d,sel.s));
 });
 $("ebRevert").addEventListener("click", ()=>{
-  if(!sel) return;
-  delete store(role(),cls())[ck(sel.d,sel.s)];
+  if(!sel || view.kind!=="class") return;
+  delete (week().home[view.cls]||{})[ck(sel.d,sel.s)];
   save(); paint(); select(sel.d, sel.s, cellAt(sel.d,sel.s));
 });
 $("ebAll").addEventListener("click", ()=>{
   if(!sel) return;
-  const c = compose(cls(), sel.d, sel.s);
+  const c = cellFor(sel.d, sel.s);
   for(let d=0; d<5; d++) writeCell(d, sel.s, {title:c.title, note:c.note||""});
   paint();
   toast("5日とも「"+(c.title||"（空）")+"」にした");
 });
+
+/* ══ 入口 ══════════════════════════════════════════ */
+
+function drawGate(){
+  const cols = Math.max.apply(null, GRADES.map(x=>x.classes.length).concat([SPECIALS.length]));
+  const g = $("grid");
+  g.style.setProperty("--cols", cols);
+  let h = "";
+  for(const gr of GRADES){
+    h += "<button class='master' data-go='grade' data-g='"+gr.g+"'><i></i>"+gr.g+"年</button>";
+    for(let i=0;i<cols;i++) h += gr.classes[i]
+      ? "<button class='tile' data-go='class' data-c='"+gr.classes[i]+"'>"+gr.classes[i]+"</button>"
+      : "<span class='tile none'></span>";
+  }
+  h += "<button class='master all' data-go='school'><i></i>全学年</button>";
+  for(let i=0;i<cols;i++) h += SPECIALS[i]
+    ? "<button class='tile sp' data-go='special' data-s='"+SPECIALS[i].code+"'><i></i>"
+      +SPECIALS[i].label+"</button>"
+    : "<span class='tile none'></span>";
+  g.innerHTML = h;
+  g.querySelectorAll("[data-go]").forEach(b=>b.onclick = ()=>{
+    const k = b.dataset.go;
+    open(k==="class"   ? {kind:"class", cls:b.dataset.c}
+       : k==="grade"   ? {kind:"grade", grade:b.dataset.g}
+       : k==="special" ? {kind:"special", sp:b.dataset.s}
+       : {kind:"school"});
+  });
+  const e = addDays(monday,4), n = weekNo();
+  $("gWeek").textContent = (monday.getMonth()+1)+"/"+monday.getDate()
+    +" → "+(e.getMonth()+1)+"/"+e.getDate();
+  $("gNo").textContent = (n && n>0) ? "第"+n+"週" : "";
+  $("gA").setAttribute("aria-pressed", week().variant==="A");
+  $("gB").setAttribute("aria-pressed", week().variant==="B");
+}
+
+function open(v){
+  view = v; sel = null;
+  $("gate").hidden = true; $("editor").hidden = false; $("editbar").hidden = true;
+  $("now").dataset.layer = layerOf();
+  $("nowName").textContent = viewName();
+  $("nowWhere").textContent = viewWhere();
+  refreshWeek();
+}
+function toGate(){
+  view = {kind:"gate"};
+  $("editor").hidden = true; $("gate").hidden = false;
+  drawGate();
+}
 
 /* ══ 基本時間割（A週・B週） ═════════════════════════ */
 
@@ -795,12 +949,12 @@ let baseVar = "A";
 function baseGrid(){
   const c = $("baseCls").value;
   db.base[c] ||= {}; db.base[c][baseVar] ||= {};
-  const bank = db.base[c][baseVar];
+  const bk = db.base[c][baseVar];
   let h = "<table class='base'><tr><th></th>" + DOW.map(d=>"<th>"+d+"</th>").join("") + "</tr>";
   for(const s of SLOTS){
     h += "<tr><th>"+s.name+"</th>";
     for(let d=0; d<5; d++){
-      const v = bank[ck(d,s.id)] || {};
+      const v = bk[ck(d,s.id)] || {};
       h += "<td>" + (s.kind==="lesson"
         ? "<select data-k='"+ck(d,s.id)+"'><option value=''>—</option>"
           + SUBJECTS.map(x=>"<option value='"+x.code+"'"
@@ -813,45 +967,37 @@ function baseGrid(){
   $("baseGrid").innerHTML = h + "</table>";
   $("baseGrid").querySelectorAll("select").forEach(el=>el.onchange = ()=>{
     const s = SUB_BY_CODE[el.value];
-    if(s) bank[el.dataset.k] = {title:s.name, subject:s.code};
-    else delete bank[el.dataset.k];
+    if(s) bk[el.dataset.k] = {title:s.name, subject:s.code}; else delete bk[el.dataset.k];
     save();
   });
   $("baseGrid").querySelectorAll("input").forEach(el=>el.onchange = ()=>{
-    if(el.value.trim()) bank[el.dataset.k] = {title:el.value, subject:null};
-    else delete bank[el.dataset.k];
+    if(el.value.trim()) bk[el.dataset.k] = {title:el.value, subject:null};
+    else delete bk[el.dataset.k];
     save();
   });
   $("bvA").setAttribute("aria-pressed", baseVar==="A");
   $("bvB").setAttribute("aria-pressed", baseVar==="B");
 }
 
-/* ══ 時数集計表へのコピー ═══════════════════════════
-   週ごとのシートに1回で貼れる矩形にする。空のセルも含める。
-   数えない教科は空欄にする（書くと Excel 側の集計が増える）。 */
+/* ══ 時数集計表へのコピー ═══════════════════════════ */
 
-function tallyClasses(){
-  return (db.settings.tally.classes||"").split(",").map(s=>s.trim()).filter(Boolean);
-}
+const tallyClasses = () => (db.settings.tally.classes||"").split(",").map(s=>s.trim()).filter(Boolean);
 function tallyGrid(){
   const t = db.settings.tally;
   const list = tallyClasses(), block = Math.max(1, +t.block||10);
-  const width = Math.max(...Object.values(t.cols)) + 1;
+  const width = Math.max.apply(null, Object.values(t.cols)) + 1;
   const rows = [];
-  for(let d=0; d<5; d++){
-    for(let r=0; r<block; r++){
-      const line = new Array(width).fill("");
-      const cIdx = r;
-      if(cIdx < list.length){
-        for(const s of SLOTS){
-          if(!(s.id in t.cols)) continue;
-          const c = compose(list[cIdx], d, s.id);
-          const sub = c.subject ? SUB_BY_CODE[c.subject] : SUB_BY_NAME[(c.title||"").trim()];
-          line[t.cols[s.id]] = (sub && sub.count) ? sub.short : "";
-        }
+  for(let d=0; d<5; d++) for(let r=0; r<block; r++){
+    const line = new Array(width).fill("");
+    if(r < list.length){
+      for(const s of SLOTS){
+        if(!(s.id in t.cols)) continue;
+        const c = compose(list[r], d, s.id);
+        const sub = c.subject ? SUB_BY_CODE[c.subject] : SUB_BY_NAME[(c.title||"").trim()];
+        line[t.cols[s.id]] = (sub && sub.count) ? sub.short : "";
       }
-      rows.push(line);
     }
+    rows.push(line);
   }
   return rows;
 }
@@ -867,20 +1013,17 @@ function tallyDlg(){
   $("tyCols").querySelectorAll("input").forEach(el=>el.oninput = ()=>{
     t.cols[el.dataset.s] = +el.value||0; save(); tallyPrev();
   });
-  tallyPrev();
-  $("tallyDlg").showModal();
+  tallyPrev(); $("tallyDlg").showModal();
 }
 function tallyPrev(){
   const g = tallyGrid(), list = tallyClasses();
   const block = Math.max(1, +db.settings.tally.block||10);
-  const w = 10;
-  const head = g.map((r,i)=>{
+  $("tyPrev").textContent = g.map((r,i)=>{
     const d = Math.floor(i/block), r0 = i % block;
     let who = r0 < list.length ? (r0===0 ? DOW[d]+"  "+list[r0] : "   "+list[r0]) : "";
-    while(who.length < w) who += " ";
+    while(who.length < 10) who += " ";
     return who + "│ " + r.map(v=>v||"·").join(" ");
-  });
-  $("tyPrev").textContent = head.join("\n");
+  }).join("\n");
 }
 async function copyText(s, msg){
   try{ await navigator.clipboard.writeText(s); }
@@ -901,47 +1044,28 @@ function toast(msg){
   toastT = setTimeout(()=>{ $("toast").hidden = true; }, 4600);
 }
 
-/* ══ 組み立て ══════════════════════════════════════ */
+/* ══ 大きさ ════════════════════════════════════════
+   既定は「画面に合わせる」。週案がいちばん大きく出る。
+   印刷の倍率とは別にしてある（読むために拡大した人が寸法を外さないように）。 */
 
-function drawRoles(){
-  $("roles").innerHTML = ROLES.map(r=>
-    "<button class='role' data-id='"+r.id+"' data-layer='"+r.kind+"'"
-    +" aria-pressed='"+(r.id===roleId)+"'>"
-    +"<span class='chipx'><i></i><em>算数</em><b>"+LAYER_NAME[r.kind]+"</b></span>"
-    +"<span><span class='rname'>"+r.label+"</span>"
-    +"<span class='rwhere'>"+r.where+"</span></span></button>").join("");
-  $("roles").querySelectorAll(".role").forEach(b=>b.onclick = ()=>{
-    roleId = b.dataset.id; refreshRole();
-  });
+function applyZoom(){
+  const z = db.settings.vz || 100;
+  $("paper").style.zoom = (z/100);
+  $("vz").value = z; $("vzV").textContent = z;
+  $("fitChk").checked = !!db.settings.fit;
 }
-
-function fill(sel, arr, val){
-  sel.innerHTML = arr.map(o=>"<option value='"+o.v+"'"+(o.v===val?" selected":"")+">"
-    +o.t+"</option>").join("");
+function autoFit(){
+  if(!db.settings.fit){ applyZoom(); return; }
+  const sh = $("sheet"), st = $("stage"), pa = $("paper");
+  pa.style.zoom = 1;
+  const w = sh.offsetWidth, h = sh.offsetHeight;
+  if(!w || !h){ applyZoom(); return; }
+  const k = Math.min((st.clientWidth - 26)/w, (st.clientHeight - 26)/h);
+  db.settings.vz = Math.max(30, Math.min(150, Math.round(k*100)));
+  applyZoom();
 }
-
-function refreshRole(){
-  const r = role(), list = visibleClasses();
-  if(!list.includes(clsId)) clsId = list[0];
-  fill($("cls"), list.map(c=>({v:c,t:c})), clsId);
-  $("cls").disabled = list.length===1;
-  $("ownWrap").hidden = r.kind!=="special";
-  if(r.kind!=="special"){ ownView = false; $("own").checked = false; }
-  drawRoles();
-  $("whoCls").textContent = clsId;
-  build();
-}
-
-function refreshWeek(){
-  const e = addDays(monday,4), n = weekNo();
-  $("weeklabel").textContent =
-    (monday.getMonth()+1)+"/"+monday.getDate()+" → "+(e.getMonth()+1)+"/"+e.getDate();
-  $("weekno").textContent = (n && n>0) ? "第"+n+"週" : "";
-  const v = week().variant;
-  $("abA").setAttribute("aria-pressed", v==="A");
-  $("abB").setAttribute("aria-pressed", v==="B");
-  build();
-}
+let fitT = 0;
+addEventListener("resize", ()=>{ clearTimeout(fitT); fitT = setTimeout(autoFit, 120); });
 
 function applyPaper(){
   const s = db.settings, sh = $("sheet");
@@ -957,22 +1081,33 @@ function applyPaper(){
   $("stMg").value = s.margin;  $("stMgV").textContent = s.margin;
   $("stK").value  = s.k;       $("stKV").textContent  = (+s.k).toFixed(2);
   $("stW1").value = s.week1;
-  applyZoom();
-}
-function applyZoom(){
-  const z = db.settings.vz || 75;
-  $("paper").style.zoom = (z/100);
-  $("vz").value = z; $("vzV").textContent = z;
+  autoFit();
 }
 
+function refreshWeek(){
+  const e = addDays(monday,4), n = weekNo();
+  $("weeklabel").textContent =
+    (monday.getMonth()+1)+"/"+monday.getDate()+" → "+(e.getMonth()+1)+"/"+e.getDate();
+  $("weekno").textContent = (n && n>0) ? "第"+n+"週" : "";
+  $("abA").setAttribute("aria-pressed", week().variant==="A");
+  $("abB").setAttribute("aria-pressed", week().variant==="B");
+  build();
+}
+const fill = (s,arr,val) => s.innerHTML =
+  arr.map(o=>"<option value='"+o.v+"'"+(o.v===val?" selected":"")+">"+o.t+"</option>").join("");
+
 /* 操作 */
+$("gPrev").onclick = ()=>{ monday = addDays(monday,-7); drawGate(); };
+$("gNext").onclick = ()=>{ monday = addDays(monday, 7); drawGate(); };
+$("gA").onclick = ()=>{ week().variant="A"; save(); drawGate(); };
+$("gB").onclick = ()=>{ week().variant="B"; save(); drawGate(); };
+$("toGate").onclick = toGate;
 $("prev").onclick = ()=>{ monday = addDays(monday,-7); refreshWeek(); };
 $("next").onclick = ()=>{ monday = addDays(monday, 7); refreshWeek(); };
 $("abA").onclick = ()=>{ week().variant="A"; save(); refreshWeek(); };
 $("abB").onclick = ()=>{ week().variant="B"; save(); refreshWeek(); };
-$("cls").onchange = e=>{ clsId = e.target.value; $("whoCls").textContent = clsId; build(); };
-$("own").onchange = e=>{ ownView = e.target.checked; build(); };
-$("vz").oninput = e=>{ db.settings.vz = +e.target.value; save(); applyZoom(); };
+$("fitChk").onchange = e=>{ db.settings.fit = e.target.checked; save(); autoFit(); };
+$("vz").oninput = e=>{ db.settings.fit=false; db.settings.vz=+e.target.value; save(); applyZoom(); };
 $("printBtn").onclick = ()=>window.print();
 $("setBtn").onclick  = ()=>$("setDlg").showModal();
 $("setClose").onclick= ()=>$("setDlg").close();
@@ -982,7 +1117,7 @@ $("stK").oninput  = e=>{ db.settings.k = +e.target.value; save(); applyPaper(); 
 $("stW1").onchange = e=>{ db.settings.week1 = e.target.value.trim(); save(); refreshWeek(); };
 
 $("baseBtn").onclick = ()=>{
-  fill($("baseCls"), CLASSES.map(c=>({v:c,t:c})), cls());
+  fill($("baseCls"), CLASSES.map(c=>({v:c,t:c})), view.kind==="class"?view.cls:CLASSES[0]);
   baseVar = week().variant; baseGrid(); $("baseDlg").showModal();
 };
 $("baseCls").onchange = baseGrid;
@@ -1010,7 +1145,7 @@ $("tyBlock").oninput = e=>{ db.settings.tally.block = +e.target.value||10; save(
 
 $("tanpopoBtn").onclick = ()=>{
   $("tpState").innerHTML = "いまは<b>書き込まない</b>。実物のたんぽぽ時間割に"
-    + "つないでいないため。上の規則のとおりに書く口だけ作ってある（docs/weekly-plan.md 6節）。";
+    + "つないでいないため。上の規則のとおりに書く口だけ作ってある（docs/weekly-plan.md 7節）。";
   $("tpDlg").showModal();
 };
 $("tpClose").onclick = ()=>$("tpDlg").close();
@@ -1018,10 +1153,8 @@ $("warnClose").onclick = ()=>$("warnDlg").close();
 
 /* はじめの一回 */
 if(!Object.keys(db.base).length) seed();
-drawRoles();
 applyPaper();
-refreshRole();
-refreshWeek();
+drawGate();
 
 /* 手元で触れるだけの見本。本番では基本時間割シートから来る */
 function seed(){
@@ -1029,7 +1162,7 @@ function seed(){
              "gaikoku","sogo","gakkatsu","kokugo","sansu","taiiku","kokugo",
              "sansu","shakai","rika","kokugo","sansu","zuko","ongaku","taiiku",
              "sansu","kokugo","sogo","gakkatsu","kokugo","sansu","rika"];
-  for(const c of CLASSES){
+  CLASSES.forEach((c,ci)=>{
     db.base[c] = {A:{}, B:{}};
     let i = 0;
     for(let d=0; d<5; d++) for(const s of SLOTS){
@@ -1038,11 +1171,11 @@ function seed(){
         if(s.id==="lun") db.base[c].A[ck(d,s.id)] = {title:"給食・そうじ", subject:null};
         continue;
       }
-      const code = w[(i + CLASSES.indexOf(c)*7) % w.length]; i++;
+      const code = w[(i + ci*7) % w.length]; i++;
       db.base[c].A[ck(d,s.id)] = {title:SUB_BY_CODE[code].name, subject:code};
     }
     db.base[c].B = JSON.parse(JSON.stringify(db.base[c].A));
-  }
+  });
   save();
 }
 </script>
