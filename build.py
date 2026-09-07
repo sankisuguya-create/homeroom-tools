@@ -6,6 +6,7 @@
   prototypes/grid-sheet.html     児童画面（プロトタイプ）
   prototypes/teacher-view.html   教師画面（プロトタイプ）
   prototypes/dance-count.html    ダンスカウント表（色トークンだけ読む）
+  prototypes/weekly-plan.html    週案（plan-tokens.css だけ読む）
   gas/Scale.gs                   GAS のサーバ側
   gas/scale.html                 GAS のクライアント側
 
@@ -22,7 +23,8 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SRC  = ROOT / "prototypes" / "src"
 OUT  = ROOT / "prototypes"
 GAS  = ROOT / "gas"
-PAGES = ["grid-sheet.html", "teacher-view.html", "dance-count.html"]
+PAGES = ["grid-sheet.html", "teacher-view.html", "dance-count.html",
+         "weekly-plan.html"]
 
 BANNER = ("/* このファイルは prototypes/src/scale.js から build.py が作る。\n"
           "   直すのは src のほう。ここを直しても次のビルドで消える。 */\n")
