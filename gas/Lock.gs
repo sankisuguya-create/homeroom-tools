@@ -10,6 +10,18 @@
    保存時刻が無いセル（未記入）はロックしない。
    休んだ児童も、転写を忘れた児童も、後日そのまま入力できる。
 ================================================================== */
+/* シートの日付欄は Date で返ってくるとは限らない。書式を文字列にしていたり、
+   手で「2026/4/10」と打ち込んでいると文字列で来る。instanceof だけで判定すると、
+   その場合に全部「日付なし」に落ちて、児童の画面が黙って空になる。 */
+function toDate_(v){
+  if(v === null || v === undefined || v === "") return null;
+  if(Object.prototype.toString.call(v) === "[object Date]"){
+    return isNaN(v.getTime()) ? null : v;
+  }
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 const Lock = (function(){
 
   function lastBoundary(now){
@@ -23,10 +35,8 @@ const Lock = (function(){
 
   /* savedAt は Date か、シートから来た文字列。空ならロックしない。 */
   function isLocked(savedAt, now){
-    if(!savedAt) return false;
-    const d = (savedAt instanceof Date) ? savedAt : new Date(savedAt);
-    if(isNaN(d.getTime())) return false;
-    return d < lastBoundary(now);
+    const d = toDate_(savedAt);
+    return d ? (d < lastBoundary(now)) : false;
   }
 
   return {lastBoundary, isLocked};

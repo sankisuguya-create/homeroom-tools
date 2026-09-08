@@ -58,6 +58,10 @@ function bootData(who){
     className: Config.className(),
     year:     Config.year(),
     lockTime: Config.lockTime(),
+    openTime: Config.openTime(),
+    hours:    Hours.label(),
+    closed:   Hours.isClosedFor(w),        // 児童は時間外だと true
+    toClose:  Hours.minutesToClose(),
     subjects: (w.role === "unknown") ? [] : Master.subjectNames(isTeacher),
     boundary: Lock.lastBoundary().toISOString()
   };

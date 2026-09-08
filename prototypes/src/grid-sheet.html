@@ -57,6 +57,31 @@ body{
 .mini:hover{border-color:var(--accent);color:var(--accent)}
 .mini:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 
+/* ---- 閉室（8:00 より前・16:00 より後）----
+   児童には表そのものを出さない。何が起きているかだけを1行で伝える。 */
+.closed{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;min-height:56vh;text-align:center;
+  border:1px solid var(--rule);border-radius:12px;background:var(--sheet);
+  padding:40px 24px;
+}
+.closed .mark{
+  width:54px;height:54px;border-radius:50%;
+  border:4px solid var(--rule-soft);border-top-color:var(--ink-faint);
+  animation:spin 1.6s linear infinite;
+}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.closed .big{margin:0;font-size:23px;font-weight:700;letter-spacing:.02em}
+.closed .sub{margin:0;font-size:15px;color:var(--ink-soft)}
+.closed .sub b{font-family:"IBM Plex Mono",monospace;font-weight:700;color:var(--ink)}
+
+/* まもなく閉まるときの予告。急に消えたと思わせないため。 */
+.soonbar{
+  border:1px solid var(--open-line);background:var(--open-cell);
+  border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600;
+}
+.soonbar b{font-family:"IBM Plex Mono",monospace}
+
 /* ---- 見出し ---- */
 .head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
   border-bottom:2px solid var(--ink);padding-bottom:10px}
@@ -246,8 +271,15 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   </div>
 
   <div class="lockbar" id="lockbar"></div>
+  <div class="soonbar hidden" id="soonbar"></div>
 
-  <div class="head">
+  <div class="closed hidden" id="closedPanel">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="big">きろくを こうしんして います</p>
+    <p class="sub" id="closedSub"></p>
+  </div>
+
+  <div class="head" id="head">
     <h1 id="title">さくら<small>3年3組　2026年度</small></h1>
     <div class="badges">
       <span class="badge todo" id="todoBadge">未入力 0</span>
@@ -255,19 +287,19 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
     </div>
   </div>
 
-  <section>
+  <section id="secLessons">
     <h2>授業の評価</h2>
     <div class="sheet"><div class="grid" id="grid"></div></div>
   </section>
 
-  <section>
+  <section id="secUnits">
     <h2>単元の評価
       <button class="mini fold" id="foldUnits" aria-expanded="true" aria-controls="units">かくす</button>
     </h2>
     <div class="units" id="units"></div>
   </section>
 
-  <section>
+  <section id="secTrend">
     <h2>きろくの うつりかわり</h2>
     <div class="chartcard">
       <svg class="trend" id="trend" viewBox="0 0 1040 300" role="img" aria-label="授業ごとの評価の推移"></svg>
@@ -305,6 +337,31 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 /* 定時は 16:00。境界は誰も使っていない時間に置く（3年生は下校している）。
    転写中の時間帯に境界を置くと、直前に入れた児童だけ猶予がなくなる。 */
 const LOCK = { h:16, m:0, override:null };   // override はためし用の即時ロック
+
+/* 児童が使えるのは 開室 8:00 〜 ロック時刻。終わりを LOCK と同じにしてあるので、
+   「閉まっているのにまだ直せる」というずれが起きない。閉室と確定が同じ瞬間になる。
+   時刻を3つ持つとこのずれを人手で守ることになるので、2つで足す。 */
+const OPEN_FROM = { h:8, m:0 };
+let closedPreview = false;                  // 教師が時間外の画面を見るためのためし
+
+function minutesOf(d){ return d.getHours()*60 + d.getMinutes(); }
+
+function isClosedAt(now){
+  const m    = minutesOf(now || new Date());
+  const from = OPEN_FROM.h*60 + OPEN_FROM.m;
+  const to   = LOCK.h*60 + LOCK.m;
+  return (from < to) ? (m < from || m >= to)      // 8:00〜16:00 のふつうの並び
+                     : (m < from && m >= to);      // 日をまたぐ設定にした場合
+}
+
+/* 閉まるまで何分か。開いていないときは null。 */
+function minutesToClose(now){
+  const d = now || new Date();
+  if(isClosedAt(d)) return null;
+  const to = LOCK.h*60 + LOCK.m;
+  const m  = minutesOf(d);
+  return (m < to) ? to - m : (24*60 - m) + to;
+}
 
 function lastBoundary(){
   if(LOCK.override) return LOCK.override;
@@ -621,7 +678,9 @@ function renderLockbar(){
     '<input type="time" id="lockTime" value="' +
       String(LOCK.h).padStart(2,"0") + ":" + String(LOCK.m).padStart(2,"0") + '">' +
     '<button class="mini" id="lockNow">いま ロックする（ためし）</button>' +
-    (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "");
+    (LOCK.override ? '<button class="mini" id="lockReset">ためしを もどす</button>' : "") +
+    '<button class="mini" id="closedBtn">' +
+      (closedPreview ? "児童の画面に もどす" : "時間外の画面を 見る") + '</button>';
 
   $("lockTime").addEventListener("change", e=>{
     const [h,m] = e.target.value.split(":").map(Number);
@@ -630,6 +689,7 @@ function renderLockbar(){
   $("lockNow").addEventListener("click", ()=>{ LOCK.override = new Date(); refresh(); });
   const rs = $("lockReset");
   if(rs) rs.addEventListener("click", ()=>{ LOCK.override = null; refresh(); });
+  $("closedBtn").addEventListener("click", ()=>{ closedPreview = !closedPreview; refresh(); });
 }
 
 /* 児童が開いたとき、70セルの先頭ではなく「いまやるところ」が見えるようにする。
@@ -697,16 +757,50 @@ function refreshAfterEdit(){
   drawTrend();
 }
 
+/* 閉室のときは表を作らない。作らないので軽くもなる。 */
+function renderClosed(){
+  const closed = closedPreview || (role === "student" && isClosedAt());
+  $("closedPanel").classList.toggle("hidden", !closed);
+  ["head", "secLessons", "secUnits", "secTrend"].forEach(id =>
+    $(id).classList.toggle("hidden", closed));
+  if(closed){
+    $("closedSub").innerHTML =
+      "あさ <b>" + String(OPEN_FROM.h).padStart(2,"0") + ":" +
+      String(OPEN_FROM.m).padStart(2,"0") + "</b> から つかえます";
+  }
+  return closed;
+}
+
+/* 閉まる10分前から予告を出す。急に画面が消えたと思わせないため。 */
+function renderSoon(){
+  const bar = $("soonbar");
+  const left = (role === "student" && !closedPreview) ? minutesToClose() : null;
+  const show = left !== null && left <= 10;
+  bar.classList.toggle("hidden", !show);
+  if(show) bar.innerHTML = "あと <b>" + left + "</b> ふんで、きょうは おしまいです";
+}
+
 /* 表そのものを作り直す。教科・役割が変わったときだけ。 */
 function refresh(){
   renderSubjSeg();
+  if(renderClosed()){ renderLockbar(); renderSoon(); return; }
   renderHead();
   renderLockbar();
+  renderSoon();
   renderGrid();
   renderUnits();
   drawTrend();
   scrollToNow();
 }
+
+/* 時計が境界をまたいだら、開いたままの画面を切り替える。
+   30秒ごとに見て、変わったときだけ描き直す。 */
+let wasClosed = null;
+setInterval(()=>{
+  const now = closedPreview || (role === "student" && isClosedAt());
+  if(now !== wasClosed){ wasClosed = now; refresh(); return; }
+  renderSoon();                                  // 予告の残り分だけ更新する
+}, 30000);
 
 /* ---- 切り替え ---- */
 $("roleBtn").addEventListener("click", ()=>{

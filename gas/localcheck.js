@@ -19,7 +19,7 @@ const DIR = __dirname;
 /* ---- 偽のシート ---- */
 const SHEETS = {
   "設定": [["キー","値"],
-    ["学級","3年3組"],["年度",2026],["ロック時刻","16:00"],
+    ["学級","3年3組"],["年度",2026],["開室時刻","8:00"],["ロック時刻","16:00"],
     ["A下限","A+"],["C上限","C++"],["代表値","後半の中央値"],["後半の範囲",3],
     ["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
   "教科マスタ": [["教科","時数","公開"],
@@ -44,17 +44,44 @@ const SHEETS = {
 let CURRENT_EMAIL = "sakura@example.ed.jp";
 const alerts = [];
 
+/* 書ける偽シート。記録と確定は実際に行が増減するので、そこまで真似る。 */
 function fakeSheet(name){
   const v = SHEETS[name];
   if(!v) return null;
-  const range = () => ({
-    getValues: () => v.map(r => r.slice()),
-    setValues(){ return this; }, setFontWeight(){ return this; },
-    setBackground(){ return this; }, setNumberFormat(){ return this; }
-  });
+  const chain = {setValues(){ return this; }, setFontWeight(){ return this; },
+                 setBackground(){ return this; }, setNumberFormat(){ return this; }};
+
+  function range(row, col, nRow, nCol){
+    if(row === undefined) return Object.assign({getValues: () => v.map(r => r.slice())}, chain);
+    const r0 = row - 1, c0 = col - 1;
+    return {
+      getValues(){
+        const out = [];
+        for(let i = 0; i < nRow; i++){
+          const src = v[r0 + i] || [];
+          out.push(src.slice(c0, c0 + nCol));
+        }
+        return out;
+      },
+      getValue(){ const src = v[r0] || []; return src[c0]; },
+      setValues(vals){
+        for(let i = 0; i < vals.length; i++){
+          while(v.length <= r0 + i) v.push([]);
+          for(let j = 0; j < vals[i].length; j++) v[r0 + i][c0 + j] = vals[i][j];
+        }
+        return this;
+      },
+      setFontWeight(){ return this; }, setBackground(){ return this; },
+      setNumberFormat(){ return this; }
+    };
+  }
+
   return {
-    getDataRange: range, getRange: range,
+    getDataRange: () => range(),
+    getRange: range,
     getLastRow: () => v.length,
+    appendRow: r => { v.push(r.slice()); },
+    deleteRow: n => { v.splice(n - 1, 1); },
     setFrozenRows(){}, autoResizeColumns(){}
   };
 }
@@ -77,15 +104,18 @@ const sandbox = {
     return {get: k => m.get(k) || null, put: (k,v) => m.set(k,v), remove: k => m.delete(k)};
   }},
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }) },
+  LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock(){} }) },
   HtmlService: {
     createHtmlOutputFromFile: n => ({
       getContent: () => fs.readFileSync(path.join(DIR, n + ".html"), "utf8") })
   }
 };
+sandbox.SHEETS_LEN = () => SHEETS["記録"].length;
 vm.createContext(sandbox);
 
 /* ---- 全 .gs を1つのスコープへ。GAS と同じ形。 ---- */
-const order = ["Scale.gs","Config.gs","Roster.gs","Master.gs","Lock.gs","Code.gs","Setup.gs"];
+const order = ["Scale.gs","Config.gs","Roster.gs","Master.gs","Lock.gs","Hours.gs",
+               "Store.gs","Aggregate.gs","Code.gs","Setup.gs"];
 const files = fs.readdirSync(DIR).filter(f => f.endsWith(".gs"));
 files.forEach(f => { if(order.indexOf(f) < 0) order.push(f); });
 
@@ -181,6 +211,114 @@ ok("児童の boot に非公開教科が入らない",
    "bootData().subjects.indexOf('体育') < 0 && bootData().subjects.indexOf('社会') < 0",
    "bootData().subjects");
 ok("boot にロックの境界が入る", "typeof bootData().boundary === 'string'", "bootData().boundary");
+
+console.log("■ 開室時間（8:00〜16:00。終わりはロック時刻と同じ値）");
+ev("var t0759 = new Date('2026-05-20T07:59:00+09:00');" +
+   "var t1200 = new Date('2026-05-20T12:00:00+09:00');" +
+   "var t1600 = new Date('2026-05-20T16:00:00+09:00');" +
+   "var t2000 = new Date('2026-05-20T20:00:00+09:00');");
+ok("7:59 は閉まっている", "Hours.isClosed(t0759) === true");
+ok("8:00 ちょうどから開く",
+   "Hours.isClosed(new Date('2026-05-20T08:00:00+09:00')) === false");
+ok("12:00 は開いている", "Hours.isClosed(t1200) === false");
+ok("16:00 ちょうどで閉まる", "Hours.isClosed(t1600) === true");
+ok("20:00 は閉まっている", "Hours.isClosed(t2000) === true");
+ok("閉室とロックの境目が同じ値",
+   "Hours.closeTime().h === Config.lockTime().h && Hours.closeTime().m === Config.lockTime().m");
+ok("教師は時間外でも閉まらない",
+   "Hours.isClosedFor({role:'teacher'}, t2000) === false && Hours.isClosedFor({role:'student'}, t2000) === true");
+ok("15:53 なら閉室まで7分", "Hours.minutesToClose(new Date('2026-05-20T15:53:00+09:00')) === 7");
+ok("閉まっているときは null", "Hours.minutesToClose(t2000) === null");
+
+console.log("■ 保存（サーバ側が弾くもの）");
+/* save() は「いまの時刻」で動くので、検査のあいだだけ時計を止める。
+   これをしないと、検査を回した時刻で結果が変わる。 */
+const RealDate = Date;
+function clockAt(iso){
+  const t = new RealDate(iso).getTime();
+  class D extends RealDate {
+    constructor(...a){ if(!a.length) super(t); else super(...a); }
+    static now(){ return t; }
+  }
+  sandbox.Date = D;
+}
+function clockReal(){ sandbox.Date = RealDate; }
+
+clockAt("2026-05-20T12:00:00+09:00");      // 開いている時間
+as("sakura@example.ed.jp");
+ok("児童は / を置けない", "Store.save('算数', 1, '/').ok === false");
+ok("知らない記号は弾かれる", "Store.save('算数', 1, 'X+').ok === false");
+ok("無い授業番号は弾かれる", "Store.save('算数', 999, 'A').ok === false");
+ok("非公開の教科には書けない", "Store.save('体育', 1, 'A').ok === false",
+   "Store.save('体育',1,'A')");
+ok("実施日が未来の授業には書けない", "Store.save('算数', 70, 'A').ok === false",
+   "Store.save('算数',70,'A')");
+ok("12時なら実施済みの授業に書ける", "Store.save('算数', 1, 'A+').ok === true",
+   "Store.save('算数',1,'A+')");
+ok("書いた値が読み出せる",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].sym === 'A+'");
+ok("同じ授業に書き直しても行は増えない",
+   "(function(){var n=SHEETS_LEN();Store.save('算数',1,'B');return SHEETS_LEN()===n;})()");
+ok("その日のうちはロックされない",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].locked === false");
+
+clockAt("2026-05-21T12:00:00+09:00");      // 翌日。境界（前日16:00）を越えている
+ok("翌日にはロック済みになる",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].locked === true");
+ok("ロック済みは児童が書き換えられない", "Store.save('算数', 1, 'Z').ok === false",
+   "Store.save('算数',1,'Z')");
+ok("書き換えられていない",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].sym === 'B'");
+
+clockAt("2026-05-21T20:00:00+09:00");      // 時間外
+ok("時間外は児童が書けない", "Store.save('算数', 2, 'A').ok === false", "Store.save('算数',2,'A')");
+
+clockAt("2026-05-21T12:00:00+09:00");
+as("sensei@example.ed.jp");
+ok("教師は save ではなく saveAs を使う", "Store.save('算数', 1, 'A').ok === false");
+ok("教師はロック済みも貫通して書き換えられる",
+   "Store.saveAs('算数','s09',1,'A++').ok === true", "Store.saveAs('算数','s09',1,'A++')");
+ok("教師が空にすると行が消える",
+   "(function(){var n=SHEETS_LEN();Store.saveAs('算数','s09',1,'');return SHEETS_LEN()===n-1;})()");
+ok("教師は時間外でも / を置ける", "Store.saveAs('算数','s09',16,'/').ok === true",
+   "Store.saveAs('算数','s09',16,'/')");
+ok("教師の書き込みには更新者が残る",
+   "(function(){var r=Store.read('算数','s09').filter(function(x){return x.no===16;})[0];" +
+   "return r.sym==='/' && r.edited===true;})()");
+ok("教師は実施日が未来の授業にも置ける", "Store.saveAs('算数','s09',70,'休').ok === true");
+as("sakura@example.ed.jp");
+ok("児童は他人の行に書けない（saveAs は先生だけ）",
+   "Store.saveAs('算数','s01',1,'Z').ok === false");
+
+clockReal();
+console.log("■ 集計");
+ev("var rec = {}; for(var i=1;i<=14;i++) rec[i] = ['B','B+','A','A−','A+','B+','A','A','B+','A','A+','A','A+','Z'][i-1];");
+ok("後半1/3の中央値が仮値になる",
+   "(function(){var u=Master.unitOf('算数',1);var s=Aggregate.summarize(rec,u);" +
+   "return s.n===14 && s.prov!==null && typeof s.provSym==='string';})()",
+   "Aggregate.summarize(rec, Master.unitOf('算数',1))");
+ok("休 と / は分母から外れ、別々に数えられる",
+   "(function(){var r={};r[1]='A';r[2]='休';r[3]='/';r[4]='B';" +
+   "var s=Aggregate.summarize(r,{from:1,to:4});" +
+   "return s.n===4 && s.off===1 && s.skip===1;})()",
+   "Aggregate.summarize({1:'A',2:'休',3:'/',4:'B'},{from:1,to:4})");
+ok("A+ 以上が評定A、C++ 以下が評定C",
+   "Aggregate.rankOf(valueOfSym('A+'))==='A' && Aggregate.rankOf(valueOfSym('A'))==='B' && " +
+   "Aggregate.rankOf(valueOfSym('C++'))==='C'");
+ok("記号の A は評定では B に落ちる", "Aggregate.rankOf(valueOfSym('A')) === 'B'");
+ok("中央値が段の間なら下を採る", "Aggregate.medianVal([10,11]) === 10.5 && symbolOfMedian(10.5) === 'B'");
+
+console.log("■ 単元評価を児童に返すか");
+as("sakura@example.ed.jp");
+ev("var rows = Store.read('算数','s09');");
+ok("評価公開が false の単元は値を返さない",
+   "(function(){var us=Aggregate.unitsForStudent('算数','s09',rows);" +
+   "var w=us.filter(function(u){return u.name==='わり算';})[0];" +
+   "return w.rated===false && w.sym===null && w.high===null && w.top===null;})()",
+   "Aggregate.unitsForStudent('算数','s09',rows)[1]");
+ok("公開されていない単元でも入力数は返す",
+   "(function(){var us=Aggregate.unitsForStudent('算数','s09',rows);" +
+   "return typeof us[1].n === 'number' && typeof us[1].total === 'number';})()");
 
 console.log("■ シートの用意");
 ev("setupSheets()");

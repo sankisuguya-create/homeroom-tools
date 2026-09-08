@@ -50,8 +50,8 @@ const Master = (function(){
       const sn = String(lv[i][0]).trim();
       const no = Number(lv[i][1]);
       if(!sn || !no) continue;
-      const d = lv[i][2];
-      held[sn + "|" + no] = (d instanceof Date) ? d.getTime() : null;
+      const d = toDate_(lv[i][2]);
+      held[sn + "|" + no] = d ? d.getTime() : null;
     }
 
     const out = {subjects: subj, held: held};

@@ -1,6 +1,6 @@
 # GAS 側
 
-`prototypes/` を Google Apps Script に載せたもの。**いまは Step 3 まで**（シートを作る・スケールを移す・誰が開いているかを判定する）。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
+`prototypes/` を Google Apps Script に載せたもの。**いまは Step 5 まで**（シートを作る・スケールを移す・本人確認・記録の読み書き・集計）。残るのは画面（`student.html` / `teacher.html`）。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
 
 ## 貼る前に手元で確かめる
 
@@ -23,7 +23,10 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 | `Config.gs` | 設定シート。5分キャッシュ |
 | `Roster.gs` | 名簿。メール → 児童ID |
 | `Master.gs` | 教科・単元・授業マスタ |
-| `Lock.gs` | ロックの境界 |
+| `Lock.gs` | ロックの境界。日付欄の文字列も受ける `toDate_` |
+| `Hours.gs` | 児童が使える時間（8:00〜ロック時刻） |
+| `Store.gs` | 記録の読み書き。保存はサーバ側で全部確かめる |
+| `Aggregate.gs` | 単元評価・期末評定の計算と、確定シート |
 | `Code.gs` | `doGet`・役割の判定 |
 | `hello.html` | Step 3 の確認画面 |
 | `localcheck.js` | 手元での検査 |
@@ -82,8 +85,23 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 
 教師アカウントで開くと「先生／教師」、名簿にも教師メールにも無いアカウントでは「だれか わかりません」と出る。**3つとも試す。**
 
-## 次（Step 4 以降）
+## 保存のときサーバが確かめること
 
-- `Store.gs` — 記録の読み書き。保存はサーバ側で児童IDを引き直し、ロックを再判定する
-- `Aggregate.gs` — 単元評価・期末評定。`prototypes/teacher-view.html` の関数を移す
-- `student.html` / `teacher.html` — プロトタイプのダミーデータを実データに差し替える
+`Store.save` は画面から来た値を1つも信用しない。
+
+1. **児童IDを呼び出し元のメールから引き直す。** 画面が渡してきたIDは使わない
+2. **ロックをサーバで判定し直す。** 端末の時計は児童が変えられる
+3. **開室時間を確かめる。** 16:00〜8:00 は断る
+4. **教科の公開を確かめる。** 非公開の教科には書かせない
+5. **実施日を確かめる。** これからの授業には書かせない
+6. **`/` は教師だけ。** 画面に出さないのは誘導であって権限ではない
+7. `LockService` で囲む。29人が同時に押す
+
+教師は `saveAs` を使い、1〜5を貫通する代わりに `更新者` に必ずメールが残る。
+
+## 次
+
+- `student.html` — プロトタイプの児童画面を `google.script.run` につなぐ
+- `teacher.html` — 同じく教師画面
+- 画面側は楽観的に更新する（押した瞬間に反映し、失敗したら戻す）。
+  Chromebook から往復1〜2秒かかるので、待たせると連打される

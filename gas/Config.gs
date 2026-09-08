@@ -28,13 +28,20 @@ const Config = (function(){
     return (v === undefined || v === "") ? fallback : v;
   }
 
-  /* ロック時刻。"16:00" のほか、シートが時刻型で返す Date も受ける。 */
-  function lockTime(){
-    const v = get("ロック時刻", "16:00");
-    if(v instanceof Date) return {h: v.getHours(), m: v.getMinutes()};
+  /* 時刻の欄。"16:00" のほか、シートが時刻型で返す Date も受ける。 */
+  function timeOf(key, dh, dm){
+    const v = get(key, "");
+    if(Object.prototype.toString.call(v) === "[object Date]")
+      return {h: v.getHours(), m: v.getMinutes()};
     const m = String(v).match(/(\d{1,2})[:：](\d{1,2})/);
-    return m ? {h: +m[1], m: +m[2]} : {h: 16, m: 0};
+    return m ? {h: +m[1], m: +m[2]} : {h: dh, m: dm};
   }
+
+  /* ロック時刻。児童が使える時間の終わりでもある（Hours.gs を見よ）。 */
+  function lockTime(){ return timeOf("ロック時刻", 16, 0); }
+
+  /* 開室時刻。ここから児童が使える。 */
+  function openTime(){ return timeOf("開室時刻", 8, 0); }
 
   function teacherEmails(){
     return String(get("教師メール", ""))
@@ -53,7 +60,7 @@ const Config = (function(){
     };
   }
 
-  return {get, lockTime, teacherEmails, rule, clearCache,
+  return {get, lockTime, openTime, teacherEmails, rule, clearCache,
           className: () => String(get("学級", "")),
           year:      () => Number(get("年度", 0))};
 })();
