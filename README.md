@@ -17,6 +17,14 @@
 | `prototypes/src/` | 上の2つの元。**直すのはこちら** |
 | [`gas/`](gas/) | Google Apps Script 側。いまは Step 3（本人確認）まで |
 
+## 週案（時間割の共同編集）
+
+**別のリポジトリへ移した。正本は
+[sankisuguya-create/school-timetable](https://github.com/sankisuguya-create/school-timetable)。**
+
+使う人（教職員ぜんぶ）も、置くスプレッドシートも、Apps Script のプロジェクトも
+ノート評価とは別なので、ここには残していない。二重に持つと必ず片方が古くなる。
+
 ## ダンスカウント表
 
 運動会・学芸会の集団演技の振り付けを、8カウント単位で書き起こして A4横 に刷る。
