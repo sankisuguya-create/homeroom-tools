@@ -1,0 +1,602 @@
+<title>ダンスカウント表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- フォントの <link> はここに置かない。置くと描画が止まる。下の script で後から足す。 -->
+<style>
+/* ▼ src/tokens.css から。直すのは src のほう ▼ */
+/* 色トークン — 両画面が読む。@dark{} は build.py が
+   @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
+   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
+:root{
+  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
+  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
+  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
+
+  /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
+  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
+  --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
+  --warn:#B0392B; --warn-bg:#FBEEEC;
+  --ok:#2F6E4E;
+
+  /* 教師の貫通・ロック・スケール外の記号 */
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --open-cell:#FFF4E4; --open-line:#DFAE62;
+  --lock-ink:#A29C90;
+  --off-bg:#EFEDE8; --off-ink:#8A8578; --skip-line:rgba(29,33,38,.42);
+  --stripe:rgba(29,33,38,.07);
+
+  /* 単元の20色。色相を 126° ずつ飛ばしてあるので連番でも近づかない
+     （20 と 126 は互いに素）。明度は色相ごとに補正済み */
+  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
+  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
+  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
+  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+
+    --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+    --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+    --warn:#E5776A; --warn-bg:#2E1C1A;
+    --ok:#6FBF92;
+
+    --open:#6FBECC; --open-bg:#182C30;
+    --open-cell:#33270F; --open-line:#7E6224;
+    --lock-ink:#6A727C;
+    --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
+    --stripe:rgba(232,235,239,.09);
+
+    --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+    --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+    --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+    --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+
+  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+  --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+  --warn:#E5776A; --warn-bg:#2E1C1A;
+  --ok:#6FBF92;
+
+  --open:#6FBECC; --open-bg:#182C30;
+  --open-cell:#33270F; --open-line:#7E6224;
+  --lock-ink:#6A727C;
+  --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
+  --stripe:rgba(232,235,239,.09);
+
+  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
+}
+/* ▲ src/tokens.css ここまで ▲ */
+
+*{box-sizing:border-box}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+  font-size:14px;line-height:1.7;-webkit-text-size-adjust:100%;
+}
+.mono{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 80px;display:flex;flex-direction:column;gap:16px}
+
+/* ---- 見出し ---- */
+.head-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px 16px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px}
+.head-row h1{font-size:15px;font-weight:700;margin:0;color:var(--ink-faint);
+  letter-spacing:.08em;white-space:nowrap}
+#title{font-size:clamp(22px,3.4vw,30px);font-weight:700;line-height:1.25;flex:1 1 260px;min-width:0}
+#group{font-size:13px;color:var(--ink-soft);flex:0 1 240px;min-width:0}
+#title,#group{border-bottom:1px dashed var(--rule);padding:0 2px 1px}
+#title:empty::before,#group:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400}
+
+/* ---- 道具立て ---- */
+.bar{position:sticky;top:0;z-index:20;background:var(--sheet);border:1px solid var(--rule);
+  border-radius:8px;padding:9px 14px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center}
+.bar label{font-size:12px;color:var(--ink-soft);font-weight:600}
+#bpm{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  font-size:20px;font-weight:600;width:80px;padding:2px 8px;border:1px solid var(--rule);
+  border-radius:5px;background:var(--paper);color:var(--ink)}
+.stat{display:flex;flex-direction:column;line-height:1.25}
+.stat b{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  font-size:18px;font-weight:600}
+.stat span{font-size:11px;color:var(--ink-faint);font-weight:600;letter-spacing:.05em}
+.grow{flex:1 1 12px}
+button{font:inherit;font-size:12.5px;font-weight:600;padding:5px 13px;border:1px solid var(--rule);
+  border-radius:6px;background:var(--sheet);color:var(--ink);cursor:pointer}
+button:hover{background:var(--paper);border-color:var(--accent);color:var(--accent)}
+button:focus-visible,[contenteditable]:focus-visible,#bpm:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px}
+.save{font-size:11.5px;color:var(--ink-faint);min-width:7em;display:inline-flex;align-items:center;gap:5px}
+.save::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+.save[data-s="ok"]::before{background:var(--ok)}
+.save[data-s="wait"]::before{background:var(--z-line)}
+
+.note{font-size:12.5px;color:var(--ink-soft);background:var(--sheet);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:9px 14px;line-height:1.6}
+.note b{color:var(--ink)}
+
+/* ---- 表 ---- */
+.sheet{display:flex;flex-direction:column;gap:7px}
+.block{display:grid;grid-template-columns:64px 1fr 210px;background:var(--sheet);
+  border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+
+.bid{background:var(--paper);border-right:1px solid var(--rule);padding:6px 4px;
+  display:flex;flex-direction:column;align-items:center;gap:3px}
+.bid .no{font-family:"IBM Plex Mono",monospace;font-size:19px;font-weight:600;line-height:1;
+  color:var(--ink-soft)}
+.bid select{font:inherit;font-size:11.5px;font-weight:600;padding:1px 2px;border:1px solid var(--rule);
+  border-radius:4px;background:var(--sheet);color:var(--ink);width:100%;text-align:center}
+.bid .tm{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint)}
+.ops{display:flex;gap:2px;margin-top:auto;padding-top:3px}
+.ops button{padding:1px 0;width:100%;font-size:11px;border-radius:4px;line-height:1.4;
+  color:var(--ink-faint);border-color:var(--rule-soft)}
+.ops button:hover{color:var(--accent)}
+
+.eights{display:flex;flex-wrap:wrap;border-right:1px solid var(--rule)}
+.eight{flex:1 1 calc(50% - .5px);min-width:290px;border-right:1px solid var(--rule-soft);
+  border-bottom:1px solid var(--rule-soft)}
+.eight.wide{flex-basis:100%}
+.eight:last-child{border-right:none}
+
+.head{padding:4px 7px 3px;font-size:13.5px;font-weight:600;min-height:25px;
+  white-space:pre-wrap;line-height:1.3}
+.head:empty::before{content:attr(data-ph);color:var(--ink-faint);font-weight:400}
+
+.counts{display:grid;grid-template-columns:repeat(8,1fr);border-top:1px solid var(--rule)}
+.cell{position:relative;border-right:1px solid var(--rule-soft);padding-top:12px;display:flex}
+.cell:nth-child(4){border-right:2px solid var(--rule)}
+.cell:last-child{border-right:none}
+.cell::before{content:attr(data-n);position:absolute;top:0;left:3px;
+  font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;
+  color:var(--ink-faint);line-height:1.2}
+.cell .in{flex:1;min-height:26px;padding:2px 3px;font-size:12.5px;line-height:1.3;
+  background:var(--paper);border-top:1px solid var(--rule-soft);word-break:break-all;
+  white-space:pre-wrap}
+
+.side{padding:5px 8px;display:flex;flex-direction:column;gap:4px}
+.side .move,.side .form{font-size:11.5px;line-height:1.5;white-space:pre-wrap;min-height:20px;
+  background:var(--paper);border:1px solid var(--rule-soft);border-radius:4px;padding:3px 5px}
+.side .form{color:var(--ink-soft)}
+.side .move:empty::before,.side .form:empty::before{
+  content:attr(data-ph);color:var(--ink-faint)}
+
+.addwrap{display:flex;justify-content:center}
+#addEnd{padding:8px 26px}
+
+footer{font-size:12px;color:var(--ink-soft);border-top:1px solid var(--rule);padding-top:12px;
+  line-height:1.7}
+footer b{color:var(--ink)}
+footer ol{margin:.4em 0;padding-left:1.4em}
+
+[contenteditable]{outline:none}
+[contenteditable]:focus{background:var(--a-bg)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:820px){
+  .block{grid-template-columns:52px 1fr}
+  .side{grid-column:1 / -1;border-top:1px solid var(--rule)}
+  .eight{min-width:0;flex-basis:100%}
+  .bar{position:static}
+}
+
+/* ---- A4横 ---- */
+@page{size:A4 landscape;margin:8mm}
+@media print{
+  body{background:#fff;color:#000;font-size:8.5pt}
+  .wrap{max-width:none;padding:0;gap:3mm}
+  .bar,.note,.addwrap,.ops{display:none}
+  .head-row{border-bottom-width:1.5pt;padding-bottom:2px}
+  .head-row h1{font-size:7pt}
+  #title{font-size:15pt}
+  #group{font-size:8pt}
+  #title,#group{border-bottom:0;padding:0}
+  #title:empty::before,#group:empty::before{content:""}
+  .sheet{gap:1.5mm}
+
+  /* 幅の狭い画面向けの規則を印刷面に持ち込まない */
+  .block{display:grid;grid-template-columns:11mm 1fr 42mm;
+    page-break-inside:avoid;break-inside:avoid;border:.8pt solid #000;border-radius:0}
+  .side{grid-column:auto;border-top:0;padding:2px 4px;gap:2px}
+  .side .move,.side .form{font-size:6.5pt;line-height:1.35;background:transparent!important;
+    border:0;border-radius:0;padding:0;min-height:0}
+  .side .form{border-top:.4pt dotted #999;padding-top:2px}
+  .side .move:empty,.side .form:empty{display:none}
+
+  .bid{background:transparent!important;border-right:.6pt solid #000;padding:2px 1px;gap:1px}
+  .bid .no{font-size:11pt;color:#000!important}
+  .bid select{border:0;background:transparent;font-size:7pt;appearance:none;padding:0}
+  .bid .tm{font-size:6.5pt;color:#000!important}
+
+  .eights{border-right:.5pt solid #999}
+  .eight{flex:1 1 calc(50% - .5px);min-width:0;border-right:.5pt solid #999;
+    border-bottom:.5pt solid #999}
+  .eight.wide{flex-basis:100%}
+  .eight:last-child{border-right:0}
+  .head{font-size:8pt;padding:2px 4px 1px;min-height:0;line-height:1.3}
+  .head:empty::before{content:""}
+
+  .counts{border-top:.8pt solid #000}
+  .cell{padding-top:7px;border-right:.4pt solid #aaa}
+  .cell::before{font-size:6pt;color:#000!important}
+  .cell:nth-child(4){border-right:1.2pt solid #000!important}
+  .cell .in{background:transparent!important;border-top:.4pt dotted #999;
+    min-height:7mm;font-size:7.5pt;padding:1px 2px}
+
+  [contenteditable]:focus{background:transparent!important}
+  footer{page-break-inside:avoid;font-size:6.5pt;padding-top:4px;line-height:1.5;
+    border-top-color:#999}
+  footer ol{display:none}
+}
+</style>
+
+<div class="wrap">
+
+  <div class="head-row">
+    <h1>ダンスカウント表</h1>
+    <div id="title" contenteditable="plaintext-only" data-ph="曲名を入れる" role="textbox" aria-label="曲名"></div>
+    <div id="group" contenteditable="plaintext-only" data-ph="学年・団体・用途" role="textbox" aria-label="学年・団体"></div>
+  </div>
+
+  <div class="bar">
+    <label for="bpm">BPM</label>
+    <input id="bpm" type="number" min="40" max="300" step="1" value="128" inputmode="numeric">
+    <div class="stat"><b id="eLen">3.75秒</b><span>1エイト</span></div>
+    <div class="stat"><b id="tLen">0:00</b><span>全体</span></div>
+    <div class="stat"><b id="nEight">0</b><span>エイト数</span></div>
+    <span class="grow"></span>
+    <span class="save" id="save" role="status">—</span>
+    <button type="button" id="expBtn">書き出し</button>
+    <button type="button" id="impBtn">読み込み</button>
+    <button type="button" id="prtBtn">印刷（A4横）</button>
+    <input type="file" id="impFile" accept="application/json,.json" hidden>
+  </div>
+
+  <div class="note">
+    <b>白い枠はすべて書き込めます。</b>1行＝1エイト（8拍・2小節）。上の行にその8カウントで歌う言葉やかけ声を、下の1〜8の枠にその拍の動きを入れます。打つと自動でこの端末に保存されます。別の端末へ渡すときは<b>書き出し</b>でJSONを保存し、渡した先で<b>読み込み</b>。
+  </div>
+
+  <div class="sheet" id="sheet"></div>
+
+  <div class="addwrap"><button type="button" id="addEnd">ブロックを追加</button></div>
+
+  <footer>
+    <p><b>使い方</b></p>
+    <ol>
+      <li>音源に合わせて手拍子を打ち、15秒間の拍数を数えて4倍するとBPMが出る。入れると各ブロックの開始タイムが埋まる。</li>
+      <li>ブロックを曲の構成（イントロ・Aメロ・サビ・間奏など）に合わせて足し、それぞれ 8×1〜8×4 を選ぶ。</li>
+      <li>音源を流しながら、言葉の行と1〜8の枠を埋める。8カウントの区切りが動きの単位になる。</li>
+    </ol>
+    <p><b>歌詞を入れる場合の注意。</b>市販曲の歌詞は著作権で保護されています。運動会・学芸会は特別活動＝「授業」に含まれるため、校内で使う指導資料に書き写して教職員・児童に配るところまでは著作権法35条の範囲内です。<b>作った表を公開リポジトリ・Webページ・SNSに載せるのは範囲外</b>になります。このリポジトリは公開されているので、歌詞を入れたJSONはコミットしないでください。</p>
+  </footer>
+
+</div>
+
+<script>
+/* ==================================================================
+   0. フォント
+   IBM Plex Sans JP は日本語のウェブフォントで、校内から
+   fonts.googleapis.com が遅い・届かないことがある。<link> を直接置くと
+   その間ずっと画面が白いままになる。media="print" で入れて、届いてから
+   all に変える。届かなければ端末のフォントで出る。
+================================================================== */
+(function(){
+  const l = document.createElement("link");
+  l.rel   = "stylesheet";
+  l.media = "print";                       // 画面の描画を止めない
+  l.href  = "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600"
+          + "&family=IBM+Plex+Sans+JP:wght@400;500;600;700&display=swap";
+  l.onload = function(){ this.media = "all"; };
+  document.head.appendChild(l);
+})();
+
+/* ==================================================================
+   1. 状態
+   1ブロック = 8×n。n は 1〜4。エイトごとに見出し1つとカウント8つ。
+================================================================== */
+(function(){
+"use strict";
+
+const KEY = "homeroom.dance-count.v1";
+const MAXLEN = 4;
+
+function newEight(){ return { head:"", c:["","","","","","","",""] }; }
+function newBlock(len){
+  len = len || 2;
+  const e = [];
+  for(let i=0;i<len;i++) e.push(newEight());
+  return { len:len, move:"", form:"", eights:e };
+}
+function blank(){
+  return { title:"", group:"", bpm:128, blocks:[newBlock(2),newBlock(2),newBlock(2),newBlock(2)] };
+}
+
+/* 読み込んだものが壊れていても落ちないようにする */
+function clean(o){
+  const s = blank();
+  if(!o || typeof o !== "object") return s;
+  s.title = typeof o.title === "string" ? o.title : "";
+  s.group = typeof o.group === "string" ? o.group : "";
+  s.bpm   = (typeof o.bpm === "number" && o.bpm >= 40 && o.bpm <= 300) ? o.bpm : 128;
+  s.blocks = [];
+  (Array.isArray(o.blocks) ? o.blocks : []).forEach(function(b){
+    if(!b || typeof b !== "object") return;
+    let len = parseInt(b.len, 10);
+    if(!(len >= 1 && len <= MAXLEN)) len = 1;
+    const nb = newBlock(len);
+    nb.move = typeof b.move === "string" ? b.move : "";
+    nb.form = typeof b.form === "string" ? b.form : "";
+    (Array.isArray(b.eights) ? b.eights : []).slice(0, len).forEach(function(e, i){
+      if(!e || typeof e !== "object") return;
+      nb.eights[i].head = typeof e.head === "string" ? e.head : "";
+      (Array.isArray(e.c) ? e.c : []).slice(0,8).forEach(function(v, j){
+        nb.eights[i].c[j] = typeof v === "string" ? v : "";
+      });
+    });
+    s.blocks.push(nb);
+  });
+  if(!s.blocks.length) s.blocks.push(newBlock(2));
+  return s;
+}
+
+let S;
+try{ S = clean(JSON.parse(localStorage.getItem(KEY) || "null")); }
+catch(e){ S = blank(); }
+
+/* ==================================================================
+   2. 保存
+================================================================== */
+const saveEl = document.getElementById("save");
+let saveTimer = null;
+function save(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveEl.dataset.s = "wait"; saveEl.textContent = "保存中…";
+  saveTimer = setTimeout(function(){
+    saveTimer = null;
+    try{
+      localStorage.setItem(KEY, JSON.stringify(S));
+      saveEl.dataset.s = "ok"; saveEl.textContent = "保存しました";
+    }catch(err){
+      saveEl.dataset.s = ""; saveEl.textContent = "保存できません";
+    }
+  }, 500);
+}
+
+/* ==================================================================
+   3. 描画
+   打っている最中は組み直さない（カーソルが飛ぶ）。
+   組み直すのは、ブロックを足す・消す・動かす・長さを変えたときだけ。
+================================================================== */
+const sheet = document.getElementById("sheet");
+const bpmEl = document.getElementById("bpm");
+const eLenEl = document.getElementById("eLen");
+const tLenEl = document.getElementById("tLen");
+const nEightEl = document.getElementById("nEight");
+
+function mmss(sec){
+  sec = Math.round(sec);
+  return Math.floor(sec/60) + ":" + String(sec%60).padStart(2,"0");
+}
+function eightSec(){ return 8 * 60 / S.bpm; }
+
+function writable(el, ph){
+  el.setAttribute("contenteditable","plaintext-only");
+  if(el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable","true");
+  el.setAttribute("role","textbox");
+  if(ph) el.setAttribute("data-ph", ph);
+  return el;
+}
+
+function render(){
+  sheet.textContent = "";
+  let cum = 0;
+
+  S.blocks.forEach(function(b, bi){
+    const sec = eightSec();
+
+    const block = document.createElement("section");
+    block.className = "block";
+
+    /* 左 ── 番号・長さ・タイム・操作 */
+    const bid = document.createElement("div");
+    bid.className = "bid";
+
+    const no = document.createElement("span");
+    no.className = "no";
+    no.textContent = String(bi + 1).padStart(2, "0");
+    bid.appendChild(no);
+
+    const sel = document.createElement("select");
+    sel.setAttribute("aria-label", (bi+1) + "番目のブロックの長さ");
+    for(let n=1;n<=MAXLEN;n++){
+      const o = document.createElement("option");
+      o.value = n; o.textContent = "8×" + n;
+      if(n === b.len) o.selected = true;
+      sel.appendChild(o);
+    }
+    sel.addEventListener("change", function(){
+      const n = parseInt(sel.value, 10);
+      while(b.eights.length < n) b.eights.push(newEight());
+      b.eights.length = n;
+      b.len = n;
+      save(); render();
+    });
+    bid.appendChild(sel);
+
+    const tm = document.createElement("span");
+    tm.className = "tm";
+    tm.textContent = mmss(cum * sec);
+    bid.appendChild(tm);
+
+    const ops = document.createElement("div");
+    ops.className = "ops";
+    [["↑","ひとつ上へ",function(){
+        if(bi > 0){ S.blocks.splice(bi-1, 0, S.blocks.splice(bi,1)[0]); save(); render(); }
+      }],
+     ["↓","ひとつ下へ",function(){
+        if(bi < S.blocks.length-1){ S.blocks.splice(bi+1, 0, S.blocks.splice(bi,1)[0]); save(); render(); }
+      }],
+     ["＋","下にブロックを足す",function(){
+        S.blocks.splice(bi+1, 0, newBlock(b.len)); save(); render();
+      }],
+     ["×","このブロックを消す",function(){
+        if(S.blocks.length <= 1) return;
+        S.blocks.splice(bi, 1); save(); render();
+      }]
+    ].forEach(function(o){
+      const bt = document.createElement("button");
+      bt.type = "button";
+      bt.textContent = o[0];
+      bt.title = o[1];
+      bt.setAttribute("aria-label", (bi+1) + "番目のブロックを" + o[1]);
+      bt.addEventListener("click", o[2]);
+      ops.appendChild(bt);
+    });
+    bid.appendChild(ops);
+    block.appendChild(bid);
+
+    /* 中 ── エイトごとの見出しとカウント8つ */
+    const eights = document.createElement("div");
+    eights.className = "eights";
+
+    b.eights.forEach(function(e, ei){
+      const box = document.createElement("div");
+      box.className = "eight" + (b.len === 1 ? " wide" : "");
+
+      const head = document.createElement("div");
+      head.className = "head";
+      head.textContent = e.head;
+      head.setAttribute("aria-label", (bi+1) + "-" + (ei+1) + " の言葉");
+      writable(head, "言葉・かけ声");
+      head.addEventListener("input", function(){ e.head = head.textContent; save(); });
+      box.appendChild(head);
+
+      const counts = document.createElement("div");
+      counts.className = "counts";
+      for(let i=0;i<8;i++){
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.setAttribute("data-n", i+1);
+        const inp = document.createElement("div");
+        inp.className = "in";
+        inp.textContent = e.c[i];
+        inp.setAttribute("aria-label", (bi+1) + "-" + (ei+1) + " カウント" + (i+1));
+        writable(inp);
+        inp.addEventListener("input", function(){ e.c[i] = inp.textContent; save(); });
+        cell.appendChild(inp);
+        counts.appendChild(cell);
+      }
+      box.appendChild(counts);
+      eights.appendChild(box);
+    });
+    block.appendChild(eights);
+
+    /* 右 ── 動きと隊形 */
+    const side = document.createElement("div");
+    side.className = "side";
+    [{key:"move", name:"動き", ph:"動き・技・くり返しの回数"},
+     {key:"form", name:"隊形", ph:"隊形・立ち位置"}].forEach(function(f){
+      const d = document.createElement("div");
+      d.className = f.key;
+      d.textContent = b[f.key];
+      d.setAttribute("aria-label", (bi+1) + "番目のブロックの" + f.name);
+      writable(d, f.ph);
+      d.addEventListener("input", function(){ b[f.key] = d.textContent; save(); });
+      side.appendChild(d);
+    });
+    block.appendChild(side);
+
+    sheet.appendChild(block);
+    cum += b.len;
+  });
+
+  nEightEl.textContent = cum;
+  eLenEl.textContent = eightSec().toFixed(2) + "秒";
+  tLenEl.textContent = mmss(cum * eightSec());
+}
+
+/* ==================================================================
+   4. 見出し・BPM
+================================================================== */
+const titleEl = document.getElementById("title");
+const groupEl = document.getElementById("group");
+titleEl.textContent = S.title;
+groupEl.textContent = S.group;
+titleEl.addEventListener("input", function(){ S.title = titleEl.textContent; save(); });
+groupEl.addEventListener("input", function(){ S.group = groupEl.textContent; save(); });
+
+bpmEl.value = S.bpm;
+bpmEl.addEventListener("input", function(){
+  const v = parseFloat(bpmEl.value);
+  if(!isFinite(v) || v < 40 || v > 300) return;
+  S.bpm = v; save(); render();
+});
+
+/* 貼り付けは書式を落とす。改行は空白に畳む（1マスは1行で足りる） */
+document.addEventListener("paste", function(ev){
+  const t = ev.target;
+  if(!t || !t.isContentEditable) return;
+  ev.preventDefault();
+  const s = (ev.clipboardData || window.clipboardData).getData("text/plain") || "";
+  document.execCommand("insertText", false, s.replace(/[\r\n]+/g, " "));
+});
+/* カウント欄で Enter を押しても行が増えないようにする */
+document.addEventListener("keydown", function(ev){
+  if(ev.key === "Enter" && ev.target && ev.target.classList &&
+     ev.target.classList.contains("in")){
+    ev.preventDefault(); ev.target.blur();
+  }
+});
+
+/* ==================================================================
+   5. 書き出し・読み込み・印刷・追加
+================================================================== */
+function slug(){
+  const t = (S.title || "dance-count").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40);
+  return t || "dance-count";
+}
+document.getElementById("expBtn").addEventListener("click", function(){
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = slug() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+});
+const impFile = document.getElementById("impFile");
+document.getElementById("impBtn").addEventListener("click", function(){ impFile.click(); });
+impFile.addEventListener("change", function(){
+  const f = impFile.files && impFile.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = function(){
+    try{
+      S = clean(JSON.parse(String(r.result)));
+      titleEl.textContent = S.title;
+      groupEl.textContent = S.group;
+      bpmEl.value = S.bpm;
+      save(); render();
+    }catch(e){
+      saveEl.dataset.s = ""; saveEl.textContent = "読み込めません";
+    }
+    impFile.value = "";
+  };
+  r.readAsText(f);
+});
+document.getElementById("prtBtn").addEventListener("click", function(){ window.print(); });
+document.getElementById("addEnd").addEventListener("click", function(){
+  S.blocks.push(newBlock(2)); save(); render();
+});
+
+render();
+saveEl.dataset.s = "ok"; saveEl.textContent = "この端末に保存";
+})();
+</script>

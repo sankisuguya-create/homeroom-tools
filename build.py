@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """prototypes/src/ を組み立てて、プロトタイプと GAS の両方を書き出す。
 
-スケールの定義と色トークンは1箇所にしか置かない。読む側が4つある。
+スケールの定義と色トークンは1箇所にしか置かない。読む側が5つある。
 
   prototypes/grid-sheet.html     児童画面（プロトタイプ）
   prototypes/teacher-view.html   教師画面（プロトタイプ）
+  prototypes/dance-count.html    ダンスカウント表（色トークンだけ読む）
   gas/Scale.gs                   GAS のサーバ側
   gas/scale.html                 GAS のクライアント側
 
@@ -21,7 +22,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SRC  = ROOT / "prototypes" / "src"
 OUT  = ROOT / "prototypes"
 GAS  = ROOT / "gas"
-PAGES = ["grid-sheet.html", "teacher-view.html"]
+PAGES = ["grid-sheet.html", "teacher-view.html", "dance-count.html"]
 
 BANNER = ("/* このファイルは prototypes/src/scale.js から build.py が作る。\n"
           "   直すのは src のほう。ここを直しても次のビルドで消える。 */\n")
