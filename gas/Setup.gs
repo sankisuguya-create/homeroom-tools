@@ -5,7 +5,7 @@
 ================================================================== */
 
 /* 見出し行。ここが仕様との接点なので、列名は spec.md と同じにする。 */
-const SHEETS = {
+const SETUP_SHEETS = {   /* GAS は全ファイルが1スコープ。総称的な名前は置かない */
   "設定":     ["キー", "値"],
   "教科マスタ": ["教科", "時数", "公開"],
   "名簿":     ["児童ID", "出席番号", "氏名", "メール"],
@@ -35,11 +35,11 @@ function setupSheets(){
   const ss = SpreadsheetApp.getActive();
   const made = [];
 
-  Object.keys(SHEETS).forEach(name => {
+  Object.keys(SETUP_SHEETS).forEach(name => {
     let sh = ss.getSheetByName(name);
     if(sh){ return; }                       // あるものには触らない
     sh = ss.insertSheet(name);
-    const head = SHEETS[name];
+    const head = SETUP_SHEETS[name];
     sh.getRange(1, 1, 1, head.length).setValues([head])
       .setFontWeight("bold").setBackground("#EFEDE8");
     sh.setFrozenRows(1);
@@ -66,7 +66,7 @@ function setupSheets(){
 function checkSheets(){
   const ss = SpreadsheetApp.getActive();
   const msg = [];
-  Object.keys(SHEETS).forEach(name => {
+  Object.keys(SETUP_SHEETS).forEach(name => {
     const sh = ss.getSheetByName(name);
     if(!sh){ msg.push("× " + name + " が無い"); return; }
     const n = Math.max(0, sh.getLastRow() - 1);

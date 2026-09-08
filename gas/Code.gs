@@ -10,10 +10,12 @@ function doGet(e){
   const who  = whoAmI();
   const page = (e && e.parameter && e.parameter.p) || "";
 
-  /* 教師画面は URL で振り分けるが、リンクを出さないのは誘導であって
-     権限ではない。飛んだ先でも役割をメールから判定し直す。 */
-  let file = "hello";
-  if(page === "teacher" && who.role === "teacher") file = "hello";
+  /* 画面は URL で振り分けるが、リンクを出さないのは誘導であって権限ではない。
+     飛んだ先でも役割をメールから判定し直し、Api.gs 側でも毎回引き直す。 */
+  let file = "student";
+  if(page === "hello")   file = "hello";                              // 置いたときの確認用
+  if(page === "teacher") file = (who.role === "teacher") ? "hello" : "student";
+  if(who.role === "unknown") file = "hello";                          // 誰か分からない人には理由を出す
 
   const t = HtmlService.createTemplateFromFile(file);
   t.boot = JSON.stringify(bootData(who));

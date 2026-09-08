@@ -1,12 +1,16 @@
 # GAS 側
 
-`prototypes/` を Google Apps Script に載せたもの。**いまは Step 5 まで**（シートを作る・スケールを移す・本人確認・記録の読み書き・集計）。残るのは画面（`student.html` / `teacher.html`）。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
+`prototypes/` を Google Apps Script に載せたもの。**いまは児童画面まで動く**（シート・スケール・本人確認・記録の読み書き・集計・児童画面）。残るのは教師画面。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
 
 ## 貼る前に手元で確かめる
 
 ```
-node gas/localcheck.js
+node gas/localcheck.js          サーバのコードを走らせて確かめる（94項目）
+node gas/preview.js             児童画面を1枚の HTML に書き出す
+node gas/preview.js out.png     playwright-core があれば png も撮る
 ```
+
+`preview.js` は、gas/ のサーバコードをブラウザの中で動かし、`student.html` を実際に描く。`google.script.run` をその場の関数呼び出しに差し替えているだけなので、**画面もサーバも本物**が動く。Google のアカウントも配置も要らない。書き出した HTML はそのままブラウザで開ける。
 
 Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコープに読み込んで走らせる。GAS も同じく全ファイルが1つのスコープを共有するので、**ファイル間の参照ずれもここで出る**。Google のアカウントは要らない。
 
@@ -27,11 +31,15 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 | `Hours.gs` | 児童が使える時間（8:00〜ロック時刻） |
 | `Store.gs` | 記録の読み書き。保存はサーバ側で全部確かめる |
 | `Aggregate.gs` | 単元評価・期末評定の計算と、確定シート |
+| `Api.gs` | 画面から `google.script.run` で呼ぶ入口 |
+| `student.html` | 児童画面 |
+| `tokens.html` `material.html` | 色と材質（**生成物**） |
 | `Code.gs` | `doGet`・役割の判定 |
 | `hello.html` | Step 3 の確認画面 |
 | `localcheck.js` | 手元での検査 |
+| `preview.js` | デプロイせずに児童画面を見る |
 
-**`Scale.gs` と `scale.html` は直さない。** どちらも `prototypes/src/scale.js` から `python3 build.py` が作る。直すと次のビルドで消える。
+**`Scale.gs` `scale.html` `tokens.html` `material.html` は直さない。** すべて `prototypes/src/` から `python3 build.py` が作る。直すと次のビルドで消える。色も材質もプロトタイプと同じ元を読んでいるので、**見た目が割れない**。
 
 手順書には `eval` でスケールを読む書き方を載せていたが、**トップレベルの `const` が `eval` の外に出ない場合があるので、実ファイルを2つ生成する形に変えた**。中身は同じ1つの元から出ている。
 
@@ -46,9 +54,9 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
    | 種類 | 名前 | 作り方 |
    |---|---|---|
    | マニフェスト | `appsscript.json` | **既存のものを上書き**（新規作成ではない） |
-   | スクリプト | `Scale` `Config` `Roster` `Master` `Lock` `Code` `Setup` | `+` → スクリプト。拡張子は付けない |
-   | HTML | `scale` `hello` | `+` → HTML。拡張子は付けない |
-   | 貼らない | `localcheck.js` `README.md` | 手元専用 |
+   | スクリプト | `Scale` `Config` `Roster` `Master` `Lock` `Hours` `Store` `Aggregate` `Api` `Code` `Setup` | `+` → スクリプト。拡張子は付けない |
+   | HTML | `scale` `tokens` `material` `student` `hello` | `+` → HTML。拡張子は付けない |
+   | 貼らない | `localcheck.js` `preview.js` `README.md` | 手元専用 |
 
 5. `setupSheets` を実行 → シート7枚ができる
    - 初回は「このアプリは Google で確認されていません」が出る。
@@ -99,9 +107,21 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 
 教師は `saveAs` を使い、1〜5を貫通する代わりに `更新者` に必ずメールが残る。
 
+## 児童画面の動き
+
+- 押した瞬間に画面へ反映し、サーバが断ったら**元の値に戻して**理由を出す。
+  Chromebook から往復1〜2秒かかるので、待たせると連打される
+- 1タップで作り直すのはそのセルだけ。表全体は作り直さない（実測 148ms → 4ms）
+- 60秒ごとに読み直す。16:00 をまたいだら閉室の画面に切り替わる
+- 開いている時間の残りが10分を切ると「あと ◯ふんで、きょうは おしまいです」
+
+## 「単元の評価をする」を押したとき
+
+旗を立てるだけでは児童の画面に何も出ない。確定シートに値が無いからで、
+押した本人には「押したのに変わらない」としか見えない。
+**押した時点で全員の仮値を採用してから見せる。** すでに教師が直した値は残す。
+
 ## 次
 
-- `student.html` — プロトタイプの児童画面を `google.script.run` につなぐ
-- `teacher.html` — 同じく教師画面
-- 画面側は楽観的に更新する（押した瞬間に反映し、失敗したら戻す）。
-  Chromebook から往復1〜2秒かかるので、待たせると連打される
+- `teacher.html` — 教師画面。`Aggregate.gs` の計算はもう載っているので、
+  `prototypes/teacher-view.html` の描画を `google.script.run` につなぐだけ

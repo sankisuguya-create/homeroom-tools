@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 色トークンと材質は prototypes/src/ から build.py が作ったもの。
+     プロトタイプと同じ元を読んでいるので、見た目が割れない。 -->
+<?!= include('tokens') ?>
+<?!= include('material') ?>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.7}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
+.hidden{display:none!important}
+
+.controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
+
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding-bottom:10px}
+.head h1{margin:0;font-size:22px;font-weight:700}
+.head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
+  border:1.5px solid currentColor;border-radius:6px;padding:2px 10px}
+.badge.todo{color:var(--warn)} .badge.todo.clear{color:var(--ink-faint)}
+.badge.locked{color:var(--lock-ink)}
+
+section{display:flex;flex-direction:column;gap:12px}
+h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
+  display:flex;align-items:center;gap:12px;color:var(--ink-soft)}
+h2::after{content:"";flex:1;height:1px;background:var(--rule);order:1}
+h2 .fold{order:2}
+.mini{appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:5px 12px;
+  background:var(--sheet);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(90px,1fr));gap:1px;
+  background:var(--rule-soft);border:1px solid var(--rule-soft);min-width:930px}
+@media (max-width:640px){ .grid{grid-template-columns:repeat(5,minmax(90px,1fr));min-width:470px} }
+.cell{background-color:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative}
+.cell .no{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--ink-faint);
+  display:flex;justify-content:space-between;align-items:center;gap:4px}
+.cell .unit{font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44px}
+.cell select{width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
+  font-size:17px;font-weight:600;text-align:center;text-align-last:center;
+  padding:4px 2px 5px;border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:5px;--stripe-layer:none;
+  background-color:var(--sheet);background-image:var(--stripe-layer);background-repeat:repeat;
+  color:var(--ink);cursor:pointer}
+.cell select option{color:var(--ink)}
+.cell.open select{--stripe-layer:repeating-linear-gradient(45deg,var(--stripe) 0 5px,transparent 5px 10px)}
+.cell.open.empty select{border-left-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
+.cell.locked select:disabled:not(.is-skip){opacity:1;cursor:default;color:var(--ink-soft);
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+.cell.locked select:disabled.is-skip{opacity:1;cursor:default;
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+.cell.future select:not(.is-skip){background-color:var(--rule-soft);color:var(--ink-faint);
+  border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
+.cell.future select.is-skip{border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted}
+.cell.edited{box-shadow:inset 3px 0 0 var(--open)}
+.cell.skipcell{box-shadow:none}
+.cell.saving select{opacity:.55}
+.cell[data-u="0"]{--ucol:var(--u0)}   .cell[data-u="1"]{--ucol:var(--u1)}
+.cell[data-u="2"]{--ucol:var(--u2)}   .cell[data-u="3"]{--ucol:var(--u3)}
+.cell[data-u="4"]{--ucol:var(--u4)}   .cell[data-u="5"]{--ucol:var(--u5)}
+.cell[data-u="6"]{--ucol:var(--u6)}   .cell[data-u="7"]{--ucol:var(--u7)}
+.cell[data-u="8"]{--ucol:var(--u8)}   .cell[data-u="9"]{--ucol:var(--u9)}
+.cell[data-u="10"]{--ucol:var(--u10)} .cell[data-u="11"]{--ucol:var(--u11)}
+.cell[data-u="12"]{--ucol:var(--u12)} .cell[data-u="13"]{--ucol:var(--u13)}
+.cell[data-u="14"]{--ucol:var(--u14)} .cell[data-u="15"]{--ucol:var(--u15)}
+.cell[data-u="16"]{--ucol:var(--u16)} .cell[data-u="17"]{--ucol:var(--u17)}
+.cell[data-u="18"]{--ucol:var(--u18)} .cell[data-u="19"]{--ucol:var(--u19)}
+
+.units{display:flex;flex-direction:column;gap:18px}
+.term-block{display:flex;flex-direction:column;gap:9px}
+.term-head{font-size:12.5px;font-weight:700;letter-spacing:.1em;color:var(--ink-faint);
+  display:flex;align-items:center;gap:10px}
+.term-head::after{content:"";flex:1;height:1px;background:var(--rule-soft)}
+.term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));
+  gap:14px;justify-content:start}
+.unit-card{background:var(--sheet);border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:10px;padding:13px 15px 14px;
+  display:flex;flex-direction:column;gap:8px}
+.unit-card[data-u="0"]{--ucol:var(--u0)}   .unit-card[data-u="1"]{--ucol:var(--u1)}
+.unit-card[data-u="2"]{--ucol:var(--u2)}   .unit-card[data-u="3"]{--ucol:var(--u3)}
+.unit-card[data-u="4"]{--ucol:var(--u4)}   .unit-card[data-u="5"]{--ucol:var(--u5)}
+.unit-card[data-u="6"]{--ucol:var(--u6)}   .unit-card[data-u="7"]{--ucol:var(--u7)}
+.unit-card[data-u="8"]{--ucol:var(--u8)}   .unit-card[data-u="9"]{--ucol:var(--u9)}
+.unit-card[data-u="10"]{--ucol:var(--u10)} .unit-card[data-u="11"]{--ucol:var(--u11)}
+.unit-card[data-u="12"]{--ucol:var(--u12)} .unit-card[data-u="13"]{--ucol:var(--u13)}
+.unit-card[data-u="14"]{--ucol:var(--u14)} .unit-card[data-u="15"]{--ucol:var(--u15)}
+.unit-card[data-u="16"]{--ucol:var(--u16)} .unit-card[data-u="17"]{--ucol:var(--u17)}
+.unit-card[data-u="18"]{--ucol:var(--u18)} .unit-card[data-u="19"]{--ucol:var(--u19)}
+.unit-card .name{font-size:14px;font-weight:600}
+.unit-card .row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex-wrap:wrap;row-gap:6px}
+.unit-card .valbox{display:inline-flex;align-items:center;justify-content:center;
+  flex:none;width:126px;aspect-ratio:2.97;padding:0 8px;border-radius:5px;
+  border:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+  font-size:25px;font-weight:600;position:relative;overflow:hidden;
+  background-color:var(--sheet);color:var(--ink)}
+.unit-card .valbox.none{color:var(--ink-faint);font-size:19px}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
+  border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.tag.rated{color:var(--ink);border-color:var(--ink-soft);font-weight:700}
+.unit-card .meta{font-size:11.5px;color:var(--ink-faint);
+  font-family:"IBM Plex Mono",monospace;display:flex;gap:11px;flex-wrap:wrap}
+
+/* 閉室（8:00 より前・ロック時刻より後） */
+.closed{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;min-height:56vh;text-align:center;border:1px solid var(--rule);
+  border-radius:12px;background:var(--sheet);padding:40px 24px}
+.closed .mark{width:54px;height:54px;border-radius:50%;
+  border:4px solid var(--rule-soft);border-top-color:var(--ink-faint);
+  animation:spin 1.6s linear infinite}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.closed .big{margin:0;font-size:23px;font-weight:700}
+.closed .sub{margin:0;font-size:15px;color:var(--ink-soft)}
+.closed .sub b{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.soonbar{border:1px solid var(--open-line);background:var(--open-cell);
+  border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
+.soonbar b{font-family:"IBM Plex Mono",monospace}
+.errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
+  border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="controls">
+    <span class="seg-label">教科</span>
+    <div class="seg" id="subjSeg"></div>
+  </div>
+
+  <div class="errbar hidden" id="errbar"></div>
+  <div class="soonbar hidden" id="soonbar"></div>
+
+  <div class="closed hidden" id="closedPanel">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="big">きろくを こうしんして います</p>
+    <p class="sub" id="closedSub"></p>
+  </div>
+
+  <div class="head hidden" id="head">
+    <h1 id="title">…</h1>
+    <div class="badges">
+      <span class="badge todo" id="todoBadge"></span>
+      <span class="badge locked" id="lockBadge"></span>
+    </div>
+  </div>
+
+  <section id="secLessons" class="hidden">
+    <h2>授業の評価</h2>
+    <div class="sheet"><div class="grid" id="grid"></div></div>
+  </section>
+
+  <section id="secUnits" class="hidden">
+    <h2>単元の評価
+      <button class="mini fold" id="foldUnits" aria-expanded="true">かくす</button>
+    </h2>
+    <div class="units" id="units"></div>
+  </section>
+</div>
+
+<?!= include('scale') ?>
+<script>
+const $ = id => document.getElementById(id);
+let S = null;                      // サーバから来たもの
+let subject = null;
+
+/* ---- 記号の材質。scale.js の BASE_LOOK を使う ---- */
+function paint(sel, sym){
+  sel.classList.remove("is-a","is-warn","is-off","is-skip","foil-gold","foil-cosmic");
+  if(!sym) return;
+  if(sym === OFF) { sel.classList.add("is-off");  return; }
+  if(sym === SKIP){ sel.classList.add("is-skip"); return; }
+  if(isTopSym(sym))       sel.classList.add(lookOf(sym));
+  else if(isWarnSym(sym)) sel.classList.add("is-warn");
+  else if(sym[0] === "A") sel.classList.add("is-a");
+}
+
+/* / は授業側の都合なので教師だけが置く。すでに入っているセルでは残す。 */
+function optionsHTML(cur){
+  const withSkip = (S.who.role === "teacher") || cur === SKIP;
+  let h = '<option value="">‥</option>' +
+          '<optgroup label="評価に入れない">' +
+          '<option value="' + OFF + '">' + OFF + '</option>' +
+          (withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : '') +
+          '</optgroup>';
+  BASES.forEach(b=>{
+    h += '<optgroup label="' + b + '">';
+    MODS.forEach(m => { h += '<option value="' + (b+m.s) + '">' + (b+m.s) + '</option>'; });
+    h += '</optgroup>';
+  });
+  return h;
+}
+
+const unitOf = no => (S.units || []).filter(u => no >= u.from && no <= u.to)[0] || null;
+
+/* セル1つ分を、作り直さずに当て直す。
+   1タップごとに表を作り直すと Chromebook で 148ms かかる（実測）。 */
+function applyCellState(c, l){
+  const u = unitOf(l.no);
+  const open = l.state !== "future" && !l.locked;
+  c.className = "cell " + l.state
+    + (open ? " open" : "") + (open && !l.sym ? " empty" : "")
+    + (l.locked ? " locked" : "") + (l.edited ? " edited" : "")
+    + (l.sym === SKIP ? " skipcell" : "");
+  c.dataset.u = u ? u.c : 0;
+  const sel = c.querySelector("select");
+  sel.disabled = !open;
+  sel.value = l.sym || "";
+  paint(sel, l.sym);
+}
+
+function renderGrid(){
+  const g = $("grid");
+  g.innerHTML = "";
+  S.rows.forEach(l=>{
+    const u = unitOf(l.no);
+    const c = document.createElement("div");
+    c.innerHTML =
+      '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
+      '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+      '<select class="mat" aria-label="No.' + l.no + ' の評価">' + optionsHTML(l.sym) + '</select>';
+    const sel = c.querySelector("select");
+    sel.addEventListener("change", ()=> onPick(c, l, sel));
+    applyCellState(c, l);
+    g.appendChild(c);
+  });
+}
+
+/* 押した瞬間に反映して、断られたら戻す。
+   Chromebook から往復1〜2秒かかるので、待たせると連打される。 */
+function onPick(c, l, sel){
+  const before = l.sym;
+  const next   = sel.value || null;
+  l.sym    = next;
+  l.state  = (l.state === "future") ? "future" : (next ? "done" : "todo");
+  if(S.who.role !== "teacher" && next !== SKIP){
+    const o = sel.querySelector('option[value="' + SKIP + '"]');
+    if(o) o.remove();
+  }
+  applyCellState(c, l);
+  renderHead();
+  c.classList.add("saving");
+  hideErr();
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      c.classList.remove("saving");
+      if(r && r.ok) return;
+      l.sym = before;                       // 断られたので戻す
+      l.state = before ? "done" : "todo";
+      applyCellState(c, l); renderHead();
+      showErr((r && r.why) || "ほぞん できませんでした");
+    })
+    .withFailureHandler(function(e){
+      c.classList.remove("saving");
+      l.sym = before;
+      l.state = before ? "done" : "todo";
+      applyCellState(c, l); renderHead();
+      showErr("つうしんが できませんでした。もう一度 えらんでください");
+    })
+    .apiSave(subject, l.no, next);
+}
+
+function renderHead(){
+  const todo   = S.rows.filter(l => l.state === "todo" && !l.sym).length;
+  const locked = S.rows.filter(l => l.sym && l.locked).length;
+  const tb = $("todoBadge");
+  tb.textContent = todo ? "未入力 " + todo : "未入力なし";
+  tb.classList.toggle("clear", todo === 0);
+  $("lockBadge").textContent = "確定 " + locked;
+  $("title").innerHTML = S.who.name +
+    '<small>' + subject + '　' + S.className + '　' + S.year + '年度</small>';
+}
+
+function renderUnits(){
+  const box = $("units");
+  box.innerHTML = "";
+  const terms = [];
+  S.units.forEach(u => { if(terms.indexOf(u.term || 0) < 0) terms.push(u.term || 0); });
+  terms.sort((a,b) => a - b);
+  const rowOf = {};
+  terms.forEach(t=>{
+    const b = document.createElement("div");
+    b.className = "term-block";
+    b.innerHTML = '<div class="term-head">' + (t ? t + "学期" : "学期なし") + '</div>' +
+                  '<div class="term-row"></div>';
+    box.appendChild(b);
+    rowOf[t] = b.querySelector(".term-row");
+  });
+
+  S.units.forEach(u=>{
+    /* 単元評価は「1段階上」の材質で見せる。単元で高い値を取るのは1時間より
+       難しいので、同じ記号でも授業のセルより上に見えるようにする。
+       ただし警告帯（D・C）は上げない。上げると単元での警告が消える。 */
+    const p = u.sym;
+    let cls = "none";
+    if(p){
+      if(isWarnSym(p)) cls = "is-warn";
+      else{
+        const j  = Math.min(iOf(p) + 1, NBASE - 1);
+        const nb = BASES[j];
+        cls = (j >= iTop) ? lookOf(nb) : (nb === "A" ? "is-a" : "");
+      }
+    }
+    const filled = u.n >= u.total;
+    const tag = p        ? "せんせいの ひょうか"
+              : u.n === 0 ? "まだ ありません"
+              : filled   ? "せんせいが かくにんちゅう"
+              :            "とちゅう";
+    const card = document.createElement("div");
+    card.className = "unit-card";
+    card.dataset.u = u.c;
+    card.innerHTML =
+      '<div class="name">' + u.name + '</div>' +
+      '<div class="row"><span class="valbox mat ' + cls + '">' + (p || "—") + '</span>' +
+        '<span class="tag' + (p ? ' rated' : '') + '">' + tag + '</span></div>' +
+      '<div class="meta">' +
+        '<span>入力 ' + u.n + '/' + u.total + '</span>' +
+        (u.high ? '<span>いちばん ' + symbolOf(u.high) + '</span>' : '') +
+        (u.top  ? '<span>' + TOP_FROM + 'いじょう ' + u.top + '回</span>' : '') +
+        (u.off  ? '<span>休 ' + u.off + '回</span>' : '') +
+        (u.skip ? '<span>/ ' + u.skip + '回</span>' : '') +
+      '</div>';
+    rowOf[u.term || 0].appendChild(card);
+  });
+}
+
+/* 70セルの先頭ではなく「いまやるところ」を中央に置く。 */
+let scrolled = false;
+function scrollToNow(){
+  if(scrolled) return;
+  let i = S.rows.findIndex(l => l.state === "todo" && !l.sym);
+  if(i < 0) for(let k = S.rows.length - 1; k >= 0; k--) if(S.rows[k].sym){ i = k; break; }
+  const cell = i >= 0 ? $("grid").children[i] : null;
+  if(cell){ cell.scrollIntoView({block:"center", behavior:"auto"}); scrolled = true; }
+}
+
+function showErr(msg){ const e = $("errbar"); e.textContent = msg; e.classList.remove("hidden"); }
+function hideErr(){ $("errbar").classList.add("hidden"); }
+
+function renderSubjSeg(){
+  const seg = $("subjSeg");
+  seg.innerHTML = "";
+  (S.subjects || []).forEach(name=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = name;
+    b.setAttribute("aria-pressed", String(name === subject));
+    b.addEventListener("click", ()=>{ if(name !== subject) load(name); });
+    seg.appendChild(b);
+  });
+}
+
+function renderSoon(){
+  const bar = $("soonbar");
+  const left = S.toClose;
+  const show = typeof left === "number" && left <= 10;
+  bar.classList.toggle("hidden", !show);
+  if(show) bar.innerHTML = "あと <b>" + left + "</b> ふんで、きょうは おしまいです";
+}
+
+function render(){
+  renderSubjSeg();
+  const closed = !!S.closed;
+  $("closedPanel").classList.toggle("hidden", !closed);
+  ["head","secLessons","secUnits"].forEach(id => $(id).classList.toggle("hidden", closed));
+  if(closed){
+    const p = n => String(n).padStart(2,"0");
+    $("closedSub").innerHTML = "あさ <b>" + p(S.open.h) + ":" + p(S.open.m) + "</b> から つかえます";
+    $("soonbar").classList.add("hidden");
+    return;
+  }
+  renderHead(); renderSoon(); renderGrid(); renderUnits(); scrollToNow();
+}
+
+function load(next){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){
+        if(r && r.closed){ S = Object.assign(S || {}, r, {closed:true}); render(); return; }
+        showErr((r && r.why) || "よみこめませんでした"); return;
+      }
+      S = Object.assign(S || {}, r);
+      subject = r.subject || subject;
+      scrolled = false;
+      render();
+    })
+    .withFailureHandler(function(){ showErr("つうしんが できませんでした"); })
+    [next ? "apiRead" : "apiBoot"](next || null);
+}
+
+/* 時計が16:00をまたいだら閉室へ切り替える。判定はサーバに任せる。 */
+setInterval(function(){ load(); }, 60000);
+load();
+</script>
+</body>
+</html>

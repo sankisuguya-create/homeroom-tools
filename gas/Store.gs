@@ -56,6 +56,18 @@ const Store = (function(){
     return out;
   }
 
+  /* 1教科ぶんを一度に読み、児童ごとの {No: 記号} にたたむ。
+     29人ぶんを1人ずつ読むとシート全体を29回なめることになる。 */
+  function readAll(subject){
+    const by = {};
+    allRows().forEach(r => {
+      if(String(r[COL.subject]) !== subject) return;
+      const id = String(r[COL.id]);
+      (by[id] || (by[id] = {}))[Number(r[COL.no])] = String(r[COL.sym]);
+    });
+    return by;
+  }
+
   /* ------------------------------------------------------------------
      保存。画面から渡ってくる値を1つも信用しない。
      児童IDは呼び出し元のメールから引き直し、ロックも時間もここで判定する。
@@ -162,5 +174,5 @@ const Store = (function(){
     return {ok:true, put:put, over:over};
   }
 
-  return {read, save, saveAs, bulk};
+  return {read, readAll, save, saveAs, bulk};
 })();

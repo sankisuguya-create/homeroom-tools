@@ -64,6 +64,7 @@ function fakeSheet(name){
         return out;
       },
       getValue(){ const src = v[r0] || []; return src[c0]; },
+      setValue(x){ while(v.length <= r0) v.push([]); v[r0][c0] = x; return this; },
       setValues(vals){
         for(let i = 0; i < vals.length; i++){
           while(v.length <= r0 + i) v.push([]);
@@ -115,7 +116,7 @@ vm.createContext(sandbox);
 
 /* ---- 全 .gs を1つのスコープへ。GAS と同じ形。 ---- */
 const order = ["Scale.gs","Config.gs","Roster.gs","Master.gs","Lock.gs","Hours.gs",
-               "Store.gs","Aggregate.gs","Code.gs","Setup.gs"];
+               "Store.gs","Aggregate.gs","Api.gs","Code.gs","Setup.gs"];
 const files = fs.readdirSync(DIR).filter(f => f.endsWith(".gs"));
 files.forEach(f => { if(order.indexOf(f) < 0) order.push(f); });
 
@@ -319,6 +320,47 @@ ok("評価公開が false の単元は値を返さない",
 ok("公開されていない単元でも入力数は返す",
    "(function(){var us=Aggregate.unitsForStudent('算数','s09',rows);" +
    "return typeof us[1].n === 'number' && typeof us[1].total === 'number';})()");
+
+console.log("■ 画面から呼ぶ入口");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("児童の apiBoot は開いている時間なら中身まで返す",
+   "(function(){var b=apiBoot();return b.ok===true && b.closed===false && " +
+   "Array.isArray(b.rows) && b.rows.length===70 && Array.isArray(b.units);})()",
+   "(function(){var b=apiBoot();return {ok:b.ok,closed:b.closed,rows:(b.rows||[]).length};})()");
+ok("児童の apiBoot に非公開教科が入らない",
+   "apiBoot().subjects.indexOf('体育') < 0");
+ok("児童は非公開の教科を読めない", "apiRead('体育').ok === false", "apiRead('体育')");
+clockAt("2026-05-22T20:00:00+09:00");
+ok("時間外の apiBoot は中身を返さない",
+   "(function(){var b=apiBoot();return b.closed===true && b.rows===undefined;})()",
+   "apiBoot()");
+ok("時間外の apiRead は断る", "apiRead('算数').closed === true", "apiRead('算数')");
+as("sensei@example.ed.jp");
+ok("教師は時間外でも読める", "apiRead('算数').ok === true", "apiRead('算数')");
+ok("教師は非公開の教科も読める", "apiRead('体育').ok === true");
+as("sakura@example.ed.jp");
+ok("児童は評価公開を切り替えられない",
+   "apiSetRated('算数','わり算',true).ok === false");
+as("sensei@example.ed.jp");
+ok("教師は評価公開を切り替えられる",
+   "apiSetRated('算数','わり算',true).ok === true", "apiSetRated('算数','わり算',true)");
+ok("切り替えた結果がマスタに効く", "Master.unitOf('算数',20).rated === true");
+ok("押した時点で仮値が採用され、確定シートに入る",
+   "(function(){" +
+   "['B','B+','A','A−','A+','B+','A','A','B+','A','A+','A','A+','Z']" +
+   "  .forEach(function(sym,i){ Store.saveAs('算数','s09',i+1,sym); });" +
+   "Final.set('算数','s09','単元','九九の表とかけ算','');" +   /* いったん空に */
+   "var r = apiSetRated('算数','九九の表とかけ算',true);" +
+   "return r.adopted === 1 && typeof Final.unitValue('算数','s09','九九の表とかけ算')==='string';})()",
+   "apiSetRated('算数','九九の表とかけ算',true)");
+ok("採用ずみの値は押し直しても書き換えられない",
+   "(function(){var v=Final.unitValue('算数','s09','九九の表とかけ算');" +
+   "Final.set('算数','s09','単元','九九の表とかけ算','Z++');" +
+   "apiSetRated('算数','九九の表とかけ算',true);" +
+   "return Final.unitValue('算数','s09','九九の表とかけ算')==='Z++';})()");
+ok("戻せる", "(function(){apiSetRated('算数','わり算',false);return Master.unitOf('算数',20).rated===false;})()");
+clockReal();
 
 console.log("■ シートの用意");
 ev("setupSheets()");

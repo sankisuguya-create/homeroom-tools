@@ -67,12 +67,19 @@ def render(page: str) -> str:
     return out
 
 def gas_targets():
-    """GAS 側の生成物。(出力先, 中身) の組を返す。"""
+    """GAS 側の生成物。(出力先, 中身) の組を返す。
+
+    スケールも色トークンも材質も、prototypes/src/ の1つの元から出す。
+    プロトタイプと GAS で見た目が割れないのはこれのおかげ。"""
+    note = ("<!-- prototypes/src/%s から build.py が作る。直すのは src のほう。 -->\n")
+
     scale = (SRC / "scale.js").read_text(encoding="utf-8")
-    yield GAS / "Scale.gs", BANNER + scale
-    yield GAS / "scale.html", ("<!-- prototypes/src/scale.js から build.py が作る。"
-                               "直すのは src のほう。 -->\n"
-                               "<script>\n" + scale + "</script>\n")
+    yield GAS / "Scale.gs", BANNER + scale, "scale.js"
+    yield GAS / "scale.html", note % "scale.js" + "<script>\n" + scale + "</script>\n", "scale.js"
+
+    for name, out in (("tokens.css", "tokens.html"), ("material.css", "material.html")):
+        css = expand_dark((SRC / name).read_text(encoding="utf-8"))
+        yield GAS / out, note % name + "<style>\n" + css + "</style>\n", name
 
 def main():
     check = "--check" in sys.argv
@@ -88,14 +95,14 @@ def main():
         else:
             dest.write_text(built, encoding="utf-8")
     if GAS.exists():
-        for dest, built in gas_targets():
+        for dest, built, src_name in gas_targets():
             if check:
                 cur = dest.read_text(encoding="utf-8") if dest.exists() else ""
                 if cur != built:
                     bad.append(dest.name)
             else:
                 dest.write_text(built, encoding="utf-8")
-                print("  %-18s ← src/scale.js" % dest.name)
+                print("  %-18s ← src/%s" % (dest.name, src_name))
     if check:
         if bad:
             print("\nsrc と一致しない: " + ", ".join(bad))
