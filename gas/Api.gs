@@ -28,8 +28,22 @@ function apiBoot(subject){
     closed:    Hours.isClosedFor(who, at),
     toClose:   Hours.minutesToClose(at)
   };
+  /* 教科が1つも無いときは、その理由まで返す。
+     画面が黙って空になると、何を直せばいいのか誰にも分からない。 */
+  if(!subj){
+    const all = Object.keys(Master.load().subjects).length;
+    base.empty = true;
+    /* 児童には児童の言葉、教師には直し方を返す。
+       「教科マスタが空です」は児童には何のことか分からない。 */
+    base.why = isTeacher
+      ? (all ? "公開が TRUE の教科がありません。教科マスタの『公開』を見てください"
+             : "教科マスタが空です。教科・時数・公開 を入れてください。"
+             + "エディタで diagnose() を実行すると、ほかに足りないものも出ます")
+      : "せんせいに つたえてください";
+    return base;
+  }
   /* 閉室のときは中身を渡さない。画面で隠すのではなく、そもそも返さない。 */
-  if(base.closed || !subj) return base;
+  if(base.closed) return base;
   return Object.assign(base, apiRead(subj));
 }
 

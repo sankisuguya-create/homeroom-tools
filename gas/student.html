@@ -151,8 +151,13 @@ h2 .fold{order:2}
     <p class="sub" id="closedSub"></p>
   </div>
 
+  <div class="closed hidden" id="emptyPanel">
+    <p class="big" id="emptyBig">まだ つかえません</p>
+    <p class="sub" id="emptySub"></p>
+  </div>
+
   <div class="head hidden" id="head">
-    <h1 id="title">…</h1>
+    <h1 id="title">よみこんで います…</h1>
     <div class="badges">
       <span class="badge todo" id="todoBadge"></span>
       <span class="badge locked" id="lockBadge"></span>
@@ -372,33 +377,69 @@ function renderSoon(){
   if(show) bar.innerHTML = "あと <b>" + left + "</b> ふんで、きょうは おしまいです";
 }
 
+/* 出す面を1つだけ選ぶ。中身が無いのに表を出しかけて途中で止まる、を防ぐ。 */
+function showOnly(which){
+  const faces = {closed:"closedPanel", empty:"emptyPanel"};
+  Object.keys(faces).forEach(k => $(faces[k]).classList.toggle("hidden", k !== which));
+  const body = (which === "sheet");
+  ["head","secLessons","secUnits"].forEach(id => $(id).classList.toggle("hidden", !body));
+  if(!body) $("soonbar").classList.add("hidden");
+}
+
 function render(){
   renderSubjSeg();
-  const closed = !!S.closed;
-  $("closedPanel").classList.toggle("hidden", !closed);
-  ["head","secLessons","secUnits"].forEach(id => $(id).classList.toggle("hidden", closed));
-  if(closed){
+
+  if(S.closed){
     const p = n => String(n).padStart(2,"0");
-    $("closedSub").innerHTML = "あさ <b>" + p(S.open.h) + ":" + p(S.open.m) + "</b> から つかえます";
-    $("soonbar").classList.add("hidden");
+    $("closedSub").innerHTML = S.open
+      ? ("あさ <b>" + p(S.open.h) + ":" + p(S.open.m) + "</b> から つかえます") : "";
+    showOnly("closed");
     return;
   }
+
+  /* 表を出せる形になっているか、出す前に確かめる。
+     rows が無いまま描き始めると、見出しだけ出た半端な画面で止まる。 */
+  if(!S.subject || !Array.isArray(S.rows)){
+    $("emptyBig").textContent = (S.who && S.who.role === "teacher")
+      ? "見せられる教科がありません" : "まだ つかえません";
+    $("emptySub").textContent = S.why ||
+      ((S.who && S.who.role === "teacher") ? "教科マスタを確かめてください"
+                                           : "せんせいに つたえてください");
+    $("emptySub").style.maxWidth = "34em";
+    showOnly("empty");
+    return;
+  }
+
+  showOnly("sheet");
   renderHead(); renderSoon(); renderGrid(); renderUnits(); scrollToNow();
 }
 
 function load(next){
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r || !r.ok){
-        if(r && r.closed){ S = Object.assign(S || {}, r, {closed:true}); render(); return; }
-        showErr((r && r.why) || "よみこめませんでした"); return;
+      try{
+        if(!r || !r.ok){
+          /* 断られたときも面を1つ選ぶ。半端な画面を残さない。 */
+          S = Object.assign(S || {}, r || {});
+          if(r && r.closed) S.closed = true; else { S.subject = null; S.rows = null; }
+          render();
+          if(r && r.why && !r.closed) showErr(r.why);
+          return;
+        }
+        /* 教科を切り替えたときは、前の教科の行が残らないように入れ替える。 */
+        if(next){ S.rows = null; S.units = null; }
+        S = Object.assign(S || {}, r);
+        subject = r.subject || next || subject;
+        scrolled = false;
+        hideErr();
+        render();
+      }catch(e){
+        showErr("画面を つくれませんでした（" + e.message + "）");
       }
-      S = Object.assign(S || {}, r);
-      subject = r.subject || subject;
-      scrolled = false;
-      render();
     })
-    .withFailureHandler(function(){ showErr("つうしんが できませんでした"); })
+    .withFailureHandler(function(e){
+      showErr("つうしんが できませんでした。もう一度 ひらいてください");
+    })
     [next ? "apiRead" : "apiBoot"](next || null);
 }
 

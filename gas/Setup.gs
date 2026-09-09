@@ -77,3 +77,75 @@ function checkSheets(){
                            : "× 教師メールが空。設定シートに自分のメールを入れる");
   SpreadsheetApp.getUi().alert(msg.join("\n"));
 }
+
+/* ==================================================================
+   diagnose() — 児童の画面に何が出るか、出ないなら何が足りないかを見る。
+   エディタから実行する。児童アカウントで開く前にこれで潰しておく。
+================================================================== */
+function diagnose(){
+  const out = [];
+  const ss  = SpreadsheetApp.getActive();
+  const row = name => {
+    const sh = ss.getSheetByName(name);
+    return sh ? Math.max(0, sh.getLastRow() - 1) : -1;
+  };
+
+  /* 1. シート */
+  Object.keys(SETUP_SHEETS).forEach(n => {
+    const c = row(n);
+    if(c < 0) out.push("× シート「" + n + "」が無い。setupSheets を実行する");
+  });
+
+  /* 2. 教師メール */
+  const te = Config.teacherEmails();
+  out.push(te.length ? "○ 教師メール " + te.length + "件（" + te.join("、") + "）"
+                     : "× 教師メールが空。設定シートに自分のメールを入れる");
+
+  /* 3. 名簿 */
+  const roster = Roster.all();
+  const noMail = roster.filter(s => !s.email).length;
+  out.push(roster.length ? "○ 名簿 " + roster.length + "人" : "× 名簿が空。児童を入れる");
+  if(noMail) out.push("× 名簿のうち " + noMail + "人にメールが無い。その児童は使えない");
+
+  /* 4. 教科マスタ ← ここが空だと児童の画面が真っ白になる */
+  const subj = Master.load().subjects;
+  const names = Object.keys(subj);
+  if(!names.length){
+    out.push("× 教科マスタが空。ここが空だと児童の画面に何も出ない。"
+           + "『教科 / 時数 / 公開』を入れる（公開は TRUE で児童に見える）");
+  }else{
+    const open = names.filter(n => subj[n].open);
+    out.push("○ 教科 " + names.length + "件（" + names.join("、") + "）");
+    out.push(open.length ? "○ 児童に見える教科 " + open.length + "件（" + open.join("、") + "）"
+                         : "× 公開が TRUE の教科が無い。児童の画面には何も出ない");
+  }
+
+  /* 5. 単元マスタ・授業マスタ */
+  names.forEach(n => {
+    const s = subj[n];
+    if(!s.total) out.push("× 「" + n + "」の時数が 0。教科マスタに入れる");
+    if(!s.units.length){ out.push("× 「" + n + "」に単元が無い"); return; }
+
+    const covered = {};
+    s.units.forEach(u => { for(let i = u.from; i <= u.to; i++) covered[i] = 1; });
+    const miss = [];
+    for(let i = 1; i <= s.total; i++) if(!covered[i]) miss.push(i);
+    if(miss.length) out.push("△ 「" + n + "」でどの単元にも入らない授業が "
+                           + miss.length + "件（No." + miss[0] + " など）");
+
+    const now = new Date();
+    let held = 0;
+    for(let i = 1; i <= s.total; i++) if(Master.isHeld(n, i, now)) held++;
+    out.push((held ? "○ " : "× ") + "「" + n + "」実施済みの授業 " + held + "/" + s.total
+           + (held ? "" : "。授業マスタに実施日を入れる。0 だと児童は1つも入力できない"));
+  });
+
+  /* 6. 時間 */
+  const a = Config.openTime(), b = Config.lockTime();
+  const p = x => String(x).padStart(2, "0");
+  out.push("○ 児童が使える時間 " + p(a.h) + ":" + p(a.m) + "〜" + p(b.h) + ":" + p(b.m)
+         + "（いま " + (Hours.isClosed() ? "閉室中" : "開室中") + "）");
+
+  SpreadsheetApp.getUi().alert("児童の画面がどうなるか\n\n" + out.join("\n"));
+  return out;
+}

@@ -362,9 +362,41 @@ ok("採用ずみの値は押し直しても書き換えられない",
 ok("戻せる", "(function(){apiSetRated('算数','わり算',false);return Master.unitOf('算数',20).rated===false;})()");
 clockReal();
 
+console.log("■ 教科が無いとき（今回のつまずき）");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+/* 教科マスタを空にして、児童の画面が黙って壊れないことを見る */
+const savedSubjects = SHEETS["教科マスタ"].splice(1);
+ev("clearAllCache()");
+ok("教科が無ければ apiBoot は理由を返す",
+   "(function(){var b=apiBoot();return b.ok===true && b.empty===true && " +
+   "typeof b.why==='string' && b.rows===undefined;})()", "apiBoot()");
+ok("児童には児童の言葉で返る（教師の用語を出さない）",
+   "apiBoot().why.indexOf('教科マスタ') < 0 && apiBoot().why.indexOf('せんせい') >= 0",
+   "apiBoot().why");
+/* 公開が false だけのとき */
+SHEETS["教科マスタ"].push(["体育",105,false]);
+ev("clearAllCache()");
+ok("公開が無ければ、児童には空の面が出る",
+   "apiBoot().empty === true && apiBoot().why.indexOf('せんせい') >= 0", "apiBoot().why");
+as("sensei@example.ed.jp");
+ok("教師は非公開しかなくても、その教科で画面が出る",
+   "(function(){var b=apiBoot();return b.ok===true && !b.empty && b.subject==='体育';})()",
+   "apiBoot()");
+/* 戻す */
+SHEETS["教科マスタ"].splice(1);
+savedSubjects.forEach(function(r){ SHEETS["教科マスタ"].push(r); });
+ev("clearAllCache()");
+ok("戻したら教科が見える", "Master.subjectNames(false).length === 2");
+ok("diagnose が走り、行を返す",
+   "(function(){var r=diagnose();return Array.isArray(r) && r.length>0;})()");
+ok("diagnose が実施済みの授業数を見ている",
+   "diagnose().join('|').indexOf('実施済みの授業') >= 0", "diagnose().join(' / ')");
+clockReal();
+
 console.log("■ シートの用意");
 ev("setupSheets()");
-ok("setupSheets が走る（既にあるので何もしない）", alerts.length === 1, "1");
+ok("setupSheets が走る（既にあるので何もしない）", alerts.length >= 1, "alerts.length");
 
 console.log(ng ? "\n× " + ng + " 件だめだった" : "\n○ ぜんぶ通った");
 process.exit(ng ? 1 : 0);
