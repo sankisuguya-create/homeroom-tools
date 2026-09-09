@@ -64,3 +64,20 @@ const Config = (function(){
           className: () => String(get("学級", "")),
           year:      () => Number(get("年度", 0))};
 })();
+
+/* ==================================================================
+   設定シートへの書き戻し。教師画面から呼ぶ。
+   キーが無ければ足す。あれば書き換える。
+================================================================== */
+function configSet(pairs){
+  const sh = SpreadsheetApp.getActive().getSheetByName("設定");
+  const v  = sh.getDataRange().getValues();
+  const at = {};
+  for(let i = 1; i < v.length; i++) at[String(v[i][0]).trim()] = i + 1;
+
+  Object.keys(pairs).forEach(k => {
+    if(at[k]) sh.getRange(at[k], 2).setValue(pairs[k]);
+    else      sh.appendRow([k, pairs[k]]);
+  });
+  Config.clearCache();
+}

@@ -1,8 +1,9 @@
 /* ==================================================================
    preview.js — デプロイせずに児童画面を見る。
 
-     node gas/preview.js               1枚の HTML を書き出す（ブラウザで開ける）
-     node gas/preview.js out.png       playwright-core があれば png も撮る
+     node gas/preview.js                     児童画面を1枚の HTML に書き出す
+     node gas/preview.js out.png             playwright-core があれば png も撮る
+     node gas/preview.js out.png teacher     教師画面を見る
 
    gas/ のサーバコードをブラウザの中で動かし、student.html を実際に描かせる。
    google.script.run をその場の関数呼び出しに差し替えるだけなので、
@@ -32,7 +33,13 @@ const SH = ${JSON.stringify({
   "教科マスタ": process.env.NO_SUBJECTS
       ? [["教科","時数","公開"]]
       : [["教科","時数","公開"],["算数",70,true],["国語",60,true],["体育",105,false]],
-  "名簿": [["児童ID","出席番号","氏名","メール"],["s09",9,"さくら","sakura@example.ed.jp"]],
+  "名簿": [["児童ID","出席番号","氏名","メール"],
+    ["s01",1,"あおい","aoi@example.ed.jp"],
+    ["s02",2,"いつき","itsuki@example.ed.jp"],
+    ["s03",3,"うみ","umi@example.ed.jp"],
+    ["s09",9,"さくら","sakura@example.ed.jp"],
+    ["s10",10,"しおん","shion@example.ed.jp"],
+    ["s16",16,"なぎさ","nagisa@example.ed.jp"]],
   "単元マスタ": [["教科","単元名","開始No","終了No","色","学期","評価公開"],
     ["算数","九九の表とかけ算",1,14,0,1,true],
     ["算数","わり算",15,30,1,1,false],
@@ -44,16 +51,23 @@ const SH = ${JSON.stringify({
 })};
 /* 授業マスタ：1〜25 は実施済み、それ以降はこれから */
 for(var i=1;i<=70;i++) SH["授業マスタ"].push(["算数",i, i<=25 ? "2026-05-01" : "2027-03-01"]);
-/* 記録：22件ぶん入っている。うち直近2件は今日、それ以前は過去＝ロック済み */
+/* 記録：児童ごとに22件ぶん。直近2件は今日＝まだ直せる、それ以前は過去＝ロック済み */
 var SEED=["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z","B","/","C","B+","A−","A++","A","A+"];
 var NOW=new Date("2026-05-22T12:00:00+09:00");
-for(var i=0;i<SEED.length;i++){
-  var recent = i >= SEED.length-2;
-  var t = recent ? new Date(NOW.getTime()-3600e3)
-                 : new Date(NOW.getTime()-(SEED.length-i+2)*86400e3);
-  SH["記録"].push(["算数","s09",i+1,SEED[i],t,""]);
-}
-var CURRENT_EMAIL = "sakura@example.ed.jp";
+var ALL=["D−","D","D+","D++","C−","C","C+","C++","B−","B","B+","B++",
+         "A−","A","A+","A++","Z−","Z","Z+","Z++"];
+SH["名簿"].slice(1).forEach(function(st, si){
+  for(var i=0;i<SEED.length;i++){
+    var sym = (si===0) ? SEED[i]
+            : (SEED[i]==="休"||SEED[i]==="/") ? SEED[i]
+            : ALL[Math.max(0, Math.min(19, 8 + ((si*5 + i*3) % 8) - (si===5 ? 6 : 0)))];
+    var recent = i >= SEED.length-2;
+    var t = recent ? new Date(NOW.getTime()-3600e3)
+                   : new Date(NOW.getTime()-(SEED.length-i+2)*86400e3);
+    SH["記録"].push(["算数", st[0], i+1, sym, t, ""]);
+  }
+});
+var CURRENT_EMAIL = "__WHO__";
 function fakeSheet(name){
   var v=SH[name]; if(!v) return null;
   function range(row,col,nRow,nCol){
@@ -91,34 +105,43 @@ var HtmlService={createHtmlOutputFromFile:function(){return {getContent:function
   window.Date=D;
 })();
 /* google.script.run のかわり */
+/* window にある api* をそのまま通す。名前を並べておくと、入口が増えたときに
+   ここだけ古くなって「動かない」と誤診することになる。 */
 var google={script:{run:(function(){
   function mk(succ,fail){
-    var api={withSuccessHandler:function(f){return mk(f,fail);},
-             withFailureHandler:function(f){return mk(succ,f);}};
-    ["apiBoot","apiRead","apiSave","apiSaveAs","apiSetRated"].forEach(function(n){
-      api[n]=function(){ var a=arguments;
-        setTimeout(function(){ try{ succ && succ(window[n].apply(null,a)); }
-                               catch(e){ fail && fail(e); } }, 30); };
-    });
-    return api;
+    return new Proxy({}, {get:function(_,name){
+      if(name==="withSuccessHandler") return function(f){ return mk(f,fail); };
+      if(name==="withFailureHandler") return function(f){ return mk(succ,f); };
+      return function(){ var a=arguments;
+        setTimeout(function(){
+          try{
+            if(typeof window[name] !== "function") throw new Error(name+" が無い");
+            succ && succ(window[name].apply(null,a));
+          }catch(e){ fail && fail(e); }
+        }, 30);
+      };
+    }});
   }
   return mk(null,null);
 })()}};
 `;
 
-let html = fs.readFileSync(path.join(G,"student.html"),"utf8");
+const WHICH = (process.argv[3] === "teacher") ? "teacher" : "student";
+let html = fs.readFileSync(path.join(G, WHICH + ".html"),"utf8");
 html = html.replace(/<\?!= include\('(\w+)'\) \?>/g,
   (_,n)=>fs.readFileSync(path.join(G,n+".html"),"utf8"));
 /* サーバコードと偽物を、画面の script より前に入れる */
 /* サーバコードのあとに、教師が「単元の評価をする」を押した状態を作る */
 const seed = `
-(function(){ CURRENT_EMAIL="sensei@example.ed.jp";
+(function(){ var keep = CURRENT_EMAIL; CURRENT_EMAIL="sensei@example.ed.jp";
   try{ apiSetRated("算数","九九の表とかけ算",true); }catch(e){ console.log("setRated:", e.message); }
-  CURRENT_EMAIL="sakura@example.ed.jp"; })();
+  CURRENT_EMAIL = keep; })();
 `;
 html = html.replace("<script>\nconst $ =",
   "<script>\n" + fakes + "\n" + server + "\n" + seed + "\n</script>\n<script>\nconst $ =");
-const OUT_HTML = path.join(process.cwd(), "student-preview.html");
+html = html.replace("__WHO__",
+  WHICH === "teacher" ? "sensei@example.ed.jp" : "sakura@example.ed.jp");
+const OUT_HTML = path.join(process.cwd(), WHICH + "-preview.html");
 fs.writeFileSync(OUT_HTML, html);
 console.log("書き出した:", OUT_HTML, "（" + html.length + " bytes）");
 console.log("ブラウザで開けば、そのまま児童画面が動く。");
@@ -140,6 +163,17 @@ const errs=[]; pg.on("pageerror",e=>errs.push(e.message));
 await pg.goto("file://" + OUT_HTML);
 await pg.waitForTimeout(900);
 console.log("errors:", JSON.stringify(errs));
+if(WHICH === "teacher"){
+  console.log(JSON.stringify(await pg.evaluate(()=>({
+    tabs:  [...document.querySelectorAll("#tabs button")].map(b=>b.textContent),
+    subj:  [...document.querySelectorAll("#subjSeg button")].map(b=>b.textContent),
+    rows:  document.querySelectorAll("#unitTbl tbody tr").length,
+    rule:  document.getElementById("ruleText").textContent,
+    rated: document.getElementById("ratedBtn").textContent,
+    err:   document.getElementById("errbar").classList.contains("hidden") ? null
+           : document.getElementById("errbar").textContent
+  })),null,1));
+} else
 console.log(JSON.stringify(await pg.evaluate(()=>({
   title: document.getElementById("title").textContent,
   cells: document.querySelectorAll(".cell").length,

@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<?!= include('tokens') ?>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px;line-height:1.7}
+.wrap{max-width:1400px;margin:0 auto;padding:18px 18px 64px;display:flex;flex-direction:column;gap:18px}
+.hidden{display:none!important}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border-bottom:2px solid var(--open);padding-bottom:10px}
+h1{margin:0;font-size:19px;font-weight:700}
+h1 b{color:var(--open)}
+h1 small{font-size:12.5px;font-weight:500;color:var(--ink-soft);margin-left:8px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13px;font-weight:600;padding:6px 15px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--open);color:#fff}
+.seg.tabs button[aria-pressed="true"]{background:var(--accent)}
+.seg button.closed{color:var(--ink-faint);font-style:italic}
+.seg button.closed[aria-pressed="true"]{background:var(--lock-ink);color:#fff}
+select.plain,input.txt{font-family:inherit;font-size:13px;border:1px solid var(--rule);
+  border-radius:6px;padding:5px 9px;background:var(--sheet);color:var(--ink)}
+input.txt.num{font-family:"IBM Plex Mono",monospace;width:76px;text-align:center}
+.btn{appearance:none;font-family:inherit;font-size:13px;font-weight:600;border-radius:7px;
+  padding:6px 14px;cursor:pointer;border:1px solid var(--open);background:var(--open);color:#fff}
+.btn.ghost{background:var(--sheet);color:var(--ink-soft);border-color:var(--rule)}
+.btn:disabled{opacity:.45;cursor:default}
+.said{font-size:12.5px;color:var(--ok);font-weight:600}
+.said.bad{color:var(--warn)}
+h2{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);
+  display:flex;align-items:center;gap:12px}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+section{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{font-size:12px;color:var(--ink-faint);line-height:1.75}
+.note b{color:var(--ink-soft)}
+
+table{border-collapse:collapse;width:100%;font-size:13px}
+.tablecard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:auto;max-height:70vh}
+th,td{border-bottom:1px solid var(--rule-soft);padding:5px 8px;text-align:left;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--sheet);z-index:2;font-size:11.5px;
+  letter-spacing:.05em;color:var(--ink-faint);font-weight:700}
+td.name{font-weight:600}
+td.num{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--ink-soft)}
+.chips{display:flex;gap:2px;flex-wrap:wrap}
+.chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  min-width:26px;text-align:center;border-radius:3px;padding:1px 3px;
+  background:var(--rule-soft);color:var(--ink-soft)}
+.chip.a{background:var(--a-bg);color:var(--a-ink)}
+.chip.z{background:var(--z-bg);color:var(--z-ink)}
+.chip.w{background:var(--warn-bg);color:var(--warn)}
+.chip.off{background:var(--off-bg);color:var(--off-ink)}
+.chip.none{background:transparent;color:var(--ink-faint)}
+.prov{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:700;
+  border-radius:5px;padding:2px 9px;display:inline-block;min-width:44px;text-align:center}
+.prov.a{background:var(--a-bg);color:var(--a-ink)} .prov.z{background:var(--z-bg);color:var(--z-ink)}
+.prov.w{background:var(--warn-bg);color:var(--warn)} .prov.none{color:var(--ink-faint)}
+select.final{font-family:"IBM Plex Mono",monospace;font-size:13px;border:1px solid var(--rule);
+  border-radius:5px;padding:3px 6px;background:var(--sheet);color:var(--ink)}
+select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
+.warncell{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--warn);font-weight:700}
+.warncell.zero{color:var(--ink-faint);font-weight:400}
+.rank{font-weight:700;border-radius:5px;padding:2px 10px;display:inline-block;min-width:30px;text-align:center}
+.rank.A{background:var(--a-bg);color:var(--a-ink)}
+.rank.B{background:var(--rule-soft);color:var(--ink-soft)}
+.rank.C{background:var(--warn-bg);color:var(--warn)}
+.distbar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--rule)}
+.distbar div{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.distbar .sA{background:var(--a-bg);color:var(--a-ink)}
+.distbar .sB{background:var(--rule-soft);color:var(--ink-soft)}
+.distbar .sC{background:var(--warn-bg);color:var(--warn)}
+.diag{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.9;white-space:pre-wrap}
+.diag .ng{color:var(--warn);font-weight:700}
+.diag .warn{color:var(--open-line)}
+.rowbar{width:5px;height:24px;border-radius:3px;display:inline-block;background:var(--swc,var(--rule))}
+.swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:190px}
+.sw{width:16px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,.15);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
+  border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1><b id="cls">…</b> 主体的に学習に取り組む態度<small id="meta"></small></h1>
+    <div class="seg tabs" id="tabs"></div>
+    <div class="seg" id="subjSeg"></div>
+    <span class="said" id="said"></span>
+  </div>
+  <div class="errbar hidden" id="errbar"></div>
+
+  <!-- 単元ごと -->
+  <div id="pane-unit">
+    <section>
+      <h2>単元</h2>
+      <div class="actions">
+        <select class="plain" id="unitSel"></select>
+        <button class="btn ghost" id="ratedBtn"></button>
+        <button class="btn ghost" id="adoptAll">仮値をまとめて採用</button>
+        <span class="note" id="ruleText"></span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>一斉入力</h2>
+      <div class="card actions">
+        <span class="note">No.</span>
+        <input class="txt num" type="number" id="bulkNo" min="1">
+        <select class="plain" id="bulkSym"></select>
+        <label class="note"><input type="checkbox" id="bulkOver"> 入っている人も上書きする</label>
+        <button class="btn" id="bulkGo">全員に入れる</button>
+        <span class="note">学級閉鎖・行事・出張など、全員が同じになる日のため。既定は空欄の人だけ。</span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>児童ごと</h2>
+      <div class="tablecard"><table id="unitTbl"></table></div>
+    </section>
+  </div>
+
+  <!-- 期末評定 -->
+  <div id="pane-term" class="hidden">
+    <section>
+      <h2>学期</h2>
+      <div class="actions">
+        <select class="plain" id="termSel">
+          <option value="0">学年末（全学期）</option>
+          <option value="1">1学期</option><option value="2">2学期</option><option value="3">3学期</option>
+        </select>
+        <button class="btn ghost" id="adoptRanks">仮評定をまとめて採用</button>
+        <button class="btn ghost" id="exportBtn">通知表用の表を書き出す</button>
+        <span class="note" id="termRule"></span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>分布</h2>
+      <div class="card">
+        <div class="distbar" id="dist"></div>
+        <p class="note" id="distNote" style="margin:8px 0 0"></p>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>児童ごと</h2>
+      <div class="tablecard"><table id="termTbl"></table></div>
+    </section>
+  </div>
+
+  <!-- 設定 -->
+  <div id="pane-setup" class="hidden">
+    <section>
+      <h2>いまの状態</h2>
+      <div class="card diag" id="diag"></div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>評定のしきい値と時間</h2>
+      <div class="card actions">
+        <span class="note">A の下限</span><select class="plain" id="aFrom"></select>
+        <span class="note">C の上限</span><select class="plain" id="cTo"></select>
+        <span class="note">代表値</span>
+        <select class="plain" id="stat">
+          <option>後半の中央値</option><option>全体の中央値</option>
+          <option>最頻値</option><option>最高</option>
+        </select>
+        <span class="note">開室</span><input class="txt num" id="openT" placeholder="8:00">
+        <span class="note">ロック</span><input class="txt num" id="lockT" placeholder="16:00">
+        <button class="btn" id="saveRule">保存</button>
+      </div>
+      <p class="note">記号は児童のやる気のために実態より上へ振ってあるので、記号と評定は一致しない。
+        実際に A 評定になるのは <b>A+ 以上</b>。記号の A や A− は評定では B に落ちる。
+        <b>閉室はロック時刻と同じ瞬間</b>に起きる。</p>
+    </section>
+    <section style="margin-top:14px">
+      <h2>教科</h2>
+      <div class="tablecard"><table id="subjTbl"></table></div>
+      <div class="actions">
+        <input class="txt" id="newSubj" placeholder="教科名" style="width:140px">
+        <input class="txt num" id="newTotal" type="number" placeholder="時数">
+        <button class="btn ghost" id="addSubj">教科を足す（非公開）</button>
+        <span class="note">足した教科は児童に出ない。単元と実施日を入れてから公開に変える。</span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>単元の範囲と色</h2>
+      <div class="tablecard"><table id="unitEditTbl"></table></div>
+      <div class="actions">
+        <button class="btn ghost" id="addUnit">単元を追加</button>
+        <button class="btn ghost" id="sortUnit">開始の順に並べ替え</button>
+        <button class="btn" id="saveUnits">単元を保存</button>
+        <span class="said" id="unitSaid"></span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>授業の実施日</h2>
+      <div class="card actions">
+        <span class="note">No.</span><input class="txt num" type="number" id="heldFrom" value="1">
+        <span class="note">〜</span><input class="txt num" type="number" id="heldTo">
+        <input class="txt" type="date" id="heldDate">
+        <button class="btn" id="setHeld">まとめて入れる</button>
+        <span class="note"><b>ここが空だと児童は1つも入力できない。</b>
+          実施日が空か未来の授業は「これから」として操作できないセルになる。</span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<?!= include('scale') ?>
+<script>
+const $ = id => document.getElementById(id);
+let B = null, subject = null, tab = "unit", unitName = null, term = 0;
+let editUnits = [];
+
+const clsOf = sym => !sym ? "none" : isMark(sym) ? "off"
+  : isTopSym(sym) ? "z" : isWarnSym(sym) ? "w" : sym[0] === "A" ? "a" : "";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function say(msg, bad){
+  const e = $("said"); e.textContent = msg;
+  e.className = "said" + (bad ? " bad" : "");
+  setTimeout(()=>{ if(e.textContent === msg) e.textContent = ""; }, 4000);
+}
+function showErr(m){ const e = $("errbar"); e.textContent = m; e.classList.remove("hidden"); }
+function hideErr(){ $("errbar").classList.add("hidden"); }
+
+/* サーバ呼び出しを1つにまとめる。失敗はすべてここで拾う。 */
+function call(fn, args, done){
+  hideErr();
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok){ showErr((r && r.why) || "できませんでした"); return; }
+      try{ done(r); }catch(e){ showErr("画面を つくれませんでした（" + e.message + "）"); }
+    })
+    .withFailureHandler(function(e){ showErr("つうしんが できませんでした"); })
+    [fn].apply(null, args || []);
+}
+
+/* ---------------- 上部 ---------------- */
+function renderTop(){
+  $("cls").textContent = B.className;
+  $("meta").textContent = B.year + "年度　" + B.names.length + "名　粘り強さ・自己調整のノート評価";
+
+  const tabs = [["unit","単元ごと"],["term","期末評定"],["setup","設定"]];
+  $("tabs").innerHTML = "";
+  tabs.forEach(([k, label])=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(k === tab));
+    b.addEventListener("click", ()=>{ tab = k; renderTop(); showTab(); });
+    $("tabs").appendChild(b);
+  });
+
+  const seg = $("subjSeg"); seg.innerHTML = "";
+  Object.keys(B.subjects).forEach(name=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = name;
+    b.classList.toggle("closed", !B.subjects[name].open);
+    b.setAttribute("aria-pressed", String(name === subject));
+    b.addEventListener("click", ()=>{ if(name !== subject){ subject = name; unitName = null; showTab(); } });
+    seg.appendChild(b);
+  });
+}
+function showTab(){
+  ["unit","term","setup"].forEach(k => $("pane-" + k).classList.toggle("hidden", k !== tab));
+  renderTop();
+  if(tab === "unit")  loadUnit();
+  if(tab === "term")  loadTerm();
+  if(tab === "setup") renderSetup();
+}
+
+/* ---------------- 単元ごと ---------------- */
+function loadUnit(){
+  const units = (B.subjects[subject] || {}).units || [];
+  if(!units.length){ $("unitTbl").innerHTML = "<tbody><tr><td>単元がありません。設定タブで入れてください。</td></tr></tbody>"; return; }
+  if(!unitName || !units.filter(u => u.name === unitName).length) unitName = units[0].name;
+
+  const sel = $("unitSel"); sel.innerHTML = "";
+  units.forEach(u=>{
+    const o = document.createElement("option");
+    o.value = u.name;
+    o.textContent = u.name + "（No." + u.from + "〜" + u.to + "・" + u.term + "学期）"
+                  + (u.rated ? "　✓児童に見せている" : "");
+    o.selected = u.name === unitName;
+    sel.appendChild(o);
+  });
+  sel.onchange = ()=>{ unitName = sel.value; loadUnit(); };
+
+  const u = units.filter(x => x.name === unitName)[0];
+  const rb = $("ratedBtn");
+  rb.textContent = u.rated ? "児童に見せている（もどす）" : "単元の評価をする";
+  rb.className = "btn" + (u.rated ? " ghost" : "");
+  rb.onclick = ()=> call("apiSetRated", [subject, unitName, !u.rated], r=>{
+    u.rated = r.rated;
+    say(r.rated ? ("児童に見せた" + (r.adopted ? "（仮値を " + r.adopted + "人ぶん採用した）" : ""))
+               : "児童に見せないようにした");
+    loadUnit();
+  });
+
+  $("bulkNo").min = u.from; $("bulkNo").max = u.to;
+  if(!$("bulkNo").value || $("bulkNo").value < u.from || $("bulkNo").value > u.to) $("bulkNo").value = u.from;
+  if(!$("bulkSym").options.length){
+    $("bulkSym").innerHTML = ['<option value="">（消す）</option>',
+      '<option value="' + B.off + '">' + B.off + '</option>',
+      '<option value="' + B.skip + '">' + B.skip + '（評価に入れない）</option>']
+      .concat(B.syms.map(s => '<option value="' + s + '">' + s + '</option>')).join("");
+    $("bulkSym").value = B.off;
+  }
+
+  call("apiUnitTable", [subject, unitName], drawUnitTable);
+}
+
+function drawUnitTable(t){
+  $("ruleText").textContent = t.ruleText;
+  let h = '<thead><tr><th>児童</th><th>入力のならび</th><th>入力</th><th>休</th><th>/</th>' +
+          '<th>仮値</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th><th>C</th><th>D</th>' +
+          '<th>採用値</th></tr></thead><tbody>';
+  t.rows.forEach(r=>{
+    const chosen = r.final != null ? r.final : (r.prov || "");
+    h += '<tr>' +
+      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td><div class="chips">' + r.seq.map(s =>
+          '<span class="chip ' + (s ? clsOf(s) : "none") + '">' + (s || "·") + '</span>').join("") + '</div></td>' +
+      '<td class="num">' + r.n + '/' + r.total + '</td>' +
+      '<td class="num">' + (r.off || "·") + '</td>' +
+      '<td class="num">' + (r.skip || "·") + '</td>' +
+      '<td><span class="prov ' + (r.prov ? clsOf(r.prov) : "none") + '">' + (r.prov || "—") + '</span></td>' +
+      '<td class="num">' + (r.all || "—") + '</td>' +
+      '<td class="num">' + (r.high || "—") + '</td>' +
+      '<td class="warncell' + (r.top ? "" : " zero") + '">' + r.top + '</td>' +
+      '<td class="warncell' + (r.c ? "" : " zero") + '">' + r.c + '</td>' +
+      '<td class="warncell' + (r.d ? "" : " zero") + '">' + r.d + '</td>' +
+      '<td><select class="final' + (r.prov && chosen !== r.prov ? " changed" : "") + '" data-id="' + r.id + '">' +
+        '<option value="">—</option>' +
+        B.syms.map(s => '<option value="' + s + '"' + (s === chosen ? " selected" : "") + '>' + s + '</option>').join("") +
+        '</select></td></tr>';
+  });
+  $("unitTbl").innerHTML = h + "</tbody>";
+  $("unitTbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>
+      call("apiAdopt", [subject, unitName, sel.dataset.id, sel.value], ()=> say("採用値を変えた")));
+  });
+}
+
+$("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
+  say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま）"); loadUnit(); });
+$("bulkGo").onclick = ()=> call("apiBulk",
+  [subject, Number($("bulkNo").value), $("bulkSym").value, $("bulkOver").checked], r=>{
+    say(r.put + "人に入れた" + (r.over ? "（うち上書き " + r.over + "）" : "")); loadUnit(); });
+
+/* ---------------- 期末評定 ---------------- */
+function loadTerm(){
+  $("termSel").value = String(term);
+  $("termSel").onchange = ()=>{ term = Number($("termSel").value); loadTerm(); };
+  call("apiTermTable", [subject, term], drawTerm);
+}
+function drawTerm(t){
+  $("termRule").textContent = t.ruleText;
+  const n = t.rows.length || 1;
+  const want = {A:[Math.round(n*0.25), Math.round(n*0.35)], B:[Math.round(n*0.6), Math.round(n*0.75)], C:[0,1]};
+  $("dist").innerHTML = ["A","B","C"].map(k=>{
+    const v = t.dist[k];
+    return '<div class="s' + k + '" style="flex:' + Math.max(v, 0.15) + '">' + (v ? k + " " + v : "") + '</div>';
+  }).join("");
+  $("distNote").innerHTML = ["A","B","C"].map(k=>{
+    const v = t.dist[k], w = want[k];
+    const off = v < w[0] || v > w[1];
+    return '<b>' + k + '</b> ' + v + '名 ' + Math.round(v / n * 100) + '%'
+         + '<span style="color:' + (off ? "var(--warn)" : "var(--ink-faint)") + '">'
+         + '　目安 ' + w[0] + '〜' + w[1] + '名</span>';
+  }).join("　　") + '　　C 評定はよほどのことがない限り出ない。ノート評価で C・D が続き、代表値が C 帯に入った児童だけ。';
+
+  let h = '<thead><tr><th>児童</th>' + t.units.map(u => '<th>' + esc(u) + '</th>').join("") +
+          '<th>まとめ</th><th>仮評定</th><th>採用</th></tr></thead><tbody>';
+  t.rows.forEach(r=>{
+    const chosen = r.final || r.rank || "";
+    h += '<tr><td class="name">' + esc(r.name) + '</td>' +
+      r.per.map(p => '<td><span class="chip ' + (p ? clsOf(p) : "none") + '">' + (p || "·") + '</span></td>').join("") +
+      '<td class="num">' + (r.sym || "—") + '</td>' +
+      '<td>' + (r.rank ? '<span class="rank ' + r.rank + '">' + r.rank + '</span>' : "—") + '</td>' +
+      '<td><select class="final' + (r.rank && chosen !== r.rank ? " changed" : "") + '" data-id="' + r.id + '">' +
+        ["", "A", "B", "C"].map(k => '<option value="' + k + '"' + (k === chosen ? " selected" : "") + '>' +
+          (k || "—") + '</option>').join("") + '</select></td></tr>';
+  });
+  $("termTbl").innerHTML = h + "</tbody>";
+  $("termTbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>
+      call("apiSetRank", [subject, term, sel.dataset.id, sel.value], ()=>{ say("評定を変えた"); loadTerm(); }));
+  });
+}
+$("adoptRanks").onclick = ()=> call("apiAdoptRanks", [subject, term], r=>{
+  say(r.put + "人ぶん採用した"); loadTerm(); });
+$("exportBtn").onclick = ()=> call("apiExportTerm", [subject, term], r=>
+  say("シート「" + r.sheet + "」に " + r.rows + "人ぶん書き出した"));
+
+/* ---------------- 設定 ---------------- */
+function renderSetup(){
+  $("diag").innerHTML = (B.diagnose || []).map(l=>{
+    const c = l.indexOf("×") === 0 ? "ng" : l.indexOf("△") === 0 ? "warn" : "";
+    return '<div class="' + c + '">' + esc(l) + '</div>';
+  }).join("");
+
+  if(!$("aFrom").options.length){
+    const opts = B.syms.map(s => '<option value="' + s + '">' + s + '</option>').join("");
+    $("aFrom").innerHTML = opts; $("cTo").innerHTML = opts;
+  }
+  $("aFrom").value = symbolOf(B.rule.aFrom);
+  $("cTo").value   = symbolOf(B.rule.cTo);
+  $("stat").value  = B.rule.stat;
+  const p = n => String(n).padStart(2,"0");
+  $("openT").value = p(B.open.h) + ":" + p(B.open.m);
+  $("lockT").value = p(B.lock.h) + ":" + p(B.lock.m);
+
+  let h = '<thead><tr><th>教科</th><th>時数</th><th>児童に見せる</th></tr></thead><tbody>';
+  Object.keys(B.subjects).forEach(n=>{
+    const s = B.subjects[n];
+    h += '<tr><td class="name">' + esc(n) + '</td><td class="num">' + s.total + '</td>' +
+      '<td><button class="btn ' + (s.open ? "" : "ghost") + '" data-subj="' + esc(n) + '">' +
+      (s.open ? "見せている" : "見せていない") + '</button></td></tr>';
+  });
+  $("subjTbl").innerHTML = h + "</tbody>";
+  $("subjTbl").querySelectorAll("button[data-subj]").forEach(b=>{
+    b.onclick = ()=>{
+      const n = b.dataset.subj, s = B.subjects[n];
+      call("apiSaveSubject", [n, s.total, !s.open], ()=>{ say(n + " の公開を変えた"); reload(); });
+    };
+  });
+
+  editUnits = ((B.subjects[subject] || {}).units || []).map(u => ({...u}));
+  drawUnitEdit();
+  const total = (B.subjects[subject] || {}).total || 0;
+  if(!$("heldTo").value) $("heldTo").value = total;
+}
+
+function drawUnitEdit(){
+  const total = (B.subjects[subject] || {}).total || 0;
+  let h = '<thead><tr><th style="width:22px"></th><th>単元名</th><th style="width:84px">開始</th>' +
+          '<th style="width:84px">終了</th><th style="width:56px">時数</th><th style="width:92px">学期</th>' +
+          '<th style="width:200px">色</th><th style="width:56px"></th></tr></thead><tbody>';
+  editUnits.forEach((u,i)=>{
+    h += '<tr><td><span class="rowbar" style="--swc:var(--u' + (u.c % 20) + ')"></span></td>' +
+      '<td><input class="txt" data-i="' + i + '" data-k="name" value="' + esc(u.name) + '" style="width:100%"></td>' +
+      '<td><input class="txt num" type="number" data-i="' + i + '" data-k="from" value="' + u.from + '"></td>' +
+      '<td><input class="txt num" type="number" data-i="' + i + '" data-k="to" value="' + u.to + '"></td>' +
+      '<td class="num">' + Math.max(0, u.to - u.from + 1) + '</td>' +
+      '<td><select class="plain" data-i="' + i + '" data-k="term">' +
+        [1,2,3].map(t => '<option value="' + t + '"' + (u.term === t ? " selected" : "") + '>' + t + '学期</option>').join("") +
+        '</select></td>' +
+      '<td><div class="swatches">' + Array.from({length:20}, (_,c)=>c).map(c =>
+        '<button class="sw" style="background:var(--u' + c + ')" data-c="' + c + '" data-i="' + i + '"' +
+        ' aria-pressed="' + (u.c === c) + '"></button>').join("") + '</div></td>' +
+      '<td><button class="btn ghost" data-del="' + i + '">削除</button></td></tr>';
+  });
+  const t = $("unitEditTbl");
+  t.innerHTML = h + "</tbody>";
+  t.querySelectorAll("input[data-k],select[data-k]").forEach(el=>{
+    el.onchange = ()=>{
+      const u = editUnits[el.dataset.i], k = el.dataset.k;
+      if(k === "name") u.name = el.value.trim() || "（名前なし）";
+      else u[k] = Math.min(total || 9999, Math.max(1, Math.round(Number(el.value)) || 1));
+      if(k === "term") u.term = Number(el.value);
+      drawUnitEdit();
+    };
+  });
+  t.querySelectorAll("button.sw").forEach(b=>{
+    b.onclick = ()=>{ editUnits[b.dataset.i].c = Number(b.dataset.c); drawUnitEdit(); };
+  });
+  t.querySelectorAll("button[data-del]").forEach(b=>{
+    b.onclick = ()=>{ editUnits.splice(Number(b.dataset.del), 1); drawUnitEdit(); };
+  });
+
+  /* 検算。範囲の重なり・抜け・学期の逆転を出す。 */
+  const msgs = [];
+  editUnits.forEach((u,i)=>{
+    if(u.from > u.to) msgs.push("「" + u.name + "」の開始が終了より後");
+    editUnits.forEach((v,j)=>{ if(j > i && u.from <= v.to && v.from <= u.to)
+      msgs.push("「" + u.name + "」と「" + v.name + "」の範囲が重なっている"); });
+  });
+  const cov = {};
+  editUnits.forEach(u => { for(let i = u.from; i <= u.to; i++) cov[i] = 1; });
+  let miss = 0; for(let i = 1; i <= total; i++) if(!cov[i]) miss++;
+  if(miss) msgs.push("どの単元にも入らない授業が " + miss + "件");
+  const byNo = editUnits.slice().sort((a,b) => a.from - b.from);
+  for(let i = 1; i < byNo.length; i++)
+    if(byNo[i].term < byNo[i-1].term) msgs.push("学期が No の順に戻っている");
+  $("unitSaid").textContent = msgs.length ? "△ " + msgs.join(" / ") : "";
+  $("unitSaid").className = "said" + (msgs.length ? " bad" : "");
+}
+
+$("addUnit").onclick = ()=>{
+  const last = editUnits[editUnits.length - 1];
+  const from = last ? Math.min(last.to + 1, 9999) : 1;
+  editUnits.push({name:"あたらしい単元", from:from, to:from,
+                  c:editUnits.length % 20, term:last ? last.term : 1, rated:false});
+  drawUnitEdit();
+};
+$("sortUnit").onclick = ()=>{ editUnits.sort((a,b) => a.from - b.from); drawUnitEdit(); };
+$("saveUnits").onclick = ()=> call("apiSaveUnits", [subject, editUnits], ()=>{ say("単元を保存した"); reload(); });
+$("saveRule").onclick = ()=> call("apiSaveRule", [{
+  aFrom:$("aFrom").value, cTo:$("cTo").value, stat:$("stat").value,
+  open:$("openT").value, lock:$("lockT").value }], ()=>{ say("設定を保存した"); reload(); });
+$("addSubj").onclick = ()=> call("apiSaveSubject",
+  [$("newSubj").value, Number($("newTotal").value), false], ()=>{
+    say("教科を足した（まだ児童には出ない）"); $("newSubj").value = ""; $("newTotal").value = ""; reload(); });
+$("setHeld").onclick = ()=> call("apiSetHeld",
+  [subject, Number($("heldFrom").value), Number($("heldTo").value), $("heldDate").value], r=>{
+    say(r.put + "件の実施日を入れた"); B.diagnose = r.diagnose; renderSetup(); });
+
+/* ---------------- 起動 ---------------- */
+function reload(){
+  call("apiTeacherBoot", [], r=>{
+    B = r;
+    const names = Object.keys(B.subjects);
+    if(!subject || names.indexOf(subject) < 0) subject = names[0] || null;
+    if(!subject){ showErr("教科がありません。設定タブの『教科を足す』から入れてください。"); tab = "setup"; }
+    showTab();
+  });
+}
+reload();
+</script>
+</body>
+</html>

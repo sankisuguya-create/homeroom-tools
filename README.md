@@ -15,7 +15,7 @@
 | `prototypes/grid-sheet.html` | 児童画面（生成物） |
 | `prototypes/teacher-view.html` | 教師画面（生成物） |
 | `prototypes/src/` | 上の2つの元。**直すのはこちら** |
-| [`gas/`](gas/) | Google Apps Script 側。いまは Step 5（記録の読み書き）まで |
+| [`gas/`](gas/) | Google Apps Script 側。**Step 1〜9 まで実装済み**（児童画面・教師画面とも動く） |
 
 ## 週案（時間割の共同編集）
 

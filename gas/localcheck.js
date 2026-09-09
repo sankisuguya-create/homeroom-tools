@@ -78,8 +78,10 @@ function fakeSheet(name){
   }
 
   return {
+    __name: name,
     getDataRange: () => range(),
     getRange: range,
+    setFrozenColumns(){},
     getLastRow: () => v.length,
     appendRow: r => { v.push(r.slice()); },
     deleteRow: n => { v.splice(n - 1, 1); },
@@ -93,6 +95,7 @@ const sandbox = {
   SpreadsheetApp: {
     getActive: () => ({
       getSheetByName: fakeSheet,
+      deleteSheet: sh => { if(sh && sh.__name) delete SHEETS[sh.__name]; },
       insertSheet: n => { SHEETS[n] = [[]]; return fakeSheet(n) || {
         getRange: () => ({setValues(){return this;},setFontWeight(){return this;},
                           setBackground(){return this;},setNumberFormat(){return this;}}),
@@ -104,7 +107,9 @@ const sandbox = {
     const m = new Map();
     return {get: k => m.get(k) || null, put: (k,v) => m.set(k,v), remove: k => m.delete(k)};
   }},
-  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }) },
+  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }),
+             getScriptTimeZone: () => "Asia/Tokyo" },
+  Utilities: { formatDate: (d) => d.toISOString() },
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock(){} }) },
   HtmlService: {
     createHtmlOutputFromFile: n => ({
@@ -112,11 +117,14 @@ const sandbox = {
   }
 };
 sandbox.SHEETS_LEN = () => SHEETS["記録"].length;
+sandbox.SH_HAS   = n => !!SHEETS[n];
+sandbox.SH_COUNT = n => (SHEETS[n] ? 1 : 0);
+sandbox.CURRENT_EMAIL_STUDENT = () => { CURRENT_EMAIL = "sakura@example.ed.jp"; };
 vm.createContext(sandbox);
 
 /* ---- 全 .gs を1つのスコープへ。GAS と同じ形。 ---- */
 const order = ["Scale.gs","Config.gs","Roster.gs","Master.gs","Lock.gs","Hours.gs",
-               "Store.gs","Aggregate.gs","Api.gs","Code.gs","Setup.gs"];
+               "Store.gs","Aggregate.gs","Api.gs","Export.gs","Code.gs","Setup.gs"];
 const files = fs.readdirSync(DIR).filter(f => f.endsWith(".gs"));
 files.forEach(f => { if(order.indexOf(f) < 0) order.push(f); });
 
@@ -393,6 +401,73 @@ ok("diagnose が走り、行を返す",
 ok("diagnose が実施済みの授業数を見ている",
    "diagnose().join('|').indexOf('実施済みの授業') >= 0", "diagnose().join(' / ')");
 clockReal();
+
+console.log("■ 教師画面の入口");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("児童は教師の入口を呼べない",
+   "apiTeacherBoot().ok===false && apiUnitTable('算数','わり算').ok===false && " +
+   "apiSaveRule({aFrom:'A'}).ok===false && apiSaveUnits('算数',[]).ok===false && " +
+   "apiSetHeld('算数',1,2,'2026-04-10').ok===false && apiAdoptAll('算数','わり算').ok===false");
+as("sensei@example.ed.jp");
+ok("apiTeacherBoot が教科・名簿・式・診断を返す",
+   "(function(){var b=apiTeacherBoot();return b.ok && Object.keys(b.subjects).length>0 && " +
+   "b.names.length>0 && typeof b.rule.aFrom==='number' && Array.isArray(b.diagnose) && " +
+   "Array.isArray(b.syms) && b.syms.length===20;})()", "apiTeacherBoot().diagnose");
+ok("apiUnitTable が29人ぶん返す",
+   "(function(){var t=apiUnitTable('算数','九九の表とかけ算');" +
+   "return t.ok && t.rows.length===Roster.all().length && typeof t.ruleText==='string';})()",
+   "apiUnitTable('算数','九九の表とかけ算').rows[0]");
+ok("一斉入力は空欄だけに入る",
+   "(function(){var r=apiBulk('算数',3,'休',false);return r.ok && typeof r.put==='number';})()",
+   "apiBulk('算数',3,'休',false)");
+ok("採用を取り消すと仮値に戻る",
+   "(function(){apiAdopt('算数','九九の表とかけ算','s09','');" +
+   "return Final.unitValue('算数','s09','九九の表とかけ算')===null;})()");
+ok("apiAdoptAll が仮値を採用する",
+   "apiAdoptAll('算数','九九の表とかけ算',false).put >= 1",
+   "apiAdoptAll('算数','九九の表とかけ算',false)");
+ok("apiTermTable が評定と分布を返す",
+   "(function(){var t=apiTermTable('算数',1);return t.ok && t.rows.length>0 && " +
+   "t.dist && typeof t.dist.A==='number';})()", "apiTermTable('算数',1).dist");
+ok("学年末（0）は全学期の単元を見る",
+   "apiTermTable('算数',0).units.length >= apiTermTable('算数',1).units.length");
+ok("しきい値を書き換えると設定に効く",
+   "(function(){apiSaveRule({aFrom:'A'});var r=Config.rule();" +
+   "apiSaveRule({aFrom:'A+'});return r.aFrom===valueOfSym('A');})()");
+ok("開室時刻とロック時刻を書き換えられる",
+   "(function(){apiSaveRule({open:'7:30',lock:'17:00'});" +
+   "var a=Config.openTime(),b=Config.lockTime();apiSaveRule({open:'8:00',lock:'16:00'});" +
+   "return a.h===7&&a.m===30&&b.h===17;})()");
+ok("単元を入れ直せる（並べ替え・削除も1回で反映）",
+   "(function(){var u=Master.subject('算数').units.slice();" +
+   "apiSaveUnits('算数',[{name:'ためし',from:1,to:70,c:5,term:1,rated:false}]);" +
+   "var one=Master.subject('算数').units;" +
+   "apiSaveUnits('算数',u);" +
+   "return one.length===1 && one[0].name==='ためし' && Master.subject('算数').units.length===u.length;})()");
+ok("教科を足せる／公開を切り替えられる",
+   "(function(){apiSaveSubject('図工',60,false);var s=Master.subject('図工');" +
+   "apiSaveSubject('図工',60,true);var t=Master.subject('図工');" +
+   "return s.open===false && t.open===true && t.total===60;})()");
+ok("実施日をまとめて入れられる",
+   "(function(){var r=apiSetHeld('算数',26,30,'2026-05-01');" +
+   "return r.ok && r.put===5 && Master.isHeld('算数',30,new Date('2026-05-20'))===true;})()",
+   "apiSetHeld('算数',26,30,'2026-05-01')");
+ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
+ok("教師は児童を選んでその画面を見られる",
+   "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");
+clockReal();
+
+console.log("■ 出力");
+as("sensei@example.ed.jp");
+ok("通知表用の表を書き出せる",
+   "(function(){var r=exportTerm('算数',1);" +
+   "return r.ok && r.sheet==='出力_算数_1学期' && SH_HAS(r.sheet);})()",
+   "exportTerm('算数',1)");
+ok("同じ名前で作り直しても増えない",
+   "(function(){exportTerm('算数',1);exportTerm('算数',1);return SH_COUNT('出力_算数_1学期')===1;})()");
+ok("児童は書き出せない", "(function(){CURRENT_EMAIL_STUDENT();return exportTerm('算数',1).ok===false;})()");
+as("sensei@example.ed.jp");
 
 console.log("■ シートの用意");
 ev("setupSheets()");

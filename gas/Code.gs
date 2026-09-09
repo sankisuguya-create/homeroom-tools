@@ -14,7 +14,7 @@ function doGet(e){
      飛んだ先でも役割をメールから判定し直し、Api.gs 側でも毎回引き直す。 */
   let file = "student";
   if(page === "hello")   file = "hello";                              // 置いたときの確認用
-  if(page === "teacher") file = (who.role === "teacher") ? "hello" : "student";
+  if(page === "teacher") file = (who.role === "teacher") ? "teacher" : "student";
   if(who.role === "unknown") file = "hello";                          // 誰か分からない人には理由を出す
 
   const t = HtmlService.createTemplateFromFile(file);

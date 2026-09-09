@@ -140,6 +140,8 @@ h2 .fold{order:2}
   <div class="controls">
     <span class="seg-label">教科</span>
     <div class="seg" id="subjSeg"></div>
+    <a class="mini hidden" id="teacherLink" href="?p=teacher"
+       style="margin-left:auto;text-decoration:none">集計と設定 →</a>
   </div>
 
   <div class="errbar hidden" id="errbar"></div>
@@ -357,6 +359,12 @@ function scrollToNow(){
 function showErr(msg){ const e = $("errbar"); e.textContent = msg; e.classList.remove("hidden"); }
 function hideErr(){ $("errbar").classList.add("hidden"); }
 
+/* 教師のときだけ出す。リンクを出さないのは誘導であって権限ではないので、
+   飛んだ先の doGet でも役割をメールから判定し直している。 */
+function renderTeacherLink(){
+  $("teacherLink").classList.toggle("hidden", !(S.who && S.who.role === "teacher"));
+}
+
 function renderSubjSeg(){
   const seg = $("subjSeg");
   seg.innerHTML = "";
@@ -388,6 +396,7 @@ function showOnly(which){
 
 function render(){
   renderSubjSeg();
+  renderTeacherLink();
 
   if(S.closed){
     const p = n => String(n).padStart(2,"0");

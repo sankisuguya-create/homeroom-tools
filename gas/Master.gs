@@ -89,3 +89,49 @@ const Master = (function(){
 
   return {load, subjectNames, subject, isOpen, isHeld, unitOf, clearCache};
 })();
+
+/* ==================================================================
+   マスタへの書き戻し。教師画面から呼ぶ。
+   単元マスタは「その教科の行を消して入れ直す」。並べ替えや削除を
+   1回の操作で反映するには、差分を追うより入れ直すほうが確実。
+================================================================== */
+function masterSaveUnits(subject, units){
+  const sh = SpreadsheetApp.getActive().getSheetByName("単元マスタ");
+  const v  = sh.getDataRange().getValues();
+  for(let i = v.length - 1; i >= 1; i--) if(String(v[i][0]) === subject) sh.deleteRow(i + 1);
+  units.forEach(u => sh.appendRow([subject, u.name, u.from, u.to, u.c, u.term, !!u.rated]));
+  Master.clearCache();
+}
+
+function masterSaveSubject(name, total, open){
+  const sh = SpreadsheetApp.getActive().getSheetByName("教科マスタ");
+  const v  = sh.getDataRange().getValues();
+  for(let i = 1; i < v.length; i++){
+    if(String(v[i][0]) === name){
+      sh.getRange(i + 1, 2, 1, 2).setValues([[total, !!open]]);
+      Master.clearCache();
+      return;
+    }
+  }
+  sh.appendRow([name, total, !!open]);
+  Master.clearCache();
+}
+
+/* 授業マスタの実施日をまとめて入れる。ここが空だと児童は1つも入力できない。 */
+function masterSetHeld(subject, from, to, dateStr){
+  const sh = SpreadsheetApp.getActive().getSheetByName("授業マスタ");
+  const v  = sh.getDataRange().getValues();
+  const at = {};
+  for(let i = 1; i < v.length; i++)
+    if(String(v[i][0]) === subject) at[Number(v[i][1])] = i + 1;
+
+  const d = dateStr ? toDate_(dateStr) : null;
+  let n = 0;
+  for(let no = from; no <= to; no++){
+    if(at[no]) sh.getRange(at[no], 3).setValue(d || "");
+    else       sh.appendRow([subject, no, d || ""]);
+    n++;
+  }
+  Master.clearCache();
+  return n;
+}

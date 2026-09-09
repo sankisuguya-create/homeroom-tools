@@ -1,13 +1,14 @@
 # GAS 側
 
-`prototypes/` を Google Apps Script に載せたもの。**いまは児童画面まで動く**（シート・スケール・本人確認・記録の読み書き・集計・児童画面）。残るのは教師画面。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
+`prototypes/` を Google Apps Script に載せたもの。**Step 1〜9 まで実装済み。** シート・スケール・本人確認・記録の読み書き・集計・児童画面・教師画面・一斉入力・学期・出力。手順の全体は [`../docs/implementation-plan.md`](../docs/implementation-plan.md)、仕様は [`../docs/spec.md`](../docs/spec.md)。
 
 ## 貼る前に手元で確かめる
 
 ```
 node gas/localcheck.js          サーバのコードを走らせて確かめる（94項目）
-node gas/preview.js             児童画面を1枚の HTML に書き出す
-node gas/preview.js out.png     playwright-core があれば png も撮る
+node gas/preview.js                    児童画面を1枚の HTML に書き出す
+node gas/preview.js out.png            playwright-core があれば png も撮る
+node gas/preview.js out.png teacher    教師画面を見る
 ```
 
 `preview.js` は、gas/ のサーバコードをブラウザの中で動かし、`student.html` を実際に描く。`google.script.run` をその場の関数呼び出しに差し替えているだけなので、**画面もサーバも本物**が動く。Google のアカウントも配置も要らない。書き出した HTML はそのままブラウザで開ける。
@@ -33,6 +34,8 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 | `Aggregate.gs` | 単元評価・期末評定の計算と、確定シート |
 | `Api.gs` | 画面から `google.script.run` で呼ぶ入口 |
 | `student.html` | 児童画面 |
+| `teacher.html` | 教師画面（単元ごと／期末評定／設定） |
+| `Export.gs` | 通知表用の表の書き出し・シートのメニュー |
 | `tokens.html` `material.html` | 色と材質（**生成物**） |
 | `Code.gs` | `doGet`・役割の判定 |
 | `hello.html` | Step 3 の確認画面 |
@@ -54,8 +57,8 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
    | 種類 | 名前 | 作り方 |
    |---|---|---|
    | マニフェスト | `appsscript.json` | **既存のものを上書き**（新規作成ではない） |
-   | スクリプト | `Scale` `Config` `Roster` `Master` `Lock` `Hours` `Store` `Aggregate` `Api` `Code` `Setup` | `+` → スクリプト。拡張子は付けない |
-   | HTML | `scale` `tokens` `material` `student` `hello` | `+` → HTML。拡張子は付けない |
+   | スクリプト | `Scale` `Config` `Roster` `Master` `Lock` `Hours` `Store` `Aggregate` `Api` `Export` `Code` `Setup` | `+` → スクリプト。拡張子は付けない |
+   | HTML | `scale` `tokens` `material` `student` `teacher` `hello` | `+` → HTML。拡張子は付けない |
    | 貼らない | `localcheck.js` `preview.js` `README.md` | 手元専用 |
 
 5. `setupSheets` を実行 → シート7枚ができる
@@ -135,7 +138,21 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 押した本人には「押したのに変わらない」としか見えない。
 **押した時点で全員の仮値を採用してから見せる。** すでに教師が直した値は残す。
 
-## 次
+## 教師画面
 
-- `teacher.html` — 教師画面。`Aggregate.gs` の計算はもう載っているので、
-  `prototypes/teacher-view.html` の描画を `google.script.run` につなぐだけ
+`?p=teacher` で開く。児童画面の教師表示からもリンクが出る。**リンクを出さないのは
+誘導であって権限ではないので、飛んだ先でも役割をメールから判定し直している。**
+
+| タブ | できること |
+|---|---|
+| 単元ごと | 29人 × 単元の一覧、仮値と指標、採用、一斉入力、「単元の評価をする」 |
+| 期末評定 | しきい値のもとでの仮評定、分布と目安、採用、通知表用の表の書き出し |
+| 設定 | いまの状態（diagnose）、しきい値と時刻、教科の追加と公開、単元の範囲・色・学期、授業の実施日 |
+
+**最初に見るのは設定タブの「いまの状態」。** 児童の画面に何が出るか、出ないなら何が
+足りないかがそのまま並ぶ。
+
+## 残っていること
+
+実装としては Step 9 まで終わっている。運用しながら決めるものは
+[`../docs/implementation-plan.md`](../docs/implementation-plan.md) の6節。

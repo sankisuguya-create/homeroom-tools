@@ -82,7 +82,7 @@ function checkSheets(){
    diagnose() — 児童の画面に何が出るか、出ないなら何が足りないかを見る。
    エディタから実行する。児童アカウントで開く前にこれで潰しておく。
 ================================================================== */
-function diagnose(){
+function diagnoseLines(){
   const out = [];
   const ss  = SpreadsheetApp.getActive();
   const row = name => {
@@ -146,6 +146,12 @@ function diagnose(){
   out.push("○ 児童が使える時間 " + p(a.h) + ":" + p(a.m) + "〜" + p(b.h) + ":" + p(b.m)
          + "（いま " + (Hours.isClosed() ? "閉室中" : "開室中") + "）");
 
+  return out;
+}
+
+/* エディタから実行する用。中身は diagnoseLines と同じ。 */
+function diagnose(){
+  const out = diagnoseLines();
   SpreadsheetApp.getUi().alert("児童の画面がどうなるか\n\n" + out.join("\n"));
   return out;
 }

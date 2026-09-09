@@ -116,3 +116,180 @@ function apiSetRated(subject, unitName, rated){
   Master.clearCache();
   return {ok:true, rated: !!rated, adopted: adopted};
 }
+
+/* ==================================================================
+   教師画面から呼ぶ入口。すべて役割をメールから引き直す。
+================================================================== */
+function teacherOnly_(){
+  const who = whoAmI();
+  return who.role === "teacher" ? null : {ok:false, why:"先生だけです"};
+}
+
+function apiTeacherBoot(){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const subjects = {};
+  const all = Master.load().subjects;
+  Object.keys(all).forEach(n => {
+    subjects[n] = {name:n, total:all[n].total, open:all[n].open, units:all[n].units};
+  });
+  return {
+    ok: true,
+    className: Config.className(), year: Config.year(),
+    subjects: subjects,
+    names: Roster.all().map(s => ({id:s.id, no:s.no, name:s.name})),
+    rule: Config.rule(),
+    lock: Config.lockTime(), open: Config.openTime(),
+    syms: ALL_SYMS, off: OFF, skip: SKIP,
+    diagnose: diagnoseLines()
+  };
+}
+
+/* 単元1つ × 29人。仮値・指標・採用値をまとめて返す。 */
+function apiUnitTable(subject, unitName){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const subj = Master.subject(subject);
+  if(!subj) return {ok:false, why:"その教科はありません"};
+  const u = subj.units.filter(x => x.name === unitName)[0];
+  if(!u) return {ok:false, why:"その単元はありません"};
+
+  const all  = Store.readAll(subject);
+  const R    = Config.rule();
+  const rows = Roster.all().map(st => {
+    const rec = all[st.id] || {};
+    const s   = Aggregate.summarize(rec, u, R);
+    const seq = [];
+    for(let no = u.from; no <= u.to; no++) seq.push(rec[no] || null);
+    return {
+      id: st.id, name: st.name, seq: seq,
+      n: s.n, total: s.total, off: s.off, skip: s.skip,
+      prov: s.provSym, all: symbolOfMedian(s.all),
+      high: s.high ? symbolOf(s.high) : null,
+      top: s.top, c: s.c, d: s.d,
+      final: Final.unitValue(subject, st.id, unitName)
+    };
+  });
+  return {ok:true, unit:u, rows:rows, rule:R, ruleText: ruleText_(R)};
+}
+
+function ruleText_(R){
+  const stat = R.stat;
+  return "A ≧ " + symbolOf(R.aFrom) + " / C ≦ " + symbolOf(R.cTo)
+       + " ／ 代表値：" + stat + (stat === "後半の中央値" ? "（後半 1/" + R.late + "）" : "")
+       + (R.withD ? "" : " ／ D を除く") + (R.withC ? "" : " ／ C を除く");
+}
+
+/* 採用。値を空にすると採用を取り消す（仮値に戻る）。 */
+function apiAdopt(subject, unitName, studentId, value){
+  const bad = teacherOnly_(); if(bad) return bad;
+  return Final.set(subject, studentId, "単元", unitName, value);
+}
+
+/* 仮値をまとめて採用する。すでに採用済みのものは触らない。 */
+function apiAdoptAll(subject, unitName, overwrite){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const subj = Master.subject(subject);
+  const u = subj && subj.units.filter(x => x.name === unitName)[0];
+  if(!u) return {ok:false, why:"その単元はありません"};
+  const all = Store.readAll(subject);
+  let n = 0;
+  Roster.all().forEach(st => {
+    if(!overwrite && Final.unitValue(subject, st.id, unitName)) return;
+    const s = Aggregate.summarize(all[st.id] || {}, u);
+    if(s.provSym){ Final.set(subject, st.id, "単元", unitName, s.provSym); n++; }
+  });
+  return {ok:true, put:n};
+}
+
+/* 一斉入力。既定は空欄だけ。 */
+function apiBulk(subject, no, sym, overwrite){
+  const bad = teacherOnly_(); if(bad) return bad;
+  return Store.bulk(subject, no, sym, overwrite);
+}
+
+/* 期末評定。選んだ学期の単元だけで出す。0 は学年末（全学期）。 */
+function apiTermTable(subject, term){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const subj = Master.subject(subject);
+  if(!subj) return {ok:false, why:"その教科はありません"};
+  const units = term ? subj.units.filter(u => u.term === term) : subj.units;
+  const all   = Store.readAll(subject);
+  const R     = Config.rule();
+
+  const rows = Roster.all().map(st => {
+    const per = units.map(u => {
+      const f = Final.unitValue(subject, st.id, u.name);
+      if(f) return f;
+      return Aggregate.summarize(all[st.id] || {}, u, R).provSym;
+    });
+    const t = Aggregate.termValue(per, R);
+    return {
+      id: st.id, name: st.name, per: per,
+      sym: t.v ? symbolOf(t.v) : null, rank: t.rank,
+      final: Final.termRank(subject, st.id, term)
+    };
+  });
+  const dist = {A:0, B:0, C:0};
+  rows.forEach(r => { const k = r.final || r.rank; if(k) dist[k]++; });
+  return {ok:true, units:units.map(u => u.name), rows:rows,
+          dist:dist, rule:R, ruleText: ruleText_(R)};
+}
+
+function apiSetRank(subject, term, studentId, rank){
+  const bad = teacherOnly_(); if(bad) return bad;
+  return Final.set(subject, studentId, "学期", term, rank);
+}
+
+function apiAdoptRanks(subject, term){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const t = apiTermTable(subject, term);
+  if(!t.ok) return t;
+  let n = 0;
+  t.rows.forEach(r => { if(r.rank){ Final.set(subject, r.id, "学期", term, r.rank); n++; } });
+  return {ok:true, put:n};
+}
+
+/* ---- 設定 ---- */
+function apiSaveRule(r){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const p = {};
+  if(r.aFrom) p["A下限"]   = r.aFrom;
+  if(r.cTo)   p["C上限"]   = r.cTo;
+  if(r.stat)  p["代表値"]   = r.stat;
+  if(r.late)  p["後半の範囲"] = r.late;
+  if(r.lock)  p["ロック時刻"] = r.lock;
+  if(r.open)  p["開室時刻"]  = r.open;
+  configSet(p);
+  return {ok:true, rule: Config.rule(), lock: Config.lockTime(), open: Config.openTime()};
+}
+
+function apiSaveUnits(subject, units){
+  const bad = teacherOnly_(); if(bad) return bad;
+  masterSaveUnits(subject, units);
+  return {ok:true, units: Master.subject(subject).units};
+}
+
+function apiSaveSubject(name, total, open){
+  const bad = teacherOnly_(); if(bad) return bad;
+  if(!name) return {ok:false, why:"教科名が空です"};
+  masterSaveSubject(String(name).trim(), Number(total) || 0, !!open);
+  return {ok:true, subjects: Master.load().subjects};
+}
+
+function apiSetHeld(subject, from, to, dateStr){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const n = masterSetHeld(subject, Number(from), Number(to), dateStr);
+  return {ok:true, put:n, diagnose: diagnoseLines()};
+}
+
+function apiDiagnose(){
+  const bad = teacherOnly_(); if(bad) return bad;
+  return {ok:true, lines: diagnoseLines()};
+}
+
+/* 教師が児童の画面を見る。名簿から誰の分かを選べる。 */
+function apiReadAs(subject, studentId){
+  const bad = teacherOnly_(); if(bad) return bad;
+  const rows = Store.read(subject, studentId);
+  return {ok:true, subject:subject, rows:rows,
+          units: Aggregate.unitsForStudent(subject, studentId, rows)};
+}
