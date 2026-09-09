@@ -26,6 +26,7 @@ const DEFAULTS = [
   ["C上限",       "C++"],
   ["代表値",      "後半の中央値"],
   ["後半の範囲",  3],
+  ["Y解放",       false],
   ["Dを含める",   true],
   ["Cを含める",   true],
   ["教師メール",  ""]
@@ -140,6 +141,12 @@ function diagnoseLines(){
            + (held ? "" : "。授業マスタに実施日を入れる。0 だと児童は1つも入力できない"));
   });
 
+  /* 5.5 上端の解放 */
+  out.push((Config.released() ? "○ " : "△ ") + RELEASE_FROM + " 以上（"
+         + LEVELS.filter(isReleaseSym).join("・") + "）は児童に"
+         + (Config.released() ? "出している" : "出していない")
+         + "。設定シートの「" + RELEASE_FROM + "解放」で変える");
+
   /* 6. 時間 */
   const a = Config.openTime(), b = Config.lockTime();
   const p = x => String(x).padStart(2, "0");
@@ -154,4 +161,39 @@ function diagnose(){
   const out = diagnoseLines();
   SpreadsheetApp.getUi().alert("児童の画面がどうなるか\n\n" + out.join("\n"));
   return out;
+}
+
+/* ==================================================================
+   migrateSymbols() — 上端の記号を新しい並びに置き換える。
+
+   Z−(17) Z(18) Z+(19) Z++(20) → Z(17) Z+(18) Y(19) Y+(20)
+
+   **内部値は動かない。** 位置で対応させているので、置換しても
+   その児童の順位も単元評価も変わらない。変わるのは表示の記号だけ。
+   1回だけ実行する。2回目は置き換えるものが無いので何も起きない
+   ……のではなく、Z → Z+ が二重にかかる。**必ず1回だけ。**
+================================================================== */
+function migrateSymbols(){
+  const ss = SpreadsheetApp.getActive();
+  const done = [];
+
+  [["記録", 4], ["確定", 5]].forEach(([name, col])=>{
+    const sh = ss.getSheetByName(name);
+    if(!sh || sh.getLastRow() < 2) return;
+    const n = sh.getLastRow() - 1;
+    const v = sh.getRange(2, col, n, 1).getValues();
+    let hit = 0;
+    for(let i = 0; i < n; i++){
+      const cur = String(v[i][0]);
+      if(SYM_MIGRATION[cur] !== undefined){ v[i][0] = SYM_MIGRATION[cur]; hit++; }
+    }
+    if(hit){ sh.getRange(2, col, n, 1).setValues(v); }
+    done.push(name + " " + hit + "件");
+  });
+
+  SpreadsheetApp.getUi().alert(
+    "上端の記号を置き換えた\n\n" + done.join("\n") +
+    "\n\nZ− → Z / Z → Z+ / Z+ → Y / Z++ → Y+" +
+    "\n内部の順位は動いていない。\n\n※ 2回実行すると二重にかかる。1回だけ。");
+  return done;
 }

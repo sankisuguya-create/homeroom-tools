@@ -487,7 +487,8 @@ function renderBulk(){
     '<option value="'+SKIP+'">'+SKIP+'（評価に入れない）</option>' +
     '<option value="'+OFF+'">'+OFF+'</option>' +
     BASES.map(b => '<optgroup label="'+b+'">' +
-      MODS.map(m => '<option value="'+b+m.s+'">'+b+m.s+'</option>').join("") + '</optgroup>').join("");
+      LEVELS.filter(x => baseOfSym(x) === b)
+            .map(x => '<option value="'+x+'">'+x+'</option>').join("") + '</optgroup>').join("");
   updateBulkCount();
 }
 function bulkTargets(){
@@ -546,7 +547,8 @@ function renderFormula(){
     "評価しているのは態度なので、<b>D「やるべきことを何もしていない」は欠測ではなく最も重い観測値</b>。" +
     "本物の欠測は <code>休</code>（児童がいなかった）と <code>/</code>（その授業を評価に含めない）で、" +
     "どちらも常に除外する。" +
-    "<code>++</code> は <code>+</code> とは別の段で、次の文字の一つ手前に座る（A++ は A+ と Z− のあいだ）。" +
+    "<code>++</code> は <code>+</code> とは別の段。A++ は A+ と Z のあいだに座る。" +
+    "上端の Z と Y は 2段ずつ（Z / Z+ / Y / Y+）。" +
     "中央値が2段の間に落ちたときは下側を採る。" +
     "基本字は上に足せる（<code>Z</code> の上に <code>Y</code> など）。足しても既存の段の値は動かない。";
   box.appendChild(p);

@@ -88,6 +88,11 @@ const Store = (function(){
        画面に出さないのは誘導であって、権限の実装ではない。 */
     if(s === SKIP && !isTeacher) return {ok:false, why:"/ は先生がつけます"};
 
+    /* Y 以上は、教師が解放するまで児童から書けない。
+       選択肢に出さないのも誘導であって、権限はここで守る。 */
+    if(s !== null && !isTeacher && isReleaseSym(s) && !Config.released())
+      return {ok:false, why:"その きごうは まだ つかえません"};
+
     const n = Number(no);
     const subj = Master.subject(subject);
     if(!subj || !n || n < 1 || n > subj.total) return {ok:false, why:"その授業はありません"};

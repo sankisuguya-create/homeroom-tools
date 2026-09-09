@@ -43,6 +43,13 @@ const Config = (function(){
   /* 開室時刻。ここから児童が使える。 */
   function openTime(){ return timeOf("開室時刻", 8, 0); }
 
+  /* Y 以上を児童に出すか。既定は出さない。教師が設定で解放する。
+     出さないだけでなく、保存も断る（Store.save）。 */
+  function released(){
+    const v = get(RELEASE_FROM + "解放", false);
+    return v === true || String(v).toUpperCase() === "TRUE";
+  }
+
   function teacherEmails(){
     return String(get("教師メール", ""))
       .split(/[\s,、]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -60,7 +67,7 @@ const Config = (function(){
     };
   }
 
-  return {get, lockTime, openTime, teacherEmails, rule, clearCache,
+  return {get, lockTime, openTime, released, teacherEmails, rule, clearCache,
           className: () => String(get("学級", "")),
           year:      () => Number(get("年度", 0))};
 })();

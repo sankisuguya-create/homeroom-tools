@@ -173,6 +173,10 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
         <span class="note">ロック</span><input class="txt num" id="lockT" placeholder="16:00">
         <button class="btn" id="saveRule">保存</button>
       </div>
+      <div class="card actions" style="margin-top:8px">
+        <span class="note" id="relNote"></span>
+        <button class="btn ghost" id="relBtn"></button>
+      </div>
       <p class="note">記号は児童のやる気のために実態より上へ振ってあるので、記号と評定は一致しない。
         実際に A 評定になるのは <b>A+ 以上</b>。記号の A や A− は評定では B に落ちる。
         <b>閉室はロック時刻と同じ瞬間</b>に起きる。</p>
@@ -416,6 +420,17 @@ function renderSetup(){
   const p = n => String(n).padStart(2,"0");
   $("openT").value = p(B.open.h) + ":" + p(B.open.m);
   $("lockT").value = p(B.lock.h) + ":" + p(B.lock.m);
+
+  /* 上端（Y 以上）の解放。既定は児童に出さない。 */
+  $("relNote").innerHTML = "<b>" + B.releaseSyms.join("・") + "</b> は、いま児童に"
+    + (B.released ? "<b>出している</b>" : "出していない")
+    + "。天井を突き抜けた児童が出てきたときに開ける。開けるまでは、"
+    + "児童のプルダウンにも出ないし、サーバも児童からの保存を断る。";
+  const rb2 = $("relBtn");
+  rb2.textContent = B.released ? (B.releaseFrom + " をかくす") : (B.releaseFrom + " を児童にひらく");
+  rb2.className = "btn" + (B.released ? " ghost" : "");
+  rb2.onclick = ()=> call("apiSaveRule", [{released: !B.released}], ()=>{
+    say(B.released ? (B.releaseFrom + " をかくした") : (B.releaseFrom + " をひらいた")); reload(); });
 
   let h = '<thead><tr><th>教科</th><th>時数</th><th>児童に見せる</th></tr></thead><tbody>';
   Object.keys(B.subjects).forEach(n=>{

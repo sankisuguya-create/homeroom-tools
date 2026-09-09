@@ -26,6 +26,7 @@ function apiBoot(subject){
     lock:      Config.lockTime(),
     open:      Config.openTime(),
     closed:    Hours.isClosedFor(who, at),
+    released:  Config.released(),
     toClose:   Hours.minutesToClose(at)
   };
   /* 教科が1つも無いときは、その理由まで返す。
@@ -139,6 +140,8 @@ function apiTeacherBoot(){
     names: Roster.all().map(s => ({id:s.id, no:s.no, name:s.name})),
     rule: Config.rule(),
     lock: Config.lockTime(), open: Config.openTime(),
+    released: Config.released(), releaseFrom: RELEASE_FROM,
+    releaseSyms: LEVELS.filter(isReleaseSym),
     syms: ALL_SYMS, off: OFF, skip: SKIP,
     diagnose: diagnoseLines()
   };
@@ -252,6 +255,7 @@ function apiAdoptRanks(subject, term){
 function apiSaveRule(r){
   const bad = teacherOnly_(); if(bad) return bad;
   const p = {};
+  if(r.released !== undefined) p[RELEASE_FROM + "解放"] = !!r.released;
   if(r.aFrom) p["A下限"]   = r.aFrom;
   if(r.cTo)   p["C上限"]   = r.cTo;
   if(r.stat)  p["代表値"]   = r.stat;
@@ -259,7 +263,8 @@ function apiSaveRule(r){
   if(r.lock)  p["ロック時刻"] = r.lock;
   if(r.open)  p["開室時刻"]  = r.open;
   configSet(p);
-  return {ok:true, rule: Config.rule(), lock: Config.lockTime(), open: Config.openTime()};
+  return {ok:true, rule: Config.rule(), lock: Config.lockTime(),
+          open: Config.openTime(), released: Config.released()};
 }
 
 function apiSaveUnits(subject, units){

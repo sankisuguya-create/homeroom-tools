@@ -55,7 +55,7 @@ for(var i=1;i<=70;i++) SH["授業マスタ"].push(["算数",i, i<=25 ? "2026-05-
 var SEED=["B","B+","B","A−","B+","A","休","B+","A−","A","A+","A","B+","Z","B","/","C","B+","A−","A++","A","A+"];
 var NOW=new Date("2026-05-22T12:00:00+09:00");
 var ALL=["D−","D","D+","D++","C−","C","C+","C++","B−","B","B+","B++",
-         "A−","A","A+","A++","Z−","Z","Z+","Z++"];
+         "A−","A","A+","A++","Z","Z+","Y","Y+"];
 SH["名簿"].slice(1).forEach(function(st, si){
   for(var i=0;i<SEED.length;i++){
     var sym = (si===0) ? SEED[i]

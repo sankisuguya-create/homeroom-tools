@@ -198,16 +198,22 @@ function paint(sel, sym){
 
 /* / は授業側の都合なので教師だけが置く。すでに入っているセルでは残す。 */
 function optionsHTML(cur){
-  const withSkip = (S.who.role === "teacher") || cur === SKIP;
+  const teacher  = S.who.role === "teacher";
+  const withSkip = teacher || cur === SKIP;
   let h = '<option value="">‥</option>' +
           '<optgroup label="評価に入れない">' +
           '<option value="' + OFF + '">' + OFF + '</option>' +
           (withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : '') +
           '</optgroup>';
+  /* Y 以上は、教師が解放するまで児童に出さない。
+     すでに入っている記号は、値が消えないよう残す。 */
+  const allowed = symsFor({released: teacher || !!S.released, keep: cur});
   BASES.forEach(b=>{
-    h += '<optgroup label="' + b + '">';
-    MODS.forEach(m => { h += '<option value="' + (b+m.s) + '">' + (b+m.s) + '</option>'; });
-    h += '</optgroup>';
+    const syms = allowed.filter(x => baseOfSym(x) === b);
+    if(!syms.length) return;
+    h += '<optgroup label="' + b + '">' +
+         syms.map(x => '<option value="' + x + '">' + x + '</option>').join("") +
+         '</optgroup>';
   });
   return h;
 }

@@ -66,5 +66,7 @@ function onOpen(){
     .addItem("いまの状態を見る（diagnose）", "diagnose")
     .addItem("シートを作る（setup）", "setupSheets")
     .addItem("キャッシュを消す", "clearAllCache")
+    .addSeparator()
+    .addItem("上端の記号を置き換える（1回だけ）", "migrateSymbols")
     .addToUi();
 }

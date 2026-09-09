@@ -21,7 +21,7 @@ const SHEETS = {
   "設定": [["キー","値"],
     ["学級","3年3組"],["年度",2026],["開室時刻","8:00"],["ロック時刻","16:00"],
     ["A下限","A+"],["C上限","C++"],["代表値","後半の中央値"],["後半の範囲",3],
-    ["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
+    ["Y解放",false],["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
   "教科マスタ": [["教科","時数","公開"],
     ["算数",70,true],["国語",60,true],["体育",105,false],["社会",70,false]],
   "名簿": [["児童ID","出席番号","氏名","メール"],
@@ -143,6 +143,19 @@ const ok = (label, expr, show) => {
   if(!pass) ng++;
 };
 
+/* 検査のあいだだけ時計を止める。これをしないと、回した時刻で結果が変わる。 */
+const RealDate = Date;
+function clockAt(iso){
+  const t = new RealDate(iso).getTime();
+  class D extends RealDate {
+    constructor(...a){ if(!a.length) super(t); else super(...a); }
+    static now(){ return t; }
+  }
+  sandbox.Date = D;
+}
+function clockReal(){ sandbox.Date = RealDate; }
+
+const as = e => { CURRENT_EMAIL = e; ev("clearAllCache()"); };
 console.log("■ 読み込み（構文と、ファイル間の参照）");
 order.forEach(f => {
   try { new vm.Script(fs.readFileSync(path.join(DIR, f), "utf8"), {filename: f}).runInContext(sandbox);
@@ -161,6 +174,46 @@ ok("休 と / は突破層でも警告層でもない",
    "isTopSym('休') === false && isWarnSym('/') === false");
 ok("Object.prototype.valueOf を壊していない",
    "typeof Object.prototype.valueOf === 'function' && ({}).valueOf() !== undefined");
+
+console.log("■ 上端（Z を2段にして Y を足した）");
+ok("20段のまま", "NLEVEL === 20");
+ok("上端は Z Z+ Y Y+", "LEVELS.slice(16).join(' ') === 'Z Z+ Y Y+'", "LEVELS.slice(16)");
+ok("Z− と Z++ はもう無い", "valueOfSym('Z−') === null && valueOfSym('Z++') === null");
+ok("下の4帯は4段のまま", "LEVELS.slice(0,16).join(' ') === 'D− D D+ D++ C− C C+ C++ B− B B+ B++ A− A A+ A++'");
+ok("突破層は Z 以上の4つ", "LEVELS.filter(isTopSym).join(' ') === 'Z Z+ Y Y+'");
+ok("材質は字ごと（Z=金・Y=宇宙）",
+   "lookOf('Z')==='foil-gold' && lookOf('Z+')==='foil-gold' && " +
+   "lookOf('Y')==='foil-cosmic' && lookOf('Y+')==='foil-cosmic'");
+ok("帯ごとの段数を引ける",
+   "bandStart('Z')===17 && bandSize('Z')===2 && bandStart('Y')===19 && bandSize('Y')===2 && " +
+   "bandStart('A')===13 && bandSize('A')===4");
+ok("児童の選択肢から Y 以上が落ちる",
+   "symsFor({released:false}).indexOf('Y') < 0 && symsFor({released:true}).indexOf('Y') >= 0");
+ok("すでに入っている Y+ は選択肢に残る（値が消えないように）",
+   "symsFor({released:false, keep:'Y+'}).indexOf('Y+') >= 0");
+ok("置換表は位置を保つ（内部値が動かない）",
+   "valueOfSym(SYM_MIGRATION['Z−'])===17 && valueOfSym(SYM_MIGRATION['Z'])===18 && " +
+   "valueOfSym(SYM_MIGRATION['Z+'])===19 && valueOfSym(SYM_MIGRATION['Z++'])===20");
+ok("評定のしきい値は記号から引くのでずれない",
+   "Config.rule().aFrom === valueOfSym('A+') && Config.rule().cTo === valueOfSym('C++')");
+
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("解放前は児童が Y を保存できない",
+   "Store.save('算数', 2, 'Y').ok === false", "Store.save('算数',2,'Y')");
+ok("Z は解放前でも保存できる", "Store.save('算数', 2, 'Z').ok === true", "Store.save('算数',2,'Z')");
+as("sensei@example.ed.jp");
+ok("教師は解放前でも Y を置ける", "Store.saveAs('算数','s09',2,'Y+').ok === true");
+ok("apiSaveRule で解放できる",
+   "(function(){apiSaveRule({released:true});return Config.released()===true;})()");
+as("sakura@example.ed.jp");
+ok("解放後は児童も Y を保存できる", "Store.save('算数', 2, 'Y').ok === true", "Store.save('算数',2,'Y')");
+as("sensei@example.ed.jp");
+ok("戻せる", "(function(){apiSaveRule({released:false});return Config.released()===false;})()");
+ok("teacherBoot が解放の状態と対象記号を返す",
+   "(function(){var b=apiTeacherBoot();return b.released===false && b.releaseFrom==='Y' && " +
+   "b.releaseSyms.join(' ')==='Y Y+';})()", "apiTeacherBoot().releaseSyms");
+clockReal();
 
 console.log("■ 設定");
 ok("ロック時刻は 16:00", "Config.lockTime().h === 16 && Config.lockTime().m === 0", "Config.lockTime()");
@@ -205,7 +258,6 @@ ok("実施日が未来の授業は未実施", "Master.isHeld('算数', 70, new D
 ok("実施日が無い授業は未実施", "Master.isHeld('算数', 5, new Date('2026-05-20')) === false");
 
 console.log("■ 役割の判定");
-const as = e => { CURRENT_EMAIL = e; ev("clearAllCache()"); };
 as("sakura@example.ed.jp");
 ok("児童として判定される", "whoAmI().role === 'student' && whoAmI().name === 'さくら'", "whoAmI()");
 as("sensei@example.ed.jp");
@@ -242,17 +294,6 @@ ok("閉まっているときは null", "Hours.minutesToClose(t2000) === null");
 console.log("■ 保存（サーバ側が弾くもの）");
 /* save() は「いまの時刻」で動くので、検査のあいだだけ時計を止める。
    これをしないと、検査を回した時刻で結果が変わる。 */
-const RealDate = Date;
-function clockAt(iso){
-  const t = new RealDate(iso).getTime();
-  class D extends RealDate {
-    constructor(...a){ if(!a.length) super(t); else super(...a); }
-    static now(){ return t; }
-  }
-  sandbox.Date = D;
-}
-function clockReal(){ sandbox.Date = RealDate; }
-
 clockAt("2026-05-20T12:00:00+09:00");      // 開いている時間
 as("sakura@example.ed.jp");
 ok("児童は / を置けない", "Store.save('算数', 1, '/').ok === false");
