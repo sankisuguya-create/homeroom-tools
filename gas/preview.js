@@ -117,6 +117,7 @@ var _cache = {};
 var CacheService = { getScriptCache:function(){ return {
   get:function(k){ return _cache[k] || null; },
   put:function(k,v){ _cache[k]=v; },
+  putAll:function(o){ Object.keys(o).forEach(function(k){ _cache[k]=o[k]; }); },
   remove:function(k){ delete _cache[k]; } }; } };
 var Session = {
   getActiveUser:function(){ return {getEmail:function(){ return CURRENT_EMAIL; }}; },

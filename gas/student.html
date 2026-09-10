@@ -136,6 +136,17 @@ h2 .fold{order:2}
 .loading .mark{width:34px;height:34px;border-radius:50%;
   border:3px solid var(--rule-soft);border-top-color:var(--ink-faint);
   animation:spin 1.1s linear infinite}
+
+/* 待たせているあいだ、画面を物理的に覆う。
+   下の操作に触れないので、待っているあいだの連打が起きない。 */
+.busy{position:fixed;inset:0;z-index:99;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(252,251,247,.92);backdrop-filter:blur(2px)}
+.busy .mark{width:66px;height:66px;border-radius:50%;
+  border:5px solid var(--rule-soft);border-top-color:var(--accent);
+  animation:spin 1.05s linear infinite}
+.busy .msg{font-size:26px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+.busy .sub{font-size:14px;color:var(--ink-soft)}
 .soonbar{border:1px solid var(--open-line);background:var(--open-cell);
   border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
 .soonbar b{font-family:"IBM Plex Mono",monospace}
@@ -151,6 +162,12 @@ h2 .fold{order:2}
     <div class="seg" id="subjSeg"></div>
     <a class="mini hidden" id="teacherLink" target="_top"
        style="margin-left:auto;text-decoration:none">集計と設定 →</a>
+  </div>
+
+  <div class="busy hidden" id="busy">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="msg" id="busyMsg">よみこみ中…</p>
+    <p class="sub">まってね</p>
   </div>
 
   <div class="errbar hidden" id="errbar"></div>
@@ -208,6 +225,19 @@ function paint(sel, sym){
   else if(sym[0] === "A") sel.classList.add("is-a");
 }
 
+/* 選択肢は**開くまで作らない**。
+   70個の select に15段ぶんを最初から入れると option が1000個を超え、
+   端末では表の組み立てだけで 186ms かかる（実測）。
+   閉じている select は選んでいる1つしか見せないので、最初はそれだけ置き、
+   初めて触ったときに残りを足す。 */
+function fillOptions(sel, cur){
+  if(sel.dataset.full) return;
+  sel.dataset.full = "1";
+  const keep = sel.value;
+  sel.innerHTML = optionsHTML(cur === undefined ? keep : cur);
+  sel.value = keep;
+}
+
 /* / は授業側の都合なので教師だけが置く。すでに入っているセルでは残す。 */
 function optionsHTML(cur){
   const teacher  = S.who.role === "teacher";
@@ -248,22 +278,46 @@ function applyCellState(c, l){
   paint(sel, l.sym);
 }
 
+/* 表は**1回で組み立てる**。70個ぶんを1つの文字列にしてから流し込む。
+   セルごとに innerHTML を書くと、そのたびに解析が走る。 */
 function renderGrid(){
   const g = $("grid");
-  g.innerHTML = "";
-  S.rows.forEach(l=>{
+  const h = S.rows.map(l=>{
     const u = unitOf(l.no);
-    const c = document.createElement("div");
-    c.innerHTML =
+    /* 最初は選んでいる1つだけ。残りは触ったときに足す（fillOptions）。 */
+    const cur = l.sym || "";
+    return '<div class="cell" data-i="' + l.no + '">' +
       '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
       '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
-      '<select class="mat" aria-label="No.' + l.no + ' の評価">' + optionsHTML(l.sym) + '</select>';
-    const sel = c.querySelector("select");
-    sel.addEventListener("change", ()=> onPick(c, l, sel));
-    applyCellState(c, l);
-    g.appendChild(c);
-  });
+      '<select class="mat" aria-label="No.' + l.no + ' の評価">' +
+        '<option value="' + cur + '">' + (cur || "‥") + '</option>' +
+      '</select></div>';
+  }).join("");
+  g.innerHTML = h;
+
+  const cells = g.children;
+  for(let i = 0; i < cells.length; i++) applyCellState(cells[i], S.rows[i]);
 }
+
+/* 聞き役は表に1つだけ置く。70個に付けると、その分だけ組み立てが遅くなる。 */
+(function(){
+  const g = $("grid");
+  const rowOfCell = c => S.rows[Array.prototype.indexOf.call(g.children, c)];
+
+  /* 触った瞬間に残りの選択肢を足す。開く前に間に合う。 */
+  ["pointerdown","focusin","keydown"].forEach(ev=>{
+    g.addEventListener(ev, e=>{
+      const sel = e.target.closest ? e.target.closest("select") : null;
+      if(sel && !sel.disabled) fillOptions(sel, rowOfCell(sel.closest(".cell")).sym);
+    }, true);
+  });
+  g.addEventListener("change", e=>{
+    const sel = e.target.closest ? e.target.closest("select") : null;
+    if(!sel) return;
+    const c = sel.closest(".cell");
+    onPick(c, rowOfCell(c), sel);
+  });
+})();
 
 /* 押した瞬間に反映して、断られたら戻す。
    Chromebook から往復1〜2秒かかるので、待たせると連打される。 */
@@ -279,12 +333,13 @@ function onPick(c, l, sel){
   applyCellState(c, l);
   renderHead();
   c.classList.add("saving");
+  sel.disabled = true;          // 往復のあいだ、そのセルだけ受け付けない
   hideErr();
 
   google.script.run
     .withSuccessHandler(function(r){
       c.classList.remove("saving");
-      if(r && r.ok) return;
+      if(r && r.ok){ applyCellState(c, l); return; }
       l.sym = before;                       // 断られたので戻す
       l.state = before ? "done" : "todo";
       applyCellState(c, l); renderHead();
@@ -398,6 +453,18 @@ function scrollToNow(){
   if(cell){ cell.scrollIntoView({block:"center", behavior:"auto"}); scrolled = true; }
 }
 
+/* 画面ごと止める。読み込みと教科の切り替えのように、
+   終わるまで次の操作をさせてはいけないものだけに使う。
+   1マスの保存には使わない（押した瞬間に反映するのが要点なので、
+   そこで画面を止めると転写がかえって遅くなる。代わりにそのマスだけ止める）。 */
+let busyDepth = 0;
+function busy(on, msg){
+  busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
+  const b = $("busy");
+  if(msg) $("busyMsg").textContent = msg;
+  b.classList.toggle("hidden", busyDepth === 0);
+}
+
 function showErr(msg){ const e = $("errbar"); e.textContent = msg; e.classList.remove("hidden"); }
 function hideErr(){ $("errbar").classList.add("hidden"); }
 
@@ -472,8 +539,10 @@ function render(){
 }
 
 function load(next){
+  busy(true, next ? "きょうかを かえています…" : "よみこみ中…");
   google.script.run
     .withSuccessHandler(function(r){
+      busy(false);
       try{
         if(!r || !r.ok){
           /* 断られたときも面を1つ選ぶ。半端な画面を残さない。 */
@@ -495,6 +564,7 @@ function load(next){
       }
     })
     .withFailureHandler(function(e){
+      busy(false);
       showErr("つうしんが できませんでした。もう一度 ひらいてください");
     })
     [next ? "apiRead" : "apiBoot"](next || null);

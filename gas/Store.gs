@@ -21,35 +21,70 @@ const Store = (function(){
   }
 
   /* ------------------------------------------------------------------
+     児童ごとの記録をキャッシュに置く。
+
+     29人が順に開くと、同じ記録シートを29回なめることになる。年度末には
+     7,500行あるので、1回あたり数百ms がまるまる無駄になる。
+     **最初の1人がシートを1回読み、そのとき29人ぶんを全部作って置く。**
+     残りの28人は読まない。
+
+     書いたときは、その児童のぶんだけ捨てる。教師がシートを手で直したときは
+     メニューの「キャッシュを消す」で全部捨てる。
+  ------------------------------------------------------------------ */
+  const TTL = 1800;                               // 30分
+  const keyOf = (subject, id) => "rec|" + subject + "|" + id;
+
+  function loadAll_(subject){
+    const by = {};
+    Roster.all().forEach(st => { by[st.id] = {}; });   // 空の児童も鍵を作る
+    allRows().forEach(r => {
+      if(String(r[COL.subject]) !== subject) return;
+      const id = String(r[COL.id]);
+      const d  = toDate_(r[COL.savedAt]);
+      (by[id] || (by[id] = {}))[Number(r[COL.no])] =
+        [String(r[COL.sym]), d ? d.getTime() : 0, String(r[COL.by] || "")];
+    });
+    const put = {};
+    Object.keys(by).forEach(id => { put[keyOf(subject, id)] = JSON.stringify(by[id]); });
+    try { CacheService.getScriptCache().putAll(put, TTL); } catch(e) { /* 入らなくても動く */ }
+    return by;
+  }
+
+  /* 児童1人ぶんの {No: [記号, 保存時刻, 更新者]}。 */
+  function recOf(subject, studentId){
+    const c = CacheService.getScriptCache().get(keyOf(subject, studentId));
+    if(c) return JSON.parse(c);
+    return loadAll_(subject)[String(studentId)] || {};
+  }
+
+  function dropCache(subject, studentId){
+    const cs = CacheService.getScriptCache();
+    if(studentId) cs.remove(keyOf(subject, studentId));
+    else Roster.all().forEach(st => cs.remove(keyOf(subject, st.id)));
+  }
+
+  /* ------------------------------------------------------------------
      読み取り。児童1人・1教科ぶんを、画面がそのまま使える形で返す。
      単元評価はここでは返さない（確定シートから別に返す）。
   ------------------------------------------------------------------ */
   function read(subject, studentId, now){
-    const at    = now || new Date();
-    const subj  = Master.subject(subject);
+    const at   = now || new Date();
+    const subj = Master.subject(subject);
     if(!subj) return [];
 
-    const mine = {};
-    allRows().forEach(r => {
-      if(String(r[COL.subject]) !== subject) return;
-      if(String(r[COL.id])      !== String(studentId)) return;
-      mine[Number(r[COL.no])] = {sym: String(r[COL.sym]),
-                                 savedAt: r[COL.savedAt], by: String(r[COL.by] || "")};
-    });
-
-    const out = [];
+    const mine = recOf(subject, studentId);
+    const out  = [];
     for(let no = 1; no <= subj.total; no++){
-      const rec = mine[no];
-      const sym = rec ? rec.sym : null;
+      const r = mine[no];                        // [記号, 保存時刻(ms), 更新者]
+      const sym = r ? r[0] : null;
       out.push({
         no:      no,
         sym:     sym || null,
-        savedAt: rec && toDate_(rec.savedAt) ? toDate_(rec.savedAt).toISOString() : null,
-        locked:  rec ? Lock.isLocked(rec.savedAt, at) : false,
+        locked:  r && r[1] ? Lock.isLocked(new Date(r[1]), at) : false,
         /* state は「転写したか」だけを持つ。
            「授業が済んだか」は追わない。時数の範囲は全部いつでも入れられる。 */
         state:   sym ? "done" : "todo",
-        edited:  !!(rec && rec.by)               // 教師が貫通して書き換えた印
+        edited:  !!(r && r[2])                   // 教師が貫通して書き換えた印
       });
     }
     return out;
@@ -58,11 +93,12 @@ const Store = (function(){
   /* 1教科ぶんを一度に読み、児童ごとの {No: 記号} にたたむ。
      29人ぶんを1人ずつ読むとシート全体を29回なめることになる。 */
   function readAll(subject){
-    const by = {};
-    allRows().forEach(r => {
-      if(String(r[COL.subject]) !== subject) return;
-      const id = String(r[COL.id]);
-      (by[id] || (by[id] = {}))[Number(r[COL.no])] = String(r[COL.sym]);
+    const raw = loadAll_(subject);               // 教師画面は必ず最新を見る
+    const by  = {};
+    Object.keys(raw).forEach(id => {
+      const m = {};
+      Object.keys(raw[id]).forEach(no => { m[no] = raw[id][no][0]; });
+      by[id] = m;
     });
     return by;
   }
@@ -154,11 +190,13 @@ const Store = (function(){
 
       if(sym === null){
         if(hit) sh.deleteRow(hit);
+        dropCache(subject, studentId);
         return {ok:true, sym:null};
       }
       const row = [subject, studentId, no, sym, at, by || ""];
       if(hit) sh.getRange(hit, 1, 1, WIDTH).setValues([row]);
       else    sh.appendRow(row);
+      dropCache(subject, studentId);
       return {ok:true, sym:sym, savedAt:at.toISOString()};
     } finally {
       lock.releaseLock();
@@ -174,8 +212,9 @@ const Store = (function(){
       const r = saveAs(subject, s.id, no, sym, {overwrite: !!overwrite});
       if(r.ok && !r.skipped){ put++; if(overwrite) over++; }
     });
+    dropCache(subject);                 // 一斉に入れたので教科ぶんまとめて捨てる
     return {ok:true, put:put, over:over};
   }
 
-  return {read, readAll, save, saveAs, bulk};
+  return {read, readAll, save, saveAs, bulk, dropCache};
 })();

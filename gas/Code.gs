@@ -72,4 +72,7 @@ function bootData(who){
 /* 設定やマスタを直したあとに1回呼ぶ。5分待たずに反映される。 */
 function clearAllCache(){
   Config.clearCache(); Roster.clearCache(); Master.clearCache();
+  /* 記録は教科ごとに置いてあるので、全教科ぶん捨てる。
+     教師がシートを手で直したときは、これを実行する。 */
+  Object.keys(Master.load().subjects).forEach(n => Store.dropCache(n));
 }

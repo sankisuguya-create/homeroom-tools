@@ -84,6 +84,17 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
 .swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:190px}
 .sw{width:16px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,.15);cursor:pointer;padding:0}
 .sw[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+/* 待たせているあいだ、画面を物理的に覆う。
+   採用・一斉入力・保存は29人ぶんの書き込みが走るので、
+   終わる前に次を押されると二重に書くことになる。 */
+.busy{position:fixed;inset:0;z-index:99;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  background:rgba(252,251,247,.92)}
+.busy .mark{width:58px;height:58px;border-radius:50%;
+  border:5px solid var(--rule-soft);border-top-color:var(--open);
+  animation:spin 1.05s linear infinite}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.busy .msg{font-size:22px;font-weight:700;color:var(--ink)}
 .errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
   border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600}
 </style>
@@ -100,6 +111,11 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
        style="text-decoration:none">児童の画面 →</a>
     <span class="said" id="said"></span>
   </div>
+  <div class="busy hidden" id="busy">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="msg" id="busyMsg">処理中…</p>
+  </div>
+
   <div class="errbar hidden" id="errbar"></div>
 
   <!-- 単元ごと -->
@@ -229,15 +245,32 @@ function say(msg, bad){
 function showErr(m){ const e = $("errbar"); e.textContent = m; e.classList.remove("hidden"); }
 function hideErr(){ $("errbar").classList.add("hidden"); }
 
-/* サーバ呼び出しを1つにまとめる。失敗はすべてここで拾う。 */
+/* サーバ呼び出しを1つにまとめる。失敗はすべてここで拾う。
+   **終わるまで画面を物理的に覆う。** 採用や一斉入力は29人ぶんの書き込みが
+   走るので、終わる前に次を押されると二重に書くことになる。 */
+let busyDepth = 0;
+function busy(on, msg){
+  busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
+  if(msg) $("busyMsg").textContent = msg;
+  $("busy").classList.toggle("hidden", busyDepth === 0);
+}
+const BUSY_MSG = {
+  apiTeacherBoot:"よみこみ中…", apiUnitTable:"よみこみ中…", apiTermTable:"よみこみ中…",
+  apiAdoptAll:"採用しています…", apiAdoptRanks:"採用しています…",
+  apiBulk:"全員に入れています…", apiSaveUnits:"単元を保存しています…",
+  apiSaveRule:"設定を保存しています…", apiSaveSubject:"教科を保存しています…",
+  apiSetRated:"単元の評価をしています…", apiExportTerm:"書き出しています…"
+};
 function call(fn, args, done){
   hideErr();
+  busy(true, BUSY_MSG[fn] || "処理中…");
   google.script.run
     .withSuccessHandler(function(r){
+      busy(false);
       if(!r || !r.ok){ showErr((r && r.why) || "できませんでした"); return; }
       try{ done(r); }catch(e){ showErr("画面を つくれませんでした（" + e.message + "）"); }
     })
-    .withFailureHandler(function(e){ showErr("つうしんが できませんでした"); })
+    .withFailureHandler(function(e){ busy(false); showErr("つうしんが できませんでした"); })
     [fn].apply(null, args || []);
 }
 

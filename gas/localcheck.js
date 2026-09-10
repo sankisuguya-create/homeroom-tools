@@ -104,7 +104,9 @@ const sandbox = {
   },
   CacheService: { getScriptCache: () => {
     const m = new Map();
-    return {get: k => m.get(k) || null, put: (k,v) => m.set(k,v), remove: k => m.delete(k)};
+    return {get: k => m.get(k) || null, put: (k,v) => m.set(k,v),
+            putAll: o => Object.keys(o).forEach(k => m.set(k, o[k])),
+            remove: k => m.delete(k)};
   }},
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }),
              getScriptTimeZone: () => "Asia/Tokyo" },
