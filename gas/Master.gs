@@ -1,5 +1,5 @@
 /* ==================================================================
-   Master.gs — 教科マスタ・単元マスタ・授業マスタ。
+   Master.gs — 教科マスタ・単元マスタ。
    単元マスタは両画面が読む1つの正本。ここが割れると、教師が設定した
    単元の色や学期が児童画面に届かなくなる。
 ================================================================== */
@@ -43,18 +43,7 @@ const Master = (function(){
     }
     Object.keys(subj).forEach(k => subj[k].units.sort((a, b) => a.from - b.from));
 
-    /* 授業マスタ。実施日で「済んだが未入力」と「これから」を分ける。 */
-    const held = {};
-    const lv = ss.getSheetByName("授業マスタ").getDataRange().getValues();
-    for(let i = 1; i < lv.length; i++){
-      const sn = String(lv[i][0]).trim();
-      const no = Number(lv[i][1]);
-      if(!sn || !no) continue;
-      const d = toDate_(lv[i][2]);
-      held[sn + "|" + no] = d ? d.getTime() : null;
-    }
-
-    const out = {subjects: subj, held: held};
+    const out = {subjects: subj};
     CacheService.getScriptCache().put(KEY, JSON.stringify(out), TTL);
     return out;
   }
@@ -72,13 +61,6 @@ const Master = (function(){
     return !!(s && s.open);
   }
 
-  /* その授業が実施済みか。実施日が空または未来なら未実施。 */
-  function isHeld(subjName, no, now){
-    const t = load().held[subjName + "|" + no];
-    if(t === undefined || t === null) return false;
-    return t <= (now ? now.getTime() : Date.now());
-  }
-
   function unitOf(subjName, no){
     const s = subject(subjName);
     if(!s) return null;
@@ -87,7 +69,7 @@ const Master = (function(){
 
   function clearCache(){ CacheService.getScriptCache().remove(KEY); }
 
-  return {load, subjectNames, subject, isOpen, isHeld, unitOf, clearCache};
+  return {load, subjectNames, subject, isOpen, unitOf, clearCache};
 })();
 
 /* ==================================================================
@@ -115,23 +97,4 @@ function masterSaveSubject(name, total, open){
   }
   sh.appendRow([name, total, !!open]);
   Master.clearCache();
-}
-
-/* 授業マスタの実施日をまとめて入れる。ここが空だと児童は1つも入力できない。 */
-function masterSetHeld(subject, from, to, dateStr){
-  const sh = SpreadsheetApp.getActive().getSheetByName("授業マスタ");
-  const v  = sh.getDataRange().getValues();
-  const at = {};
-  for(let i = 1; i < v.length; i++)
-    if(String(v[i][0]) === subject) at[Number(v[i][1])] = i + 1;
-
-  const d = dateStr ? toDate_(dateStr) : null;
-  let n = 0;
-  for(let no = from; no <= to; no++){
-    if(at[no]) sh.getRange(at[no], 3).setValue(d || "");
-    else       sh.appendRow([subject, no, d || ""]);
-    n++;
-  }
-  Master.clearCache();
-  return n;
 }

@@ -39,17 +39,16 @@ const Store = (function(){
 
     const out = [];
     for(let no = 1; no <= subj.total; no++){
-      const rec  = mine[no];
-      const held = Master.isHeld(subject, no, at);
-      const sym  = rec ? rec.sym : null;
+      const rec = mine[no];
+      const sym = rec ? rec.sym : null;
       out.push({
         no:      no,
         sym:     sym || null,
         savedAt: rec && toDate_(rec.savedAt) ? toDate_(rec.savedAt).toISOString() : null,
         locked:  rec ? Lock.isLocked(rec.savedAt, at) : false,
-        /* state は「授業が済んだか」ではなく「転写したか」。
-           実施済みかどうかは授業マスタの実施日が持つ。 */
-        state:   !held ? "future" : (sym ? "done" : "todo"),
+        /* state は「転写したか」だけを持つ。
+           「授業が済んだか」は追わない。時数の範囲は全部いつでも入れられる。 */
+        state:   sym ? "done" : "todo",
         edited:  !!(rec && rec.by)               // 教師が貫通して書き換えた印
       });
     }
@@ -104,12 +103,11 @@ const Store = (function(){
       studentId = who.id;
       if(!Master.isOpen(subject))          return {ok:false, why:"その教科はまだ見られません"};
       if(Hours.isClosed(at))               return {ok:false, why:"いまは つかえません"};
-      if(!Master.isHeld(subject, n, at))   return {ok:false, why:"まだ その授業は ありません"};
     }
     return write_(subject, studentId, n, s, at, "");
   }
 
-  /* 教師の書き込み。ロック・時間・実施日を貫通する。更新者を必ず残す。 */
+  /* 教師の書き込み。ロック・時間を貫通する。更新者を必ず残す。 */
   function saveAs(subject, studentId, no, sym, opt){
     const who = whoAmI();
     if(who.role !== "teacher") return {ok:false, why:"先生だけです"};

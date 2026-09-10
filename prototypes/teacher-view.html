@@ -421,20 +421,28 @@ textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
    途中に差し込むと既存の内部値がずれて、過去の記録の意味が変わる。 */
 const BASES = ["D","C","B","A","Z","Y"];
 
-/* 帯ごとの刻み。下の4帯は 4段、上の2帯は 2段。
-   上端を4段にしていたときは Z− と Z++ があったが、そこまでの細かさを
-   使い分けられないので 2段にし、空いた2段を Y に回した。 */
+/* 帯ごとの刻み。段数は帯によって違う。
+
+   D は1段。「やるべきことを何もしていない」に濃淡は要らない。
+   C は2段。届いていない中での差はこの2つで足りる。
+   B と A は4段。ここが最頻帯で、いちばん細かく見分ける。
+   Z と Y は2段。上端でその細かさは使い分けられない。
+
+   帯ごとに幅を変えたのは、**見分けが要るところに段を寄せる**ため。
+   均等に刻むと、使わない段が増えるだけで判定が重くなる。 */
+const MODS_ONE  = [""];
+const MODS_TWO  = ["", "+"];
 const MODS_FULL = ["−", "", "+", "++"];
-const MODS_TOP  = ["", "+"];
 const MODS_OF = {
-  "D": MODS_FULL, "C": MODS_FULL, "B": MODS_FULL, "A": MODS_FULL,
-  "Z": MODS_TOP,  "Y": MODS_TOP
+  "D": MODS_ONE,  "C": MODS_TWO,
+  "B": MODS_FULL, "A": MODS_FULL,
+  "Z": MODS_TWO,  "Y": MODS_TWO
 };
 
 /* 内部値 1..N の並び。ここが唯一の正本で、変換はすべてこの表を引く。 */
 const LEVELS = [];
 BASES.forEach(b => (MODS_OF[b] || MODS_FULL).forEach(m => LEVELS.push(b + m)));
-const NLEVEL = LEVELS.length;          // 20
+const NLEVEL = LEVELS.length;          // 15
 const NBASE  = BASES.length;
 const ALL_SYMS = LEVELS.slice();
 
@@ -504,9 +512,18 @@ function symsFor(opt){
    順序尺度なので平均は取れない。 */
 const symbolOfMedian = m => (m == null) ? null : symbolOf(Math.floor(m));
 
-/* 古い記号を今の記号に置き換える表。内部値は動かない。
-   Z−(17) Z(18) Z+(19) Z++(20) → Z(17) Z+(18) Y(19) Y+(20) */
-const SYM_MIGRATION = { "Z−":"Z", "Z":"Z+", "Z+":"Y", "Z++":"Y+" };
+/* 古い記号を今の記号に置き換える表。
+   D の4段を1段に、C の4段を2段に畳んだぶん、**内部値は動く**。
+   意味が同じところへ寄せてある（D 系はすべて D、C−/C は C、C+/C++ は C+）。
+   B 以上は記号も意味も変わらない。
+
+   ※ 前の版（Z−/Z++ を捨てて Y を足した）からの置換もここに含めてある。
+     すでに置換ずみのシートに対しては、その行が当たらないだけで害はない。 */
+const SYM_MIGRATION = {
+  "D−":"D", "D+":"D", "D++":"D",          // D は1段に畳む
+  "C−":"C", "C++":"C+",                    // C は2段に畳む
+  "Z−":"Z", "Z++":"Y+"                     // 前の版の名残
+};
 /* ▲ src/scale.js ここまで ▲ */
 
 /* ================= 集計の式 =================

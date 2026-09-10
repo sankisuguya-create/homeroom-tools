@@ -94,6 +94,10 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
     <h1><b id="cls">…</b> 主体的に学習に取り組む態度<small id="meta"></small></h1>
     <div class="seg tabs" id="tabs"></div>
     <div class="seg" id="subjSeg"></div>
+    <a class="btn ghost" id="sheetLink" target="_blank" rel="noopener"
+       style="text-decoration:none;margin-left:auto">スプレッドシートを開く</a>
+    <a class="btn ghost" id="studentLink" target="_top"
+       style="text-decoration:none">児童の画面 →</a>
     <span class="said" id="said"></span>
   </div>
   <div class="errbar hidden" id="errbar"></div>
@@ -167,6 +171,8 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
         <span class="note">代表値</span>
         <select class="plain" id="stat">
           <option>後半の中央値</option><option>全体の中央値</option>
+          <option>後半の平均値</option><option>平均値</option>
+          <option>内側の平均値</option>
           <option>最頻値</option><option>最高</option>
         </select>
         <span class="note">開室</span><input class="txt num" id="openT" placeholder="8:00">
@@ -188,7 +194,7 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
         <input class="txt" id="newSubj" placeholder="教科名" style="width:140px">
         <input class="txt num" id="newTotal" type="number" placeholder="時数">
         <button class="btn ghost" id="addSubj">教科を足す（非公開）</button>
-        <span class="note">足した教科は児童に出ない。単元と実施日を入れてから公開に変える。</span>
+        <span class="note">足した教科は児童に出ない。単元を入れてから公開に変える。</span>
       </div>
     </section>
     <section style="margin-top:14px">
@@ -199,17 +205,6 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
         <button class="btn ghost" id="sortUnit">開始の順に並べ替え</button>
         <button class="btn" id="saveUnits">単元を保存</button>
         <span class="said" id="unitSaid"></span>
-      </div>
-    </section>
-    <section style="margin-top:14px">
-      <h2>授業の実施日</h2>
-      <div class="card actions">
-        <span class="note">No.</span><input class="txt num" type="number" id="heldFrom" value="1">
-        <span class="note">〜</span><input class="txt num" type="number" id="heldTo">
-        <input class="txt" type="date" id="heldDate">
-        <button class="btn" id="setHeld">まとめて入れる</button>
-        <span class="note"><b>ここが空だと児童は1つも入力できない。</b>
-          実施日が空か未来の授業は「これから」として操作できないセルになる。</span>
       </div>
     </section>
   </div>
@@ -248,6 +243,13 @@ function call(fn, args, done){
 
 /* ---------------- 上部 ---------------- */
 function renderTop(){
+  /* 相対リンクは iframe の中で解決されて別の場所へ飛ぶ。
+     サーバが返した絶対 URL を使う。 */
+  $("sheetLink").href = B.sheetUrl || "#";
+  $("sheetLink").classList.toggle("hidden", !B.sheetUrl);
+  $("studentLink").href = B.appUrl || "#";
+  $("studentLink").classList.toggle("hidden", !B.appUrl);
+
   $("cls").textContent = B.className;
   $("meta").textContent = B.year + "年度　" + B.names.length + "名　粘り強さ・自己調整のノート評価";
 
@@ -432,10 +434,13 @@ function renderSetup(){
   rb2.onclick = ()=> call("apiSaveRule", [{released: !B.released}], ()=>{
     say(B.released ? (B.releaseFrom + " をかくした") : (B.releaseFrom + " をひらいた")); reload(); });
 
-  let h = '<thead><tr><th>教科</th><th>時数</th><th>児童に見せる</th></tr></thead><tbody>';
+  let h = '<thead><tr><th>教科</th><th style="width:110px">時数</th>' +
+          '<th style="width:150px">児童に見せる</th></tr></thead><tbody>';
   Object.keys(B.subjects).forEach(n=>{
     const s = B.subjects[n];
-    h += '<tr><td class="name">' + esc(n) + '</td><td class="num">' + s.total + '</td>' +
+    h += '<tr><td class="name">' + esc(n) + '</td>' +
+      '<td><input class="txt num" type="number" min="1" data-total="' + esc(n) + '"' +
+      ' value="' + s.total + '"></td>' +
       '<td><button class="btn ' + (s.open ? "" : "ghost") + '" data-subj="' + esc(n) + '">' +
       (s.open ? "見せている" : "見せていない") + '</button></td></tr>';
   });
@@ -446,11 +451,17 @@ function renderSetup(){
       call("apiSaveSubject", [n, s.total, !s.open], ()=>{ say(n + " の公開を変えた"); reload(); });
     };
   });
+  /* 時数は後から変えられる。減らしても記録は消えない（範囲の外に出るだけ）。 */
+  $("subjTbl").querySelectorAll("input[data-total]").forEach(inp=>{
+    inp.onchange = ()=>{
+      const n = inp.dataset.total, s = B.subjects[n];
+      const t = Math.max(1, Math.round(Number(inp.value)) || s.total);
+      call("apiSaveSubject", [n, t, s.open], ()=>{ say(n + " の時数を " + t + " にした"); reload(); });
+    };
+  });
 
   editUnits = ((B.subjects[subject] || {}).units || []).map(u => ({...u}));
   drawUnitEdit();
-  const total = (B.subjects[subject] || {}).total || 0;
-  if(!$("heldTo").value) $("heldTo").value = total;
 }
 
 function drawUnitEdit(){
@@ -523,9 +534,6 @@ $("saveRule").onclick = ()=> call("apiSaveRule", [{
 $("addSubj").onclick = ()=> call("apiSaveSubject",
   [$("newSubj").value, Number($("newTotal").value), false], ()=>{
     say("教科を足した（まだ児童には出ない）"); $("newSubj").value = ""; $("newTotal").value = ""; reload(); });
-$("setHeld").onclick = ()=> call("apiSetHeld",
-  [subject, Number($("heldFrom").value), Number($("heldTo").value), $("heldDate").value], r=>{
-    say(r.put + "件の実施日を入れた"); B.diagnose = r.diagnose; renderSetup(); });
 
 /* ---------------- 起動 ---------------- */
 function reload(){

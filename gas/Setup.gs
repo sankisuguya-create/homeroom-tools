@@ -10,7 +10,6 @@ const SETUP_SHEETS = {   /* GAS は全ファイルが1スコープ。総称的�
   "教科マスタ": ["教科", "時数", "公開"],
   "名簿":     ["児童ID", "出席番号", "氏名", "メール"],
   "単元マスタ": ["教科", "単元名", "開始No", "終了No", "色", "学期", "評価公開"],
-  "授業マスタ": ["教科", "No", "実施日"],
   "記録":     ["教科", "児童ID", "No", "記号", "保存時刻", "更新者"],
   "確定":     ["教科", "児童ID", "種別", "対象", "値", "確定時刻"]
 };
@@ -23,7 +22,7 @@ const DEFAULTS = [
   ["開室時刻",    "8:00"],
   ["ロック時刻",  "16:00"],
   ["A下限",       "A+"],
-  ["C上限",       "C++"],
+  ["C上限",       "C+"],
   ["代表値",      "後半の中央値"],
   ["後半の範囲",  3],
   ["Y解放",       false],
@@ -32,9 +31,35 @@ const DEFAULTS = [
   ["教師メール",  ""]
 ];
 
+/* ==================================================================
+   結果の見せ方。
+
+   SpreadsheetApp.getUi() は、UI のある文脈からしか呼べない。
+   スクリプトエディタをスプレッドシートから開かずに直接開いたときや、
+   トリガから走ったときは「Cannot call SpreadsheetApp.getUi() from this
+   context.」で落ちる。**処理が終わったあとの表示で落ちるので、
+   仕事は済んでいるのに失敗したように見える。**
+
+   そこで、まず必ず実行ログに出す。ダイアログは出せるときだけ出す。
+================================================================== */
+function tell_(title, lines){
+  const text = title + "\n\n" + lines.join("\n");
+  Logger.log(text);                       // 実行ログには必ず残る
+  try { SpreadsheetApp.getUi().alert(text); } catch(e) { /* UI が無い文脈 */ }
+  return lines;
+}
+
 function setupSheets(){
   const ss = SpreadsheetApp.getActive();
   const made = [];
+
+  /* スプレッドシートのタイムゾーンをスクリプトに合わせる。
+     ずれていると、シートが時刻型に変えた値を読んだときに別の時刻になる。 */
+  const tz = Session.getScriptTimeZone();
+  if(ss.getSpreadsheetTimeZone() !== tz){
+    ss.setSpreadsheetTimeZone(tz);
+    made.push("タイムゾーンを " + tz + " に合わせた");
+  }
 
   Object.keys(SETUP_SHEETS).forEach(name => {
     let sh = ss.getSheetByName(name);
@@ -59,8 +84,8 @@ function setupSheets(){
   const rec = ss.getSheetByName("記録");
   rec.getRange("E:E").setNumberFormat("yyyy-mm-dd HH:mm:ss");
 
-  SpreadsheetApp.getUi().alert(
-    made.length ? "作ったもの:\n" + made.join("\n") : "すべて揃っている。何もしなかった。");
+  return tell_("シートの用意",
+    made.length ? made : ["すべて揃っている。何もしなかった。"]);
 }
 
 /* 名簿・マスタが埋まっているかを見る。Step 1 の検算。 */
@@ -76,7 +101,7 @@ function checkSheets(){
   const teachers = Config.teacherEmails();
   msg.push(teachers.length ? "○ 教師メール " + teachers.length + "件"
                            : "× 教師メールが空。設定シートに自分のメールを入れる");
-  SpreadsheetApp.getUi().alert(msg.join("\n"));
+  return tell_("シートの状態", msg);
 }
 
 /* ==================================================================
@@ -121,7 +146,7 @@ function diagnoseLines(){
                          : "× 公開が TRUE の教科が無い。児童の画面には何も出ない");
   }
 
-  /* 5. 単元マスタ・授業マスタ */
+  /* 5. 単元マスタ */
   names.forEach(n => {
     const s = subj[n];
     if(!s.total) out.push("× 「" + n + "」の時数が 0。教科マスタに入れる");
@@ -133,12 +158,6 @@ function diagnoseLines(){
     for(let i = 1; i <= s.total; i++) if(!covered[i]) miss.push(i);
     if(miss.length) out.push("△ 「" + n + "」でどの単元にも入らない授業が "
                            + miss.length + "件（No." + miss[0] + " など）");
-
-    const now = new Date();
-    let held = 0;
-    for(let i = 1; i <= s.total; i++) if(Master.isHeld(n, i, now)) held++;
-    out.push((held ? "○ " : "× ") + "「" + n + "」実施済みの授業 " + held + "/" + s.total
-           + (held ? "" : "。授業マスタに実施日を入れる。0 だと児童は1つも入力できない"));
   });
 
   /* 5.5 上端の解放 */
@@ -146,6 +165,12 @@ function diagnoseLines(){
          + LEVELS.filter(isReleaseSym).join("・") + "）は児童に"
          + (Config.released() ? "出している" : "出していない")
          + "。設定シートの「" + RELEASE_FROM + "解放」で変える");
+
+  /* 5.7 タイムゾーン */
+  const tz = Session.getScriptTimeZone();
+  const stz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
+  out.push((stz === tz ? "○ " : "× ") + "タイムゾーン スクリプト " + tz + " / シート " + stz
+         + (stz === tz ? "" : "。ずれていると時刻の設定が別の時刻になる。setupSheets で合う"));
 
   /* 6. 時間 */
   const a = Config.openTime(), b = Config.lockTime();
@@ -158,9 +183,7 @@ function diagnoseLines(){
 
 /* エディタから実行する用。中身は diagnoseLines と同じ。 */
 function diagnose(){
-  const out = diagnoseLines();
-  SpreadsheetApp.getUi().alert("児童の画面がどうなるか\n\n" + out.join("\n"));
-  return out;
+  return tell_("児童の画面がどうなるか", diagnoseLines());
 }
 
 /* ==================================================================
@@ -191,9 +214,7 @@ function migrateSymbols(){
     done.push(name + " " + hit + "件");
   });
 
-  SpreadsheetApp.getUi().alert(
-    "上端の記号を置き換えた\n\n" + done.join("\n") +
-    "\n\nZ− → Z / Z → Z+ / Z+ → Y / Z++ → Y+" +
-    "\n内部の順位は動いていない。\n\n※ 2回実行すると二重にかかる。1回だけ。");
-  return done;
+  return tell_("上端の記号を置き換えた", done.concat([
+    "", "Z− → Z / Z → Z+ / Z+ → Y / Z++ → Y+",
+    "内部の順位は動いていない。", "", "※ 2回実行すると二重にかかる。1回だけ。"]));
 }

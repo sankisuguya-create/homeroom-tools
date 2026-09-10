@@ -22,6 +22,19 @@ const Aggregate = (function(){
     return tied[tied.length - 1];
   }
 
+  function meanVal(a){
+    if(!a.length) return null;
+    let t = 0; a.forEach(v => t += v);
+    return t / a.length;
+  }
+  /* 最大と最小を1つずつ落としてから平均する。1回の突出や1回の落ち込みで
+     代表値が動くのを抑える。3つ未満なら落とさない（落とすと何も残らない）。 */
+  function trimmedMeanVal(a){
+    if(a.length < 3) return meanVal(a);
+    const s = a.slice().sort((x, y) => x - y);
+    return meanVal(s.slice(1, s.length - 1));
+  }
+
   /* 児童1人・単元1つ。rec は {No: 記号} の連想。 */
   function summarize(rec, u, R){
     R = R || Config.rule();
@@ -39,12 +52,18 @@ const Aggregate = (function(){
 
     let prov = null;
     if(scored.length){
-      if(R.stat === "最高")            prov = Math.max.apply(null, scored);
-      else if(R.stat === "最頻値")      prov = modeVal(scored);
-      else if(R.stat === "全体の中央値") prov = medianVal(scored);
+      const late = () => scored.slice(-Math.max(1, Math.ceil(scored.length / R.late)));
+      if(R.stat === "最高")               prov = Math.max.apply(null, scored);
+      else if(R.stat === "最頻値")         prov = modeVal(scored);
+      else if(R.stat === "全体の中央値")    prov = medianVal(scored);
+      else if(R.stat === "平均値")         prov = meanVal(scored);
+      else if(R.stat === "後半の平均値")    prov = meanVal(late());
+      /* 順序尺度なので平均は本来取れない（D→C の幅と A+→A++ の幅が
+         等しい保証がない）。それでも使うなら、外れ値に動かされにくい
+         「最大最小を1ずつ落とした平均」のほうが実態に近い。 */
+      else if(R.stat === "内側の平均値")    prov = trimmedMeanVal(scored);
       else {                                       // 既定：後半の中央値
-        const n = Math.max(1, Math.ceil(scored.length / R.late));
-        prov = medianVal(scored.slice(-n));
+        prov = medianVal(late());
       }
     }
     return {
@@ -72,9 +91,11 @@ const Aggregate = (function(){
     const vals = settledSyms.filter(Boolean).map(valueOfSym).filter(v => v != null);
     if(!vals.length) return {v: null, rank: null};
     let v;
-    if(R.stat === "最頻値")        v = modeVal(vals);
-    else if(R.stat === "最後の単元") v = vals[vals.length - 1];
-    else                          v = Math.floor(medianVal(vals));
+    if(R.stat === "最頻値")           v = modeVal(vals);
+    else if(R.stat === "最後の単元")    v = vals[vals.length - 1];
+    else if(R.stat === "平均値")       v = Math.floor(meanVal(vals));
+    else if(R.stat === "内側の平均値")  v = Math.floor(trimmedMeanVal(vals));
+    else                             v = Math.floor(medianVal(vals));
     return {v: v, rank: rankOf(v, R)};
   }
 
@@ -108,7 +129,8 @@ const Aggregate = (function(){
     });
   }
 
-  return {medianVal, modeVal, summarize, rankOf, termValue, foldRows, unitsForStudent};
+  return {medianVal, modeVal, meanVal, trimmedMeanVal,
+          summarize, rankOf, termValue, foldRows, unitsForStudent};
 })();
 
 /* ==================================================================

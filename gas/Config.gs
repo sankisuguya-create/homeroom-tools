@@ -28,11 +28,18 @@ const Config = (function(){
     return (v === undefined || v === "") ? fallback : v;
   }
 
-  /* 時刻の欄。"16:00" のほか、シートが時刻型で返す Date も受ける。 */
+  /* 時刻の欄。
+     シートが時刻型に変えてしまうと、スプレッドシートのタイムゾーンで
+     解釈された Date が返り、「8:00 と入れたのに違う時刻になる」が起きる。
+     **書くときは文字列として書き（configSet が書式を文字列に固定する）、
+     読むときは文字と Date の両方を受ける。**
+     Date で来た場合は、スクリプトのタイムゾーン（Asia/Tokyo）で読み直す。 */
   function timeOf(key, dh, dm){
     const v = get(key, "");
-    if(Object.prototype.toString.call(v) === "[object Date]")
-      return {h: v.getHours(), m: v.getMinutes()};
+    if(Object.prototype.toString.call(v) === "[object Date]"){
+      const t = Utilities.formatDate(v, Session.getScriptTimeZone(), "HH:mm").split(":");
+      return {h: +t[0], m: +t[1]};
+    }
     const m = String(v).match(/(\d{1,2})[:：](\d{1,2})/);
     return m ? {h: +m[1], m: +m[2]} : {h: dh, m: dm};
   }
@@ -59,7 +66,7 @@ const Config = (function(){
   function rule(){
     return {
       aFrom:  valueOfSym(String(get("A下限", "A+"))),
-      cTo:    valueOfSym(String(get("C上限", "C++"))),
+      cTo:    valueOfSym(String(get("C上限", "C+"))),
       stat:   String(get("代表値", "後半の中央値")),
       late:   Number(get("後半の範囲", 3)) || 3,
       withD:  get("Dを含める", true) !== false,
@@ -83,8 +90,18 @@ function configSet(pairs){
   for(let i = 1; i < v.length; i++) at[String(v[i][0]).trim()] = i + 1;
 
   Object.keys(pairs).forEach(k => {
-    if(at[k]) sh.getRange(at[k], 2).setValue(pairs[k]);
-    else      sh.appendRow([k, pairs[k]]);
+    const v = pairs[k];
+    /* 時刻は文字列のまま持つ。シートに時刻型へ変えられると、
+       スプレッドシートのタイムゾーンで解釈されて別の時刻になる。 */
+    const isTime = /時刻$/.test(k);
+    const cell = at[k] ? sh.getRange(at[k], 2) : null;
+    if(cell){
+      if(isTime) cell.setNumberFormat("@");
+      cell.setValue(v);
+    }else{
+      sh.appendRow([k, v]);
+      if(isTime) sh.getRange(sh.getLastRow(), 2).setNumberFormat("@").setValue(v);
+    }
   });
   Config.clearCache();
 }

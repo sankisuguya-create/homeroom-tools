@@ -20,7 +20,7 @@ const DIR = __dirname;
 const SHEETS = {
   "設定": [["キー","値"],
     ["学級","3年3組"],["年度",2026],["開室時刻","8:00"],["ロック時刻","16:00"],
-    ["A下限","A+"],["C上限","C++"],["代表値","後半の中央値"],["後半の範囲",3],
+    ["A下限","A+"],["C上限","C+"],["代表値","後半の中央値"],["後半の範囲",3],
     ["Y解放",false],["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
   "教科マスタ": [["教科","時数","公開"],
     ["算数",70,true],["国語",60,true],["体育",105,false],["社会",70,false]],
@@ -33,10 +33,6 @@ const SHEETS = {
     ["算数","たし算とひき算の筆算",31,48,2,2,false],
     ["算数","時こくと時間",49,70,3,3,false],
     ["体育","体つくり運動",1,12,0,1,false]],
-  "授業マスタ": [["教科","No","実施日"],
-    ["算数",1,new Date("2026-04-10")],
-    ["算数",2,new Date("2026-04-11")],
-    ["算数",70,new Date("2027-03-01")]],
   "記録": [["教科","児童ID","No","記号","保存時刻","更新者"]],
   "確定": [["教科","児童ID","種別","対象","値","確定時刻"]]
 };
@@ -94,6 +90,9 @@ const sandbox = {
   Date, Math, JSON, String, Number, Object, Array, isNaN, parseInt, parseFloat,
   SpreadsheetApp: {
     getActive: () => ({
+      getUrl: () => "https://docs.google.com/spreadsheets/d/TEST/edit",
+      getSpreadsheetTimeZone: () => "Asia/Tokyo",
+      setSpreadsheetTimeZone: () => {},
       getSheetByName: fakeSheet,
       deleteSheet: sh => { if(sh && sh.__name) delete SHEETS[sh.__name]; },
       insertSheet: n => { SHEETS[n] = [[]]; return fakeSheet(n) || {
@@ -109,7 +108,13 @@ const sandbox = {
   }},
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }),
              getScriptTimeZone: () => "Asia/Tokyo" },
-  Utilities: { formatDate: (d) => d.toISOString() },
+  Logger: { log: () => {} },
+  ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/a/macros/x/exec" }) },
+  Utilities: { formatDate: (d, tz, fmt) => {
+    const p = n => String(n).padStart(2, "0");
+    if(fmt === "HH:mm") return p(d.getHours()) + ":" + p(d.getMinutes());
+    return d.toISOString();
+  } },
   LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock(){} }) },
   HtmlService: {
     createHtmlOutputFromFile: n => ({
@@ -164,38 +169,48 @@ order.forEach(f => {
 });
 
 console.log("■ スケール（20段の往復）");
-ok("NLEVEL は 20", "NLEVEL === 20", "NLEVEL");
+ok("NLEVEL は 15", "NLEVEL === 15", "NLEVEL");
 ok("1〜20 すべて往復する",
    "(function(){for(let v=1;v<=NLEVEL;v++) if(valueOfSym(symbolOf(v))!==v) return false; return NLEVEL>0;})()");
-ok("16 は A++", "symbolOf(16) === 'A++'", "symbolOf(16)");
-ok("A++ は 16", "valueOfSym('A++') === 16", "valueOfSym('A++')");
+ok("A++ は上から5番目", "symbolOf(NLEVEL - 4) === 'A++'", "symbolOf(NLEVEL-4)");
+ok("記号と値が対応する", "valueOfSym(symbolOf(11)) === 11 && symbolOf(11) === 'A++'", "symbolOf(11)");
 ok("休 と / は値を持たない", "valueOfSym('休') === null && valueOfSym('/') === null");
 ok("休 と / は突破層でも警告層でもない",
    "isTopSym('休') === false && isWarnSym('/') === false");
 ok("Object.prototype.valueOf を壊していない",
    "typeof Object.prototype.valueOf === 'function' && ({}).valueOf() !== undefined");
 
-console.log("■ 上端（Z を2段にして Y を足した）");
-ok("20段のまま", "NLEVEL === 20");
-ok("上端は Z Z+ Y Y+", "LEVELS.slice(16).join(' ') === 'Z Z+ Y Y+'", "LEVELS.slice(16)");
-ok("Z− と Z++ はもう無い", "valueOfSym('Z−') === null && valueOfSym('Z++') === null");
-ok("下の4帯は4段のまま", "LEVELS.slice(0,16).join(' ') === 'D− D D+ D++ C− C C+ C++ B− B B+ B++ A− A A+ A++'");
+console.log("■ スケール（帯ごとに段数が違う 15段）");
+ok("15段", "NLEVEL === 15", "NLEVEL");
+ok("並びは D C C+ B− B B+ B++ A− A A+ A++ Z Z+ Y Y+",
+   "LEVELS.join(' ') === 'D C C+ B− B B+ B++ A− A A+ A++ Z Z+ Y Y+'", "LEVELS");
+ok("D は1段", "bandSize('D') === 1 && valueOfSym('D') === 1");
+ok("C は2段", "bandSize('C') === 2 && valueOfSym('C') === 2 && valueOfSym('C+') === 3");
+ok("B と A は4段", "bandSize('B') === 4 && bandSize('A') === 4");
+ok("消した記号は知らない記号になる",
+   "['D−','D+','D++','C−','C++','Z−'].every(x => valueOfSym(x) === null)");
+ok("置換表が消した記号を拾う",
+   "['D−','D+','D++','C−','C++','Z−'].every(x => SYM_MIGRATION[x] !== undefined)");
+ok("置換先はすべて今ある記号",
+   "Object.keys(SYM_MIGRATION).every(k => valueOfSym(SYM_MIGRATION[k]) !== null)",
+   "JSON.stringify(SYM_MIGRATION)");
 ok("突破層は Z 以上の4つ", "LEVELS.filter(isTopSym).join(' ') === 'Z Z+ Y Y+'");
+ok("警告層は D C C+", "LEVELS.filter(isWarnSym).join(' ') === 'D C C+'");
 ok("材質は字ごと（Z=金・Y=宇宙）",
    "lookOf('Z')==='foil-gold' && lookOf('Z+')==='foil-gold' && " +
    "lookOf('Y')==='foil-cosmic' && lookOf('Y+')==='foil-cosmic'");
 ok("帯ごとの段数を引ける",
-   "bandStart('Z')===17 && bandSize('Z')===2 && bandStart('Y')===19 && bandSize('Y')===2 && " +
-   "bandStart('A')===13 && bandSize('A')===4");
+   "bandStart('D')===1 && bandStart('C')===2 && bandStart('B')===4 && " +
+   "bandStart('A')===8 && bandStart('Z')===12 && bandStart('Y')===14");
 ok("児童の選択肢から Y 以上が落ちる",
    "symsFor({released:false}).indexOf('Y') < 0 && symsFor({released:true}).indexOf('Y') >= 0");
 ok("すでに入っている Y+ は選択肢に残る（値が消えないように）",
    "symsFor({released:false, keep:'Y+'}).indexOf('Y+') >= 0");
-ok("置換表は位置を保つ（内部値が動かない）",
-   "valueOfSym(SYM_MIGRATION['Z−'])===17 && valueOfSym(SYM_MIGRATION['Z'])===18 && " +
-   "valueOfSym(SYM_MIGRATION['Z+'])===19 && valueOfSym(SYM_MIGRATION['Z++'])===20");
+ok("D 系は D に、C−/C は C、C+/C++ は C+ に寄る",
+   "SYM_MIGRATION['D−']==='D' && SYM_MIGRATION['D++']==='D' && " +
+   "SYM_MIGRATION['C−']==='C' && SYM_MIGRATION['C++']==='C+'");
 ok("評定のしきい値は記号から引くのでずれない",
-   "Config.rule().aFrom === valueOfSym('A+') && Config.rule().cTo === valueOfSym('C++')");
+   "Config.rule().aFrom === valueOfSym('A+') && Config.rule().cTo === valueOfSym('C+')");
 
 clockAt("2026-05-22T12:00:00+09:00");
 as("sakura@example.ed.jp");
@@ -217,8 +232,8 @@ clockReal();
 
 console.log("■ 設定");
 ok("ロック時刻は 16:00", "Config.lockTime().h === 16 && Config.lockTime().m === 0", "Config.lockTime()");
-ok("A下限は A+ の値(15)", "Config.rule().aFrom === 15", "Config.rule()");
-ok("C上限は C++ の値(8)", "Config.rule().cTo === 8", "Config.rule()");
+ok("A下限は A+ の値", "Config.rule().aFrom === valueOfSym('A+')", "Config.rule()");
+ok("C上限は C+ の値(3)", "Config.rule().cTo === valueOfSym('C+')", "Config.rule()");
 ok("教師メールを読める", "Config.teacherEmails().length === 1", "Config.teacherEmails()");
 
 console.log("■ ロック（時刻の関数として引く）");
@@ -253,9 +268,6 @@ ok("体育は非公開", "Master.isOpen('体育') === false");
 ok("No.20 は「わり算」", "Master.unitOf('算数', 20).name === 'わり算'", "Master.unitOf('算数',20)");
 ok("評価公開：九九=true / わり算=false",
    "Master.unitOf('算数',1).rated === true && Master.unitOf('算数',20).rated === false");
-ok("実施日が過ぎた授業は実施済み", "Master.isHeld('算数', 1, new Date('2026-05-20')) === true");
-ok("実施日が未来の授業は未実施", "Master.isHeld('算数', 70, new Date('2026-05-20')) === false");
-ok("実施日が無い授業は未実施", "Master.isHeld('算数', 5, new Date('2026-05-20')) === false");
 
 console.log("■ 役割の判定");
 as("sakura@example.ed.jp");
@@ -301,10 +313,7 @@ ok("知らない記号は弾かれる", "Store.save('算数', 1, 'X+').ok === fa
 ok("無い授業番号は弾かれる", "Store.save('算数', 999, 'A').ok === false");
 ok("非公開の教科には書けない", "Store.save('体育', 1, 'A').ok === false",
    "Store.save('体育',1,'A')");
-ok("実施日が未来の授業には書けない", "Store.save('算数', 70, 'A').ok === false",
-   "Store.save('算数',70,'A')");
-ok("12時なら実施済みの授業に書ける", "Store.save('算数', 1, 'A+').ok === true",
-   "Store.save('算数',1,'A+')");
+ok("12時なら授業に書ける", "Store.save('算数', 1, 'A+').ok === true", "Store.save('算数',1,'A+')");
 ok("書いた値が読み出せる",
    "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].sym === 'A+'");
 ok("同じ授業に書き直しても行は増えない",
@@ -335,7 +344,6 @@ ok("教師は時間外でも / を置ける", "Store.saveAs('算数','s09',16,'/
 ok("教師の書き込みには更新者が残る",
    "(function(){var r=Store.read('算数','s09').filter(function(x){return x.no===16;})[0];" +
    "return r.sym==='/' && r.edited===true;})()");
-ok("教師は実施日が未来の授業にも置ける", "Store.saveAs('算数','s09',70,'休').ok === true");
 as("sakura@example.ed.jp");
 ok("児童は他人の行に書けない（saveAs は先生だけ）",
    "Store.saveAs('算数','s01',1,'Z').ok === false");
@@ -352,11 +360,15 @@ ok("休 と / は分母から外れ、別々に数えられる",
    "var s=Aggregate.summarize(r,{from:1,to:4});" +
    "return s.n===4 && s.off===1 && s.skip===1;})()",
    "Aggregate.summarize({1:'A',2:'休',3:'/',4:'B'},{from:1,to:4})");
-ok("A+ 以上が評定A、C++ 以下が評定C",
+ok("A+ 以上が評定A、C+ 以下が評定C",
    "Aggregate.rankOf(valueOfSym('A+'))==='A' && Aggregate.rankOf(valueOfSym('A'))==='B' && " +
-   "Aggregate.rankOf(valueOfSym('C++'))==='C'");
+   "Aggregate.rankOf(valueOfSym('C+'))==='C'");
 ok("記号の A は評定では B に落ちる", "Aggregate.rankOf(valueOfSym('A')) === 'B'");
-ok("中央値が段の間なら下を採る", "Aggregate.medianVal([10,11]) === 10.5 && symbolOfMedian(10.5) === 'B'");
+ok("中央値が段の間なら下を採る", "Aggregate.medianVal([5,6]) === 5.5 && symbolOfMedian(5.5) === 'B'");
+ok("平均値も出せる", "Aggregate.meanVal([4,5,6]) === 5");
+ok("内側の平均は最大最小を1つずつ落とす",
+   "Aggregate.trimmedMeanVal([1,5,5,5,15]) === 5 && Aggregate.meanVal([1,5,5,5,15]) === 6.2");
+ok("3つ未満なら落とさない", "Aggregate.trimmedMeanVal([4,6]) === 5");
 
 console.log("■ 単元評価を児童に返すか");
 as("sakura@example.ed.jp");
@@ -439,8 +451,8 @@ ev("clearAllCache()");
 ok("戻したら教科が見える", "Master.subjectNames(false).length === 2");
 ok("diagnose が走り、行を返す",
    "(function(){var r=diagnose();return Array.isArray(r) && r.length>0;})()");
-ok("diagnose が実施済みの授業数を見ている",
-   "diagnose().join('|').indexOf('実施済みの授業') >= 0", "diagnose().join(' / ')");
+ok("diagnose がタイムゾーンを見ている",
+   "diagnose().join('|').indexOf('タイムゾーン') >= 0", "diagnose().join(' / ')");
 clockReal();
 
 console.log("■ 教師画面の入口");
@@ -449,12 +461,13 @@ as("sakura@example.ed.jp");
 ok("児童は教師の入口を呼べない",
    "apiTeacherBoot().ok===false && apiUnitTable('算数','わり算').ok===false && " +
    "apiSaveRule({aFrom:'A'}).ok===false && apiSaveUnits('算数',[]).ok===false && " +
-   "apiSetHeld('算数',1,2,'2026-04-10').ok===false && apiAdoptAll('算数','わり算').ok===false");
+   "apiAdoptAll('算数','わり算').ok===false");
 as("sensei@example.ed.jp");
-ok("apiTeacherBoot が教科・名簿・式・診断を返す",
+ok("apiTeacherBoot が教科・名簿・式・診断・URL を返す",
    "(function(){var b=apiTeacherBoot();return b.ok && Object.keys(b.subjects).length>0 && " +
    "b.names.length>0 && typeof b.rule.aFrom==='number' && Array.isArray(b.diagnose) && " +
-   "Array.isArray(b.syms) && b.syms.length===20;})()", "apiTeacherBoot().diagnose");
+   "b.syms.length===NLEVEL && typeof b.sheetUrl==='string' && b.sheetUrl.length>0;})()",
+   "(function(){var b=apiTeacherBoot();return {syms:b.syms.length,sheet:b.sheetUrl};})()");
 ok("apiUnitTable が29人ぶん返す",
    "(function(){var t=apiUnitTable('算数','九九の表とかけ算');" +
    "return t.ok && t.rows.length===Roster.all().length && typeof t.ruleText==='string';})()",
@@ -490,10 +503,6 @@ ok("教科を足せる／公開を切り替えられる",
    "(function(){apiSaveSubject('図工',60,false);var s=Master.subject('図工');" +
    "apiSaveSubject('図工',60,true);var t=Master.subject('図工');" +
    "return s.open===false && t.open===true && t.total===60;})()");
-ok("実施日をまとめて入れられる",
-   "(function(){var r=apiSetHeld('算数',26,30,'2026-05-01');" +
-   "return r.ok && r.put===5 && Master.isHeld('算数',30,new Date('2026-05-20'))===true;})()",
-   "apiSetHeld('算数',26,30,'2026-05-01')");
 ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
 ok("教師は児童を選んでその画面を見られる",
    "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");

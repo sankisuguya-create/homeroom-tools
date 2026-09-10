@@ -27,6 +27,7 @@ function apiBoot(subject){
     open:      Config.openTime(),
     closed:    Hours.isClosedFor(who, at),
     released:  Config.released(),
+    appUrl:    appUrl_(),
     toClose:   Hours.minutesToClose(at)
   };
   /* 教科が1つも無いときは、その理由まで返す。
@@ -75,12 +76,23 @@ function apiRead(subject){
   };
 }
 
+/* 時計の確認だけ。記録シートを読まない。
+   閉室をまたいだかどうかを見るために画面が定期的に呼ぶので、
+   ここで重い読み取りをすると、29台ぶんの空読みが毎分走ることになる。 */
+function apiTick(){
+  const who = whoAmI();
+  const at  = new Date();
+  return {ok:true,
+          closed: Hours.isClosedFor(who, at),
+          toClose: Hours.minutesToClose(at)};
+}
+
 /* 1セル保存。画面は押した瞬間に反映して、ここが false を返したら戻す。 */
 function apiSave(subject, no, sym){
   return Store.save(subject, no, sym);
 }
 
-/* 教師だけ。ロック・時間・実施日を貫通する。 */
+/* 教師だけ。ロック・時間を貫通する。 */
 function apiSaveAs(subject, studentId, no, sym){
   return Store.saveAs(subject, studentId, no, sym);
 }
@@ -121,6 +133,13 @@ function apiSetRated(subject, unitName, rated){
 /* ==================================================================
    教師画面から呼ぶ入口。すべて役割をメールから引き直す。
 ================================================================== */
+/* 公開しているウェブアプリの URL。
+   画面の中の相対リンク（?p=teacher）は iframe の中で解決されてしまい、
+   別の場所へ飛ぶ。**絶対 URL をサーバから渡して、それを使う。** */
+function appUrl_(){
+  try { return ScriptApp.getService().getUrl(); } catch(e) { return ""; }
+}
+
 function teacherOnly_(){
   const who = whoAmI();
   return who.role === "teacher" ? null : {ok:false, why:"先生だけです"};
@@ -141,6 +160,8 @@ function apiTeacherBoot(){
     rule: Config.rule(),
     lock: Config.lockTime(), open: Config.openTime(),
     released: Config.released(), releaseFrom: RELEASE_FROM,
+    sheetUrl: SpreadsheetApp.getActive().getUrl(),
+    appUrl:   appUrl_(),
     releaseSyms: LEVELS.filter(isReleaseSym),
     syms: ALL_SYMS, off: OFF, skip: SKIP,
     diagnose: diagnoseLines()
@@ -278,12 +299,6 @@ function apiSaveSubject(name, total, open){
   if(!name) return {ok:false, why:"教科名が空です"};
   masterSaveSubject(String(name).trim(), Number(total) || 0, !!open);
   return {ok:true, subjects: Master.load().subjects};
-}
-
-function apiSetHeld(subject, from, to, dateStr){
-  const bad = teacherOnly_(); if(bad) return bad;
-  const n = masterSetHeld(subject, Number(from), Number(to), dateStr);
-  return {ok:true, put:n, diagnose: diagnoseLines()};
 }
 
 function apiDiagnose(){
