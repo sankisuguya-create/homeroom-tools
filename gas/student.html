@@ -81,7 +81,7 @@ h2 .fold{order:2}
 .cell[data-u="16"]{--ucol:var(--u16)} .cell[data-u="17"]{--ucol:var(--u17)}
 .cell[data-u="18"]{--ucol:var(--u18)} .cell[data-u="19"]{--ucol:var(--u19)}
 
-.units{display:flex;flex-direction:column;gap:18px}
+.units,.lessons{display:flex;flex-direction:column;gap:18px}
 .term-block{display:flex;flex-direction:column;gap:9px}
 .term-head{font-size:12.5px;font-weight:700;letter-spacing:.1em;color:var(--ink-faint);
   display:flex;align-items:center;gap:10px}
@@ -90,6 +90,11 @@ h2 .fold{order:2}
   background:var(--sheet);color:var(--ink-soft);cursor:pointer;letter-spacing:0}
 .term-head::after{content:"";flex:1;height:1px;background:var(--rule-soft);order:3}
 .term-head .fold{order:2}
+/* 畳んだ学期の中に未入力が残っていることを、開かなくても分かるようにする。
+   上の「未入力 12」は教科ぜんぶの数なので、学期を畳むと在りかが見えなくなる。 */
+.term-head .count{order:1;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  font-weight:600;letter-spacing:0;color:var(--warn);
+  border:1px solid currentColor;border-radius:5px;padding:0 7px}
 .term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));
   gap:14px;justify-content:start}
 .unit-card{background:var(--sheet);border:1px solid var(--rule);
@@ -199,7 +204,7 @@ h2 .fold{order:2}
 
   <section id="secLessons" class="hidden">
     <h2>授業の評価</h2>
-    <div class="sheet"><div class="grid" id="grid"></div></div>
+    <div class="lessons" id="lessons"></div>
   </section>
 
   <section id="secUnits" class="hidden">
@@ -278,40 +283,132 @@ function applyCellState(c, l){
   paint(sel, l.sym);
 }
 
-/* 表は**1回で組み立てる**。70個ぶんを1つの文字列にしてから流し込む。
-   セルごとに innerHTML を書くと、そのたびに解析が走る。 */
-function renderGrid(){
-  const g = $("grid");
-  const h = S.rows.map(l=>{
-    const u = unitOf(l.no);
-    /* 最初は選んでいる1つだけ。残りは触ったときに足す（fillOptions）。 */
-    const cur = l.sym || "";
-    return '<div class="cell" data-i="' + l.no + '">' +
-      '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
-      '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
-      '<select class="mat" aria-label="No.' + l.no + ' の評価">' +
-        '<option value="' + cur + '">' + (cur || "‥") + '</option>' +
-      '</select></div>';
-  }).join("");
-  g.innerHTML = h;
+/* ---- 学期のまとめかた。授業の表と単元カードで同じものを使う ----
 
-  const cells = g.children;
-  for(let i = 0; i < cells.length; i++) applyCellState(cells[i], S.rows[i]);
+   いまの学期。4〜7月＝1学期、8〜12月＝2学期、1〜3月＝3学期。
+   既定ではこの学期だけを開く。70時間ぶんを一度に出すと、
+   いま関係のあるものが埋もれる。
+   **開閉は表と単元カードで共有する。** 別々に持つと「授業は1学期・単元は2学期」
+   という食い違いが起き、同じ見出しの同じボタンが別のことをする画面になる。 */
+function termNow(){
+  const m = new Date().getMonth() + 1;
+  return (m >= 4 && m <= 7) ? 1 : (m >= 8 && m <= 12) ? 2 : 3;
+}
+const termOfNo = no => { const u = unitOf(no); return u ? (u.term || 0) : 0; };
+
+/* 学期の並びは、番号順ではなく**出てくる順**（最初の授業が早いほうが先）。
+   単元マスタが番号順に並んでいれば同じ結果になり、崩れていても
+   表の並びと見出しの並びが食い違わない。 */
+function termList(){
+  const seen = {}, out = [];
+  const push = t => { if(!(t in seen)){ seen[t] = 1; out.push(t); } };
+  (S.rows  || []).forEach(l => push(termOfNo(l.no)));
+  (S.units || []).forEach(u => push(u.term || 0));
+  return out;
 }
 
-/* 聞き役は表に1つだけ置く。70個に付けると、その分だけ組み立てが遅くなる。 */
+let openTerms = null;                    // 開いている学期。null なら既定を作る
+
+function ensureOpenTerms(){
+  const terms = termList();
+  if(openTerms === null){
+    const now = termNow();
+    openTerms = {};
+    terms.forEach(t => { openTerms[t] = (t === now); });
+    if(terms.length && !terms.some(t => openTerms[t])) openTerms[terms[terms.length - 1]] = true;
+    return;
+  }
+  /* 教科を変えて知らない学期が出てきたときだけ既定を当てる。
+     児童が畳んだ学期は畳んだままにする。 */
+  const fresh = terms.filter(t => !(t in openTerms));
+  if(!fresh.length) return;
+  const now = termNow();
+  fresh.forEach(t => { openTerms[t] = (t === now); });
+  if(!terms.some(t => openTerms[t])) openTerms[fresh[fresh.length - 1]] = true;
+}
+
+function termLabel(t){ return t ? t + "学期" : "学期なし"; }
+
+/* 学期の見出し。表と単元カードで同じものを出す。 */
+function termHeadHTML(t, open, extra){
+  return '<div class="term-head"><span>' + termLabel(t) + '</span>' +
+         (extra || "") +
+         '<button class="fold" type="button" data-t="' + t + '" aria-expanded="' + open + '">' +
+         (open ? "かくす" : "ひらく") + '</button></div>';
+}
+
+/* 開閉のたびに両方を作り直すので、押したところが画面から逃げる。
+   **押した側**の見出しへ戻す。授業側で押したのに単元側へ飛ぶ、を起こさない。 */
+function toggleTerm(t, from){
+  openTerms[t] = !openTerms[t];
+  renderGrid(); renderUnits();
+  const head = $(from).querySelector('button.fold[data-t="' + t + '"]');
+  if(head) head.scrollIntoView({block:"start", behavior:"auto"});
+}
+
+/* ---- 授業の表 ---- */
+
+let ROW_BY_NO = {};
+
+function cellHTML(l){
+  const u = unitOf(l.no);
+  /* 最初は選んでいる1つだけ。残りは触ったときに足す（fillOptions）。 */
+  const cur = l.sym || "";
+  return '<div class="cell" data-i="' + l.no + '">' +
+    '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
+    '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+    '<select class="mat" aria-label="No.' + l.no + ' の評価">' +
+      '<option value="' + cur + '">' + (cur || "‥") + '</option>' +
+    '</select></div>';
+}
+
+/* 表は**1回で組み立てる**。学期ぶんを1つの文字列にしてから流し込む。
+   セルごとに innerHTML を書くと、そのたびに解析が走る。
+   **畳んでいる学期のセルは作らない。** 出さないものを作ると、
+   畳んだのに軽くならない。 */
+function renderGrid(){
+  const box = $("lessons");
+  box.innerHTML = "";
+  ROW_BY_NO = {};
+  S.rows.forEach(l => { ROW_BY_NO[l.no] = l; });
+  ensureOpenTerms();
+
+  termList().forEach(t=>{
+    const rows = S.rows.filter(l => termOfNo(l.no) === t);
+    if(!rows.length) return;
+    const open = !!openTerms[t];
+    const todo = rows.filter(l => !l.sym && l.state !== "future").length;
+    const b = document.createElement("div");
+    b.className = "term-block";
+    b.innerHTML = termHeadHTML(t, open,
+                    todo ? '<span class="count">未入力 ' + todo + '</span>' : "") +
+                  '<div class="sheet' + (open ? "" : " hidden") + '">' +
+                  '<div class="grid"></div></div>';
+    b.querySelector("button.fold").addEventListener("click", ()=> toggleTerm(t, "lessons"));
+    box.appendChild(b);
+    if(!open) return;
+
+    const g = b.querySelector(".grid");
+    g.innerHTML = rows.map(cellHTML).join("");
+    const cells = g.children;
+    for(let i = 0; i < cells.length; i++) applyCellState(cells[i], rows[i]);
+  });
+}
+
+/* 聞き役は表ぜんぶに1つだけ置く。セルごとに付けると、その分だけ組み立てが遅くなる。
+   学期ごとに表が分かれても、聞き役は増やさない。 */
 (function(){
-  const g = $("grid");
-  const rowOfCell = c => S.rows[Array.prototype.indexOf.call(g.children, c)];
+  const box = $("lessons");
+  const rowOfCell = c => ROW_BY_NO[c.dataset.i];
 
   /* 触った瞬間に残りの選択肢を足す。開く前に間に合う。 */
   ["pointerdown","focusin","keydown"].forEach(ev=>{
-    g.addEventListener(ev, e=>{
+    box.addEventListener(ev, e=>{
       const sel = e.target.closest ? e.target.closest("select") : null;
       if(sel && !sel.disabled) fillOptions(sel, rowOfCell(sel.closest(".cell")).sym);
     }, true);
   });
-  g.addEventListener("change", e=>{
+  box.addEventListener("change", e=>{
     const sel = e.target.closest ? e.target.closest("select") : null;
     if(!sel) return;
     const c = sel.closest(".cell");
@@ -331,7 +428,7 @@ function onPick(c, l, sel){
     if(o) o.remove();
   }
   applyCellState(c, l);
-  renderHead();
+  renderHead(); renderTermCounts();
   c.classList.add("saving");
   sel.disabled = true;          // 往復のあいだ、そのセルだけ受け付けない
   hideErr();
@@ -342,17 +439,37 @@ function onPick(c, l, sel){
       if(r && r.ok){ applyCellState(c, l); return; }
       l.sym = before;                       // 断られたので戻す
       l.state = before ? "done" : "todo";
-      applyCellState(c, l); renderHead();
+      applyCellState(c, l); renderHead(); renderTermCounts();
       showErr((r && r.why) || "ほぞん できませんでした");
     })
     .withFailureHandler(function(e){
       c.classList.remove("saving");
       l.sym = before;
       l.state = before ? "done" : "todo";
-      applyCellState(c, l); renderHead();
+      applyCellState(c, l); renderHead(); renderTermCounts();
       showErr("つうしんが できませんでした。もう一度 えらんでください");
     })
     .apiSave(subject, l.no, next);
+}
+
+/* 見出しの「未入力 ◯」だけ当て直す。表は作り直さない。 */
+function renderTermCounts(){
+  const blocks = $("lessons").children;
+  for(let i = 0; i < blocks.length; i++){
+    const btn = blocks[i].querySelector("button.fold");
+    if(!btn) continue;
+    const t    = Number(btn.dataset.t);
+    const rows = S.rows.filter(l => termOfNo(l.no) === t);
+    const todo = rows.filter(l => !l.sym && l.state !== "future").length;
+    let tag = blocks[i].querySelector(".count");
+    if(!todo){ if(tag) tag.remove(); continue; }
+    if(!tag){
+      tag = document.createElement("span");
+      tag.className = "count";
+      btn.parentNode.insertBefore(tag, btn);
+    }
+    tag.textContent = "未入力 " + todo;
+  }
 }
 
 function renderHead(){
@@ -366,47 +483,27 @@ function renderHead(){
     '<small>' + subject + '　' + S.className + '　' + S.year + '年度</small>';
 }
 
-/* いまの学期。4〜7月＝1学期、8〜12月＝2学期、1〜3月＝3学期。
-   単元の評価は、この学期だけを開いた状態で出す。ほかは畳んでおく。
-   70時間ぶんの単元カードを全部開くと、いま関係のあるものが埋もれる。 */
-function termNow(){
-  const m = new Date().getMonth() + 1;
-  return (m >= 4 && m <= 7) ? 1 : (m >= 8 && m <= 12) ? 2 : 3;
-}
-let openTerms = null;                    // 開いている学期。null なら既定を作る
-
+/* 単元カードも、授業の表と同じ学期の開閉に従う。 */
 function renderUnits(){
   const box = $("units");
   box.innerHTML = "";
-  const terms = [];
-  S.units.forEach(u => { if(terms.indexOf(u.term || 0) < 0) terms.push(u.term || 0); });
-  terms.sort((a,b) => a - b);
-
-  if(openTerms === null){
-    const now = termNow();
-    openTerms = {};
-    terms.forEach(t => { openTerms[t] = (t === now); });
-    if(!terms.some(t => openTerms[t]) && terms.length) openTerms[terms[terms.length - 1]] = true;
-  }
+  ensureOpenTerms();
 
   const rowOf = {};
-  terms.forEach(t=>{
+  termList().forEach(t=>{
+    if(!S.units.some(u => (u.term || 0) === t)) return;
     const open = !!openTerms[t];
     const b = document.createElement("div");
     b.className = "term-block";
-    b.innerHTML = '<div class="term-head"><span>' + (t ? t + "学期" : "学期なし") + '</span>' +
-                  '<button class="fold" type="button" aria-expanded="' + open + '">' +
-                  (open ? "かくす" : "ひらく") + '</button></div>' +
+    b.innerHTML = termHeadHTML(t, open, "") +
                   '<div class="term-row' + (open ? "" : " hidden") + '"></div>';
-    b.querySelector("button.fold").addEventListener("click", ()=>{
-      openTerms[t] = !openTerms[t];
-      renderUnits();
-    });
+    b.querySelector("button.fold").addEventListener("click", ()=> toggleTerm(t, "units"));
     box.appendChild(b);
     rowOf[t] = b.querySelector(".term-row");
   });
 
   S.units.forEach(u=>{
+    if(!rowOf[u.term || 0]) return;
     /* 単元評価は「1段階上」の材質で見せる。単元で高い値を取るのは1時間より
        難しいので、同じ記号でも授業のセルより上に見えるようにする。
        ただし警告帯（D・C）は上げない。上げると単元での警告が消える。 */
@@ -443,13 +540,16 @@ function renderUnits(){
   });
 }
 
-/* 70セルの先頭ではなく「いまやるところ」を中央に置く。 */
+/* 先頭ではなく「いまやるところ」を中央に置く。
+   畳んだ学期のセルは作っていないので、**出ているセルの中から**選ぶ。
+   出ていないセルを指すと、黙って何も起きない画面になる。 */
 let scrolled = false;
 function scrollToNow(){
   if(scrolled) return;
-  let i = S.rows.findIndex(l => l.state === "todo" && !l.sym);
-  if(i < 0) for(let k = S.rows.length - 1; k >= 0; k--) if(S.rows[k].sym){ i = k; break; }
-  const cell = i >= 0 ? $("grid").children[i] : null;
+  const shown = S.rows.filter(l => openTerms[termOfNo(l.no)]);
+  let l = shown.filter(x => x.state === "todo" && !x.sym)[0];
+  if(!l) for(let k = shown.length - 1; k >= 0; k--) if(shown[k].sym){ l = shown[k]; break; }
+  const cell = l ? $("lessons").querySelector('.cell[data-i="' + l.no + '"]') : null;
   if(cell){ cell.scrollIntoView({block:"center", behavior:"auto"}); scrolled = true; }
 }
 
