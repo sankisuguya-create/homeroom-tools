@@ -66,6 +66,10 @@ td.num{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--ink-s
 select.final{font-family:"IBM Plex Mono",monospace;font-size:13px;border:1px solid var(--rule);
   border-radius:5px;padding:3px 6px;background:var(--sheet);color:var(--ink)}
 select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
+/* 学級の真ん中からのずれ。2段以上だけ目立たせる。
+   全員に色を付けると、見に行くべき行が沈む。 */
+td.diff{color:var(--ink-faint)}
+td.diff.far{color:var(--ink);font-weight:700}
 .warncell{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--warn);font-weight:700}
 .warncell.zero{color:var(--ink-faint);font-weight:400}
 .rank{font-weight:700;border-radius:5px;padding:2px 10px;display:inline-block;min-width:30px;text-align:center}
@@ -355,11 +359,20 @@ function loadUnit(){
   call("apiUnitTable", [subject, unitName], drawUnitTable);
 }
 
+/* 学級の真ん中から何段ずれているか。29人を1人ずつ見比べなくても、
+   外れているところだけ見に行けるようにする。 */
+function diffText(d){
+  if(d == null) return "—";
+  if(d === 0)   return "±0";
+  return (d > 0 ? "+" : "−") + Math.abs(d);
+}
+
 function drawUnitTable(t){
-  $("ruleText").textContent = t.ruleText;
+  $("ruleText").textContent = t.ruleText
+    + (t.mid ? "　／　学級の真ん中 " + t.mid + "（" + t.midN + "人）" : "");
   let h = '<thead><tr><th>児童</th><th>入力のならび</th><th>入力</th><th>休</th><th>/</th>' +
-          '<th>仮値</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th><th>C</th><th>D</th>' +
-          '<th>採用値</th></tr></thead><tbody>';
+          '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
+          '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';
   t.rows.forEach(r=>{
     const chosen = r.final != null ? r.final : (r.prov || "");
     h += '<tr>' +
@@ -370,6 +383,7 @@ function drawUnitTable(t){
       '<td class="num">' + (r.off || "·") + '</td>' +
       '<td class="num">' + (r.skip || "·") + '</td>' +
       '<td><span class="prov ' + (r.prov ? clsOf(r.prov) : "none") + '">' + (r.prov || "—") + '</span></td>' +
+      '<td class="num diff' + (Math.abs(r.diff || 0) >= 2 ? " far" : "") + '">' + diffText(r.diff) + '</td>' +
       '<td class="num">' + (r.all || "—") + '</td>' +
       '<td class="num">' + (r.high || "—") + '</td>' +
       '<td class="warncell' + (r.top ? "" : " zero") + '">' + r.top + '</td>' +

@@ -14,6 +14,19 @@
 process.env.TZ = "Asia/Tokyo";
 
 const fs = require("fs"), path = require("path"), vm = require("vm");
+
+/* 偽の CacheService。getAll は本物にもある（見つかった鍵だけ返す）。 */
+const CACHE = (function(){
+  const m = new Map();
+  return {
+    get:    k => (m.has(k) ? m.get(k) : null),
+    put:    (k, v) => m.set(k, v),
+    putAll: o => Object.keys(o).forEach(k => m.set(k, o[k])),
+    getAll: ks => { const o = {}; ks.forEach(k => { if(m.has(k)) o[k] = m.get(k); }); return o; },
+    remove: k => m.delete(k),
+    _clear: () => m.clear()
+  };
+})();
 const DIR = __dirname;
 
 /* ---- 偽のシート ---- */
@@ -24,8 +37,11 @@ const SHEETS = {
     ["Y解放",false],["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
   "教科マスタ": [["教科","時数","公開"],
     ["算数",70,true],["国語",60,true],["体育",105,false],["社会",70,false]],
+  /* 「3人以上が入れた授業を済んだとみなす」を試すには、名簿が3人以上要る。 */
   "名簿": [["児童ID","出席番号","氏名","メール"],
     ["s01",1,"あおい","aoi@example.ed.jp"],
+    ["s02",2,"いつき","itsuki@example.ed.jp"],
+    ["s03",3,"うみ","umi@example.ed.jp"],
     ["s09",9,"さくら","sakura@example.ed.jp"]],
   "単元マスタ": [["教科","単元名","開始No","終了No","色","学期","評価公開"],
     ["算数","九九の表とかけ算",1,14,0,1,true],
@@ -39,6 +55,7 @@ const SHEETS = {
 
 let CURRENT_EMAIL = "sakura@example.ed.jp";
 const alerts = [];
+let sheetReads = 0;            // 記録シートを頭からなめた回数
 
 /* 書ける偽シート。記録と確定は実際に行が増減するので、そこまで真似る。 */
 function fakeSheet(name){
@@ -52,6 +69,7 @@ function fakeSheet(name){
     const r0 = row - 1, c0 = col - 1;
     return {
       getValues(){
+        if(name === "記録" && row === 2 && nCol === 6) sheetReads++;
         const out = [];
         for(let i = 0; i < nRow; i++){
           const src = v[r0 + i] || [];
@@ -102,12 +120,10 @@ const sandbox = {
     }),
     getUi: () => ({ alert: m => alerts.push(m) })
   },
-  CacheService: { getScriptCache: () => {
-    const m = new Map();
-    return {get: k => m.get(k) || null, put: (k,v) => m.set(k,v),
-            putAll: o => Object.keys(o).forEach(k => m.set(k, o[k])),
-            remove: k => m.delete(k)};
-  }},
+  /* 本物と同じく、呼ぶたびに同じ入れ物を返す。
+     毎回まっさらな Map を返していたので、キャッシュの経路が
+     一度も試されていなかった。 */
+  CacheService: { getScriptCache: () => CACHE },
   Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }),
              getScriptTimeZone: () => "Asia/Tokyo" },
   Logger: { log: () => {} },
@@ -127,6 +143,12 @@ sandbox.SHEETS_LEN = () => SHEETS["記録"].length;
 sandbox.SH_HAS   = n => !!SHEETS[n];
 sandbox.SH_COUNT = n => (SHEETS[n] ? 1 : 0);
 sandbox.CURRENT_EMAIL_STUDENT = () => { CURRENT_EMAIL = "sakura@example.ed.jp"; };
+sandbox.SHEET_READS = () => sheetReads;
+/* 検査の式の中で CURRENT_EMAIL に代入しても、偽の Session が見ているのは
+   こちら側の変数なので効かない。差し替えはこの関数を通す。
+   as() と違ってキャッシュは消さない（キャッシュの効きを見る検査があるため）。 */
+sandbox.BE = e => { CURRENT_EMAIL = e; };
+sandbox.ev_clear = () => { CACHE._clear(); };
 vm.createContext(sandbox);
 
 /* ---- 全 .gs を1つのスコープへ。GAS と同じ形。 ---- */
@@ -509,6 +531,56 @@ ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
 ok("教師は児童を選んでその画面を見られる",
    "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");
 clockReal();
+
+console.log("■ 学級の集計（済んだ授業の線・授業ごとの平均）");
+clockAt("2026-05-22T12:00:00+09:00");      // 開いている時間。児童の読み取りも試すため
+as("sensei@example.ed.jp");
+ok("3人以上が入れた最大の No が『ここまで授業があった』の線になる",
+   "(function(){ev_clear();" +
+   " apiSaveAs('算数','s01',61,'B'); apiSaveAs('算数','s02',61,'B'); apiSaveAs('算数','s03',61,'B');" +
+   " var a=Store.taughtUpTo('算数');" +
+   " apiSaveAs('算数','s01',65,'B');" +            /* 1人だけでは線は動かない */
+   " var b=Store.taughtUpTo('算数');" +
+   " return a===61 && b===61;})()",
+   "[Store.taughtUpTo('算数')]");
+ok("3人目が入れた時点で線が伸びる",
+   "(function(){apiSaveAs('算数','s02',65,'B'); apiSaveAs('算数','s03',65,'B');" +
+   " return Store.taughtUpTo('算数')===65;})()", "Store.taughtUpTo('算数')");
+ok("授業ごとの平均が人数と一緒に出る",
+   "(function(){var st=Store.lessonStats('算数')[61];" +
+   " return st && st[0]>=3 && st[2]>=3;})()", "JSON.stringify(Store.lessonStats('算数')[61])");
+ok("消すと人数が減る",
+   "(function(){var a=Store.lessonStats('算数')[65][0];" +
+   " apiSaveAs('算数','s03',65,null);" +
+   " var b=Store.lessonStats('算数')[65][0];" +
+   " return b===a-1;})()");
+ok("保存しても記録のキャッシュは捨てない（シートを読み直さない）",
+   "(function(){Store.read('算数','s01',new Date());" +          /* キャッシュを作る */
+   " var before=SHEET_READS();" +
+   " apiSaveAs('算数','s01',62,'A');" +
+   " var rows=Store.read('算数','s01',new Date());" +
+   " var after=SHEET_READS();" +
+   " return rows[61].sym==='A' && after===before;})()",
+   "'reads=' + SHEET_READS()");
+ok("児童の画面に taught が返る",
+   "(function(){BE('sakura@example.ed.jp');var r=apiRead('算数');" +
+   " return r.ok && typeof r.taught==='number' && r.taught>=61;})()");
+ok("児童には授業ごとの平均を返さない",
+   "(function(){BE('sakura@example.ed.jp');return apiRead('算数').avg===undefined;})()");
+ok("教師には授業ごとの平均を返す",
+   "(function(){BE('sensei@example.ed.jp');var r=apiRead('算数');" +
+   " return r.ok && !!r.avg && !!r.avg[61] && typeof r.avg[61].n==='number';})()");
+ok("単元の表に学級の真ん中からの差が入る",
+   "(function(){BE('sensei@example.ed.jp');" +
+   " ['s01','s02','s03','s09'].forEach(function(id,i){" +
+   "   for(var no=1;no<=14;no++) apiSaveAs('算数',id,no, i===0 ? 'A+' : 'B');});" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " if(!t.ok) return false;" +
+   " var has=t.rows.filter(function(r){return r.diff!==null;});" +
+   " var zero=t.rows.filter(function(r){return r.diff===0;});" +
+   " return has.length>0 && zero.length>0 && t.midN===has.length;})()");
+clockReal();
+as("sensei@example.ed.jp");
 
 console.log("■ 出力");
 as("sensei@example.ed.jp");

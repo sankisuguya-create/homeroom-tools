@@ -32,7 +32,25 @@ const Store = (function(){
      メニューの「キャッシュを消す」で全部捨てる。
   ------------------------------------------------------------------ */
   const TTL = 1800;                               // 30分
-  const keyOf = (subject, id) => "rec|" + subject + "|" + id;
+  const keyOf  = (subject, id) => "rec|" + subject + "|" + id;
+  const statKey = subject => "lsn|" + subject;
+
+  /* 授業ごとの、学級全体の入った人数と評価の合計。
+     {No: [入った人数, 評価の合計, 評価の人数]}。休 と / は人数には入るが
+     評価の合計には入らない（尺度の値を持たないため）。 */
+  function statsFrom_(by){
+    const st = {};
+    Object.keys(by).forEach(id=>{
+      const m = by[id];
+      Object.keys(m).forEach(no=>{
+        const a = st[no] || (st[no] = [0, 0, 0]);
+        a[0]++;
+        const v = valueOfSym(m[no][0]);
+        if(v != null){ a[1] += v; a[2]++; }
+      });
+    });
+    return st;
+  }
 
   function loadAll_(subject){
     const by = {};
@@ -46,8 +64,43 @@ const Store = (function(){
     });
     const put = {};
     Object.keys(by).forEach(id => { put[keyOf(subject, id)] = JSON.stringify(by[id]); });
+    put[statKey(subject)] = JSON.stringify(statsFrom_(by));
     try { CacheService.getScriptCache().putAll(put, TTL); } catch(e) { /* 入らなくても動く */ }
     return by;
+  }
+
+  /* 授業ごとの学級集計。
+     **シートは読まない。** 29人ぶんの記録はすでにキャッシュにあるので、
+     そこから組み直す。1人でも欠けていれば数がずれるので、そのときだけ読む。 */
+  function lessonStats(subject){
+    const cs = CacheService.getScriptCache();
+    const c  = cs.get(statKey(subject));
+    if(c) return JSON.parse(c);
+
+    const ids  = Roster.all().map(st => String(st.id));
+    const keys = ids.map(id => keyOf(subject, id));
+    const got  = cs.getAll(keys) || {};
+    const by   = {};
+    let missing = false;
+    ids.forEach((id, i) => {
+      const v = got[keys[i]];
+      if(v === undefined || v === null) missing = true; else by[id] = JSON.parse(v);
+    });
+    const st = statsFrom_(missing ? loadAll_(subject) : by);
+    if(!missing){ try { cs.put(statKey(subject), JSON.stringify(st), TTL); } catch(e) {} }
+    return st;
+  }
+
+  /* 「ここまで授業があった」とみなす番号。
+     実施日は持たないので、**学級の入力そのものを実施の証拠に使う**。
+     3人以上が入れている最大の No までを、済んだ授業とみなす。
+     1人の押し間違いで線が飛ばないよう、1人では足りないことにしてある。 */
+  function taughtUpTo(subject){
+    const need = Math.min(3, Roster.all().length || 1);
+    const st = lessonStats(subject);
+    let top = 0;
+    Object.keys(st).forEach(no => { if(st[no][0] >= need && Number(no) > top) top = Number(no); });
+    return top;
   }
 
   /* 児童1人ぶんの {No: [記号, 保存時刻, 更新者]}。 */
@@ -61,6 +114,21 @@ const Store = (function(){
     const cs = CacheService.getScriptCache();
     if(studentId) cs.remove(keyOf(subject, studentId));
     else Roster.all().forEach(st => cs.remove(keyOf(subject, st.id)));
+    cs.remove(statKey(subject));
+  }
+
+  /* 書いたあと、その児童のキャッシュだけを新しい値に差し替える。
+     捨てると、次に開いた1人がシート全体をなめ直すことになる。
+     学級集計はその場で作り直せるので消してよい（読み直しは起きない）。 */
+  function touchCache_(subject, studentId, no, sym, atMs, by){
+    const cs = CacheService.getScriptCache();
+    const k  = keyOf(subject, studentId);
+    const c  = cs.get(k);
+    cs.remove(statKey(subject));
+    if(c === null){ cs.remove(k); return; }        // 無ければ次の読みで作られる
+    const m = JSON.parse(c);
+    if(sym === null) delete m[no]; else m[no] = [String(sym), atMs, String(by || "")];
+    try { cs.put(k, JSON.stringify(m), TTL); } catch(e) { cs.remove(k); }
   }
 
   /* ------------------------------------------------------------------
@@ -190,13 +258,13 @@ const Store = (function(){
 
       if(sym === null){
         if(hit) sh.deleteRow(hit);
-        dropCache(subject, studentId);
+        touchCache_(subject, studentId, no, null, 0, "");
         return {ok:true, sym:null};
       }
       const row = [subject, studentId, no, sym, at, by || ""];
       if(hit) sh.getRange(hit, 1, 1, WIDTH).setValues([row]);
       else    sh.appendRow(row);
-      dropCache(subject, studentId);
+      touchCache_(subject, studentId, no, sym, at.getTime(), by || "");
       return {ok:true, sym:sym, savedAt:at.toISOString()};
     } finally {
       lock.releaseLock();
@@ -216,5 +284,5 @@ const Store = (function(){
     return {ok:true, put:put, over:over};
   }
 
-  return {read, readAll, save, saveAs, bulk, dropCache};
+  return {read, readAll, save, saveAs, bulk, dropCache, lessonStats, taughtUpTo};
 })();

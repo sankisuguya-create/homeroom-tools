@@ -67,13 +67,31 @@ function apiRead(subject){
   const id = isTeacher ? (Roster.all()[0] || {}).id : who.id;
   const rows = id ? Store.read(subject, id, at) : [];
 
-  return {
+  const out = {
     ok: true, subject: subject,
     total: subj.total,
     units: Aggregate.unitsForStudent(subject, id, rows),
     rows: rows,
+    /* 「ここまで授業があった」の線。実施日は持たないので、学級の入力から引く。
+       画面の「のこり」はこの線より手前の空欄だけを数える。
+       線を引かないと、まだ習っていない授業まで「のこり」に入り、
+       9月に3学期ぶんの22が赤で出る。 */
+    taught: Store.taughtUpTo(subject),
     toClose: Hours.minutesToClose(at)
   };
+
+  /* 教師が見るときだけ、授業ごとの学級平均を添える。
+     児童には返さない（自分と学級を比べる情報を児童の画面に置かない）。 */
+  if(isTeacher){
+    const st = Store.lessonStats(subject);
+    const avg = {};
+    Object.keys(st).forEach(no=>{
+      const a = st[no];
+      avg[no] = {n: a[0], sym: a[2] ? symbolOfMedian(a[1] / a[2]) : null, scored: a[2]};
+    });
+    out.avg = avg;
+  }
+  return out;
 }
 
 /* 時計の確認だけ。記録シートを読まない。
@@ -178,6 +196,7 @@ function apiUnitTable(subject, unitName){
 
   const all  = Store.readAll(subject);
   const R    = Config.rule();
+  const provs = [];
   const rows = Roster.all().map(st => {
     const rec = all[st.id] || {};
     const s   = Aggregate.summarize(rec, u, R);
@@ -186,13 +205,23 @@ function apiUnitTable(subject, unitName){
     return {
       id: st.id, name: st.name, seq: seq,
       n: s.n, total: s.total, off: s.off, skip: s.skip,
-      prov: s.provSym, all: symbolOfMedian(s.all),
+      prov: s.provSym, provVal: s.prov, all: symbolOfMedian(s.all),
       high: s.high ? symbolOf(s.high) : null,
       top: s.top, c: s.c, d: s.d,
       final: Final.unitValue(subject, st.id, unitName)
     };
   });
-  return {ok:true, unit:u, rows:rows, rule:R, ruleText: ruleText_(R)};
+
+  /* 学級の真ん中からの差を段数で出す。29人ぶんを1人ずつ見比べなくても、
+     外れているところだけ見に行ける。中央値を使うのは、1人の突出で
+     基準そのものが動かないようにするため。 */
+  rows.forEach(r => { if(r.provVal != null) provs.push(r.provVal); });
+  const mid = Aggregate.medianVal(provs);
+  rows.forEach(r => { r.diff = (mid == null || r.provVal == null)
+                               ? null : Math.round(r.provVal - mid); });
+
+  return {ok:true, unit:u, rows:rows, rule:R, ruleText: ruleText_(R),
+          mid: symbolOfMedian(mid), midN: provs.length};
 }
 
 function ruleText_(R){

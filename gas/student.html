@@ -31,7 +31,9 @@ body{margin:0;background:var(--paper);color:var(--ink);
 .badges{display:flex;gap:8px;flex-wrap:wrap}
 .badge{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
   border:1.5px solid currentColor;border-radius:6px;padding:2px 10px}
-.badge.todo{color:var(--warn)} .badge.todo.clear{color:var(--ink-faint)}
+/* 「のこり」は警告ではないので、警告帯（D・C）の赤を使わない。
+   3年生は赤を「怒られている」と読む。数えているのは抜けであって非ではない。 */
+.badge.todo{color:var(--ink-soft)} .badge.todo.clear{color:var(--ink-faint)}
 .badge.locked{color:var(--lock-ink)}
 
 section{display:flex;flex-direction:column;gap:12px}
@@ -67,6 +69,9 @@ h2 .fold{order:2}
 .cell.future select:not(.is-skip){background-color:var(--rule-soft);color:var(--ink-faint);
   border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
 .cell.future select.is-skip{border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted}
+.cell .avg{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint);
+  display:flex;justify-content:space-between;gap:4px;line-height:1.3}
+.cell .avg b{font-weight:600;color:var(--ink-soft)}
 .cell.edited{box-shadow:inset 3px 0 0 var(--open)}
 .cell.skipcell{box-shadow:none}
 .cell.saving select{opacity:.55}
@@ -90,10 +95,10 @@ h2 .fold{order:2}
   background:var(--sheet);color:var(--ink-soft);cursor:pointer;letter-spacing:0}
 .term-head::after{content:"";flex:1;height:1px;background:var(--rule-soft);order:3}
 .term-head .fold{order:2}
-/* 畳んだ学期の中に未入力が残っていることを、開かなくても分かるようにする。
-   上の「未入力 12」は教科ぜんぶの数なので、学期を畳むと在りかが見えなくなる。 */
+/* 畳んだ学期の中に抜けが残っていることを、開かなくても分かるようにする。
+   上の「のこり 12」は教科ぜんぶの数なので、学期を畳むと在りかが見えなくなる。 */
 .term-head .count{order:1;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
-  font-weight:600;letter-spacing:0;color:var(--warn);
+  font-weight:600;letter-spacing:0;color:var(--ink-soft);
   border:1px solid currentColor;border-radius:5px;padding:0 7px}
 .term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));
   gap:14px;justify-content:start}
@@ -348,6 +353,16 @@ function toggleTerm(t, from){
 
 let ROW_BY_NO = {};
 
+/* 学級平均は**教師が見るときだけ**セルに出す。
+   児童の画面に置くと、転写のたびに自分と学級を比べることになる。 */
+function avgHTML(no){
+  if(!S.avg) return "";                          // 児童には出さない
+  /* 誰も入れていない授業も枠だけ出す。行の高さが揃うのと、
+     「まだ誰も転写していない」がそのまま読めるのと、両方のため。 */
+  const a = S.avg[no] || {sym:null, n:0};
+  return '<div class="avg"><b>' + (a.sym || "—") + '</b><span>' + a.n + '人</span></div>';
+}
+
 function cellHTML(l){
   const u = unitOf(l.no);
   /* 最初は選んでいる1つだけ。残りは触ったときに足す（fillOptions）。 */
@@ -357,7 +372,7 @@ function cellHTML(l){
     '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
     '<select class="mat" aria-label="No.' + l.no + ' の評価">' +
       '<option value="' + cur + '">' + (cur || "‥") + '</option>' +
-    '</select></div>';
+    '</select>' + avgHTML(l.no) + '</div>';
 }
 
 /* 表は**1回で組み立てる**。学期ぶんを1つの文字列にしてから流し込む。
@@ -375,11 +390,11 @@ function renderGrid(){
     const rows = S.rows.filter(l => termOfNo(l.no) === t);
     if(!rows.length) return;
     const open = !!openTerms[t];
-    const todo = rows.filter(l => !l.sym && l.state !== "future").length;
+    const todo = rows.filter(isLeft).length;
     const b = document.createElement("div");
     b.className = "term-block";
     b.innerHTML = termHeadHTML(t, open,
-                    todo ? '<span class="count">未入力 ' + todo + '</span>' : "") +
+                    todo ? '<span class="count">のこり ' + todo + '</span>' : "") +
                   '<div class="sheet' + (open ? "" : " hidden") + '">' +
                   '<div class="grid"></div></div>';
     b.querySelector("button.fold").addEventListener("click", ()=> toggleTerm(t, "lessons"));
@@ -450,7 +465,7 @@ function onPick(c, l, sel){
     .apiSave(subject, l.no, next);
 }
 
-/* 見出しの「未入力 ◯」だけ当て直す。表は作り直さない。 */
+/* 見出しの「のこり ◯」だけ当て直す。表は作り直さない。 */
 function renderTermCounts(){
   const blocks = $("lessons").children;
   for(let i = 0; i < blocks.length; i++){
@@ -458,7 +473,7 @@ function renderTermCounts(){
     if(!btn) continue;
     const t    = Number(btn.dataset.t);
     const rows = S.rows.filter(l => termOfNo(l.no) === t);
-    const todo = rows.filter(l => !l.sym && l.state !== "future").length;
+    const todo = rows.filter(isLeft).length;
     let tag = blocks[i].querySelector(".count");
     if(!todo){ if(tag) tag.remove(); continue; }
     if(!tag){
@@ -466,15 +481,25 @@ function renderTermCounts(){
       tag.className = "count";
       btn.parentNode.insertBefore(tag, btn);
     }
-    tag.textContent = "未入力 " + todo;
+    tag.textContent = "のこり " + todo;
   }
 }
 
+/* 「のこり」＝**済んだ授業のうち、自分が空のもの**。
+   まだ習っていない授業は数えない。実施日は持たないので、済んだかどうかは
+   学級の入力から引く（S.taught＝3人以上が入れている最大の No）。
+   ここを区別しないと、9月に3学期ぶんまで数えて「48」と出る。 */
+const isLeft = l => !l.sym && l.no <= (S.taught || 0);
+
 function renderHead(){
-  const todo   = S.rows.filter(l => l.state === "todo" && !l.sym).length;
+  const todo   = S.rows.filter(isLeft).length;
   const locked = S.rows.filter(l => l.sym && l.locked).length;
   const tb = $("todoBadge");
-  tb.textContent = todo ? "未入力 " + todo : "未入力なし";
+  /* 線が引けていないうち（学級の誰もまだ転写していない）は何も言わない。
+     この状態で「ぜんぶ おわり」と出すと、抜けがあるのに終わったと告げることになる。 */
+  const known = (S.taught || 0) > 0;
+  tb.classList.toggle("hidden", !known);
+  tb.textContent = todo ? "のこり " + todo : "ぜんぶ おわり";
   tb.classList.toggle("clear", todo === 0);
   $("lockBadge").textContent = "確定 " + locked;
   $("title").innerHTML = S.who.name +
