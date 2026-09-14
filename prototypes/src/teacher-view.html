@@ -486,9 +486,9 @@ function renderBulk(){
   $("bulkValue").innerHTML =
     '<option value="'+SKIP+'">'+SKIP+'（評価に入れない）</option>' +
     '<option value="'+OFF+'">'+OFF+'</option>' +
-    BASES.map(b => '<optgroup label="'+b+'">' +
-      LEVELS.filter(x => baseOfSym(x) === b)
-            .map(x => '<option value="'+x+'">'+x+'</option>').join("") + '</optgroup>').join("");
+    /* 見出しは付けない。見出しの A と選択肢の A が同じ文字になり、
+       押せるものと押せないものが同じ顔で並ぶ。実装側も一本の並びにしてある。 */
+    LEVELS.map(x => '<option value="'+x+'">'+x+'</option>').join("");
   updateBulkCount();
 }
 function bulkTargets(){

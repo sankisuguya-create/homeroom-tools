@@ -243,26 +243,24 @@ function fillOptions(sel, cur){
   sel.value = keep;
 }
 
+/* 選択肢は**選べるものだけ**にする。optgroup の見出しを付けない。
+   見出しの文字（A）が選択肢の文字（A）とそのまま同じなので、
+   どう飾っても「押せる A」と「押せない A」が並ぶ画面になる。
+   曖昧さの元は見た目ではなく**同じ文字が2回出ること**なので、見出しを消す。
+   段は D から上へ並んでいて、児童はノートの記号を1つ探すだけなので、
+   13〜15行の一本の並びで足りる。教師画面も同じく一本の並びにしてある。 */
 /* / は授業側の都合なので教師だけが置く。すでに入っているセルでは残す。 */
 function optionsHTML(cur){
   const teacher  = S.who.role === "teacher";
   const withSkip = teacher || cur === SKIP;
-  let h = '<option value="">‥</option>' +
-          '<optgroup label="評価に入れない">' +
-          '<option value="' + OFF + '">' + OFF + '</option>' +
-          (withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : '') +
-          '</optgroup>';
   /* Y 以上は、教師が解放するまで児童に出さない。
      すでに入っている記号は、値が消えないよう残す。 */
   const allowed = symsFor({released: teacher || !!S.released, keep: cur});
-  BASES.forEach(b=>{
-    const syms = allowed.filter(x => baseOfSym(x) === b);
-    if(!syms.length) return;
-    h += '<optgroup label="' + b + '">' +
-         syms.map(x => '<option value="' + x + '">' + x + '</option>').join("") +
-         '</optgroup>';
-  });
-  return h;
+  return ['<option value="">‥</option>',
+          '<option value="' + OFF + '">' + OFF + '</option>',
+          withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : ""]
+         .concat(allowed.map(x => '<option value="' + x + '">' + x + '</option>'))
+         .join("");
 }
 
 const unitOf = no => (S.units || []).filter(u => no >= u.from && no <= u.to)[0] || null;
