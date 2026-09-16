@@ -284,5 +284,9 @@ const Store = (function(){
     return {ok:true, put:put, over:over};
   }
 
-  return {read, readAll, save, saveAs, bulk, dropCache, lessonStats, taughtUpTo};
+  /* readAll は記号だけに削ぎ落とすので、誰が書いたか（貫通の印）が消える。
+     教師画面で「どのマスが貫通で直されたか」を出すために、削らない形も返す。 */
+  function rawAll(subject){ return loadAll_(subject); }   // {id: {no: [記号, 保存時刻ms, 更新者]}}
+
+  return {read, readAll, rawAll, save, saveAs, bulk, dropCache, lessonStats, taughtUpTo};
 })();

@@ -579,6 +579,37 @@ ok("単元の表に学級の真ん中からの差が入る",
    " var has=t.rows.filter(function(r){return r.diff!==null;});" +
    " var zero=t.rows.filter(function(r){return r.diff===0;});" +
    " return has.length>0 && zero.length>0 && t.midN===has.length;})()");
+
+console.log("■ 1マスを貫通して直す（ロック後に誤りに気づいたとき）");
+ok("apiUnitTable が seq と同じ長さの edited 配列を返す",
+   "(function(){BE('sensei@example.ed.jp');" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " var r=t.rows[0];" +
+   " return t.ok && r.edited.length===r.seq.length;})()");
+ok("貫通して書き換えると edited が立つ",
+   "(function(){apiSaveAs('算数','s01',3,'A');" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
+   " return r.seq[2]==='A' && r.edited[2]===true;})()");
+/* ここまでの検査で s01〜s09 の九九の表とかけ算（No.1〜14）はすでに
+   apiSaveAs で埋めてしまっている（学級差の検査の下ごしらえ）。
+   触れていないマスを見るには、別の単元（わり算・No.15〜30）を使う。 */
+ok("触れていないマスは edited が立たない",
+   "(function(){var t=apiUnitTable('算数','わり算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
+   " return r.seq[0]===null && r.edited[0]===false;})()");
+clockAt("2026-05-22T12:00:00+09:00");      // 開いている時間
+ok("edited は No（chip の位置）と対応する。ロック済みの過去の記録でも貫通できる",
+   "(function(){apiSaveAs('算数','s02',15,'A++');" +   /* わり算の先頭マス */
+   " var t=apiUnitTable('算数','わり算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s02';})[0];" +
+   " return r.seq[0]==='A++' && r.edited[0]===true;})()");
+clockReal();
+ok("児童ではない role では貫通できない（サーバ側の確認）",
+   "(function(){BE('sakura@example.ed.jp');" +
+   " var r=apiSaveAs('算数','s01',5,'A');" +
+   " BE('sensei@example.ed.jp');" +
+   " return r.ok===false;})()");
 clockReal();
 as("sensei@example.ed.jp");
 

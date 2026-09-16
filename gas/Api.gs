@@ -194,16 +194,23 @@ function apiUnitTable(subject, unitName){
   const u = subj.units.filter(x => x.name === unitName)[0];
   if(!u) return {ok:false, why:"その単元はありません"};
 
-  const all  = Store.readAll(subject);
+  const raw  = Store.rawAll(subject);           // 記号だけでなく更新者まで持つ
   const R    = Config.rule();
   const provs = [];
   const rows = Roster.all().map(st => {
-    const rec = all[st.id] || {};
+    const rr  = raw[st.id] || {};
+    const rec = {};
+    Object.keys(rr).forEach(no => { rec[no] = rr[no][0]; });
     const s   = Aggregate.summarize(rec, u, R);
-    const seq = [];
-    for(let no = u.from; no <= u.to; no++) seq.push(rec[no] || null);
+    const seq = [], edited = [];
+    for(let no = u.from; no <= u.to; no++){
+      seq.push(rec[no] || null);
+      /* 教師が貫通して書き換えたマスだけ印を付ける。ロックの貫通を
+         見えない書き換えにしないため（児童画面の edited 印と対で持つ）。 */
+      edited.push(!!(rr[no] && rr[no][2]));
+    }
     return {
-      id: st.id, name: st.name, seq: seq,
+      id: st.id, name: st.name, seq: seq, edited: edited,
       n: s.n, total: s.total, off: s.off, skip: s.skip,
       prov: s.provSym, provVal: s.prov, all: symbolOfMedian(s.all),
       high: s.high ? symbolOf(s.high) : null,

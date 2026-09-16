@@ -51,14 +51,23 @@ thead th{position:sticky;top:0;background:var(--sheet);z-index:2;font-size:11.5p
 td.name{font-weight:600}
 td.num{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--ink-soft)}
 .chips{display:flex;gap:2px;flex-wrap:wrap}
+/* 押すと1マスだけロックを貫通して直せる（apiSaveAs）。
+   採用値の select と違い、ここは「済んだ授業の記録そのもの」を直す入口。 */
 .chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
   min-width:26px;text-align:center;border-radius:3px;padding:1px 3px;
-  background:var(--rule-soft);color:var(--ink-soft)}
+  background:var(--rule-soft);color:var(--ink-soft);cursor:pointer;border:1px solid transparent}
+.chip:hover{border-color:var(--ink-soft)}
 .chip.a{background:var(--a-bg);color:var(--a-ink)}
 .chip.z{background:var(--z-bg);color:var(--z-ink)}
 .chip.w{background:var(--warn-bg);color:var(--warn)}
 .chip.off{background:var(--off-bg);color:var(--off-ink)}
 .chip.none{background:transparent;color:var(--ink-faint)}
+/* 貫通して直した印。児童画面の .cell.edited と対にしてある。
+   見えない書き換えにしないため、教師の目にも残す。 */
+.chip.edited{box-shadow:inset 0 -2px 0 var(--open)}
+.chipsel{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  min-width:44px;border-radius:3px;padding:0 2px;border:1px solid var(--open);
+  background:var(--sheet);color:var(--ink)}
 .prov{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:700;
   border-radius:5px;padding:2px 9px;display:inline-block;min-width:44px;text-align:center}
 .prov.a{background:var(--a-bg);color:var(--a-ink)} .prov.z{background:var(--z-bg);color:var(--z-ink)}
@@ -368,17 +377,21 @@ function diffText(d){
 }
 
 function drawUnitTable(t){
+  const unitFrom = t.unit.from;         // chip の位置 → No への変換に要る
   $("ruleText").textContent = t.ruleText
     + (t.mid ? "　／　学級の真ん中 " + t.mid + "（" + t.midN + "人）" : "");
-  let h = '<thead><tr><th>児童</th><th>入力のならび</th><th>入力</th><th>休</th><th>/</th>' +
+  let h = '<thead><tr><th>児童</th><th>入力のならび（押すと1マス直せる）</th><th>入力</th><th>休</th><th>/</th>' +
           '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
           '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';
   t.rows.forEach(r=>{
     const chosen = r.final != null ? r.final : (r.prov || "");
     h += '<tr>' +
       '<td class="name">' + esc(r.name) + '</td>' +
-      '<td><div class="chips">' + r.seq.map(s =>
-          '<span class="chip ' + (s ? clsOf(s) : "none") + '">' + (s || "·") + '</span>').join("") + '</div></td>' +
+      '<td><div class="chips">' + r.seq.map((s,i) =>
+          '<span class="chip ' + (s ? clsOf(s) : "none") + (r.edited[i] ? " edited" : "") +
+          '" data-id="' + r.id + '" data-no="' + (unitFrom + i) + '" data-cur="' + (s || "") + '"' +
+          ' title="No.' + (unitFrom + i) + '　' + esc(r.name) + (r.edited[i] ? "　貫通ずみ" : "") + '">' +
+          (s || "·") + '</span>').join("") + '</div></td>' +
       '<td class="num">' + r.n + '/' + r.total + '</td>' +
       '<td class="num">' + (r.off || "·") + '</td>' +
       '<td class="num">' + (r.skip || "·") + '</td>' +
@@ -400,6 +413,37 @@ function drawUnitTable(t){
       call("apiAdopt", [subject, unitName, sel.dataset.id, sel.value], ()=> say("採用値を変えた")));
   });
 }
+
+/* ---------------- 1マスを貫通して直す ----------------
+   誤って入れた記号がロック後に直せなくなったときの入口。
+   ロック・時間を貫通する（apiSaveAs）。押した瞬間に児童の画面へ響くので、
+   確認は挟まず、その場で結果を報告する（間違えたらもう一度押せばよい）。 */
+$("unitTbl").addEventListener("click", e=>{
+  const chip = e.target.closest ? e.target.closest(".chip") : null;
+  if(!chip) return;
+
+  const id = chip.dataset.id, no = Number(chip.dataset.no), cur = chip.dataset.cur;
+  const sel = document.createElement("select");
+  sel.className = "chipsel";
+  sel.innerHTML = '<option value="">（消す）</option>' +
+    '<option value="' + B.off + '"' + (cur === B.off ? " selected" : "") + '>' + B.off + '</option>' +
+    '<option value="' + B.skip + '"' + (cur === B.skip ? " selected" : "") + '>' + B.skip + '</option>' +
+    B.syms.map(s => '<option value="' + s + '"' + (s === cur ? " selected" : "") +
+                     '>' + s + '</option>').join("");
+  chip.replaceWith(sel);
+  sel.focus();
+
+  let done = false;
+  const apply = val => {
+    if(done) return; done = true;
+    if(val === cur){ loadUnit(); return; }        // 変えなかった。作り直すだけ
+    call("apiSaveAs", [subject, id, no, val || null], ()=>{
+      say("No." + no + " を " + (val || "空") + " に直した（貫通）"); loadUnit();
+    });
+  };
+  sel.addEventListener("change", ()=> apply(sel.value));
+  sel.addEventListener("blur",  ()=> apply(cur));   // 選ばずに離れたら、そのまま戻す
+});
 
 $("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
   say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま）"); loadUnit(); });
