@@ -425,19 +425,33 @@ as("sensei@example.ed.jp");
 ok("教師は時間外でも読める", "apiRead('算数').ok === true", "apiRead('算数')");
 ok("教師は非公開の教科も読める", "apiRead('体育').ok === true");
 as("sakura@example.ed.jp");
+/* 役割の確認は rated:false（もどす）で行う。記入率の確認は if(rated) の中
+   だけにあるので、true で試すと役割ではなく記入率で弾かれてしまう。 */
 ok("児童は評価公開を切り替えられない",
-   "apiSetRated('算数','わり算',true).ok === false");
+   "apiSetRated('算数','わり算',false).ok === false");
 as("sensei@example.ed.jp");
-ok("教師は評価公開を切り替えられる",
+ok("記入率が低いうちは押しても切り替わらない（下ごしらえ前のわり算）",
+   "apiSetRated('算数','わり算',true).ok === false",
+   "apiSetRated('算数','わり算',true)");
+ok("(下ごしらえ) わり算を全員ぶん埋める",
+   "(function(){['s01','s02','s03','s09'].forEach(function(id){" +
+   "  for(var no=15;no<=30;no++) apiSaveAs('算数',id,no,'B');});" +
+   " return true;})()");
+ok("記入率がそろえば教師は評価公開を切り替えられる",
    "apiSetRated('算数','わり算',true).ok === true", "apiSetRated('算数','わり算',true)");
 ok("切り替えた結果がマスタに効く", "Master.unitOf('算数',20).rated === true");
 ok("押した時点で仮値が採用され、確定シートに入る",
    "(function(){" +
+   /* 九九の表とかけ算も全員ぶん埋める。s01〜s03 はすでに確定値を持つ
+      ことにして、この操作で新しく採用されるのが s09 だけになるようにする。 */
+   "['s01','s02','s03'].forEach(function(id){" +
+   "  for(var no=1;no<=14;no++) Store.saveAs('算数',id,no,'B');" +
+   "  Final.set('算数',id,'単元','九九の表とかけ算','B');});" +
    "['B','B+','A','A−','A+','B+','A','A','B+','A','A+','A','A+','Z']" +
    "  .forEach(function(sym,i){ Store.saveAs('算数','s09',i+1,sym); });" +
    "Final.set('算数','s09','単元','九九の表とかけ算','');" +   /* いったん空に */
    "var r = apiSetRated('算数','九九の表とかけ算',true);" +
-   "return r.adopted === 1 && typeof Final.unitValue('算数','s09','九九の表とかけ算')==='string';})()",
+   "return r.ok===true && r.adopted === 1 && typeof Final.unitValue('算数','s09','九九の表とかけ算')==='string';})()",
    "apiSetRated('算数','九九の表とかけ算',true)");
 ok("採用ずみの値は押し直しても書き換えられない",
    "(function(){var v=Final.unitValue('算数','s09','九九の表とかけ算');" +
@@ -591,17 +605,18 @@ ok("貫通して書き換えると edited が立つ",
    " var t=apiUnitTable('算数','九九の表とかけ算');" +
    " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
    " return r.seq[2]==='A' && r.edited[2]===true;})()");
-/* ここまでの検査で s01〜s09 の九九の表とかけ算（No.1〜14）はすでに
-   apiSaveAs で埋めてしまっている（学級差の検査の下ごしらえ）。
-   触れていないマスを見るには、別の単元（わり算・No.15〜30）を使う。 */
+/* ここまでの検査で九九の表とかけ算（No.1〜14）もわり算（No.15〜30）も
+   全員ぶん埋めてしまっている（学級差・記入率の検査の下ごしらえ）。
+   触れていないマスを見るには、まだ誰も触れていない単元
+   （たし算とひき算の筆算・No.31〜48）を使う。 */
 ok("触れていないマスは edited が立たない",
-   "(function(){var t=apiUnitTable('算数','わり算');" +
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
    " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
    " return r.seq[0]===null && r.edited[0]===false;})()");
 clockAt("2026-05-22T12:00:00+09:00");      // 開いている時間
 ok("edited は No（chip の位置）と対応する。ロック済みの過去の記録でも貫通できる",
-   "(function(){apiSaveAs('算数','s02',15,'A++');" +   /* わり算の先頭マス */
-   " var t=apiUnitTable('算数','わり算');" +
+   "(function(){apiSaveAs('算数','s02',31,'A++');" +   /* この単元の先頭マス */
+   " var t=apiUnitTable('算数','たし算とひき算の筆算');" +
    " var r=t.rows.filter(function(x){return x.id==='s02';})[0];" +
    " return r.seq[0]==='A++' && r.edited[0]===true;})()");
 clockReal();
@@ -612,6 +627,33 @@ ok("児童ではない role では貫通できない（サーバ側の確認）"
    " return r.ok===false;})()");
 clockReal();
 as("sensei@example.ed.jp");
+
+console.log("■ 単元の評価は、記入率が8割未満のうちは入れられない");
+ok("apiUnitTable が fillRate と rateMin を返す",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " return t.ok && typeof t.fillRate==='number' && t.rateMin===0.8;})()",
+   "apiUnitTable('算数','たし算とひき算の筆算')");
+ok("記入率は 入力ぶん ÷ (児童数×時数) と一致する（いま1/72）",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " return Math.abs(t.fillRate - 1/72) < 1e-9;})()");
+ok("記入率8割未満では単元の評価を児童に見せられない",
+   "apiSetRated('算数','たし算とひき算の筆算',true).ok === false",
+   "apiSetRated('算数','たし算とひき算の筆算',true)");
+ok("断られた理由に記入率の数字が入る",
+   "apiSetRated('算数','たし算とひき算の筆算',true).why.indexOf('記入率') >= 0");
+ok("(下ごしらえ) 8割を超えるまで埋める（15/18 コマ×4人＝83%）",
+   "(function(){['s01','s02','s03','s09'].forEach(function(id){" +
+   "  for(var no=31;no<=45;no++) apiSaveAs('算数',id,no,'B');});" +
+   " return apiUnitTable('算数','たし算とひき算の筆算').fillRate > 0.8;})()",
+   "apiUnitTable('算数','たし算とひき算の筆算').fillRate");
+ok("8割を超えれば単元の評価を児童に見せられる",
+   "apiSetRated('算数','たし算とひき算の筆算',true).ok === true",
+   "apiSetRated('算数','たし算とひき算の筆算',true)");
+ok("記入率が低くても「もどす」（非表示に戻す）は妨げない",
+   "(function(){" +   /* 時こくと時間。記入率はまだ低いまま */
+   " var r=apiSetRated('算数','時こくと時間',false);" +
+   " return r.ok===true && Master.unitOf('算数',60).rated===false;})()",
+   "apiUnitTable('算数','時こくと時間').fillRate");
 
 console.log("■ 出力");
 as("sensei@example.ed.jp");

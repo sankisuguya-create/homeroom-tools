@@ -42,6 +42,7 @@ section{display:flex;flex-direction:column;gap:10px}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .note{font-size:12px;color:var(--ink-faint);line-height:1.75}
 .note b{color:var(--ink-soft)}
+.note.warn{color:var(--warn);font-weight:600}
 
 table{border-collapse:collapse;width:100%;font-size:13px}
 .tablecard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:auto;max-height:70vh}
@@ -138,6 +139,7 @@ td.diff.far{color:var(--ink);font-weight:700}
       <div class="actions">
         <select class="plain" id="unitSel"></select>
         <button class="btn ghost" id="ratedBtn"></button>
+        <span class="note" id="fillNote"></span>
         <button class="btn ghost" id="adoptAll">仮値をまとめて採用</button>
         <span class="note" id="ruleText"></span>
       </div>
@@ -380,6 +382,19 @@ function drawUnitTable(t){
   const unitFrom = t.unit.from;         // chip の位置 → No への変換に要る
   $("ruleText").textContent = t.ruleText
     + (t.mid ? "　／　学級の真ん中 " + t.mid + "（" + t.midN + "人）" : "");
+
+  /* 記入率が低いうちは「単元の評価をする」を押せなくする。母数が小さい
+     代表値は1つの記号で大きく動くため、ほぼ全員が埋め終わってから先へ
+     進めるようにする。すでに児童に見せている単元は、戻す操作を妨げない。
+     サーバ側でも同じしきい値で弾く（apiSetRated）。 */
+  const pct    = Math.round((t.fillRate || 0) * 100);
+  const minPct = Math.round((t.rateMin  || 0) * 100);
+  const blocked = !t.unit.rated && (t.fillRate || 0) < (t.rateMin || 0);
+  $("ratedBtn").disabled = blocked;
+  $("ratedBtn").title = blocked ? "記入率が" + minPct + "%未満です（いま" + pct + "%）" : "";
+  const fn = $("fillNote");
+  fn.textContent = "記入率 " + pct + "%" + (blocked ? "（" + minPct + "% から押せます）" : "");
+  fn.classList.toggle("warn", blocked);
   let h = '<thead><tr><th>児童</th><th>入力のならび（押すと1マス直せる）</th><th>入力</th><th>休</th><th>/</th>' +
           '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
           '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';

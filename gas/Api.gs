@@ -6,6 +6,25 @@
    画面が渡してくる「わたしは誰」は一切見ない。
 ================================================================== */
 
+/* 単元の評価（仮値の採用）は、記入率がこれ未満のうちは児童に見せない。
+   母数が小さい代表値（中央値など）は1つの記号で大きく動くので、
+   ほぼ全員が埋め終わってから先へ進めるようにする。8割そのものに強い
+   根拠はないが、「大半が埋まっている」を最低条件として置く。 */
+const RATE_MIN = 0.8;
+
+/* 単元1つぶんの記入率。児童 × 授業数のうち、何マス埋まっているか。
+   休・/ も「入力」として数える（Aggregate.summarize の n と同じ扱い）。 */
+function unitFillRate_(all, u){
+  const ids = Roster.all().map(s => s.id);
+  let entered = 0;
+  ids.forEach(id => {
+    const rec = all[id] || {};
+    for(let no = u.from; no <= u.to; no++) if(rec[no]) entered++;
+  });
+  const total = ids.length * (u.to - u.from + 1);
+  return total ? entered / total : 0;
+}
+
 /* 最初の1回。画面を組み立てるのに要るものをまとめて返す。 */
 function apiBoot(subject){
   const who = whoAmI();
@@ -136,6 +155,15 @@ function apiSetRated(subject, unitName, rated){
     const subj = Master.subject(subject);
     const u = subj.units.filter(x => x.name === unitName)[0];
     const all = Store.readAll(subject);              // 1回だけ読む
+
+    /* 記入率が低いまま見せることを、ここでも弾く。画面でボタンを
+       押せなくするのは誘導であって権限ではない。 */
+    const rate = unitFillRate_(all, u);
+    if(rate < RATE_MIN){
+      return {ok:false, why:"記入率が" + Math.round(RATE_MIN * 100) + "%未満です（いま"
+                          + Math.round(rate * 100) + "%）。全員の入力がそろってから押してください"};
+    }
+
     Roster.all().forEach(st => {
       if(Final.unitValue(subject, st.id, unitName)) return;   // 教師が直したものは残す
       const s = Aggregate.summarize(all[st.id] || {}, u);
@@ -227,8 +255,14 @@ function apiUnitTable(subject, unitName){
   rows.forEach(r => { r.diff = (mid == null || r.provVal == null)
                                ? null : Math.round(r.provVal - mid); });
 
+  /* rows[].n はこの単元ぶんの記入数なので、和を取れば記入率が出る。
+     Store をもう一度読み直す必要はない。 */
+  const entered  = rows.reduce((a, r) => a + r.n, 0);
+  const possible = rows.length * (u.to - u.from + 1);
+
   return {ok:true, unit:u, rows:rows, rule:R, ruleText: ruleText_(R),
-          mid: symbolOfMedian(mid), midN: provs.length};
+          mid: symbolOfMedian(mid), midN: provs.length,
+          fillRate: possible ? entered / possible : 0, rateMin: RATE_MIN};
 }
 
 function ruleText_(R){
