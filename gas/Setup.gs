@@ -4,10 +4,12 @@
    すでにあるシートには触らない（作り直しではなく足すだけ）。
 ================================================================== */
 
-/* 見出し行。ここが仕様との接点なので、列名は spec.md と同じにする。 */
+/* 見出し行。ここが仕様との接点なので、列名は spec.md と同じにする。
+   「開始No」は空なら 1 として扱う（Master.gs）。既存のシートに
+   この列が無くても、そのまま動く（見出しは無くても列Dは読み書きできる）。 */
 const SETUP_SHEETS = {   /* GAS は全ファイルが1スコープ。総称的な名前は置かない */
   "設定":     ["キー", "値"],
-  "教科マスタ": ["教科", "時数", "公開"],
+  "教科マスタ": ["教科", "時数", "公開", "開始No"],
   "名簿":     ["児童ID", "出席番号", "氏名", "メール"],
   "単元マスタ": ["教科", "単元名", "開始No", "終了No", "色", "学期", "評価公開"],
   "記録":     ["教科", "児童ID", "No", "記号", "保存時刻", "更新者"],
@@ -150,12 +152,13 @@ function diagnoseLines(){
   names.forEach(n => {
     const s = subj[n];
     if(!s.total) out.push("× 「" + n + "」の時数が 0。教科マスタに入れる");
+    if(s.from !== 1) out.push("○ 「" + n + "」は No." + s.from + " から始まる（No." + s.to + " まで）");
     if(!s.units.length){ out.push("× 「" + n + "」に単元が無い"); return; }
 
     const covered = {};
     s.units.forEach(u => { for(let i = u.from; i <= u.to; i++) covered[i] = 1; });
     const miss = [];
-    for(let i = 1; i <= s.total; i++) if(!covered[i]) miss.push(i);
+    for(let i = s.from; i <= s.to; i++) if(!covered[i]) miss.push(i);
     if(miss.length) out.push("△ 「" + n + "」でどの単元にも入らない授業が "
                            + miss.length + "件（No." + miss[0] + " など）");
   });

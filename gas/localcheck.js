@@ -655,6 +655,40 @@ ok("記入率が低くても「もどす」（非表示に戻す）は妨げな�
    " return r.ok===true && Master.unitOf('算数',60).rated===false;})()",
    "apiUnitTable('算数','時こくと時間').fillRate");
 
+console.log("■ 授業番号の開始位置（開始No）");
+/* 紙のノートで既に何時間か進めていて、この道具は続きの番号から
+   使いたい、という場合のための設定。国語は他の検査にほぼ出てこないので
+   ここで自由に使う（60時間・単元なし）。 */
+as("sensei@example.ed.jp");
+ok("既定は No.1 から", "(function(){var s=Master.subject('国語');" +
+   " return s.from===1 && s.to===60;})()");
+ok("開始Noを変えられる", "apiSaveSubject('国語',60,true,21).ok===true");
+ok("範囲が [開始No, 開始No+時数-1] になる",
+   "(function(){var s=Master.subject('国語'); return s.from===21 && s.to===80;})()",
+   "Master.subject('国語')");
+ok("児童の読み取りが新しい範囲で始まる（1行目が No.1 ではない）",
+   "(function(){BE('sakura@example.ed.jp');" +
+   " var rows=Store.read('国語','s09');" +
+   " BE('sensei@example.ed.jp');" +
+   " return rows.length===60 && rows[0].no===21 && rows[rows.length-1].no===80;})()",
+   "Store.read('国語','s09').slice(0,1)");
+ok("範囲の外（開始Noより前）には書けない", "Store.saveAs('国語','s09',20,'A').ok === false");
+ok("範囲の外（終了Noより後）には書けない", "Store.saveAs('国語','s09',81,'A').ok === false");
+ok("範囲の内（開始No ちょうど）には書ける", "Store.saveAs('国語','s09',21,'A').ok === true");
+ok("apiTeacherBoot にも from と to が出る",
+   "(function(){var s=apiTeacherBoot().subjects['国語'];" +
+   " return s.from===21 && s.to===80;})()");
+ok("diagnose が開始位置を報告する",
+   "apiDiagnose().lines.some(function(l){ return l.indexOf('国語')>=0 && l.indexOf('No.21')>=0; })",
+   "apiDiagnose().lines");
+ok("時数だけ変えても開始Noは維持される（4引数目を省くと1に戻ってしまうのを防ぐ）",
+   "(function(){apiSaveSubject('国語',62,true,Master.subject('国語').from);" +
+   " var s=Master.subject('国語'); return s.from===21 && s.total===62 && s.to===82;})()",
+   "Master.subject('国語')");
+ok("元に戻せる（開始No=1）",
+   "(function(){apiSaveSubject('国語',60,true,1);" +
+   " var s=Master.subject('国語'); return s.from===1 && s.to===60;})()");
+
 console.log("■ 出力");
 as("sensei@example.ed.jp");
 ok("通知表用の表を書き出せる",

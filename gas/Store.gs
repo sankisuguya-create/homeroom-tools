@@ -142,7 +142,7 @@ const Store = (function(){
 
     const mine = recOf(subject, studentId);
     const out  = [];
-    for(let no = 1; no <= subj.total; no++){
+    for(let no = subj.from; no <= subj.to; no++){
       const r = mine[no];                        // [記号, 保存時刻(ms), 更新者]
       const sym = r ? r[0] : null;
       out.push({
@@ -198,7 +198,7 @@ const Store = (function(){
 
     const n = Number(no);
     const subj = Master.subject(subject);
-    if(!subj || !n || n < 1 || n > subj.total) return {ok:false, why:"その授業はありません"};
+    if(!subj || !n || n < subj.from || n > subj.to) return {ok:false, why:"その授業はありません"};
 
     let studentId;
     if(isTeacher){
@@ -219,7 +219,7 @@ const Store = (function(){
     if(s !== null && !isMark(s) && valueOfSym(s) === null) return {ok:false, why:"知らない記号"};
     const n = Number(no);
     const subj = Master.subject(subject);
-    if(!subj || !n || n < 1 || n > subj.total) return {ok:false, why:"その授業はありません"};
+    if(!subj || !n || n < subj.from || n > subj.to) return {ok:false, why:"その授業はありません"};
     return write_(subject, String(studentId), n, s, new Date(), who.email,
                   opt && opt.overwrite === false);
   }

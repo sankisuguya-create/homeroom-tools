@@ -19,9 +19,17 @@ const Master = (function(){
     for(let i = 1; i < sv.length; i++){
       const name = String(sv[i][0]).trim();
       if(!name) continue;
+      const total = Number(sv[i][1]) || 0;
+      /* 開始No。空なら 1（No.1 から）。紙のノートで既に何時間か
+         進めていて、この道具は続きの番号から使いたい、という場合に変える。
+         範囲は [from, from+total-1] で、to はここでしか計算しない
+         （あちこちで from+total-1 を書くと、直し忘れがずれの元になる）。 */
+      const from = Number(sv[i][3]) || 1;
       subj[name] = {
         name:  name,
-        total: Number(sv[i][1]) || 0,
+        total: total,
+        from:  from,
+        to:    from + total - 1,
         open:  sv[i][2] === true || String(sv[i][2]).toUpperCase() === "TRUE",
         units: []
       };
@@ -85,16 +93,17 @@ function masterSaveUnits(subject, units){
   Master.clearCache();
 }
 
-function masterSaveSubject(name, total, open){
+function masterSaveSubject(name, total, open, from){
   const sh = SpreadsheetApp.getActive().getSheetByName("教科マスタ");
   const v  = sh.getDataRange().getValues();
+  const f  = Number(from) || 1;
   for(let i = 1; i < v.length; i++){
     if(String(v[i][0]) === name){
-      sh.getRange(i + 1, 2, 1, 2).setValues([[total, !!open]]);
+      sh.getRange(i + 1, 2, 1, 3).setValues([[total, !!open, f]]);
       Master.clearCache();
       return;
     }
   }
-  sh.appendRow([name, total, !!open]);
+  sh.appendRow([name, total, !!open, f]);
   Master.clearCache();
 }

@@ -196,7 +196,8 @@ function apiTeacherBoot(){
   const subjects = {};
   const all = Master.load().subjects;
   Object.keys(all).forEach(n => {
-    subjects[n] = {name:n, total:all[n].total, open:all[n].open, units:all[n].units};
+    subjects[n] = {name:n, total:all[n].total, from:all[n].from, to:all[n].to,
+                   open:all[n].open, units:all[n].units};
   });
   return {
     ok: true,
@@ -364,10 +365,10 @@ function apiSaveUnits(subject, units){
   return {ok:true, units: Master.subject(subject).units};
 }
 
-function apiSaveSubject(name, total, open){
+function apiSaveSubject(name, total, open, from){
   const bad = teacherOnly_(); if(bad) return bad;
   if(!name) return {ok:false, why:"教科名が空です"};
-  masterSaveSubject(String(name).trim(), Number(total) || 0, !!open);
+  masterSaveSubject(String(name).trim(), Number(total) || 0, !!open, Number(from) || 1);
   return {ok:true, subjects: Master.load().subjects};
 }
 

@@ -224,8 +224,10 @@ td.diff.far{color:var(--ink);font-weight:700}
       <div class="actions">
         <input class="txt" id="newSubj" placeholder="教科名" style="width:140px">
         <input class="txt num" id="newTotal" type="number" placeholder="時数">
+        <input class="txt num" id="newFrom" type="number" placeholder="開始No（既定1）">
         <button class="btn ghost" id="addSubj">教科を足す（非公開）</button>
-        <span class="note">足した教科は児童に出ない。単元を入れてから公開に変える。</span>
+        <span class="note">足した教科は児童に出ない。単元を入れてから公開に変える。
+          開始Noは、紙のノートで既に進めていて続きの番号から使いたいときだけ変える。</span>
       </div>
     </section>
     <section style="margin-top:14px">
@@ -540,13 +542,17 @@ function renderSetup(){
   rb2.onclick = ()=> call("apiSaveRule", [{released: !B.released}], ()=>{
     say(B.released ? (B.releaseFrom + " をかくした") : (B.releaseFrom + " をひらいた")); reload(); });
 
-  let h = '<thead><tr><th>教科</th><th style="width:110px">時数</th>' +
+  let h = '<thead><tr><th>教科</th><th style="width:96px">開始No</th>' +
+          '<th style="width:96px">時数</th><th style="width:96px">範囲</th>' +
           '<th style="width:150px">児童に見せる</th></tr></thead><tbody>';
   Object.keys(B.subjects).forEach(n=>{
     const s = B.subjects[n];
     h += '<tr><td class="name">' + esc(n) + '</td>' +
+      '<td><input class="txt num" type="number" min="1" data-from="' + esc(n) + '"' +
+      ' value="' + s.from + '"></td>' +
       '<td><input class="txt num" type="number" min="1" data-total="' + esc(n) + '"' +
       ' value="' + s.total + '"></td>' +
+      '<td class="num">No.' + s.from + '〜' + s.to + '</td>' +
       '<td><button class="btn ' + (s.open ? "" : "ghost") + '" data-subj="' + esc(n) + '">' +
       (s.open ? "見せている" : "見せていない") + '</button></td></tr>';
   });
@@ -554,7 +560,7 @@ function renderSetup(){
   $("subjTbl").querySelectorAll("button[data-subj]").forEach(b=>{
     b.onclick = ()=>{
       const n = b.dataset.subj, s = B.subjects[n];
-      call("apiSaveSubject", [n, s.total, !s.open], ()=>{ say(n + " の公開を変えた"); reload(); });
+      call("apiSaveSubject", [n, s.total, !s.open, s.from], ()=>{ say(n + " の公開を変えた"); reload(); });
     };
   });
   /* 時数は後から変えられる。減らしても記録は消えない（範囲の外に出るだけ）。 */
@@ -562,7 +568,17 @@ function renderSetup(){
     inp.onchange = ()=>{
       const n = inp.dataset.total, s = B.subjects[n];
       const t = Math.max(1, Math.round(Number(inp.value)) || s.total);
-      call("apiSaveSubject", [n, t, s.open], ()=>{ say(n + " の時数を " + t + " にした"); reload(); });
+      call("apiSaveSubject", [n, t, s.open, s.from], ()=>{ say(n + " の時数を " + t + " にした"); reload(); });
+    };
+  });
+  /* 開始No。紙のノートで既に何時間か進めていて、続きの番号から
+     この道具を使いたい、という場合のため。No.1 からやり直す必要がない。 */
+  $("subjTbl").querySelectorAll("input[data-from]").forEach(inp=>{
+    inp.onchange = ()=>{
+      const n = inp.dataset.from, s = B.subjects[n];
+      const f = Math.max(1, Math.round(Number(inp.value)) || s.from);
+      call("apiSaveSubject", [n, s.total, s.open, f], ()=>{
+        say(n + " の開始番号を No." + f + " にした（すでにある記録は消えない）"); reload(); });
     };
   });
 
@@ -571,7 +587,8 @@ function renderSetup(){
 }
 
 function drawUnitEdit(){
-  const total = (B.subjects[subject] || {}).total || 0;
+  const subj = B.subjects[subject] || {};
+  const subjFrom = subj.from || 1, subjTo = subj.to || subjFrom;
   let h = '<thead><tr><th style="width:22px"></th><th>単元名</th><th style="width:84px">開始</th>' +
           '<th style="width:84px">終了</th><th style="width:56px">時数</th><th style="width:92px">学期</th>' +
           '<th style="width:200px">色</th><th style="width:56px"></th></tr></thead><tbody>';
@@ -595,7 +612,7 @@ function drawUnitEdit(){
     el.onchange = ()=>{
       const u = editUnits[el.dataset.i], k = el.dataset.k;
       if(k === "name") u.name = el.value.trim() || "（名前なし）";
-      else u[k] = Math.min(total || 9999, Math.max(1, Math.round(Number(el.value)) || 1));
+      else u[k] = Math.min(subjTo || 9999, Math.max(subjFrom, Math.round(Number(el.value)) || subjFrom));
       if(k === "term") u.term = Number(el.value);
       drawUnitEdit();
     };
@@ -616,7 +633,7 @@ function drawUnitEdit(){
   });
   const cov = {};
   editUnits.forEach(u => { for(let i = u.from; i <= u.to; i++) cov[i] = 1; });
-  let miss = 0; for(let i = 1; i <= total; i++) if(!cov[i]) miss++;
+  let miss = 0; for(let i = subjFrom; i <= subjTo; i++) if(!cov[i]) miss++;
   if(miss) msgs.push("どの単元にも入らない授業が " + miss + "件");
   const byNo = editUnits.slice().sort((a,b) => a.from - b.from);
   for(let i = 1; i < byNo.length; i++)
@@ -627,7 +644,7 @@ function drawUnitEdit(){
 
 $("addUnit").onclick = ()=>{
   const last = editUnits[editUnits.length - 1];
-  const from = last ? Math.min(last.to + 1, 9999) : 1;
+  const from = last ? Math.min(last.to + 1, 9999) : ((B.subjects[subject] || {}).from || 1);
   editUnits.push({name:"あたらしい単元", from:from, to:from,
                   c:editUnits.length % 20, term:last ? last.term : 1, rated:false});
   drawUnitEdit();
@@ -638,8 +655,9 @@ $("saveRule").onclick = ()=> call("apiSaveRule", [{
   aFrom:$("aFrom").value, cTo:$("cTo").value, stat:$("stat").value,
   open:$("openT").value, lock:$("lockT").value }], ()=>{ say("設定を保存した"); reload(); });
 $("addSubj").onclick = ()=> call("apiSaveSubject",
-  [$("newSubj").value, Number($("newTotal").value), false], ()=>{
-    say("教科を足した（まだ児童には出ない）"); $("newSubj").value = ""; $("newTotal").value = ""; reload(); });
+  [$("newSubj").value, Number($("newTotal").value), false, Number($("newFrom").value) || 1], ()=>{
+    say("教科を足した（まだ児童には出ない）");
+    $("newSubj").value = ""; $("newTotal").value = ""; $("newFrom").value = ""; reload(); });
 
 /* ---------------- 起動 ---------------- */
 function reload(){
