@@ -5,6 +5,7 @@
 ## 貼る前に手元で確かめる
 
 ```
+python3 build.py                 gas/dist/ を作る・作り直す（貼るのはこの中身）
 node gas/localcheck.js          サーバのコードを走らせて確かめる（181項目）
 node gas/preview.js                    児童画面を1枚の HTML に書き出す
 node gas/preview.js out.png            playwright-core があれば png も撮る
@@ -19,11 +20,22 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 
 ## ファイル
 
+**貼るのは `gas/dist/` の4本＋マニフェスト。** それ以外はすべて元（このフォルダのトップ階層）で、直すのはこちら側。`python3 build.py` を実行すると `gas/dist/` が作り直される。
+
+| 貼るもの（`gas/dist/`） | 中身 |
+|---|---|
+| `appsscript.json`（トップ階層） | タイムゾーンとデプロイ設定。生成物ではない。直接編集する |
+| `Code.gs` | `gas/*.gs`（12本）をこの順にまとめたもの（**生成物**） |
+| `student.html` | 児童画面。`include()` を全部その場に展開ずみ（**生成物**） |
+| `teacher.html` | 教師画面（単元ごと／期末評定／設定）。同上（**生成物**） |
+| `hello.html` | Step 3 の確認画面。同上（**生成物**） |
+
+**貼らない・直すほう（このフォルダの元）：**
+
 | | |
 |---|---|
-| `appsscript.json` | タイムゾーンとデプロイ設定 |
-| `Scale.gs` | スケールの定義（**生成物**） |
-| `scale.html` | 同じものをクライアントへ（**生成物**） |
+| `Scale.gs` | スケールの定義（`prototypes/src/scale.js` からの**生成物**） |
+| `scale.html` `tokens.html` `material.html` | 同じものをクライアントへ（**生成物**。`dist/*.html` へ展開して使う） |
 | `Setup.gs` | シート6枚を作る・検算する |
 | `Config.gs` | 設定シート。5分キャッシュ |
 | `Roster.gs` | 名簿。メール → 児童ID |
@@ -33,18 +45,17 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 | `Store.gs` | 記録の読み書き。保存はサーバ側で全部確かめる |
 | `Aggregate.gs` | 単元評価・期末評定の計算と、確定シート |
 | `Api.gs` | 画面から `google.script.run` で呼ぶ入口 |
-| `student.html` | 児童画面 |
-| `teacher.html` | 教師画面（単元ごと／期末評定／設定） |
+| `student.html` `teacher.html` `hello.html` | 画面の元。`<?!= include('…') ?>` が残っている（貼るのは `dist/` のほう） |
 | `Export.gs` | 通知表用の表の書き出し・シートのメニュー |
-| `tokens.html` `material.html` | 色と材質（**生成物**） |
-| `Code.gs` | `doGet`・役割の判定 |
-| `hello.html` | Step 3 の確認画面 |
+| `Code.gs` | `doGet`・役割の判定・`include()` |
 | `localcheck.js` | 手元での検査 |
 | `preview.js` | デプロイせずに児童画面を見る |
 
-**`Scale.gs` `scale.html` `tokens.html` `material.html` は直さない。** すべて `prototypes/src/` から `python3 build.py` が作る。直すと次のビルドで消える。色も材質もプロトタイプと同じ元を読んでいるので、**見た目が割れない**。
+**`Scale.gs` `scale.html` `tokens.html` `material.html` `dist/` は直さない。** すべて `python3 build.py` が作る（`Scale.gs` 系は `prototypes/src/` から、`dist/` はこのフォルダの `*.gs` `*.html` から）。直すと次のビルドで消える。色も材質もプロトタイプと同じ元を読んでいるので、**見た目が割れない**。
 
-手順書には `eval` でスケールを読む書き方を載せていたが、**トップレベルの `const` が `eval` の外に出ない場合があるので、実ファイルを2つ生成する形に変えた**。中身は同じ1つの元から出ている。
+**なぜ1本にまとめるか。** GAS はもともと `.gs` を全部1つのスコープで読む（ファイルをまたぐ関数呼び出しは元から効く）ので、ファイルを分けても速さも動きも変わらない。**分かれているのは開発のための整理であって、貼るときの都合ではない。** `.gs` が12本・HTML が6本もあると、Apps Script エディタで「＋ → 名前を付ける → 貼る」を18回繰り返すことになり、名前を1つ間違えるだけで `include()` が壊れる。まとめても実行結果が変わらないことは、まとめる前とまとめた後の両方に同じ検査（`node gas/localcheck.js`）を通して確かめてある。
+
+手順書には `eval` でスケールを読む書き方を載せていたが、**トップレベルの `const` が `eval` の外に出ない場合があるので、実ファイルを生成する形に変えた**。中身は同じ1つの元から出ている。
 
 ## 置き方
 
@@ -52,15 +63,19 @@ Apps Script の API を偽物に差し替えて、`.gs` を全部1つのスコ�
 2. 拡張機能 → Apps Script
 3. ⚙ プロジェクトの設定 →「**`appsscript.json` マニフェスト ファイルをエディタで表示する**」にチェック
    - **先にやる。** 後回しにするとタイムゾーンとデプロイ設定を書けない
-4. このフォルダのファイルを作って中身を貼る
+4. `gas/dist/` の中身を貼る（無ければ `python3 build.py` を1回実行して作る）
 
-   | 種類 | 名前 | 作り方 |
+   | 種類 | 名前 | 貼る中身 |
    |---|---|---|
-   | マニフェスト | `appsscript.json` | **既存のものを上書き**（新規作成ではない） |
-   | スクリプト | `Scale` `Config` `Roster` `Master` `Lock` `Hours` `Store` `Aggregate` `Api` `Export` `Code` `Setup` | `+` → スクリプト。拡張子は付けない |
+   | マニフェスト | `appsscript.json` | **既存のものを上書き**（`gas/appsscript.json`。新規作成ではない） |
+   | スクリプト | `Code` | `+` → スクリプト → 拡張子なしで `Code` → `gas/dist/Code.gs` の中身を全部貼る |
+   | HTML | `student` `teacher` `hello` | `+` → HTML → 拡張子なしでそれぞれ命名 → `gas/dist/` の同名ファイルを貼る |
    | 消してよい | （旧）`授業マスタ` シート | 実施日は使わなくなった |
-   | HTML | `scale` `tokens` `material` `student` `teacher` `hello` | `+` → HTML。拡張子は付けない |
-   | 貼らない | `localcheck.js` `preview.js` `README.md` | 手元専用 |
+   | 貼らない | `gas/*.gs`（`Code.gs` 以外）・`gas/scale.html` 等・`localcheck.js` `preview.js` `README.md` | 元・手元専用。`dist/` の材料 |
+
+   **貼るのはこれで全部（マニフェスト＋4ファイル）。** 個々の `.gs`（Config・Roster・Master…）は
+   `gas/dist/Code.gs` の中に見出しコメント（`/* ==== Config.gs ==== */`）付きで
+   全部入っている。あとから特定の処理を探すときは、そのコメントで検索する。
 
 5. `setupSheets` を実行 → シート6枚ができる
    - 初回は「このアプリは Google で確認されていません」が出る。
