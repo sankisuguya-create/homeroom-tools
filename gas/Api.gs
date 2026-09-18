@@ -6,14 +6,23 @@
    画面が渡してくる「わたしは誰」は一切見ない。
 ================================================================== */
 
-/* 単元の評価（仮値の採用）は、記入率がこれ未満のうちは児童に見せない。
+/* 単元の評価（仮値の採用）は、記入率がこれ未満の児童には採用しない。
    母数が小さい代表値（中央値など）は1つの記号で大きく動くので、
-   ほぼ全員が埋め終わってから先へ進めるようにする。8割そのものに強い
-   根拠はないが、「大半が埋まっている」を最低条件として置く。 */
+   その児童自身がほぼ埋め終わってから見せるようにする。8割そのものに
+   強い根拠はないが、「大半が埋まっている」を最低条件として置く。
+
+   **学級全体ではなく、児童1人ごとに見る。** 以前は学級全体の記入率で
+   「単元の評価をする」自体を押せなくしていたが、それだと足の速い児童の
+   評価まで足の遅い児童に合わせて止まってしまう。押す操作そのものは
+   いつでもでき、採用されるかどうかを1人ずつのしきい値で決める。 */
 const RATE_MIN = 0.8;
 
-/* 単元1つぶんの記入率。児童 × 授業数のうち、何マス埋まっているか。
-   休・/ も「入力」として数える（Aggregate.summarize の n と同じ扱い）。 */
+/* この児童のこの単元の記入率が、採用してよい水準か。 */
+function meetsRate_(s){ return s.total > 0 && (s.n / s.total) >= RATE_MIN; }
+
+/* 単元1つぶんの記入率（学級全体）。児童 × 授業数のうち、何マス埋まっているか。
+   休・/ も「入力」として数える（Aggregate.summarize の n と同じ扱い）。
+   採用の可否には使わない。設定タブに出す、いまの様子の目安。 */
 function unitFillRate_(all, u){
   const ids = Roster.all().map(s => s.id);
   let entered = 0;
@@ -150,30 +159,27 @@ function apiSetRated(subject, unitName, rated){
   }
   if(!row) return {ok:false, why:"その単元がありません"};
 
-  let adopted = 0;
+  let adopted = 0, skipped = 0;
   if(rated){
     const subj = Master.subject(subject);
     const u = subj.units.filter(x => x.name === unitName)[0];
     const all = Store.readAll(subject);              // 1回だけ読む
 
-    /* 記入率が低いまま見せることを、ここでも弾く。画面でボタンを
-       押せなくするのは誘導であって権限ではない。 */
-    const rate = unitFillRate_(all, u);
-    if(rate < RATE_MIN){
-      return {ok:false, why:"記入率が" + Math.round(RATE_MIN * 100) + "%未満です（いま"
-                          + Math.round(rate * 100) + "%）。全員の入力がそろってから押してください"};
-    }
-
     Roster.all().forEach(st => {
       if(Final.unitValue(subject, st.id, unitName)) return;   // 教師が直したものは残す
       const s = Aggregate.summarize(all[st.id] || {}, u);
-      if(s.provSym){ Final.set(subject, st.id, "単元", unitName, s.provSym); adopted++; }
+      if(!s.provSym) return;                          // 記号が1つも無ければ採用しようがない
+      /* この児童自身の記入率が8割未満なら、まだ採用しない。
+         見せる／見せないの旗を立てるだけの操作なので、あとで追いつけば
+         次の「単元の評価をする」や「仮値をまとめて採用」で拾われる。 */
+      if(!meetsRate_(s)){ skipped++; return; }
+      Final.set(subject, st.id, "単元", unitName, s.provSym); adopted++;
     });
   }
 
   sh.getRange(row, 7).setValue(!!rated);
   Master.clearCache();
-  return {ok:true, rated: !!rated, adopted: adopted};
+  return {ok:true, rated: !!rated, adopted: adopted, skipped: skipped};
 }
 
 /* ==================================================================
@@ -244,6 +250,10 @@ function apiUnitTable(subject, unitName){
       prov: s.provSym, provVal: s.prov, all: symbolOfMedian(s.all),
       high: s.high ? symbolOf(s.high) : null,
       top: s.top, c: s.c, d: s.d,
+      /* この児童自身の記入率が採用の水準に達しているか。
+         「単元の評価をする」「仮値をまとめて採用」は、達していない児童を
+         採用しない（apiSetRated / apiAdoptAll）。画面にも先に見せておく。 */
+      ready: meetsRate_(s),
       final: Final.unitValue(subject, st.id, unitName)
     };
   });
@@ -286,13 +296,17 @@ function apiAdoptAll(subject, unitName, overwrite){
   const u = subj && subj.units.filter(x => x.name === unitName)[0];
   if(!u) return {ok:false, why:"その単元はありません"};
   const all = Store.readAll(subject);
-  let n = 0;
+  let n = 0, skipped = 0;
   Roster.all().forEach(st => {
     if(!overwrite && Final.unitValue(subject, st.id, unitName)) return;
     const s = Aggregate.summarize(all[st.id] || {}, u);
-    if(s.provSym){ Final.set(subject, st.id, "単元", unitName, s.provSym); n++; }
+    if(!s.provSym) return;
+    /* apiSetRated と同じしきい値。まとめて採用するボタンからでも、
+       記入率8割未満の児童を素通りさせない。 */
+    if(!meetsRate_(s)){ skipped++; return; }
+    Final.set(subject, st.id, "単元", unitName, s.provSym); n++;
   });
-  return {ok:true, put:n};
+  return {ok:true, put:n, skipped:skipped};
 }
 
 /* 一斉入力。既定は空欄だけ。 */

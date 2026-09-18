@@ -80,6 +80,9 @@ select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
    全員に色を付けると、見に行くべき行が沈む。 */
 td.diff{color:var(--ink-faint)}
 td.diff.far{color:var(--ink);font-weight:700}
+/* 記入率がまだ8割に届いていない児童。C・D の回数と同じ「注意して見る」
+   色を使う（.warncell と揃える）。誤りではなく、まだ採用しないだけ。 */
+td.num.not-ready{color:var(--warn);font-weight:700;text-decoration:underline dotted}
 .warncell{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--warn);font-weight:700}
 .warncell.zero{color:var(--ink-faint);font-weight:400}
 .rank{font-weight:700;border-radius:5px;padding:2px 10px;display:inline-block;min-width:30px;text-align:center}
@@ -354,8 +357,11 @@ function loadUnit(){
   rb.className = "btn" + (u.rated ? " ghost" : "");
   rb.onclick = ()=> call("apiSetRated", [subject, unitName, !u.rated], r=>{
     u.rated = r.rated;
-    say(r.rated ? ("児童に見せた" + (r.adopted ? "（仮値を " + r.adopted + "人ぶん採用した）" : ""))
-               : "児童に見せないようにした");
+    say(r.rated
+      ? ("児童に見せた" + ((r.adopted || r.skipped) ?
+          "（" + r.adopted + "人ぶん採用した" +
+          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）" : ""))
+      : "児童に見せないようにした");
     loadUnit();
   });
 
@@ -385,18 +391,18 @@ function drawUnitTable(t){
   $("ruleText").textContent = t.ruleText
     + (t.mid ? "　／　学級の真ん中 " + t.mid + "（" + t.midN + "人）" : "");
 
-  /* 記入率が低いうちは「単元の評価をする」を押せなくする。母数が小さい
-     代表値は1つの記号で大きく動くため、ほぼ全員が埋め終わってから先へ
-     進めるようにする。すでに児童に見せている単元は、戻す操作を妨げない。
-     サーバ側でも同じしきい値で弾く（apiSetRated）。 */
+  /* 押すこと自体はいつでもできる。採用されるかどうかは1人ずつの記入率で
+     決まる（apiSetRated がサーバ側で見る）。学級全体で止めると、足の速い
+     児童の評価まで足の遅い児童に合わせて止まってしまうため。 */
+  $("ratedBtn").disabled = false;
+  $("ratedBtn").title = "";
   const pct    = Math.round((t.fillRate || 0) * 100);
   const minPct = Math.round((t.rateMin  || 0) * 100);
-  const blocked = !t.unit.rated && (t.fillRate || 0) < (t.rateMin || 0);
-  $("ratedBtn").disabled = blocked;
-  $("ratedBtn").title = blocked ? "記入率が" + minPct + "%未満です（いま" + pct + "%）" : "";
+  const readyN = t.rows.filter(r => r.ready).length;
   const fn = $("fillNote");
-  fn.textContent = "記入率 " + pct + "%" + (blocked ? "（" + minPct + "% から押せます）" : "");
-  fn.classList.toggle("warn", blocked);
+  fn.textContent = "記入率 " + pct + "%（学級全体）　／　"
+    + minPct + "%以上 " + readyN + "/" + t.rows.length + "人（採用の対象）";
+  fn.classList.toggle("warn", readyN < t.rows.length);
   let h = '<thead><tr><th>児童</th><th>入力のならび（押すと1マス直せる）</th><th>入力</th><th>休</th><th>/</th>' +
           '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
           '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';
@@ -409,7 +415,9 @@ function drawUnitTable(t){
           '" data-id="' + r.id + '" data-no="' + (unitFrom + i) + '" data-cur="' + (s || "") + '"' +
           ' title="No.' + (unitFrom + i) + '　' + esc(r.name) + (r.edited[i] ? "　貫通ずみ" : "") + '">' +
           (s || "·") + '</span>').join("") + '</div></td>' +
-      '<td class="num">' + r.n + '/' + r.total + '</td>' +
+      '<td class="num' + (r.ready ? "" : " not-ready") + '"' +
+        (r.ready ? "" : ' title="記入率が' + Math.round((t.rateMin || 0) * 100) + '%未満。「単元の評価をする」を押しても、この児童はまだ採用されない"') +
+        '>' + r.n + '/' + r.total + '</td>' +
       '<td class="num">' + (r.off || "·") + '</td>' +
       '<td class="num">' + (r.skip || "·") + '</td>' +
       '<td><span class="prov ' + (r.prov ? clsOf(r.prov) : "none") + '">' + (r.prov || "—") + '</span></td>' +
@@ -463,7 +471,8 @@ $("unitTbl").addEventListener("click", e=>{
 });
 
 $("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
-  say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま）"); loadUnit(); });
+  say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま" +
+    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）"); loadUnit(); });
 $("bulkGo").onclick = ()=> call("apiBulk",
   [subject, Number($("bulkNo").value), $("bulkSym").value, $("bulkOver").checked], r=>{
     say(r.put + "人に入れた" + (r.over ? "（うち上書き " + r.over + "）" : "")); loadUnit(); });

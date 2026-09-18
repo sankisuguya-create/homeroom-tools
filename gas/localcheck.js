@@ -430,16 +430,19 @@ as("sakura@example.ed.jp");
 ok("児童は評価公開を切り替えられない",
    "apiSetRated('算数','わり算',false).ok === false");
 as("sensei@example.ed.jp");
-ok("記入率が低いうちは押しても切り替わらない（下ごしらえ前のわり算）",
-   "apiSetRated('算数','わり算',true).ok === false",
+ok("記入が無くても教師は押せる（学級全体の記入率では止めない）",
+   "(function(){var r=apiSetRated('算数','わり算',true);" +
+   " return r.ok===true && r.adopted===0 && r.skipped===0;})()",
    "apiSetRated('算数','わり算',true)");
+ok("切り替えた結果がマスタに効く", "Master.unitOf('算数',20).rated === true");
 ok("(下ごしらえ) わり算を全員ぶん埋める",
    "(function(){['s01','s02','s03','s09'].forEach(function(id){" +
    "  for(var no=15;no<=30;no++) apiSaveAs('算数',id,no,'B');});" +
    " return true;})()");
-ok("記入率がそろえば教師は評価公開を切り替えられる",
-   "apiSetRated('算数','わり算',true).ok === true", "apiSetRated('算数','わり算',true)");
-ok("切り替えた結果がマスタに効く", "Master.unitOf('算数',20).rated === true");
+ok("埋まった後にもう一度押すと、全員ぶん採用される",
+   "(function(){var r=apiSetRated('算数','わり算',true);" +
+   " return r.ok===true && r.adopted===4 && r.skipped===0;})()",
+   "apiSetRated('算数','わり算',true)");
 ok("押した時点で仮値が採用され、確定シートに入る",
    "(function(){" +
    /* 九九の表とかけ算も全員ぶん埋める。s01〜s03 はすでに確定値を持つ
@@ -628,27 +631,47 @@ ok("児童ではない role では貫通できない（サーバ側の確認）"
 clockReal();
 as("sensei@example.ed.jp");
 
-console.log("■ 単元の評価は、記入率が8割未満のうちは入れられない");
-ok("apiUnitTable が fillRate と rateMin を返す",
+console.log("■ 単元の評価の採用は、児童1人ごとの記入率で決まる（学級全体では見ない）");
+/* 以前は学級全体の記入率で「単元の評価をする」自体を弾いていたが、それだと
+   足の速い児童の評価まで足の遅い児童に合わせて止まってしまう。
+   いまは押すこと自体はいつでもでき、児童1人ずつの記入率で採用の可否が決まる。 */
+ok("apiUnitTable が fillRate と rateMin（学級全体・目安）を返す",
    "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
    " return t.ok && typeof t.fillRate==='number' && t.rateMin===0.8;})()",
    "apiUnitTable('算数','たし算とひき算の筆算')");
 ok("記入率は 入力ぶん ÷ (児童数×時数) と一致する（いま1/72）",
    "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
    " return Math.abs(t.fillRate - 1/72) < 1e-9;})()");
-ok("記入率8割未満では単元の評価を児童に見せられない",
-   "apiSetRated('算数','たし算とひき算の筆算',true).ok === false",
+ok("apiUnitTable の行に ready（この児童が採用の水準か）が入る。s02はNo.31の1件だけ",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " var s02=t.rows.filter(function(r){return r.id==='s02';})[0];" +
+   " return s02.n===1 && s02.total===18 && s02.ready===false;})()",
+   "apiUnitTable('算数','たし算とひき算の筆算').rows");
+ok("(下ごしらえ) s01は8割未満(14/18)、s03は8割以上(15/18)にする",
+   "(function(){" +
+   " for(var no=32;no<=45;no++) apiSaveAs('算数','s01',no,'B');" +     /* 14件 */
+   " for(var no=31;no<=45;no++) apiSaveAs('算数','s03',no,'B');" +     /* 15件 */
+   " return true;})()");
+ok("記入が少ない児童がいても押せる。採用1人・見送り2人（学級全体では止めない）",
+   "(function(){var r=apiSetRated('算数','たし算とひき算の筆算',true);" +
+   " return r.ok===true && r.adopted===1 && r.skipped===2;})()",
    "apiSetRated('算数','たし算とひき算の筆算',true)");
-ok("断られた理由に記入率の数字が入る",
-   "apiSetRated('算数','たし算とひき算の筆算',true).why.indexOf('記入率') >= 0");
-ok("(下ごしらえ) 8割を超えるまで埋める（15/18 コマ×4人＝83%）",
-   "(function(){['s01','s02','s03','s09'].forEach(function(id){" +
-   "  for(var no=31;no<=45;no++) apiSaveAs('算数',id,no,'B');});" +
-   " return apiUnitTable('算数','たし算とひき算の筆算').fillRate > 0.8;})()",
-   "apiUnitTable('算数','たし算とひき算の筆算').fillRate");
-ok("8割を超えれば単元の評価を児童に見せられる",
-   "apiSetRated('算数','たし算とひき算の筆算',true).ok === true",
-   "apiSetRated('算数','たし算とひき算の筆算',true)");
+ok("8割未満(14/18・77.8%)の児童は採用されない",
+   "Final.unitValue('算数','s01','たし算とひき算の筆算') === null");
+ok("8割未満(1/18)の児童も同様に採用されない",
+   "Final.unitValue('算数','s02','たし算とひき算の筆算') === null");
+ok("8割以上(15/18・83.3%)の児童は採用される",
+   "typeof Final.unitValue('算数','s03','たし算とひき算の筆算') === 'string'");
+ok("記入が1つも無い児童は、採用にも見送りにも数えない（provSymが無いだけ）",
+   "Final.unitValue('算数','s09','たし算とひき算の筆算') === null");
+ok("(下ごしらえ) s01をもう1コマ足して8割以上にする（15/18）",
+   "(function(){apiSaveAs('算数','s01',46,'B'); return true;})()");
+ok("「仮値をまとめて採用」も同じしきい値で見送る。s01は追いついたので採用、s02はまだ見送り",
+   "(function(){var r=apiAdoptAll('算数','たし算とひき算の筆算',false);" +
+   " return r.ok===true && r.put===1 && r.skipped===1 &&" +
+   " typeof Final.unitValue('算数','s01','たし算とひき算の筆算')==='string' &&" +
+   " Final.unitValue('算数','s02','たし算とひき算の筆算')===null;})()",
+   "apiAdoptAll('算数','たし算とひき算の筆算',false)");
 ok("記入率が低くても「もどす」（非表示に戻す）は妨げない",
    "(function(){" +   /* 時こくと時間。記入率はまだ低いまま */
    " var r=apiSetRated('算数','時こくと時間',false);" +
