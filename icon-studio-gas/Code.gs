@@ -1,7 +1,7 @@
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('Icon Studio')
+    .setTitle('アイコンメーカー')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
