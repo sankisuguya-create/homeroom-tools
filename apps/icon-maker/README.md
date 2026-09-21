@@ -49,6 +49,10 @@ URLパラメータで1つのデザインを再現できます。人が読める�
 
 不正な値は安全な既定値へ戻します。既存のデプロイURLにこのパラメータを付ければ、端末やブラウザをまたいで同じデザインを開けます。
 
+## AIへデザインを依頼する
+
+AIが依頼文を再現URLへ変換するための判断規則、依頼テンプレート、出力形式は[AI_DESIGN_WORKFLOW.md](AI_DESIGN_WORKFLOW.md)に定義しています。共有する設定リンクには、児童名などの個人情報を表示名として入れません。
+
 ## 人物ピクトグラムの出典
 
 人物SVGは[Tabler Icons v3.47.0](https://github.com/tabler/tabler-icons/tree/v3.47.0)から選定し、外部通信なしで使えるSVGスプライトへ変換しています。ライセンスはMITです。採用ファイル、元データのblob SHA、変換内容は[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)、ライセンス全文は[`licenses/Tabler-Icons-MIT.txt`](licenses/Tabler-Icons-MIT.txt)に記録しています。
