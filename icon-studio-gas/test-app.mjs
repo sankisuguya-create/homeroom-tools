@@ -13,6 +13,7 @@ new Function(app);
 const tags=JSON.parse(tagsText);
 assert.equal(Object.keys(tags).length,1848);
 assert.equal((sprite.match(/<symbol id=/g)||[]).length,1848);
+assert.ok(!sprite.includes('<?xml'));
 assert.ok(!dist.includes('<?!='));
 assert.ok(dist.includes('<title>アイコンメーカー</title>'));
 assert.ok(dist.includes('<span>アイコンメーカー</span>'));
