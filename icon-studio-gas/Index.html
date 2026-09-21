@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Lucideを内蔵した、統一規格のアイコン量産ツール">
+  <title>Icon Studio</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%231673d1'/%3E%3Cpath d='M9 16h14M16 9v14' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+  <style>
+    :root{color-scheme:light;--ink:#172033;--muted:#647086;--line:#dfe4ec;--panel:#fff;--bg:#f3f6fa;--accent:#1673d1;--shadow:0 16px 44px rgba(29,43,68,.1)}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;font-size:16px}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+    header{height:68px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em}
+    .brand-mark{width:36px;height:36px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:25px;line-height:1}
+    .status{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:7px}.status::before{content:"";width:8px;height:8px;border-radius:50%;background:#147a42}
+    main{padding:20px;display:grid;grid-template-columns:minmax(280px,1fr) minmax(340px,1.15fr) minmax(290px,.9fr);gap:16px;min-height:0}
+    .panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 3px 12px rgba(29,43,68,.04);min-height:0;overflow:hidden}
+    .panel-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+    h1,h2,p{margin:0}h1{font-size:17px}h2{font-size:15px;letter-spacing:.01em}.sub{margin-top:5px;color:var(--muted);font-size:13px}
+    .search-wrap{padding:16px 16px 10px;position:relative}.search{width:100%;height:46px;padding:0 42px 0 14px;border:1px solid #cad2de;border-radius:12px;background:#f9fbfd;outline:none}.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.13)}
+    .search-count{position:absolute;right:29px;top:28px;color:var(--muted);font-size:12px}
+    .catalog-switch{padding:0 16px 12px}.catalog-switch .seg{max-width:260px}.icon-grid{padding:6px 14px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;overflow:auto;max-height:calc(100vh - 158px);position:relative}
+    .icon-choice{height:64px;border:1px solid transparent;border-radius:13px;background:#f5f7fa;color:#354056;display:grid;place-items:center;position:relative}.icon-choice:hover{background:#edf3fa}.icon-choice.selected{background:#e8f2fc;border-color:#78aee2;color:#0e5ea8}.icon-choice svg{width:27px;height:27px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}.icon-choice span{position:absolute;inset:auto 5px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9px;color:#68758a;text-align:center}
+    .pattern-tile{background-color:#eef2f7;background-image:repeating-linear-gradient(135deg,rgba(23,32,51,.10) 0,rgba(23,32,51,.10) 4px,transparent 4px,transparent 9px);border-color:#c8d0dc;color:#172033}.pattern-tile:hover{background-color:#e2eaf3}.pattern-tile span{color:#344054;font-weight:750}.group-tile.selected{border-color:#1673d1;background-color:#dfedfa}
+    .empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:32px 12px;line-height:1.7}.load-more{grid-column:1/-1;min-height:42px;border:1px solid #cad2de;border-radius:11px;background:#fff;color:#354056;font-weight:750}.load-more:hover{background:#f3f7fb}
+    .preview-panel{display:grid;grid-template-rows:auto 1fr auto}.preview-area{min-height:300px;display:grid;place-items:center;padding:26px;background:radial-gradient(circle at 50% 32%,#fff 0,#f7f9fc 46%,#edf1f6 100%)}
+    .preview-stack{width:100%;display:grid;place-items:center;gap:12px}.output-preview{display:grid;place-items:center;transition:.18s ease}.output-preview>svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(29,43,68,.12))}.output-preview.layout-icon{width:152px}.output-preview.layout-horizontal{width:min(100%,430px)}.output-preview.layout-square-card{width:min(72%,280px)}.output-preview.bump{transform:scale(1.02)}
+    .preview-name{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+    .preview-controls{padding:16px 18px}.preview-controls.top{border-bottom:1px solid var(--line)}.preview-controls.bottom{border-top:1px solid var(--line)}.preview-controls .field:last-child{margin-bottom:0}.control-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.control-columns .field{margin-bottom:0}
+    .controls{padding:17px 18px 24px;overflow:auto;max-height:calc(100vh - 126px)}
+    .field{margin-bottom:18px}.field label,.field-title{display:block;font-weight:750;font-size:13px;margin-bottom:8px}.text-input,.select{width:100%;height:44px;border:1px solid #cad2de;border-radius:11px;padding:0 12px;background:#fff;outline:none}.text-input:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.12)}
+    .swatches{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.swatch{aspect-ratio:1;border-radius:10px;border:3px solid #fff;outline:1px solid #d7dde6}.swatch.active{outline:3px solid var(--ink);outline-offset:1px}.custom-color{margin-top:10px;display:flex;gap:9px;align-items:center}.custom-color input[type=color]{width:44px;height:38px;padding:3px;border:1px solid #cad2de;border-radius:9px;background:#fff}.hex{font-size:13px;color:var(--muted);font-family:ui-monospace,monospace}
+    .seg{display:grid;grid-template-columns:repeat(3,1fr);padding:3px;background:#edf1f5;border-radius:11px}.seg.two{grid-template-columns:repeat(2,1fr)}.seg button{border:0;border-radius:8px;background:transparent;height:36px;color:#59667b;font-size:13px}.seg button.active{background:#fff;color:var(--ink);font-weight:750;box-shadow:0 1px 4px rgba(29,43,68,.12)}
+    .shape-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.shape-choice{min-width:0;height:60px;padding:6px 2px 5px;border:1px solid #d7dde6;border-radius:11px;background:#fff;color:#5d687a;display:grid;place-items:center;font-size:10px}.shape-choice svg{width:25px;height:25px;display:block}.shape-choice.active{border-color:#1673d1;background:#eaf3fc;color:#0e5ea8;box-shadow:0 0 0 1px #1673d1 inset}.shape-choice:hover{background:#f4f8fc}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.btn{min-height:43px;border:1px solid #cad2de;border-radius:11px;background:#fff;color:var(--ink);font-weight:750;font-size:13px;padding:0 10px}.btn:hover{background:#f6f8fb}.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}.btn.wide{grid-column:1/-1}.divider{height:1px;background:var(--line);margin:20px 0}
+    .set-row{display:flex;gap:8px}.set-row .btn{flex:1}.set-list{margin-top:12px;display:grid;gap:7px;max-height:190px;overflow:auto}.set-item{display:grid;grid-template-columns:38px 1fr 30px;align-items:center;gap:9px;border:1px solid var(--line);border-radius:11px;padding:7px}.mini{width:34px;height:34px;display:grid;place-items:center}.mini>svg{width:100%;height:100%;overflow:visible}.set-name{font-size:13px;font-weight:700}.set-icon{font-size:10px;color:var(--muted)}.remove{width:28px;height:28px;border:0;background:transparent;border-radius:7px;color:#7a8495}.remove:hover{background:#f2f4f7;color:#b33030}
+    .copy-hint{margin:-7px 0 16px;color:var(--muted);font-size:11px;line-height:1.5}.copy-menu{position:fixed;z-index:20;min-width:180px;padding:6px;background:#fff;border:1px solid #ccd4df;border-radius:12px;box-shadow:0 16px 42px rgba(23,32,51,.22)}.copy-menu[hidden]{display:none}.copy-menu button{display:block;width:100%;height:38px;padding:0 11px;border:0;border-radius:8px;background:#fff;text-align:left;color:#263247;font-size:13px}.copy-menu button:hover{background:#eaf3fc}.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);padding:11px 16px;border-radius:999px;background:#172033;color:#fff;font-size:13px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    @media(max-width:980px){main{grid-template-columns:1fr 1fr}.controls-panel{grid-column:1/-1}.controls{max-height:none;display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.controls .divider{grid-column:1/-1}.icon-grid{max-height:520px}}
+    @media(max-width:680px){header{height:60px;padding:0 16px}.status{display:none}main{padding:10px;display:flex;flex-direction:column}.preview-panel{order:-1}.preview-area{min-height:260px;padding:20px}.output-preview.layout-icon{width:112px}.output-preview.layout-horizontal{width:100%}.output-preview.layout-square-card{width:220px}.icon-grid{max-height:390px}.controls{display:block;max-height:none}.panel{border-radius:17px}.shape-grid{grid-template-columns:repeat(5,minmax(52px,1fr));overflow-x:auto}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header><div class="brand"><span class="brand-mark">＋</span><span>Icon Studio</span></div><div class="status">Lucide内蔵・外部接続なし</div></header>
+  <main>
+    <section class="panel" aria-label="アイコン選択">
+      <div class="search-wrap"><label class="sr-only" for="search">アイコン検索</label><input id="search" class="search" type="search" placeholder="例：本、提出、話し合い"><span id="count" class="search-count"></span></div>
+      <div id="iconGrid" class="icon-grid" aria-live="polite"></div>
+    </section>
+    <section class="panel preview-panel" aria-label="アイコン編集">
+      <div class="preview-controls top"><div class="control-columns">
+        <div class="field"><span class="field-title">アイコン色</span><div class="seg" id="inkMode"><button data-mode="auto" class="active">自動</button><button data-mode="white">白</button><button data-mode="black">黒</button></div></div>
+        <div class="field"><span class="field-title">アイコンサイズ</span><div class="seg two" id="iconSize"><button data-size="basic">縮小</button><button data-size="large" class="active">基本</button></div></div>
+      </div></div>
+      <div class="preview-area"><div class="preview-stack"><div id="outputPreview" class="output-preview layout-icon" aria-hidden="true"></div><div id="previewName" class="preview-name">book-open</div></div></div>
+      <div class="preview-controls bottom">
+        <div class="field"><span class="field-title">背景色</span><div id="swatches" class="swatches"></div><div class="custom-color"><input id="colorInput" type="color" value="#147a42" aria-label="自由な背景色"><span id="hexValue" class="hex">#147A42</span></div></div>
+        <div class="field"><span class="field-title">背景の形</span><div class="shape-grid" id="shapeMode">
+          <button class="shape-choice active" data-shape="rounded"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor"/></svg><span>角丸</span></button>
+          <button class="shape-choice" data-shape="circle"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/></svg><span>丸</span></button>
+          <button class="shape-choice" data-shape="diamond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 22.5 12 12 22.5 1.5 12Z" fill="currentColor"/></svg><span>菱形</span></button>
+          <button class="shape-choice" data-shape="cube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 1.5 9 5v10l-9 5-9-5v-10Z" fill="currentColor"/><path d="m3 6.5 9 5 9-5M12 11.5v10" fill="none" stroke="white" stroke-opacity=".45"/></svg><span>立方体</span></button>
+          <button class="shape-choice" data-shape="front-cube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h14v14H3z" fill="currentColor"/><path d="m3 7 4-4h14l-4 4M17 7l4-4v14l-4 4" fill="currentColor" fill-opacity=".55" stroke="currentColor" stroke-linejoin="round"/></svg><span>正面立方体</span></button>
+          <button class="shape-choice" data-shape="star"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,1 14.9,5.2 19.8,4.2 18.8,9.1 23,12 18.8,14.9 19.8,19.8 14.9,18.8 12,23 9.1,18.8 4.2,19.8 5.2,14.9 1,12 5.2,9.1 4.2,4.2 9.1,5.2" fill="currentColor"/></svg><span>八星</span></button>
+        </div></div>
+      </div>
+    </section>
+    <section class="panel controls-panel" aria-label="書き出し">
+      <div class="controls">
+        <div class="field"><label for="labelInput">表示名</label><input id="labelInput" class="text-input" value="教材" maxlength="30"></div>
+        <div class="field"><span class="field-title">出力形式</span><div class="seg" id="layoutMode"><button data-layout="icon" class="active">アイコン</button><button data-layout="horizontal">横長</button><button data-layout="square-card">正方形</button></div></div>
+        <p class="copy-hint">プレビューのアイコン部分をクリックすると背景付き、カード余白をクリックすると外枠ごと画像コピーします。右クリックでコピー範囲を選べます。</p>
+        <div class="field"><label for="exportSize">PNGサイズ</label><select id="exportSize" class="select"><option value="256" selected>256 × 256</option><option value="512">512 × 512</option><option value="1024">1024 × 1024</option></select></div>
+        <div class="actions"><button id="copySvg" class="btn">SVGをコピー</button><button id="downloadSvg" class="btn">SVG保存</button><button id="downloadPng" class="btn primary wide">PNGを保存</button></div>
+        <div class="divider"></div>
+        <div class="field"><span class="field-title">アイコンセット</span><div class="set-row"><button id="addSet" class="btn primary">セットに追加</button><button id="exportJson" class="btn">JSON保存</button><button id="importJson" class="btn">JSON読込</button><input id="jsonFile" type="file" accept="application/json" hidden></div><div id="setList" class="set-list"></div></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="copyMenu" class="copy-menu" hidden><button data-copy="glyph">アイコンのみコピー</button><button data-copy="tile">背景付きでコピー</button><button data-copy="full">カード全体をコピー</button></div>
+<div id="toast" class="toast" role="status"></div>
+<script id="lucideTags" type="application/json"><?!= include('LucideTags'); ?></script>
+<div id="lucideSprite" hidden><?!= include('LucideSprite'); ?></div>
+<script><?!= include('JavaScript'); ?></script>
+</body>
+</html>
