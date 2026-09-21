@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 色トークンと材質は apps/note-assessment/web/src/ と shared/ui/ から build.py が作ったもの。
+     プロトタイプと同じ元を読んでいるので、見た目が割れない。 -->
+<?!= include('tokens') ?>
+<?!= include('material') ?>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.7}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
+.hidden{display:none!important}
+
+.controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13.5px;font-weight:600;padding:7px 18px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.seg-label{font-size:11.5px;font-weight:600;letter-spacing:.08em;color:var(--ink-faint)}
+
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;
+  border-bottom:2px solid var(--ink);padding-bottom:10px}
+.head h1{margin:0;font-size:22px;font-weight:700}
+.head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
+  border:1.5px solid currentColor;border-radius:6px;padding:2px 10px}
+/* 「のこり」は警告ではないので、警告帯（D・C）の赤を使わない。
+   3年生は赤を「怒られている」と読む。数えているのは抜けであって非ではない。 */
+.badge.todo{color:var(--ink-soft)} .badge.todo.clear{color:var(--ink-faint)}
+.badge.locked{color:var(--lock-ink)}
+
+section{display:flex;flex-direction:column;gap:12px}
+h2{margin:0;font-size:15px;font-weight:700;letter-spacing:.06em;
+  display:flex;align-items:center;gap:12px;color:var(--ink-soft)}
+h2::after{content:"";flex:1;height:1px;background:var(--rule);order:1}
+h2 .fold{order:2}
+.mini{appearance:none;font-family:inherit;font-size:12.5px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:5px 12px;
+  background:var(--sheet);color:var(--ink-soft);cursor:pointer;white-space:nowrap}
+
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:14px;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(10,minmax(90px,1fr));gap:1px;
+  background:var(--rule-soft);border:1px solid var(--rule-soft);min-width:930px}
+@media (max-width:640px){ .grid{grid-template-columns:repeat(5,minmax(90px,1fr));min-width:470px} }
+.cell{background-color:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative}
+.cell .no{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--ink-faint);
+  display:flex;justify-content:space-between;align-items:center;gap:4px}
+.cell .unit{font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44px}
+.cell select{width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
+  font-size:17px;font-weight:600;text-align:center;text-align-last:center;
+  padding:4px 2px 5px;border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:5px;--stripe-layer:none;
+  background-color:var(--sheet);background-image:var(--stripe-layer);background-repeat:repeat;
+  color:var(--ink);cursor:pointer}
+.cell select option{color:var(--ink)}
+.cell.open select{--stripe-layer:repeating-linear-gradient(45deg,var(--stripe) 0 5px,transparent 5px 10px)}
+.cell.open.empty select{border-left-style:dashed;border-right-style:dashed;border-bottom-style:dashed}
+.cell.locked select:disabled:not(.is-skip){opacity:1;cursor:default;color:var(--ink-soft);
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+.cell.locked select:disabled.is-skip{opacity:1;cursor:default;
+  border-left-color:var(--rule-soft);border-right-color:var(--rule-soft);border-bottom-color:var(--rule-soft)}
+.cell.future select:not(.is-skip){background-color:var(--rule-soft);color:var(--ink-faint);
+  border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
+.cell.future select.is-skip{border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted}
+.cell .avg{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint);
+  display:flex;justify-content:space-between;gap:4px;line-height:1.3}
+.cell .avg b{font-weight:600;color:var(--ink-soft)}
+.cell.edited{box-shadow:inset 3px 0 0 var(--open)}
+.cell.skipcell{box-shadow:none}
+.cell.saving select{opacity:.55}
+.cell[data-u="0"]{--ucol:var(--u0)}   .cell[data-u="1"]{--ucol:var(--u1)}
+.cell[data-u="2"]{--ucol:var(--u2)}   .cell[data-u="3"]{--ucol:var(--u3)}
+.cell[data-u="4"]{--ucol:var(--u4)}   .cell[data-u="5"]{--ucol:var(--u5)}
+.cell[data-u="6"]{--ucol:var(--u6)}   .cell[data-u="7"]{--ucol:var(--u7)}
+.cell[data-u="8"]{--ucol:var(--u8)}   .cell[data-u="9"]{--ucol:var(--u9)}
+.cell[data-u="10"]{--ucol:var(--u10)} .cell[data-u="11"]{--ucol:var(--u11)}
+.cell[data-u="12"]{--ucol:var(--u12)} .cell[data-u="13"]{--ucol:var(--u13)}
+.cell[data-u="14"]{--ucol:var(--u14)} .cell[data-u="15"]{--ucol:var(--u15)}
+.cell[data-u="16"]{--ucol:var(--u16)} .cell[data-u="17"]{--ucol:var(--u17)}
+.cell[data-u="18"]{--ucol:var(--u18)} .cell[data-u="19"]{--ucol:var(--u19)}
+
+.units,.lessons{display:flex;flex-direction:column;gap:18px}
+.term-block{display:flex;flex-direction:column;gap:9px}
+.term-head{font-size:12.5px;font-weight:700;letter-spacing:.1em;color:var(--ink-faint);
+  display:flex;align-items:center;gap:10px}
+.term-head .fold{appearance:none;font-family:inherit;font-size:12px;font-weight:600;
+  border:1px solid var(--rule);border-radius:6px;padding:3px 11px;
+  background:var(--sheet);color:var(--ink-soft);cursor:pointer;letter-spacing:0}
+.term-head::after{content:"";flex:1;height:1px;background:var(--rule-soft);order:3}
+.term-head .fold{order:2}
+/* 畳んだ学期の中に抜けが残っていることを、開かなくても分かるようにする。
+   上の「のこり 12」は教科ぜんぶの数なので、学期を畳むと在りかが見えなくなる。 */
+.term-head .count{order:1;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+  font-weight:600;letter-spacing:0;color:var(--ink-soft);
+  border:1px solid currentColor;border-radius:5px;padding:0 7px}
+.term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));
+  gap:14px;justify-content:start}
+.unit-card{background:var(--sheet);border:1px solid var(--rule);
+  border-top:3px solid var(--ucol,var(--rule));border-radius:10px;padding:13px 15px 14px;
+  display:flex;flex-direction:column;gap:8px}
+.unit-card[data-u="0"]{--ucol:var(--u0)}   .unit-card[data-u="1"]{--ucol:var(--u1)}
+.unit-card[data-u="2"]{--ucol:var(--u2)}   .unit-card[data-u="3"]{--ucol:var(--u3)}
+.unit-card[data-u="4"]{--ucol:var(--u4)}   .unit-card[data-u="5"]{--ucol:var(--u5)}
+.unit-card[data-u="6"]{--ucol:var(--u6)}   .unit-card[data-u="7"]{--ucol:var(--u7)}
+.unit-card[data-u="8"]{--ucol:var(--u8)}   .unit-card[data-u="9"]{--ucol:var(--u9)}
+.unit-card[data-u="10"]{--ucol:var(--u10)} .unit-card[data-u="11"]{--ucol:var(--u11)}
+.unit-card[data-u="12"]{--ucol:var(--u12)} .unit-card[data-u="13"]{--ucol:var(--u13)}
+.unit-card[data-u="14"]{--ucol:var(--u14)} .unit-card[data-u="15"]{--ucol:var(--u15)}
+.unit-card[data-u="16"]{--ucol:var(--u16)} .unit-card[data-u="17"]{--ucol:var(--u17)}
+.unit-card[data-u="18"]{--ucol:var(--u18)} .unit-card[data-u="19"]{--ucol:var(--u19)}
+.unit-card .name{font-size:14px;font-weight:600}
+.unit-card .row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  flex-wrap:wrap;row-gap:6px}
+.unit-card .valbox{display:inline-flex;align-items:center;justify-content:center;
+  flex:none;width:126px;aspect-ratio:2.97;padding:0 8px;border-radius:5px;
+  border:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+  font-size:25px;font-weight:600;position:relative;overflow:hidden;
+  background-color:var(--sheet);color:var(--ink)}
+.unit-card .valbox.none{color:var(--ink-faint);font-size:19px}
+.tag{font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);
+  border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap}
+.tag.rated{color:var(--ink);border-color:var(--ink-soft);font-weight:700}
+.unit-card .meta{font-size:11.5px;color:var(--ink-faint);
+  font-family:"IBM Plex Mono",monospace;display:flex;gap:11px;flex-wrap:wrap}
+
+/* 閉室（8:00 より前・ロック時刻より後） */
+.closed{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;min-height:56vh;text-align:center;border:1px solid var(--rule);
+  border-radius:12px;background:var(--sheet);padding:40px 24px}
+.closed .mark{width:54px;height:54px;border-radius:50%;
+  border:4px solid var(--rule-soft);border-top-color:var(--ink-faint);
+  animation:spin 1.6s linear infinite}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.closed .big{margin:0;font-size:23px;font-weight:700}
+.closed .sub{margin:0;font-size:15px;color:var(--ink-soft)}
+.closed .sub b{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.loading{display:flex;align-items:center;justify-content:center;gap:14px;
+  min-height:40vh;color:var(--ink-soft);font-size:15px;font-weight:600}
+.loading .mark{width:34px;height:34px;border-radius:50%;
+  border:3px solid var(--rule-soft);border-top-color:var(--ink-faint);
+  animation:spin 1.1s linear infinite}
+
+/* 待たせているあいだ、画面を物理的に覆う。
+   下の操作に触れないので、待っているあいだの連打が起きない。 */
+.busy{position:fixed;inset:0;z-index:99;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:20px;
+  background:rgba(252,251,247,.92);backdrop-filter:blur(2px)}
+.busy .mark{width:66px;height:66px;border-radius:50%;
+  border:5px solid var(--rule-soft);border-top-color:var(--accent);
+  animation:spin 1.05s linear infinite}
+.busy .msg{font-size:26px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+.busy .sub{font-size:14px;color:var(--ink-soft)}
+.soonbar{border:1px solid var(--open-line);background:var(--open-cell);
+  border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
+.soonbar b{font-family:"IBM Plex Mono",monospace}
+.errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
+  border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="controls">
+    <span class="seg-label">教科</span>
+    <div class="seg" id="subjSeg"></div>
+    <a class="mini hidden" id="teacherLink" target="_top"
+       style="margin-left:auto;text-decoration:none">集計と設定 →</a>
+  </div>
+
+  <div class="busy hidden" id="busy">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="msg" id="busyMsg">よみこみ中…</p>
+    <p class="sub">まってね</p>
+  </div>
+
+  <div class="errbar hidden" id="errbar"></div>
+
+  <div class="loading" id="loading">
+    <div class="mark" aria-hidden="true"></div>
+    <span>よみこんで います…</span>
+  </div>
+  <div class="soonbar hidden" id="soonbar"></div>
+
+  <div class="closed hidden" id="closedPanel">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="big">きろくを こうしんして います</p>
+    <p class="sub" id="closedSub"></p>
+  </div>
+
+  <div class="closed hidden" id="emptyPanel">
+    <p class="big" id="emptyBig">まだ つかえません</p>
+    <p class="sub" id="emptySub"></p>
+  </div>
+
+  <div class="head hidden" id="head">
+    <h1 id="title">よみこんで います…</h1>
+    <div class="badges">
+      <span class="badge todo" id="todoBadge"></span>
+      <span class="badge locked" id="lockBadge"></span>
+    </div>
+  </div>
+
+  <section id="secLessons" class="hidden">
+    <h2>授業の評価</h2>
+    <div class="lessons" id="lessons"></div>
+  </section>
+
+  <section id="secUnits" class="hidden">
+    <h2>単元の評価</h2>
+    <div class="units" id="units"></div>
+  </section>
+</div>
+
+<?!= include('scale') ?>
+<script>
+const $ = id => document.getElementById(id);
+let S = null;                      // サーバから来たもの
+let subject = null;
+
+/* ---- 記号の材質。scale.js の BASE_LOOK を使う ---- */
+function paint(sel, sym){
+  sel.classList.remove("is-a","is-warn","is-off","is-skip","foil-gold","foil-cosmic");
+  if(!sym) return;
+  if(sym === OFF) { sel.classList.add("is-off");  return; }
+  if(sym === SKIP){ sel.classList.add("is-skip"); return; }
+  if(isTopSym(sym))       sel.classList.add(lookOf(sym));
+  else if(isWarnSym(sym)) sel.classList.add("is-warn");
+  else if(sym[0] === "A") sel.classList.add("is-a");
+}
+
+/* 選択肢は**開くまで作らない**。
+   70個の select に15段ぶんを最初から入れると option が1000個を超え、
+   端末では表の組み立てだけで 186ms かかる（実測）。
+   閉じている select は選んでいる1つしか見せないので、最初はそれだけ置き、
+   初めて触ったときに残りを足す。 */
+function fillOptions(sel, cur){
+  if(sel.dataset.full) return;
+  sel.dataset.full = "1";
+  const keep = sel.value;
+  sel.innerHTML = optionsHTML(cur === undefined ? keep : cur);
+  sel.value = keep;
+}
+
+/* 選択肢は**選べるものだけ**にする。optgroup の見出しを付けない。
+   見出しの文字（A）が選択肢の文字（A）とそのまま同じなので、
+   どう飾っても「押せる A」と「押せない A」が並ぶ画面になる。
+   曖昧さの元は見た目ではなく**同じ文字が2回出ること**なので、見出しを消す。
+   段は D から上へ並んでいて、児童はノートの記号を1つ探すだけなので、
+   13〜15行の一本の並びで足りる。教師画面も同じく一本の並びにしてある。 */
+/* / は授業側の都合なので教師だけが置く。すでに入っているセルでは残す。 */
+function optionsHTML(cur){
+  const teacher  = S.who.role === "teacher";
+  const withSkip = teacher || cur === SKIP;
+  /* Y 以上は、教師が解放するまで児童に出さない。
+     すでに入っている記号は、値が消えないよう残す。 */
+  const allowed = symsFor({released: teacher || !!S.released, keep: cur});
+  return ['<option value="">‥</option>',
+          '<option value="' + OFF + '">' + OFF + '</option>',
+          withSkip ? '<option value="' + SKIP + '">' + SKIP + '</option>' : ""]
+         .concat(allowed.map(x => '<option value="' + x + '">' + x + '</option>'))
+         .join("");
+}
+
+const unitOf = no => (S.units || []).filter(u => no >= u.from && no <= u.to)[0] || null;
+
+/* セル1つ分を、作り直さずに当て直す。
+   1タップごとに表を作り直すと Chromebook で 148ms かかる（実測）。 */
+function applyCellState(c, l){
+  const u = unitOf(l.no);
+  const open = l.state !== "future" && !l.locked;
+  c.className = "cell " + l.state
+    + (open ? " open" : "") + (open && !l.sym ? " empty" : "")
+    + (l.locked ? " locked" : "") + (l.edited ? " edited" : "")
+    + (l.sym === SKIP ? " skipcell" : "");
+  c.dataset.u = u ? u.c : 0;
+  const sel = c.querySelector("select");
+  sel.disabled = !open;
+  sel.value = l.sym || "";
+  paint(sel, l.sym);
+}
+
+/* ---- 学期のまとめかた。授業の表と単元カードで同じものを使う ----
+
+   いまの学期。4〜7月＝1学期、8〜12月＝2学期、1〜3月＝3学期。
+   既定ではこの学期だけを開く。70時間ぶんを一度に出すと、
+   いま関係のあるものが埋もれる。
+   **開閉は表と単元カードで共有する。** 別々に持つと「授業は1学期・単元は2学期」
+   という食い違いが起き、同じ見出しの同じボタンが別のことをする画面になる。 */
+function termNow(){
+  const m = new Date().getMonth() + 1;
+  return (m >= 4 && m <= 7) ? 1 : (m >= 8 && m <= 12) ? 2 : 3;
+}
+const termOfNo = no => { const u = unitOf(no); return u ? (u.term || 0) : 0; };
+
+/* 学期の並びは、番号順ではなく**出てくる順**（最初の授業が早いほうが先）。
+   単元マスタが番号順に並んでいれば同じ結果になり、崩れていても
+   表の並びと見出しの並びが食い違わない。 */
+function termList(){
+  const seen = {}, out = [];
+  const push = t => { if(!(t in seen)){ seen[t] = 1; out.push(t); } };
+  (S.rows  || []).forEach(l => push(termOfNo(l.no)));
+  (S.units || []).forEach(u => push(u.term || 0));
+  return out;
+}
+
+let openTerms = null;                    // 開いている学期。null なら既定を作る
+
+function ensureOpenTerms(){
+  const terms = termList();
+  if(openTerms === null){
+    const now = termNow();
+    openTerms = {};
+    terms.forEach(t => { openTerms[t] = (t === now); });
+    if(terms.length && !terms.some(t => openTerms[t])) openTerms[terms[terms.length - 1]] = true;
+    return;
+  }
+  /* 教科を変えて知らない学期が出てきたときだけ既定を当てる。
+     児童が畳んだ学期は畳んだままにする。 */
+  const fresh = terms.filter(t => !(t in openTerms));
+  if(!fresh.length) return;
+  const now = termNow();
+  fresh.forEach(t => { openTerms[t] = (t === now); });
+  if(!terms.some(t => openTerms[t])) openTerms[fresh[fresh.length - 1]] = true;
+}
+
+function termLabel(t){ return t ? t + "学期" : "学期なし"; }
+
+/* 学期の見出し。表と単元カードで同じものを出す。 */
+function termHeadHTML(t, open, extra){
+  return '<div class="term-head"><span>' + termLabel(t) + '</span>' +
+         (extra || "") +
+         '<button class="fold" type="button" data-t="' + t + '" aria-expanded="' + open + '">' +
+         (open ? "かくす" : "ひらく") + '</button></div>';
+}
+
+/* 開閉のたびに両方を作り直すので、押したところが画面から逃げる。
+   **押した側**の見出しへ戻す。授業側で押したのに単元側へ飛ぶ、を起こさない。 */
+function toggleTerm(t, from){
+  openTerms[t] = !openTerms[t];
+  renderGrid(); renderUnits();
+  const head = $(from).querySelector('button.fold[data-t="' + t + '"]');
+  if(head) head.scrollIntoView({block:"start", behavior:"auto"});
+}
+
+/* ---- 授業の表 ---- */
+
+let ROW_BY_NO = {};
+
+/* 学級平均は**教師が見るときだけ**セルに出す。
+   児童の画面に置くと、転写のたびに自分と学級を比べることになる。 */
+function avgHTML(no){
+  if(!S.avg) return "";                          // 児童には出さない
+  /* 誰も入れていない授業も枠だけ出す。行の高さが揃うのと、
+     「まだ誰も転写していない」がそのまま読めるのと、両方のため。 */
+  const a = S.avg[no] || {sym:null, n:0};
+  return '<div class="avg"><b>' + (a.sym || "—") + '</b><span>' + a.n + '人</span></div>';
+}
+
+function cellHTML(l){
+  const u = unitOf(l.no);
+  /* 最初は選んでいる1つだけ。残りは触ったときに足す（fillOptions）。 */
+  const cur = l.sym || "";
+  return '<div class="cell" data-i="' + l.no + '">' +
+    '<div class="no"><span>' + String(l.no).padStart(2,"0") + '</span>' +
+    '<span class="unit">' + (u ? u.name : "") + '</span></div>' +
+    '<select class="mat" aria-label="No.' + l.no + ' の評価">' +
+      '<option value="' + cur + '">' + (cur || "‥") + '</option>' +
+    '</select>' + avgHTML(l.no) + '</div>';
+}
+
+/* 表は**1回で組み立てる**。学期ぶんを1つの文字列にしてから流し込む。
+   セルごとに innerHTML を書くと、そのたびに解析が走る。
+   **畳んでいる学期のセルは作らない。** 出さないものを作ると、
+   畳んだのに軽くならない。 */
+function renderGrid(){
+  const box = $("lessons");
+  box.innerHTML = "";
+  ROW_BY_NO = {};
+  S.rows.forEach(l => { ROW_BY_NO[l.no] = l; });
+  ensureOpenTerms();
+
+  termList().forEach(t=>{
+    const rows = S.rows.filter(l => termOfNo(l.no) === t);
+    if(!rows.length) return;
+    const open = !!openTerms[t];
+    const todo = rows.filter(isLeft).length;
+    const b = document.createElement("div");
+    b.className = "term-block";
+    b.innerHTML = termHeadHTML(t, open,
+                    todo ? '<span class="count">のこり ' + todo + '</span>' : "") +
+                  '<div class="sheet' + (open ? "" : " hidden") + '">' +
+                  '<div class="grid"></div></div>';
+    b.querySelector("button.fold").addEventListener("click", ()=> toggleTerm(t, "lessons"));
+    box.appendChild(b);
+    if(!open) return;
+
+    const g = b.querySelector(".grid");
+    g.innerHTML = rows.map(cellHTML).join("");
+    const cells = g.children;
+    for(let i = 0; i < cells.length; i++) applyCellState(cells[i], rows[i]);
+  });
+}
+
+/* 聞き役は表ぜんぶに1つだけ置く。セルごとに付けると、その分だけ組み立てが遅くなる。
+   学期ごとに表が分かれても、聞き役は増やさない。 */
+(function(){
+  const box = $("lessons");
+  const rowOfCell = c => ROW_BY_NO[c.dataset.i];
+
+  /* 触った瞬間に残りの選択肢を足す。開く前に間に合う。 */
+  ["pointerdown","focusin","keydown"].forEach(ev=>{
+    box.addEventListener(ev, e=>{
+      const sel = e.target.closest ? e.target.closest("select") : null;
+      if(sel && !sel.disabled) fillOptions(sel, rowOfCell(sel.closest(".cell")).sym);
+    }, true);
+  });
+  box.addEventListener("change", e=>{
+    const sel = e.target.closest ? e.target.closest("select") : null;
+    if(!sel) return;
+    const c = sel.closest(".cell");
+    onPick(c, rowOfCell(c), sel);
+  });
+})();
+
+/* 押した瞬間に反映して、断られたら戻す。
+   Chromebook から往復1〜2秒かかるので、待たせると連打される。 */
+function onPick(c, l, sel){
+  const before = l.sym;
+  const next   = sel.value || null;
+  l.sym    = next;
+  l.state  = (l.state === "future") ? "future" : (next ? "done" : "todo");
+  if(S.who.role !== "teacher" && next !== SKIP){
+    const o = sel.querySelector('option[value="' + SKIP + '"]');
+    if(o) o.remove();
+  }
+  applyCellState(c, l);
+  renderHead(); renderTermCounts();
+  c.classList.add("saving");
+  sel.disabled = true;          // 往復のあいだ、そのセルだけ受け付けない
+  hideErr();
+
+  google.script.run
+    .withSuccessHandler(function(r){
+      c.classList.remove("saving");
+      if(r && r.ok){ applyCellState(c, l); return; }
+      l.sym = before;                       // 断られたので戻す
+      l.state = before ? "done" : "todo";
+      applyCellState(c, l); renderHead(); renderTermCounts();
+      showErr((r && r.why) || "ほぞん できませんでした");
+    })
+    .withFailureHandler(function(e){
+      c.classList.remove("saving");
+      l.sym = before;
+      l.state = before ? "done" : "todo";
+      applyCellState(c, l); renderHead(); renderTermCounts();
+      showErr("つうしんが できませんでした。もう一度 えらんでください");
+    })
+    .apiSave(subject, l.no, next);
+}
+
+/* 見出しの「のこり ◯」だけ当て直す。表は作り直さない。 */
+function renderTermCounts(){
+  const blocks = $("lessons").children;
+  for(let i = 0; i < blocks.length; i++){
+    const btn = blocks[i].querySelector("button.fold");
+    if(!btn) continue;
+    const t    = Number(btn.dataset.t);
+    const rows = S.rows.filter(l => termOfNo(l.no) === t);
+    const todo = rows.filter(isLeft).length;
+    let tag = blocks[i].querySelector(".count");
+    if(!todo){ if(tag) tag.remove(); continue; }
+    if(!tag){
+      tag = document.createElement("span");
+      tag.className = "count";
+      btn.parentNode.insertBefore(tag, btn);
+    }
+    tag.textContent = "のこり " + todo;
+  }
+}
+
+/* 「のこり」＝**済んだ授業のうち、自分が空のもの**。
+   まだ習っていない授業は数えない。実施日は持たないので、済んだかどうかは
+   学級の入力から引く（S.taught＝3人以上が入れている最大の No）。
+   ここを区別しないと、9月に3学期ぶんまで数えて「48」と出る。 */
+const isLeft = l => !l.sym && l.no <= (S.taught || 0);
+
+function renderHead(){
+  const todo   = S.rows.filter(isLeft).length;
+  const locked = S.rows.filter(l => l.sym && l.locked).length;
+  const tb = $("todoBadge");
+  /* 線が引けていないうち（学級の誰もまだ転写していない）は何も言わない。
+     この状態で「ぜんぶ おわり」と出すと、抜けがあるのに終わったと告げることになる。 */
+  const known = (S.taught || 0) > 0;
+  tb.classList.toggle("hidden", !known);
+  tb.textContent = todo ? "のこり " + todo : "ぜんぶ おわり";
+  tb.classList.toggle("clear", todo === 0);
+  $("lockBadge").textContent = "確定 " + locked;
+  $("title").innerHTML = S.who.name +
+    '<small>' + subject + '　' + S.className + '　' + S.year + '年度</small>';
+}
+
+/* 単元カードも、授業の表と同じ学期の開閉に従う。 */
+function renderUnits(){
+  const box = $("units");
+  box.innerHTML = "";
+  ensureOpenTerms();
+
+  const rowOf = {};
+  termList().forEach(t=>{
+    if(!S.units.some(u => (u.term || 0) === t)) return;
+    const open = !!openTerms[t];
+    const b = document.createElement("div");
+    b.className = "term-block";
+    b.innerHTML = termHeadHTML(t, open, "") +
+                  '<div class="term-row' + (open ? "" : " hidden") + '"></div>';
+    b.querySelector("button.fold").addEventListener("click", ()=> toggleTerm(t, "units"));
+    box.appendChild(b);
+    rowOf[t] = b.querySelector(".term-row");
+  });
+
+  S.units.forEach(u=>{
+    if(!rowOf[u.term || 0]) return;
+    /* 単元評価は「1段階上」の材質で見せる。単元で高い値を取るのは1時間より
+       難しいので、同じ記号でも授業のセルより上に見えるようにする。
+       ただし警告帯（D・C）は上げない。上げると単元での警告が消える。 */
+    const p = u.sym;
+    let cls = "none";
+    if(p){
+      if(isWarnSym(p)) cls = "is-warn";
+      else{
+        const j  = Math.min(iOf(p) + 1, NBASE - 1);
+        const nb = BASES[j];
+        cls = (j >= iTop) ? lookOf(nb) : (nb === "A" ? "is-a" : "");
+      }
+    }
+    const filled = u.n >= u.total;
+    const tag = p        ? "せんせいの ひょうか"
+              : u.n === 0 ? "まだ ありません"
+              : filled   ? "せんせいが かくにんちゅう"
+              :            "とちゅう";
+    const card = document.createElement("div");
+    card.className = "unit-card";
+    card.dataset.u = u.c;
+    card.innerHTML =
+      '<div class="name">' + u.name + '</div>' +
+      '<div class="row"><span class="valbox mat ' + cls + '">' + (p || "—") + '</span>' +
+        '<span class="tag' + (p ? ' rated' : '') + '">' + tag + '</span></div>' +
+      '<div class="meta">' +
+        '<span>入力 ' + u.n + '/' + u.total + '</span>' +
+        (u.high ? '<span>いちばん ' + symbolOf(u.high) + '</span>' : '') +
+        (u.top  ? '<span>' + TOP_FROM + 'いじょう ' + u.top + '回</span>' : '') +
+        (u.off  ? '<span>休 ' + u.off + '回</span>' : '') +
+        (u.skip ? '<span>/ ' + u.skip + '回</span>' : '') +
+      '</div>';
+    rowOf[u.term || 0].appendChild(card);
+  });
+}
+
+/* 先頭ではなく「いまやるところ」を中央に置く。
+   畳んだ学期のセルは作っていないので、**出ているセルの中から**選ぶ。
+   出ていないセルを指すと、黙って何も起きない画面になる。 */
+let scrolled = false;
+function scrollToNow(){
+  if(scrolled) return;
+  const shown = S.rows.filter(l => openTerms[termOfNo(l.no)]);
+  let l = shown.filter(x => x.state === "todo" && !x.sym)[0];
+  if(!l) for(let k = shown.length - 1; k >= 0; k--) if(shown[k].sym){ l = shown[k]; break; }
+  const cell = l ? $("lessons").querySelector('.cell[data-i="' + l.no + '"]') : null;
+  if(cell){ cell.scrollIntoView({block:"center", behavior:"auto"}); scrolled = true; }
+}
+
+/* 画面ごと止める。読み込みと教科の切り替えのように、
+   終わるまで次の操作をさせてはいけないものだけに使う。
+   1マスの保存には使わない（押した瞬間に反映するのが要点なので、
+   そこで画面を止めると転写がかえって遅くなる。代わりにそのマスだけ止める）。 */
+let busyDepth = 0;
+function busy(on, msg){
+  busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
+  const b = $("busy");
+  if(msg) $("busyMsg").textContent = msg;
+  b.classList.toggle("hidden", busyDepth === 0);
+}
+
+function showErr(msg){ const e = $("errbar"); e.textContent = msg; e.classList.remove("hidden"); }
+function hideErr(){ $("errbar").classList.add("hidden"); }
+
+/* 教師のときだけ出す。リンクを出さないのは誘導であって権限ではないので、
+   飛んだ先の doGet でも役割をメールから判定し直している。 */
+/* 相対リンク（?p=teacher）は iframe の中で解決されて別の場所へ飛ぶ。
+   サーバが返した絶対 URL を使い、target="_top" で親ごと移る。 */
+function renderTeacherLink(){
+  const a = $("teacherLink");
+  const ok = !!(S.who && S.who.role === "teacher" && S.appUrl);
+  a.classList.toggle("hidden", !ok);
+  if(ok) a.href = S.appUrl + "?p=teacher";
+}
+
+function renderSubjSeg(){
+  const seg = $("subjSeg");
+  seg.innerHTML = "";
+  (S.subjects || []).forEach(name=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = name;
+    b.setAttribute("aria-pressed", String(name === subject));
+    b.addEventListener("click", ()=>{ if(name !== subject) load(name); });
+    seg.appendChild(b);
+  });
+}
+
+function renderSoon(){
+  const bar = $("soonbar");
+  const left = S.toClose;
+  const show = typeof left === "number" && left <= 10;
+  bar.classList.toggle("hidden", !show);
+  if(show) bar.innerHTML = "あと <b>" + left + "</b> ふんで、きょうは おしまいです";
+}
+
+/* 出す面を1つだけ選ぶ。中身が無いのに表を出しかけて途中で止まる、を防ぐ。 */
+function showOnly(which){
+  const faces = {closed:"closedPanel", empty:"emptyPanel", loading:"loading"};
+  Object.keys(faces).forEach(k => $(faces[k]).classList.toggle("hidden", k !== which));
+  const body = (which === "sheet");
+  ["head","secLessons","secUnits"].forEach(id => $(id).classList.toggle("hidden", !body));
+  if(!body) $("soonbar").classList.add("hidden");
+}
+showOnly("loading");
+
+function render(){
+  renderSubjSeg();
+  renderTeacherLink();
+
+  if(S.closed){
+    const p = n => String(n).padStart(2,"0");
+    $("closedSub").innerHTML = S.open
+      ? ("あさ <b>" + p(S.open.h) + ":" + p(S.open.m) + "</b> から つかえます") : "";
+    showOnly("closed");
+    return;
+  }
+
+  /* 表を出せる形になっているか、出す前に確かめる。
+     rows が無いまま描き始めると、見出しだけ出た半端な画面で止まる。 */
+  if(!S.subject || !Array.isArray(S.rows)){
+    $("emptyBig").textContent = (S.who && S.who.role === "teacher")
+      ? "見せられる教科がありません" : "まだ つかえません";
+    $("emptySub").textContent = S.why ||
+      ((S.who && S.who.role === "teacher") ? "教科マスタを確かめてください"
+                                           : "せんせいに つたえてください");
+    $("emptySub").style.maxWidth = "34em";
+    showOnly("empty");
+    return;
+  }
+
+  showOnly("sheet");
+  renderHead(); renderSoon(); renderGrid(); renderUnits(); scrollToNow();
+}
+
+function load(next){
+  busy(true, next ? "きょうかを かえています…" : "よみこみ中…");
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy(false);
+      try{
+        if(!r || !r.ok){
+          /* 断られたときも面を1つ選ぶ。半端な画面を残さない。 */
+          S = Object.assign(S || {}, r || {});
+          if(r && r.closed) S.closed = true; else { S.subject = null; S.rows = null; }
+          render();
+          if(r && r.why && !r.closed) showErr(r.why);
+          return;
+        }
+        /* 教科を切り替えたときは、前の教科の行が残らないように入れ替える。 */
+        if(next){ S.rows = null; S.units = null; }
+        S = Object.assign(S || {}, r);
+        subject = r.subject || next || subject;
+        scrolled = false;
+        hideErr();
+        render();
+      }catch(e){
+        showErr("画面を つくれませんでした（" + e.message + "）");
+      }
+    })
+    .withFailureHandler(function(e){
+      busy(false);
+      showErr("つうしんが できませんでした。もう一度 ひらいてください");
+    })
+    [next ? "apiRead" : "apiBoot"](next || null);
+}
+
+/* 時計が16:00をまたいだら閉室へ切り替える。判定はサーバに任せる。
+   **確認は軽い入口（apiTick）で行い、記録は読み直さない。**
+   毎分ぜんぶ読み直すと、29台ぶんの空読みが毎分走る。
+   閉室の状態が変わったときだけ読み直す。 */
+setInterval(function(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r || !r.ok) return;
+      if(!!r.closed !== !!S.closed){ load(); return; }   // またいだときだけ読み直す
+      S.toClose = r.toClose;
+      if(!S.closed) renderSoon();
+    })
+    .withFailureHandler(function(){ /* 一時的な失敗は黙って見送る */ })
+    .apiTick();
+}, 60000);
+load();
+</script>
+</body>
+</html>

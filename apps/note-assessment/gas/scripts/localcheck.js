@@ -1,0 +1,742 @@
+/* ==================================================================
+   localcheck.js — GAS に貼る前に、手元で .gs を動かして確かめる。
+
+     node apps/note-assessment/gas/scripts/localcheck.js
+
+   Apps Script の API（SpreadsheetApp・CacheService・Session）を偽物に
+   差し替えて、全 .gs を1つのスコープに読み込んで走らせる。GAS も同じく
+   全ファイルが1つのスコープを共有するので、ファイル間の参照ずれもここで出る。
+   Google のアカウントが要らないので、直すたびに回せる。
+================================================================== */
+/* Date を1つも作る前にタイムゾーンを固定する。GAS 側は appsscript.json の
+   "timeZone": "Asia/Tokyo" が同じ役目をする。ここがずれるとロックの境界が
+   まるごとずれるので、検査も同じ時間帯で回す。 */
+process.env.TZ = "Asia/Tokyo";
+
+const fs = require("fs"), path = require("path"), vm = require("vm");
+
+/* 偽の CacheService。getAll は本物にもある（見つかった鍵だけ返す）。 */
+const CACHE = (function(){
+  const m = new Map();
+  return {
+    get:    k => (m.has(k) ? m.get(k) : null),
+    put:    (k, v) => m.set(k, v),
+    putAll: o => Object.keys(o).forEach(k => m.set(k, o[k])),
+    getAll: ks => { const o = {}; ks.forEach(k => { if(m.has(k)) o[k] = m.get(k); }); return o; },
+    remove: k => m.delete(k),
+    _clear: () => m.clear()
+  };
+})();
+const GAS_ROOT = path.resolve(__dirname, "..");
+const SRC_DIR = path.join(GAS_ROOT, "src");
+const GENERATED_DIR = path.join(GAS_ROOT, "generated");
+function gasPath(name){
+  const source = path.join(SRC_DIR, name);
+  const generated = path.join(GENERATED_DIR, name);
+  if(fs.existsSync(source)) return source;
+  if(fs.existsSync(generated)) return generated;
+  throw new Error("GASファイルが見つからない: " + name);
+}
+const readGas = name => fs.readFileSync(gasPath(name), "utf8");
+
+/* ---- 偽のシート ---- */
+const SHEETS = {
+  "設定": [["キー","値"],
+    ["学級","3年3組"],["年度",2026],["開室時刻","8:00"],["ロック時刻","16:00"],
+    ["A下限","A+"],["C上限","C+"],["代表値","後半の中央値"],["後半の範囲",3],
+    ["Y解放",false],["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
+  "教科マスタ": [["教科","時数","公開"],
+    ["算数",70,true],["国語",60,true],["体育",105,false],["社会",70,false]],
+  /* 「3人以上が入れた授業を済んだとみなす」を試すには、名簿が3人以上要る。 */
+  "名簿": [["児童ID","出席番号","氏名","メール"],
+    ["s01",1,"あおい","aoi@example.ed.jp"],
+    ["s02",2,"いつき","itsuki@example.ed.jp"],
+    ["s03",3,"うみ","umi@example.ed.jp"],
+    ["s09",9,"さくら","sakura@example.ed.jp"]],
+  "単元マスタ": [["教科","単元名","開始No","終了No","色","学期","評価公開"],
+    ["算数","九九の表とかけ算",1,14,0,1,true],
+    ["算数","わり算",15,30,1,1,false],
+    ["算数","たし算とひき算の筆算",31,48,2,2,false],
+    ["算数","時こくと時間",49,70,3,3,false],
+    ["体育","体つくり運動",1,12,0,1,false]],
+  "記録": [["教科","児童ID","No","記号","保存時刻","更新者"]],
+  "確定": [["教科","児童ID","種別","対象","値","確定時刻"]]
+};
+
+let CURRENT_EMAIL = "sakura@example.ed.jp";
+const alerts = [];
+let sheetReads = 0;            // 記録シートを頭からなめた回数
+
+/* 書ける偽シート。記録と確定は実際に行が増減するので、そこまで真似る。 */
+function fakeSheet(name){
+  const v = SHEETS[name];
+  if(!v) return null;
+  const chain = {setValues(){ return this; }, setFontWeight(){ return this; },
+                 setBackground(){ return this; }, setNumberFormat(){ return this; }};
+
+  function range(row, col, nRow, nCol){
+    if(row === undefined) return Object.assign({getValues: () => v.map(r => r.slice())}, chain);
+    const r0 = row - 1, c0 = col - 1;
+    return {
+      getValues(){
+        if(name === "記録" && row === 2 && nCol === 6) sheetReads++;
+        const out = [];
+        for(let i = 0; i < nRow; i++){
+          const src = v[r0 + i] || [];
+          out.push(src.slice(c0, c0 + nCol));
+        }
+        return out;
+      },
+      getValue(){ const src = v[r0] || []; return src[c0]; },
+      setValue(x){ while(v.length <= r0) v.push([]); v[r0][c0] = x; return this; },
+      setValues(vals){
+        for(let i = 0; i < vals.length; i++){
+          while(v.length <= r0 + i) v.push([]);
+          for(let j = 0; j < vals[i].length; j++) v[r0 + i][c0 + j] = vals[i][j];
+        }
+        return this;
+      },
+      setFontWeight(){ return this; }, setBackground(){ return this; },
+      setNumberFormat(){ return this; }
+    };
+  }
+
+  return {
+    __name: name,
+    getDataRange: () => range(),
+    getRange: range,
+    setFrozenColumns(){},
+    getLastRow: () => v.length,
+    appendRow: r => { v.push(r.slice()); },
+    deleteRow: n => { v.splice(n - 1, 1); },
+    setFrozenRows(){}, autoResizeColumns(){}
+  };
+}
+
+const sandbox = {
+  console,
+  Date, Math, JSON, String, Number, Object, Array, isNaN, parseInt, parseFloat,
+  SpreadsheetApp: {
+    getActive: () => ({
+      getUrl: () => "https://docs.google.com/spreadsheets/d/TEST/edit",
+      getSpreadsheetTimeZone: () => "Asia/Tokyo",
+      setSpreadsheetTimeZone: () => {},
+      getSheetByName: fakeSheet,
+      deleteSheet: sh => { if(sh && sh.__name) delete SHEETS[sh.__name]; },
+      insertSheet: n => { SHEETS[n] = [[]]; return fakeSheet(n) || {
+        getRange: () => ({setValues(){return this;},setFontWeight(){return this;},
+                          setBackground(){return this;},setNumberFormat(){return this;}}),
+        getLastRow: () => 1, setFrozenRows(){}, autoResizeColumns(){} }; }
+    }),
+    getUi: () => ({ alert: m => alerts.push(m) })
+  },
+  /* 本物と同じく、呼ぶたびに同じ入れ物を返す。
+     毎回まっさらな Map を返していたので、キャッシュの経路が
+     一度も試されていなかった。 */
+  CacheService: { getScriptCache: () => CACHE },
+  Session: { getActiveUser: () => ({ getEmail: () => CURRENT_EMAIL }),
+             getScriptTimeZone: () => "Asia/Tokyo" },
+  Logger: { log: () => {} },
+  ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/a/macros/x/exec" }) },
+  Utilities: { formatDate: (d, tz, fmt) => {
+    const p = n => String(n).padStart(2, "0");
+    if(fmt === "HH:mm") return p(d.getHours()) + ":" + p(d.getMinutes());
+    return d.toISOString();
+  } },
+  LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock(){} }) },
+  HtmlService: {
+    createHtmlOutputFromFile: n => ({
+      getContent: () => readGas(n + ".html") })
+  }
+};
+sandbox.SHEETS_LEN = () => SHEETS["記録"].length;
+sandbox.SH_HAS   = n => !!SHEETS[n];
+sandbox.SH_COUNT = n => (SHEETS[n] ? 1 : 0);
+sandbox.CURRENT_EMAIL_STUDENT = () => { CURRENT_EMAIL = "sakura@example.ed.jp"; };
+sandbox.SHEET_READS = () => sheetReads;
+/* 検査の式の中で CURRENT_EMAIL に代入しても、偽の Session が見ているのは
+   こちら側の変数なので効かない。差し替えはこの関数を通す。
+   as() と違ってキャッシュは消さない（キャッシュの効きを見る検査があるため）。 */
+sandbox.BE = e => { CURRENT_EMAIL = e; };
+sandbox.ev_clear = () => { CACHE._clear(); };
+vm.createContext(sandbox);
+
+/* ---- 全 .gs を1つのスコープへ。GAS と同じ形。 ---- */
+const order = ["Scale.gs","Config.gs","Roster.gs","Master.gs","Lock.gs","Hours.gs",
+               "Store.gs","Aggregate.gs","Api.gs","Export.gs","Code.gs","Setup.gs"];
+const files = [...fs.readdirSync(SRC_DIR), ...fs.readdirSync(GENERATED_DIR)]
+  .filter(f => f.endsWith(".gs"));
+files.forEach(f => { if(order.indexOf(f) < 0) order.push(f); });
+
+let ng = 0;
+
+/* GAS と同じで、トップレベルの const はコンテキストのプロパティにならない
+   （後続のファイルからは見えるが、外からは見えない）。式として評価して確かめる。 */
+const ev = expr => vm.runInContext(expr, sandbox);
+const ok = (label, expr, show) => {
+  let val, err = null;
+  try { val = (typeof expr === "string") ? ev(expr) : expr; }
+  catch(e){ err = e.message; }
+  const pass = !err && val === true;
+  console.log((pass ? "  ○ " : "  × ") + label +
+    (pass ? "" : "  → " + (err || JSON.stringify(show !== undefined ? ev(show) : val))));
+  if(!pass) ng++;
+};
+
+/* 検査のあいだだけ時計を止める。これをしないと、回した時刻で結果が変わる。 */
+const RealDate = Date;
+function clockAt(iso){
+  const t = new RealDate(iso).getTime();
+  class D extends RealDate {
+    constructor(...a){ if(!a.length) super(t); else super(...a); }
+    static now(){ return t; }
+  }
+  sandbox.Date = D;
+}
+function clockReal(){ sandbox.Date = RealDate; }
+
+const as = e => { CURRENT_EMAIL = e; ev("clearAllCache()"); };
+console.log("■ 読み込み（構文と、ファイル間の参照）");
+order.forEach(f => {
+  try { new vm.Script(readGas(f), {filename: f}).runInContext(sandbox);
+        console.log("  ○ " + f); }
+  catch(e){ console.log("  × " + f + "  → " + e.message); ng++; }
+});
+
+console.log("■ スケール（20段の往復）");
+ok("NLEVEL は 15", "NLEVEL === 15", "NLEVEL");
+ok("1〜20 すべて往復する",
+   "(function(){for(let v=1;v<=NLEVEL;v++) if(valueOfSym(symbolOf(v))!==v) return false; return NLEVEL>0;})()");
+ok("A++ は上から5番目", "symbolOf(NLEVEL - 4) === 'A++'", "symbolOf(NLEVEL-4)");
+ok("記号と値が対応する", "valueOfSym(symbolOf(11)) === 11 && symbolOf(11) === 'A++'", "symbolOf(11)");
+ok("休 と / は値を持たない", "valueOfSym('休') === null && valueOfSym('/') === null");
+ok("休 と / は突破層でも警告層でもない",
+   "isTopSym('休') === false && isWarnSym('/') === false");
+ok("Object.prototype.valueOf を壊していない",
+   "typeof Object.prototype.valueOf === 'function' && ({}).valueOf() !== undefined");
+
+console.log("■ スケール（帯ごとに段数が違う 15段）");
+ok("15段", "NLEVEL === 15", "NLEVEL");
+ok("並びは D C C+ B− B B+ B++ A− A A+ A++ Z Z+ Y Y+",
+   "LEVELS.join(' ') === 'D C C+ B− B B+ B++ A− A A+ A++ Z Z+ Y Y+'", "LEVELS");
+ok("D は1段", "bandSize('D') === 1 && valueOfSym('D') === 1");
+ok("C は2段", "bandSize('C') === 2 && valueOfSym('C') === 2 && valueOfSym('C+') === 3");
+ok("B と A は4段", "bandSize('B') === 4 && bandSize('A') === 4");
+ok("消した記号は知らない記号になる",
+   "['D−','D+','D++','C−','C++','Z−'].every(x => valueOfSym(x) === null)");
+ok("置換表が消した記号を拾う",
+   "['D−','D+','D++','C−','C++','Z−'].every(x => SYM_MIGRATION[x] !== undefined)");
+ok("置換先はすべて今ある記号",
+   "Object.keys(SYM_MIGRATION).every(k => valueOfSym(SYM_MIGRATION[k]) !== null)",
+   "JSON.stringify(SYM_MIGRATION)");
+ok("突破層は Z 以上の4つ", "LEVELS.filter(isTopSym).join(' ') === 'Z Z+ Y Y+'");
+ok("警告層は D C C+", "LEVELS.filter(isWarnSym).join(' ') === 'D C C+'");
+ok("材質は字ごと（Z=金・Y=宇宙）",
+   "lookOf('Z')==='foil-gold' && lookOf('Z+')==='foil-gold' && " +
+   "lookOf('Y')==='foil-cosmic' && lookOf('Y+')==='foil-cosmic'");
+ok("帯ごとの段数を引ける",
+   "bandStart('D')===1 && bandStart('C')===2 && bandStart('B')===4 && " +
+   "bandStart('A')===8 && bandStart('Z')===12 && bandStart('Y')===14");
+ok("児童の選択肢から Y 以上が落ちる",
+   "symsFor({released:false}).indexOf('Y') < 0 && symsFor({released:true}).indexOf('Y') >= 0");
+ok("すでに入っている Y+ は選択肢に残る（値が消えないように）",
+   "symsFor({released:false, keep:'Y+'}).indexOf('Y+') >= 0");
+ok("D 系は D に、C−/C は C、C+/C++ は C+ に寄る",
+   "SYM_MIGRATION['D−']==='D' && SYM_MIGRATION['D++']==='D' && " +
+   "SYM_MIGRATION['C−']==='C' && SYM_MIGRATION['C++']==='C+'");
+ok("評定のしきい値は記号から引くのでずれない",
+   "Config.rule().aFrom === valueOfSym('A+') && Config.rule().cTo === valueOfSym('C+')");
+
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("解放前は児童が Y を保存できない",
+   "Store.save('算数', 2, 'Y').ok === false", "Store.save('算数',2,'Y')");
+ok("Z は解放前でも保存できる", "Store.save('算数', 2, 'Z').ok === true", "Store.save('算数',2,'Z')");
+as("sensei@example.ed.jp");
+ok("教師は解放前でも Y を置ける", "Store.saveAs('算数','s09',2,'Y+').ok === true");
+ok("apiSaveRule で解放できる",
+   "(function(){apiSaveRule({released:true});return Config.released()===true;})()");
+as("sakura@example.ed.jp");
+ok("解放後は児童も Y を保存できる", "Store.save('算数', 2, 'Y').ok === true", "Store.save('算数',2,'Y')");
+as("sensei@example.ed.jp");
+ok("戻せる", "(function(){apiSaveRule({released:false});return Config.released()===false;})()");
+ok("teacherBoot が解放の状態と対象記号を返す",
+   "(function(){var b=apiTeacherBoot();return b.released===false && b.releaseFrom==='Y' && " +
+   "b.releaseSyms.join(' ')==='Y Y+';})()", "apiTeacherBoot().releaseSyms");
+clockReal();
+
+console.log("■ 設定");
+ok("ロック時刻は 16:00", "Config.lockTime().h === 16 && Config.lockTime().m === 0", "Config.lockTime()");
+ok("A下限は A+ の値", "Config.rule().aFrom === valueOfSym('A+')", "Config.rule()");
+ok("C上限は C+ の値(3)", "Config.rule().cTo === valueOfSym('C+')", "Config.rule()");
+ok("教師メールを読める", "Config.teacherEmails().length === 1", "Config.teacherEmails()");
+
+console.log("■ ロック（時刻の関数として引く）");
+ok("検査もタイムゾーンが Asia/Tokyo",
+   new Date("2026-05-20T20:00:00+09:00").getHours() === 20,
+   "'JST でないので、以下のロック検査は意味を持たない'");
+ev("var noon  = new Date('2026-05-20T12:00:00+09:00');" +
+   "var night = new Date('2026-05-20T20:00:00+09:00');");
+ok("12時に引く境界は前日16:00",
+   "Lock.lastBoundary(noon).getDate() === 19 && Lock.lastBoundary(noon).getHours() === 16",
+   "Lock.lastBoundary(noon).toString()");
+ok("20時に引く境界は当日16:00",
+   "Lock.lastBoundary(night).getDate() === 20 && Lock.lastBoundary(night).getHours() === 16",
+   "Lock.lastBoundary(night).toString()");
+ok("15:00 に入れた評価は 20時にはロック済み",
+   "Lock.isLocked(new Date('2026-05-20T15:00:00+09:00'), night) === true");
+ok("17:00 に入れた評価は 20時にはまだ直せる",
+   "Lock.isLocked(new Date('2026-05-20T17:00:00+09:00'), night) === false");
+ok("15:00 に入れた評価も、同じ日の12時の時点では直せる",
+   "Lock.isLocked(new Date('2026-05-20T15:00:00+09:00'), noon) === false");
+ok("未記入（保存時刻なし）はロックしない",
+   "Lock.isLocked(null, night) === false && Lock.isLocked('', night) === false");
+
+console.log("■ 名簿とマスタ");
+ok("メールから児童を引ける（大文字でも）", "Roster.byEmail('SAKURA@example.ed.jp').id === 's09'");
+ok("名簿にないメールは null", "Roster.byEmail('x@example.ed.jp') === null");
+ok("児童に見える教科は算数と国語だけ",
+   "JSON.stringify(Master.subjectNames(false)) === JSON.stringify(['算数','国語'])",
+   "Master.subjectNames(false)");
+ok("教師には4教科すべて見える", "Master.subjectNames(true).length === 4", "Master.subjectNames(true)");
+ok("体育は非公開", "Master.isOpen('体育') === false");
+ok("No.20 は「わり算」", "Master.unitOf('算数', 20).name === 'わり算'", "Master.unitOf('算数',20)");
+ok("評価公開：九九=true / わり算=false",
+   "Master.unitOf('算数',1).rated === true && Master.unitOf('算数',20).rated === false");
+
+console.log("■ 役割の判定");
+as("sakura@example.ed.jp");
+ok("児童として判定される", "whoAmI().role === 'student' && whoAmI().name === 'さくら'", "whoAmI()");
+as("sensei@example.ed.jp");
+ok("教師として判定される", "whoAmI().role === 'teacher'", "whoAmI()");
+as("stranger@example.ed.jp");
+ok("名簿にない人は不明", "whoAmI().role === 'unknown'", "whoAmI()");
+as("");
+ok("メールが取れなければ不明", "whoAmI().role === 'unknown'", "whoAmI()");
+
+as("sakura@example.ed.jp");
+ok("児童の boot に非公開教科が入らない",
+   "bootData().subjects.indexOf('体育') < 0 && bootData().subjects.indexOf('社会') < 0",
+   "bootData().subjects");
+ok("boot にロックの境界が入る", "typeof bootData().boundary === 'string'", "bootData().boundary");
+
+console.log("■ 開室時間（8:00〜16:00。終わりはロック時刻と同じ値）");
+ev("var t0759 = new Date('2026-05-20T07:59:00+09:00');" +
+   "var t1200 = new Date('2026-05-20T12:00:00+09:00');" +
+   "var t1600 = new Date('2026-05-20T16:00:00+09:00');" +
+   "var t2000 = new Date('2026-05-20T20:00:00+09:00');");
+ok("7:59 は閉まっている", "Hours.isClosed(t0759) === true");
+ok("8:00 ちょうどから開く",
+   "Hours.isClosed(new Date('2026-05-20T08:00:00+09:00')) === false");
+ok("12:00 は開いている", "Hours.isClosed(t1200) === false");
+ok("16:00 ちょうどで閉まる", "Hours.isClosed(t1600) === true");
+ok("20:00 は閉まっている", "Hours.isClosed(t2000) === true");
+ok("閉室とロックの境目が同じ値",
+   "Hours.closeTime().h === Config.lockTime().h && Hours.closeTime().m === Config.lockTime().m");
+ok("教師は時間外でも閉まらない",
+   "Hours.isClosedFor({role:'teacher'}, t2000) === false && Hours.isClosedFor({role:'student'}, t2000) === true");
+ok("15:53 なら閉室まで7分", "Hours.minutesToClose(new Date('2026-05-20T15:53:00+09:00')) === 7");
+ok("閉まっているときは null", "Hours.minutesToClose(t2000) === null");
+
+console.log("■ 保存（サーバ側が弾くもの）");
+/* save() は「いまの時刻」で動くので、検査のあいだだけ時計を止める。
+   これをしないと、検査を回した時刻で結果が変わる。 */
+clockAt("2026-05-20T12:00:00+09:00");      // 開いている時間
+as("sakura@example.ed.jp");
+ok("児童は / を置けない", "Store.save('算数', 1, '/').ok === false");
+ok("知らない記号は弾かれる", "Store.save('算数', 1, 'X+').ok === false");
+ok("無い授業番号は弾かれる", "Store.save('算数', 999, 'A').ok === false");
+ok("非公開の教科には書けない", "Store.save('体育', 1, 'A').ok === false",
+   "Store.save('体育',1,'A')");
+ok("12時なら授業に書ける", "Store.save('算数', 1, 'A+').ok === true", "Store.save('算数',1,'A+')");
+ok("書いた値が読み出せる",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].sym === 'A+'");
+ok("同じ授業に書き直しても行は増えない",
+   "(function(){var n=SHEETS_LEN();Store.save('算数',1,'B');return SHEETS_LEN()===n;})()");
+ok("その日のうちはロックされない",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].locked === false");
+
+clockAt("2026-05-21T12:00:00+09:00");      // 翌日。境界（前日16:00）を越えている
+ok("翌日にはロック済みになる",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].locked === true");
+ok("ロック済みは児童が書き換えられない", "Store.save('算数', 1, 'Z').ok === false",
+   "Store.save('算数',1,'Z')");
+ok("書き換えられていない",
+   "Store.read('算数','s09').filter(function(r){return r.no===1;})[0].sym === 'B'");
+
+clockAt("2026-05-21T20:00:00+09:00");      // 時間外
+ok("時間外は児童が書けない", "Store.save('算数', 2, 'A').ok === false", "Store.save('算数',2,'A')");
+
+clockAt("2026-05-21T12:00:00+09:00");
+as("sensei@example.ed.jp");
+ok("教師は save ではなく saveAs を使う", "Store.save('算数', 1, 'A').ok === false");
+ok("教師はロック済みも貫通して書き換えられる",
+   "Store.saveAs('算数','s09',1,'A++').ok === true", "Store.saveAs('算数','s09',1,'A++')");
+ok("教師が空にすると行が消える",
+   "(function(){var n=SHEETS_LEN();Store.saveAs('算数','s09',1,'');return SHEETS_LEN()===n-1;})()");
+ok("教師は時間外でも / を置ける", "Store.saveAs('算数','s09',16,'/').ok === true",
+   "Store.saveAs('算数','s09',16,'/')");
+ok("教師の書き込みには更新者が残る",
+   "(function(){var r=Store.read('算数','s09').filter(function(x){return x.no===16;})[0];" +
+   "return r.sym==='/' && r.edited===true;})()");
+as("sakura@example.ed.jp");
+ok("児童は他人の行に書けない（saveAs は先生だけ）",
+   "Store.saveAs('算数','s01',1,'Z').ok === false");
+
+clockReal();
+console.log("■ 集計");
+ev("var rec = {}; for(var i=1;i<=14;i++) rec[i] = ['B','B+','A','A−','A+','B+','A','A','B+','A','A+','A','A+','Z'][i-1];");
+ok("後半1/3の中央値が仮値になる",
+   "(function(){var u=Master.unitOf('算数',1);var s=Aggregate.summarize(rec,u);" +
+   "return s.n===14 && s.prov!==null && typeof s.provSym==='string';})()",
+   "Aggregate.summarize(rec, Master.unitOf('算数',1))");
+ok("休 と / は分母から外れ、別々に数えられる",
+   "(function(){var r={};r[1]='A';r[2]='休';r[3]='/';r[4]='B';" +
+   "var s=Aggregate.summarize(r,{from:1,to:4});" +
+   "return s.n===4 && s.off===1 && s.skip===1;})()",
+   "Aggregate.summarize({1:'A',2:'休',3:'/',4:'B'},{from:1,to:4})");
+ok("A+ 以上が評定A、C+ 以下が評定C",
+   "Aggregate.rankOf(valueOfSym('A+'))==='A' && Aggregate.rankOf(valueOfSym('A'))==='B' && " +
+   "Aggregate.rankOf(valueOfSym('C+'))==='C'");
+ok("記号の A は評定では B に落ちる", "Aggregate.rankOf(valueOfSym('A')) === 'B'");
+ok("中央値が段の間なら下を採る", "Aggregate.medianVal([5,6]) === 5.5 && symbolOfMedian(5.5) === 'B'");
+ok("平均値も出せる", "Aggregate.meanVal([4,5,6]) === 5");
+ok("内側の平均は最大最小を1つずつ落とす",
+   "Aggregate.trimmedMeanVal([1,5,5,5,15]) === 5 && Aggregate.meanVal([1,5,5,5,15]) === 6.2");
+ok("3つ未満なら落とさない", "Aggregate.trimmedMeanVal([4,6]) === 5");
+
+console.log("■ 単元評価を児童に返すか");
+as("sakura@example.ed.jp");
+ev("var rows = Store.read('算数','s09');");
+ok("評価公開が false の単元は値を返さない",
+   "(function(){var us=Aggregate.unitsForStudent('算数','s09',rows);" +
+   "var w=us.filter(function(u){return u.name==='わり算';})[0];" +
+   "return w.rated===false && w.sym===null && w.high===null && w.top===null;})()",
+   "Aggregate.unitsForStudent('算数','s09',rows)[1]");
+ok("公開されていない単元でも入力数は返す",
+   "(function(){var us=Aggregate.unitsForStudent('算数','s09',rows);" +
+   "return typeof us[1].n === 'number' && typeof us[1].total === 'number';})()");
+
+console.log("■ 画面から呼ぶ入口");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("児童の apiBoot は開いている時間なら中身まで返す",
+   "(function(){var b=apiBoot();return b.ok===true && b.closed===false && " +
+   "Array.isArray(b.rows) && b.rows.length===70 && Array.isArray(b.units);})()",
+   "(function(){var b=apiBoot();return {ok:b.ok,closed:b.closed,rows:(b.rows||[]).length};})()");
+ok("児童の apiBoot に非公開教科が入らない",
+   "apiBoot().subjects.indexOf('体育') < 0");
+ok("児童は非公開の教科を読めない", "apiRead('体育').ok === false", "apiRead('体育')");
+clockAt("2026-05-22T20:00:00+09:00");
+ok("時間外の apiBoot は中身を返さない",
+   "(function(){var b=apiBoot();return b.closed===true && b.rows===undefined;})()",
+   "apiBoot()");
+ok("時間外の apiRead は断る", "apiRead('算数').closed === true", "apiRead('算数')");
+as("sensei@example.ed.jp");
+ok("教師は時間外でも読める", "apiRead('算数').ok === true", "apiRead('算数')");
+ok("教師は非公開の教科も読める", "apiRead('体育').ok === true");
+as("sakura@example.ed.jp");
+/* 役割の確認は rated:false（もどす）で行う。記入率の確認は if(rated) の中
+   だけにあるので、true で試すと役割ではなく記入率で弾かれてしまう。 */
+ok("児童は評価公開を切り替えられない",
+   "apiSetRated('算数','わり算',false).ok === false");
+as("sensei@example.ed.jp");
+ok("記入が無くても教師は押せる（学級全体の記入率では止めない）",
+   "(function(){var r=apiSetRated('算数','わり算',true);" +
+   " return r.ok===true && r.adopted===0 && r.skipped===0;})()",
+   "apiSetRated('算数','わり算',true)");
+ok("切り替えた結果がマスタに効く", "Master.unitOf('算数',20).rated === true");
+ok("(下ごしらえ) わり算を全員ぶん埋める",
+   "(function(){['s01','s02','s03','s09'].forEach(function(id){" +
+   "  for(var no=15;no<=30;no++) apiSaveAs('算数',id,no,'B');});" +
+   " return true;})()");
+ok("埋まった後にもう一度押すと、全員ぶん採用される",
+   "(function(){var r=apiSetRated('算数','わり算',true);" +
+   " return r.ok===true && r.adopted===4 && r.skipped===0;})()",
+   "apiSetRated('算数','わり算',true)");
+ok("押した時点で仮値が採用され、確定シートに入る",
+   "(function(){" +
+   /* 九九の表とかけ算も全員ぶん埋める。s01〜s03 はすでに確定値を持つ
+      ことにして、この操作で新しく採用されるのが s09 だけになるようにする。 */
+   "['s01','s02','s03'].forEach(function(id){" +
+   "  for(var no=1;no<=14;no++) Store.saveAs('算数',id,no,'B');" +
+   "  Final.set('算数',id,'単元','九九の表とかけ算','B');});" +
+   "['B','B+','A','A−','A+','B+','A','A','B+','A','A+','A','A+','Z']" +
+   "  .forEach(function(sym,i){ Store.saveAs('算数','s09',i+1,sym); });" +
+   "Final.set('算数','s09','単元','九九の表とかけ算','');" +   /* いったん空に */
+   "var r = apiSetRated('算数','九九の表とかけ算',true);" +
+   "return r.ok===true && r.adopted === 1 && typeof Final.unitValue('算数','s09','九九の表とかけ算')==='string';})()",
+   "apiSetRated('算数','九九の表とかけ算',true)");
+ok("採用ずみの値は押し直しても書き換えられない",
+   "(function(){var v=Final.unitValue('算数','s09','九九の表とかけ算');" +
+   "Final.set('算数','s09','単元','九九の表とかけ算','Z++');" +
+   "apiSetRated('算数','九九の表とかけ算',true);" +
+   "return Final.unitValue('算数','s09','九九の表とかけ算')==='Z++';})()");
+ok("戻せる", "(function(){apiSetRated('算数','わり算',false);return Master.unitOf('算数',20).rated===false;})()");
+clockReal();
+
+console.log("■ 教科が無いとき（今回のつまずき）");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+/* 教科マスタを空にして、児童の画面が黙って壊れないことを見る */
+const savedSubjects = SHEETS["教科マスタ"].splice(1);
+ev("clearAllCache()");
+ok("教科が無ければ apiBoot は理由を返す",
+   "(function(){var b=apiBoot();return b.ok===true && b.empty===true && " +
+   "typeof b.why==='string' && b.rows===undefined;})()", "apiBoot()");
+ok("児童には児童の言葉で返る（教師の用語を出さない）",
+   "apiBoot().why.indexOf('教科マスタ') < 0 && apiBoot().why.indexOf('せんせい') >= 0",
+   "apiBoot().why");
+/* 公開が false だけのとき */
+SHEETS["教科マスタ"].push(["体育",105,false]);
+ev("clearAllCache()");
+ok("公開が無ければ、児童には空の面が出る",
+   "apiBoot().empty === true && apiBoot().why.indexOf('せんせい') >= 0", "apiBoot().why");
+as("sensei@example.ed.jp");
+ok("教師は非公開しかなくても、その教科で画面が出る",
+   "(function(){var b=apiBoot();return b.ok===true && !b.empty && b.subject==='体育';})()",
+   "apiBoot()");
+/* 戻す */
+SHEETS["教科マスタ"].splice(1);
+savedSubjects.forEach(function(r){ SHEETS["教科マスタ"].push(r); });
+ev("clearAllCache()");
+ok("戻したら教科が見える", "Master.subjectNames(false).length === 2");
+ok("diagnose が走り、行を返す",
+   "(function(){var r=diagnose();return Array.isArray(r) && r.length>0;})()");
+ok("diagnose がタイムゾーンを見ている",
+   "diagnose().join('|').indexOf('タイムゾーン') >= 0", "diagnose().join(' / ')");
+clockReal();
+
+console.log("■ 教師画面の入口");
+clockAt("2026-05-22T12:00:00+09:00");
+as("sakura@example.ed.jp");
+ok("児童は教師の入口を呼べない",
+   "apiTeacherBoot().ok===false && apiUnitTable('算数','わり算').ok===false && " +
+   "apiSaveRule({aFrom:'A'}).ok===false && apiSaveUnits('算数',[]).ok===false && " +
+   "apiAdoptAll('算数','わり算').ok===false");
+as("sensei@example.ed.jp");
+ok("apiTeacherBoot が教科・名簿・式・診断・URL を返す",
+   "(function(){var b=apiTeacherBoot();return b.ok && Object.keys(b.subjects).length>0 && " +
+   "b.names.length>0 && typeof b.rule.aFrom==='number' && Array.isArray(b.diagnose) && " +
+   "b.syms.length===NLEVEL && typeof b.sheetUrl==='string' && b.sheetUrl.length>0;})()",
+   "(function(){var b=apiTeacherBoot();return {syms:b.syms.length,sheet:b.sheetUrl};})()");
+ok("apiUnitTable が29人ぶん返す",
+   "(function(){var t=apiUnitTable('算数','九九の表とかけ算');" +
+   "return t.ok && t.rows.length===Roster.all().length && typeof t.ruleText==='string';})()",
+   "apiUnitTable('算数','九九の表とかけ算').rows[0]");
+ok("一斉入力は空欄だけに入る",
+   "(function(){var r=apiBulk('算数',3,'休',false);return r.ok && typeof r.put==='number';})()",
+   "apiBulk('算数',3,'休',false)");
+ok("採用を取り消すと仮値に戻る",
+   "(function(){apiAdopt('算数','九九の表とかけ算','s09','');" +
+   "return Final.unitValue('算数','s09','九九の表とかけ算')===null;})()");
+ok("apiAdoptAll が仮値を採用する",
+   "apiAdoptAll('算数','九九の表とかけ算',false).put >= 1",
+   "apiAdoptAll('算数','九九の表とかけ算',false)");
+ok("apiTermTable が評定と分布を返す",
+   "(function(){var t=apiTermTable('算数',1);return t.ok && t.rows.length>0 && " +
+   "t.dist && typeof t.dist.A==='number';})()", "apiTermTable('算数',1).dist");
+ok("学年末（0）は全学期の単元を見る",
+   "apiTermTable('算数',0).units.length >= apiTermTable('算数',1).units.length");
+ok("しきい値を書き換えると設定に効く",
+   "(function(){apiSaveRule({aFrom:'A'});var r=Config.rule();" +
+   "apiSaveRule({aFrom:'A+'});return r.aFrom===valueOfSym('A');})()");
+ok("開室時刻とロック時刻を書き換えられる",
+   "(function(){apiSaveRule({open:'7:30',lock:'17:00'});" +
+   "var a=Config.openTime(),b=Config.lockTime();apiSaveRule({open:'8:00',lock:'16:00'});" +
+   "return a.h===7&&a.m===30&&b.h===17;})()");
+ok("単元を入れ直せる（並べ替え・削除も1回で反映）",
+   "(function(){var u=Master.subject('算数').units.slice();" +
+   "apiSaveUnits('算数',[{name:'ためし',from:1,to:70,c:5,term:1,rated:false}]);" +
+   "var one=Master.subject('算数').units;" +
+   "apiSaveUnits('算数',u);" +
+   "return one.length===1 && one[0].name==='ためし' && Master.subject('算数').units.length===u.length;})()");
+ok("教科を足せる／公開を切り替えられる",
+   "(function(){apiSaveSubject('図工',60,false);var s=Master.subject('図工');" +
+   "apiSaveSubject('図工',60,true);var t=Master.subject('図工');" +
+   "return s.open===false && t.open===true && t.total===60;})()");
+ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
+ok("教師は児童を選んでその画面を見られる",
+   "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");
+clockReal();
+
+console.log("■ 学級の集計（済んだ授業の線・授業ごとの平均）");
+clockAt("2026-05-22T12:00:00+09:00");      // 開いている時間。児童の読み取りも試すため
+as("sensei@example.ed.jp");
+ok("3人以上が入れた最大の No が『ここまで授業があった』の線になる",
+   "(function(){ev_clear();" +
+   " apiSaveAs('算数','s01',61,'B'); apiSaveAs('算数','s02',61,'B'); apiSaveAs('算数','s03',61,'B');" +
+   " var a=Store.taughtUpTo('算数');" +
+   " apiSaveAs('算数','s01',65,'B');" +            /* 1人だけでは線は動かない */
+   " var b=Store.taughtUpTo('算数');" +
+   " return a===61 && b===61;})()",
+   "[Store.taughtUpTo('算数')]");
+ok("3人目が入れた時点で線が伸びる",
+   "(function(){apiSaveAs('算数','s02',65,'B'); apiSaveAs('算数','s03',65,'B');" +
+   " return Store.taughtUpTo('算数')===65;})()", "Store.taughtUpTo('算数')");
+ok("授業ごとの平均が人数と一緒に出る",
+   "(function(){var st=Store.lessonStats('算数')[61];" +
+   " return st && st[0]>=3 && st[2]>=3;})()", "JSON.stringify(Store.lessonStats('算数')[61])");
+ok("消すと人数が減る",
+   "(function(){var a=Store.lessonStats('算数')[65][0];" +
+   " apiSaveAs('算数','s03',65,null);" +
+   " var b=Store.lessonStats('算数')[65][0];" +
+   " return b===a-1;})()");
+ok("保存しても記録のキャッシュは捨てない（シートを読み直さない）",
+   "(function(){Store.read('算数','s01',new Date());" +          /* キャッシュを作る */
+   " var before=SHEET_READS();" +
+   " apiSaveAs('算数','s01',62,'A');" +
+   " var rows=Store.read('算数','s01',new Date());" +
+   " var after=SHEET_READS();" +
+   " return rows[61].sym==='A' && after===before;})()",
+   "'reads=' + SHEET_READS()");
+ok("児童の画面に taught が返る",
+   "(function(){BE('sakura@example.ed.jp');var r=apiRead('算数');" +
+   " return r.ok && typeof r.taught==='number' && r.taught>=61;})()");
+ok("児童には授業ごとの平均を返さない",
+   "(function(){BE('sakura@example.ed.jp');return apiRead('算数').avg===undefined;})()");
+ok("教師には授業ごとの平均を返す",
+   "(function(){BE('sensei@example.ed.jp');var r=apiRead('算数');" +
+   " return r.ok && !!r.avg && !!r.avg[61] && typeof r.avg[61].n==='number';})()");
+ok("単元の表に学級の真ん中からの差が入る",
+   "(function(){BE('sensei@example.ed.jp');" +
+   " ['s01','s02','s03','s09'].forEach(function(id,i){" +
+   "   for(var no=1;no<=14;no++) apiSaveAs('算数',id,no, i===0 ? 'A+' : 'B');});" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " if(!t.ok) return false;" +
+   " var has=t.rows.filter(function(r){return r.diff!==null;});" +
+   " var zero=t.rows.filter(function(r){return r.diff===0;});" +
+   " return has.length>0 && zero.length>0 && t.midN===has.length;})()");
+
+console.log("■ 1マスを貫通して直す（ロック後に誤りに気づいたとき）");
+ok("apiUnitTable が seq と同じ長さの edited 配列を返す",
+   "(function(){BE('sensei@example.ed.jp');" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " var r=t.rows[0];" +
+   " return t.ok && r.edited.length===r.seq.length;})()");
+ok("貫通して書き換えると edited が立つ",
+   "(function(){apiSaveAs('算数','s01',3,'A');" +
+   " var t=apiUnitTable('算数','九九の表とかけ算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
+   " return r.seq[2]==='A' && r.edited[2]===true;})()");
+/* ここまでの検査で九九の表とかけ算（No.1〜14）もわり算（No.15〜30）も
+   全員ぶん埋めてしまっている（学級差・記入率の検査の下ごしらえ）。
+   触れていないマスを見るには、まだ誰も触れていない単元
+   （たし算とひき算の筆算・No.31〜48）を使う。 */
+ok("触れていないマスは edited が立たない",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s01';})[0];" +
+   " return r.seq[0]===null && r.edited[0]===false;})()");
+clockAt("2026-05-22T12:00:00+09:00");      // 開いている時間
+ok("edited は No（chip の位置）と対応する。ロック済みの過去の記録でも貫通できる",
+   "(function(){apiSaveAs('算数','s02',31,'A++');" +   /* この単元の先頭マス */
+   " var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " var r=t.rows.filter(function(x){return x.id==='s02';})[0];" +
+   " return r.seq[0]==='A++' && r.edited[0]===true;})()");
+clockReal();
+ok("児童ではない role では貫通できない（サーバ側の確認）",
+   "(function(){BE('sakura@example.ed.jp');" +
+   " var r=apiSaveAs('算数','s01',5,'A');" +
+   " BE('sensei@example.ed.jp');" +
+   " return r.ok===false;})()");
+clockReal();
+as("sensei@example.ed.jp");
+
+console.log("■ 単元の評価の採用は、児童1人ごとの記入率で決まる（学級全体では見ない）");
+/* 以前は学級全体の記入率で「単元の評価をする」自体を弾いていたが、それだと
+   足の速い児童の評価まで足の遅い児童に合わせて止まってしまう。
+   いまは押すこと自体はいつでもでき、児童1人ずつの記入率で採用の可否が決まる。 */
+ok("apiUnitTable が fillRate と rateMin（学級全体・目安）を返す",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " return t.ok && typeof t.fillRate==='number' && t.rateMin===0.8;})()",
+   "apiUnitTable('算数','たし算とひき算の筆算')");
+ok("記入率は 入力ぶん ÷ (児童数×時数) と一致する（いま1/72）",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " return Math.abs(t.fillRate - 1/72) < 1e-9;})()");
+ok("apiUnitTable の行に ready（この児童が採用の水準か）が入る。s02はNo.31の1件だけ",
+   "(function(){var t=apiUnitTable('算数','たし算とひき算の筆算');" +
+   " var s02=t.rows.filter(function(r){return r.id==='s02';})[0];" +
+   " return s02.n===1 && s02.total===18 && s02.ready===false;})()",
+   "apiUnitTable('算数','たし算とひき算の筆算').rows");
+ok("(下ごしらえ) s01は8割未満(14/18)、s03は8割以上(15/18)にする",
+   "(function(){" +
+   " for(var no=32;no<=45;no++) apiSaveAs('算数','s01',no,'B');" +     /* 14件 */
+   " for(var no=31;no<=45;no++) apiSaveAs('算数','s03',no,'B');" +     /* 15件 */
+   " return true;})()");
+ok("記入が少ない児童がいても押せる。採用1人・見送り2人（学級全体では止めない）",
+   "(function(){var r=apiSetRated('算数','たし算とひき算の筆算',true);" +
+   " return r.ok===true && r.adopted===1 && r.skipped===2;})()",
+   "apiSetRated('算数','たし算とひき算の筆算',true)");
+ok("8割未満(14/18・77.8%)の児童は採用されない",
+   "Final.unitValue('算数','s01','たし算とひき算の筆算') === null");
+ok("8割未満(1/18)の児童も同様に採用されない",
+   "Final.unitValue('算数','s02','たし算とひき算の筆算') === null");
+ok("8割以上(15/18・83.3%)の児童は採用される",
+   "typeof Final.unitValue('算数','s03','たし算とひき算の筆算') === 'string'");
+ok("記入が1つも無い児童は、採用にも見送りにも数えない（provSymが無いだけ）",
+   "Final.unitValue('算数','s09','たし算とひき算の筆算') === null");
+ok("(下ごしらえ) s01をもう1コマ足して8割以上にする（15/18）",
+   "(function(){apiSaveAs('算数','s01',46,'B'); return true;})()");
+ok("「仮値をまとめて採用」も同じしきい値で見送る。s01は追いついたので採用、s02はまだ見送り",
+   "(function(){var r=apiAdoptAll('算数','たし算とひき算の筆算',false);" +
+   " return r.ok===true && r.put===1 && r.skipped===1 &&" +
+   " typeof Final.unitValue('算数','s01','たし算とひき算の筆算')==='string' &&" +
+   " Final.unitValue('算数','s02','たし算とひき算の筆算')===null;})()",
+   "apiAdoptAll('算数','たし算とひき算の筆算',false)");
+ok("記入率が低くても「もどす」（非表示に戻す）は妨げない",
+   "(function(){" +   /* 時こくと時間。記入率はまだ低いまま */
+   " var r=apiSetRated('算数','時こくと時間',false);" +
+   " return r.ok===true && Master.unitOf('算数',60).rated===false;})()",
+   "apiUnitTable('算数','時こくと時間').fillRate");
+
+console.log("■ 授業番号の開始位置（開始No）");
+/* 紙のノートで既に何時間か進めていて、この道具は続きの番号から
+   使いたい、という場合のための設定。国語は他の検査にほぼ出てこないので
+   ここで自由に使う（60時間・単元なし）。 */
+as("sensei@example.ed.jp");
+ok("既定は No.1 から", "(function(){var s=Master.subject('国語');" +
+   " return s.from===1 && s.to===60;})()");
+ok("開始Noを変えられる", "apiSaveSubject('国語',60,true,21).ok===true");
+ok("範囲が [開始No, 開始No+時数-1] になる",
+   "(function(){var s=Master.subject('国語'); return s.from===21 && s.to===80;})()",
+   "Master.subject('国語')");
+ok("児童の読み取りが新しい範囲で始まる（1行目が No.1 ではない）",
+   "(function(){BE('sakura@example.ed.jp');" +
+   " var rows=Store.read('国語','s09');" +
+   " BE('sensei@example.ed.jp');" +
+   " return rows.length===60 && rows[0].no===21 && rows[rows.length-1].no===80;})()",
+   "Store.read('国語','s09').slice(0,1)");
+ok("範囲の外（開始Noより前）には書けない", "Store.saveAs('国語','s09',20,'A').ok === false");
+ok("範囲の外（終了Noより後）には書けない", "Store.saveAs('国語','s09',81,'A').ok === false");
+ok("範囲の内（開始No ちょうど）には書ける", "Store.saveAs('国語','s09',21,'A').ok === true");
+ok("apiTeacherBoot にも from と to が出る",
+   "(function(){var s=apiTeacherBoot().subjects['国語'];" +
+   " return s.from===21 && s.to===80;})()");
+ok("diagnose が開始位置を報告する",
+   "apiDiagnose().lines.some(function(l){ return l.indexOf('国語')>=0 && l.indexOf('No.21')>=0; })",
+   "apiDiagnose().lines");
+ok("時数だけ変えても開始Noは維持される（4引数目を省くと1に戻ってしまうのを防ぐ）",
+   "(function(){apiSaveSubject('国語',62,true,Master.subject('国語').from);" +
+   " var s=Master.subject('国語'); return s.from===21 && s.total===62 && s.to===82;})()",
+   "Master.subject('国語')");
+ok("元に戻せる（開始No=1）",
+   "(function(){apiSaveSubject('国語',60,true,1);" +
+   " var s=Master.subject('国語'); return s.from===1 && s.to===60;})()");
+
+console.log("■ 出力");
+as("sensei@example.ed.jp");
+ok("通知表用の表を書き出せる",
+   "(function(){var r=exportTerm('算数',1);" +
+   "return r.ok && r.sheet==='出力_算数_1学期' && SH_HAS(r.sheet);})()",
+   "exportTerm('算数',1)");
+ok("同じ名前で作り直しても増えない",
+   "(function(){exportTerm('算数',1);exportTerm('算数',1);return SH_COUNT('出力_算数_1学期')===1;})()");
+ok("児童は書き出せない", "(function(){CURRENT_EMAIL_STUDENT();return exportTerm('算数',1).ok===false;})()");
+as("sensei@example.ed.jp");
+
+console.log("■ シートの用意");
+ev("setupSheets()");
+ok("setupSheets が走る（既にあるので何もしない）", alerts.length >= 1, "alerts.length");
+
+console.log(ng ? "\n× " + ng + " 件だめだった" : "\n○ ぜんぶ通った");
+process.exit(ng ? 1 : 0);
