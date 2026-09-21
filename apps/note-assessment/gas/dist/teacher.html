@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- shared/ui/tokens.css から scripts/build.py が作る。 正本を直すこと。 -->
+<style>
+/* 色トークン — 両画面が読む。@dark{} は build.py が
+   @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
+   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
+:root{
+  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
+  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
+  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
+
+  /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
+  --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
+  --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
+  --warn:#B0392B; --warn-bg:#FBEEEC;
+  --ok:#2F6E4E;
+
+  /* 教師の貫通・ロック・スケール外の記号 */
+  --open:#2E7D8A; --open-bg:#EAF5F6;
+  --open-cell:#FFF4E4; --open-line:#DFAE62;
+  --lock-ink:#A29C90;
+  --off-bg:#EFEDE8; --off-ink:#8A8578; --skip-line:rgba(29,33,38,.42);
+  --stripe:rgba(29,33,38,.07);
+
+  /* 単元の20色。色相を 126° ずつ飛ばしてあるので連番でも近づかない
+     （20 と 126 は互いに素）。明度は色相ごとに補正済み */
+  --u0:#57C18C; --u1:#A670CA; --u2:#B08F41; --u3:#61C4B0; --u4:#BE69C8;
+  --u5:#AFAF41; --u6:#69BEC8; --u7:#C461B0; --u8:#8FB041; --u9:#70A6CA;
+  --u10:#C1578C; --u11:#70B543; --u12:#748ECC; --u13:#BE4E65; --u14:#52BB46;
+  --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+
+    --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+    --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+    --warn:#E5776A; --warn-bg:#2E1C1A;
+    --ok:#6FBF92;
+
+    --open:#6FBECC; --open-bg:#182C30;
+    --open-cell:#33270F; --open-line:#7E6224;
+    --lock-ink:#6A727C;
+    --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
+    --stripe:rgba(232,235,239,.09);
+
+    --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+    --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+    --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+    --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+
+  --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
+  --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
+  --warn:#E5776A; --warn-bg:#2E1C1A;
+  --ok:#6FBF92;
+
+  --open:#6FBECC; --open-bg:#182C30;
+  --open-cell:#33270F; --open-line:#7E6224;
+  --lock-ink:#6A727C;
+  --off-bg:#22262B; --off-ink:#767E88; --skip-line:rgba(232,235,239,.45);
+  --stripe:rgba(232,235,239,.09);
+
+  --u0:#72C59C; --u1:#B389CF; --u2:#BA9C56; --u3:#7BC9B9; --u4:#C583CC;
+  --u5:#B9B955; --u6:#83C5CC; --u7:#C97BB9; --u8:#9CBA56; --u9:#89B3CF;
+  --u10:#C5729C; --u11:#81BC5A; --u12:#8DA2D1; --u13:#C2697B; --u14:#6ABE61;
+  --u15:#8F8FD1; --u16:#BE6A61; --u17:#69C27B; --u18:#A28DD1; --u19:#BC815A;
+}
+</style>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px;line-height:1.7}
+.wrap{max-width:1400px;margin:0 auto;padding:18px 18px 64px;display:flex;flex-direction:column;gap:18px}
+.hidden{display:none!important}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  border-bottom:2px solid var(--open);padding-bottom:10px}
+h1{margin:0;font-size:19px;font-weight:700}
+h1 b{color:var(--open)}
+h1 small{font-size:12.5px;font-weight:500;color:var(--ink-soft);margin-left:8px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.seg button{appearance:none;border:none;background:transparent;color:var(--ink-soft);
+  font-family:inherit;font-size:13px;font-weight:600;padding:6px 15px;cursor:pointer;
+  border-right:1px solid var(--rule)}
+.seg button:last-child{border-right:none}
+.seg button[aria-pressed="true"]{background:var(--open);color:#fff}
+.seg.tabs button[aria-pressed="true"]{background:var(--accent)}
+.seg button.closed{color:var(--ink-faint);font-style:italic}
+.seg button.closed[aria-pressed="true"]{background:var(--lock-ink);color:#fff}
+select.plain,input.txt{font-family:inherit;font-size:13px;border:1px solid var(--rule);
+  border-radius:6px;padding:5px 9px;background:var(--sheet);color:var(--ink)}
+input.txt.num{font-family:"IBM Plex Mono",monospace;width:76px;text-align:center}
+.btn{appearance:none;font-family:inherit;font-size:13px;font-weight:600;border-radius:7px;
+  padding:6px 14px;cursor:pointer;border:1px solid var(--open);background:var(--open);color:#fff}
+.btn.ghost{background:var(--sheet);color:var(--ink-soft);border-color:var(--rule)}
+.btn:disabled{opacity:.45;cursor:default}
+.said{font-size:12.5px;color:var(--ok);font-weight:600}
+.said.bad{color:var(--warn)}
+h2{margin:0;font-size:13.5px;font-weight:700;letter-spacing:.06em;color:var(--ink-soft);
+  display:flex;align-items:center;gap:12px}
+h2::after{content:"";flex:1;height:1px;background:var(--rule)}
+section{display:flex;flex-direction:column;gap:10px}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:12px 14px}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{font-size:12px;color:var(--ink-faint);line-height:1.75}
+.note b{color:var(--ink-soft)}
+.note.warn{color:var(--warn);font-weight:600}
+
+table{border-collapse:collapse;width:100%;font-size:13px}
+.tablecard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;overflow:auto;max-height:70vh}
+th,td{border-bottom:1px solid var(--rule-soft);padding:5px 8px;text-align:left;white-space:nowrap}
+thead th{position:sticky;top:0;background:var(--sheet);z-index:2;font-size:11.5px;
+  letter-spacing:.05em;color:var(--ink-faint);font-weight:700}
+td.name{font-weight:600}
+td.num{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--ink-soft)}
+.chips{display:flex;gap:2px;flex-wrap:wrap}
+/* 押すと1マスだけロックを貫通して直せる（apiSaveAs）。
+   採用値の select と違い、ここは「済んだ授業の記録そのもの」を直す入口。 */
+.chip{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  min-width:26px;text-align:center;border-radius:3px;padding:1px 3px;
+  background:var(--rule-soft);color:var(--ink-soft);cursor:pointer;border:1px solid transparent}
+.chip:hover{border-color:var(--ink-soft)}
+.chip.a{background:var(--a-bg);color:var(--a-ink)}
+.chip.z{background:var(--z-bg);color:var(--z-ink)}
+.chip.w{background:var(--warn-bg);color:var(--warn)}
+.chip.off{background:var(--off-bg);color:var(--off-ink)}
+.chip.none{background:transparent;color:var(--ink-faint)}
+/* 貫通して直した印。児童画面の .cell.edited と対にしてある。
+   見えない書き換えにしないため、教師の目にも残す。 */
+.chip.edited{box-shadow:inset 0 -2px 0 var(--open)}
+.chipsel{font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  min-width:44px;border-radius:3px;padding:0 2px;border:1px solid var(--open);
+  background:var(--sheet);color:var(--ink)}
+.prov{font-family:"IBM Plex Mono",monospace;font-size:14px;font-weight:700;
+  border-radius:5px;padding:2px 9px;display:inline-block;min-width:44px;text-align:center}
+.prov.a{background:var(--a-bg);color:var(--a-ink)} .prov.z{background:var(--z-bg);color:var(--z-ink)}
+.prov.w{background:var(--warn-bg);color:var(--warn)} .prov.none{color:var(--ink-faint)}
+select.final{font-family:"IBM Plex Mono",monospace;font-size:13px;border:1px solid var(--rule);
+  border-radius:5px;padding:3px 6px;background:var(--sheet);color:var(--ink)}
+select.final.changed{border-color:var(--open);color:var(--open);font-weight:700}
+/* 学級の真ん中からのずれ。2段以上だけ目立たせる。
+   全員に色を付けると、見に行くべき行が沈む。 */
+td.diff{color:var(--ink-faint)}
+td.diff.far{color:var(--ink);font-weight:700}
+/* 記入率がまだ8割に届いていない児童。C・D の回数と同じ「注意して見る」
+   色を使う（.warncell と揃える）。誤りではなく、まだ採用しないだけ。 */
+td.num.not-ready{color:var(--warn);font-weight:700;text-decoration:underline dotted}
+.warncell{font-family:"IBM Plex Mono",monospace;text-align:center;color:var(--warn);font-weight:700}
+.warncell.zero{color:var(--ink-faint);font-weight:400}
+.rank{font-weight:700;border-radius:5px;padding:2px 10px;display:inline-block;min-width:30px;text-align:center}
+.rank.A{background:var(--a-bg);color:var(--a-ink)}
+.rank.B{background:var(--rule-soft);color:var(--ink-soft)}
+.rank.C{background:var(--warn-bg);color:var(--warn)}
+.distbar{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--rule)}
+.distbar div{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.distbar .sA{background:var(--a-bg);color:var(--a-ink)}
+.distbar .sB{background:var(--rule-soft);color:var(--ink-soft)}
+.distbar .sC{background:var(--warn-bg);color:var(--warn)}
+.diag{font-family:"IBM Plex Mono",monospace;font-size:12px;line-height:1.9;white-space:pre-wrap}
+.diag .ng{color:var(--warn);font-weight:700}
+.diag .warn{color:var(--open-line)}
+.rowbar{width:5px;height:24px;border-radius:3px;display:inline-block;background:var(--swc,var(--rule))}
+.swatches{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;width:190px}
+.sw{width:16px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,.15);cursor:pointer;padding:0}
+.sw[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+/* 待たせているあいだ、画面を物理的に覆う。
+   採用・一斉入力・保存は29人ぶんの書き込みが走るので、
+   終わる前に次を押されると二重に書くことになる。 */
+.busy{position:fixed;inset:0;z-index:99;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  background:rgba(252,251,247,.92)}
+.busy .mark{width:58px;height:58px;border-radius:50%;
+  border:5px solid var(--rule-soft);border-top-color:var(--open);
+  animation:spin 1.05s linear infinite}
+@keyframes spin{ to{ transform:rotate(360deg) } }
+.busy .msg{font-size:22px;font-weight:700;color:var(--ink)}
+.errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
+  border-radius:8px;padding:9px 14px;font-size:13px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1><b id="cls">…</b> 主体的に学習に取り組む態度<small id="meta"></small></h1>
+    <div class="seg tabs" id="tabs"></div>
+    <div class="seg" id="subjSeg"></div>
+    <a class="btn ghost" id="sheetLink" target="_blank" rel="noopener"
+       style="text-decoration:none;margin-left:auto">スプレッドシートを開く</a>
+    <a class="btn ghost" id="studentLink" target="_top"
+       style="text-decoration:none">児童の画面 →</a>
+    <span class="said" id="said"></span>
+  </div>
+  <div class="busy hidden" id="busy">
+    <div class="mark" aria-hidden="true"></div>
+    <p class="msg" id="busyMsg">処理中…</p>
+  </div>
+
+  <div class="errbar hidden" id="errbar"></div>
+
+  <!-- 単元ごと -->
+  <div id="pane-unit">
+    <section>
+      <h2>単元</h2>
+      <div class="actions">
+        <select class="plain" id="unitSel"></select>
+        <button class="btn ghost" id="ratedBtn"></button>
+        <span class="note" id="fillNote"></span>
+        <button class="btn ghost" id="adoptAll">仮値をまとめて採用</button>
+        <span class="note" id="ruleText"></span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>一斉入力</h2>
+      <div class="card actions">
+        <span class="note">No.</span>
+        <input class="txt num" type="number" id="bulkNo" min="1">
+        <select class="plain" id="bulkSym"></select>
+        <label class="note"><input type="checkbox" id="bulkOver"> 入っている人も上書きする</label>
+        <button class="btn" id="bulkGo">全員に入れる</button>
+        <span class="note">学級閉鎖・行事・出張など、全員が同じになる日のため。既定は空欄の人だけ。</span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>児童ごと</h2>
+      <div class="tablecard"><table id="unitTbl"></table></div>
+    </section>
+  </div>
+
+  <!-- 期末評定 -->
+  <div id="pane-term" class="hidden">
+    <section>
+      <h2>学期</h2>
+      <div class="actions">
+        <select class="plain" id="termSel">
+          <option value="0">学年末（全学期）</option>
+          <option value="1">1学期</option><option value="2">2学期</option><option value="3">3学期</option>
+        </select>
+        <button class="btn ghost" id="adoptRanks">仮評定をまとめて採用</button>
+        <button class="btn ghost" id="exportBtn">通知表用の表を書き出す</button>
+        <span class="note" id="termRule"></span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>分布</h2>
+      <div class="card">
+        <div class="distbar" id="dist"></div>
+        <p class="note" id="distNote" style="margin:8px 0 0"></p>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>児童ごと</h2>
+      <div class="tablecard"><table id="termTbl"></table></div>
+    </section>
+  </div>
+
+  <!-- 設定 -->
+  <div id="pane-setup" class="hidden">
+    <section>
+      <h2>いまの状態</h2>
+      <div class="card diag" id="diag"></div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>評定のしきい値と時間</h2>
+      <div class="card actions">
+        <span class="note">A の下限</span><select class="plain" id="aFrom"></select>
+        <span class="note">C の上限</span><select class="plain" id="cTo"></select>
+        <span class="note">代表値</span>
+        <select class="plain" id="stat">
+          <option>後半の中央値</option><option>全体の中央値</option>
+          <option>後半の平均値</option><option>平均値</option>
+          <option>内側の平均値</option>
+          <option>最頻値</option><option>最高</option>
+        </select>
+        <span class="note">開室</span><input class="txt num" id="openT" placeholder="8:00">
+        <span class="note">ロック</span><input class="txt num" id="lockT" placeholder="16:00">
+        <button class="btn" id="saveRule">保存</button>
+      </div>
+      <div class="card actions" style="margin-top:8px">
+        <span class="note" id="relNote"></span>
+        <button class="btn ghost" id="relBtn"></button>
+      </div>
+      <p class="note">記号は児童のやる気のために実態より上へ振ってあるので、記号と評定は一致しない。
+        実際に A 評定になるのは <b>A+ 以上</b>。記号の A や A− は評定では B に落ちる。
+        <b>閉室はロック時刻と同じ瞬間</b>に起きる。</p>
+    </section>
+    <section style="margin-top:14px">
+      <h2>教科</h2>
+      <div class="tablecard"><table id="subjTbl"></table></div>
+      <div class="actions">
+        <input class="txt" id="newSubj" placeholder="教科名" style="width:140px">
+        <input class="txt num" id="newTotal" type="number" placeholder="時数">
+        <input class="txt num" id="newFrom" type="number" placeholder="開始No（既定1）">
+        <button class="btn ghost" id="addSubj">教科を足す（非公開）</button>
+        <span class="note">足した教科は児童に出ない。単元を入れてから公開に変える。
+          開始Noは、紙のノートで既に進めていて続きの番号から使いたいときだけ変える。</span>
+      </div>
+    </section>
+    <section style="margin-top:14px">
+      <h2>単元の範囲と色</h2>
+      <div class="tablecard"><table id="unitEditTbl"></table></div>
+      <div class="actions">
+        <button class="btn ghost" id="addUnit">単元を追加</button>
+        <button class="btn ghost" id="sortUnit">開始の順に並べ替え</button>
+        <button class="btn" id="saveUnits">単元を保存</button>
+        <span class="said" id="unitSaid"></span>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- apps/note-assessment/web/src/scale.js から scripts/build.py が作る。 正本を直すこと。 -->
+<script>
+/* ==================================================================
+   評価スケール — プロジェクトの正本。
+   児童画面と教師画面がこの1ファイルを読む。build.py が両方に差し込む。
+   実装では GAS の Scale.gs と scale.html になる。
+
+   段は**表**で持つ。以前は「基本字 × ニュアンス4」の掛け算で出していたが、
+   上端だけ段数が違う形になったので、掛け算では表せなくなった。
+   表なら、どの帯が何段でも同じ規則で扱える。
+
+   保存は記号の文字列で行い、計算のときだけ値に変換する。
+================================================================== */
+
+/* 基本字は下から上へ。上位が増えたら末尾に足す。
+   途中に差し込むと既存の内部値がずれて、過去の記録の意味が変わる。 */
+const BASES = ["D","C","B","A","Z","Y"];
+
+/* 帯ごとの刻み。段数は帯によって違う。
+
+   D は1段。「やるべきことを何もしていない」に濃淡は要らない。
+   C は2段。届いていない中での差はこの2つで足りる。
+   B と A は4段。ここが最頻帯で、いちばん細かく見分ける。
+   Z と Y は2段。上端でその細かさは使い分けられない。
+
+   帯ごとに幅を変えたのは、**見分けが要るところに段を寄せる**ため。
+   均等に刻むと、使わない段が増えるだけで判定が重くなる。 */
+const MODS_ONE  = [""];
+const MODS_TWO  = ["", "+"];
+const MODS_FULL = ["−", "", "+", "++"];
+const MODS_OF = {
+  "D": MODS_ONE,  "C": MODS_TWO,
+  "B": MODS_FULL, "A": MODS_FULL,
+  "Z": MODS_TWO,  "Y": MODS_TWO
+};
+
+/* 内部値 1..N の並び。ここが唯一の正本で、変換はすべてこの表を引く。 */
+const LEVELS = [];
+BASES.forEach(b => (MODS_OF[b] || MODS_FULL).forEach(m => LEVELS.push(b + m)));
+const NLEVEL = LEVELS.length;          // 15
+const NBASE  = BASES.length;
+const ALL_SYMS = LEVELS.slice();
+
+/* 層の境目。コードのどこにも "Z" や "Y" を直接書かない。
+   書いた瞬間、基本字を足したときにそこだけ取り残される。 */
+const TOP_FROM     = "Z";   // これ以上は突破層（箔をかける・突破回数に数える）
+const WARN_TO      = "C";   // これ以下は警告層（文字を赤にする）
+const RELEASE_FROM = "Y";   // これ以上は、教師が解放するまで児童に出さない
+
+/* 突破層の見た目は基本字ごとに1つ。段では変えない。
+   字を足したらここに1行足す。未登録の字は金の箔。実体は material.css。 */
+const BASE_LOOK = { "Z":"foil-gold", "Y":"foil-cosmic" };
+
+/* スケールに乗らない記号。どちらも集計から外すが、理由が違うので分けて数える。
+   休：児童がいなかった（個人の欠測）
+   / ：その授業を評価に含めない（授業側の都合）。教師だけが設定する。 */
+const OFF = "休", SKIP = "/";
+const isMark = sym => sym === OFF || sym === SKIP;
+
+const iTop     = BASES.indexOf(TOP_FROM);
+const iWarn    = BASES.indexOf(WARN_TO);
+const iRelease = BASES.indexOf(RELEASE_FROM);
+
+/* 記号 → 基本字。スケール外（休・/・空・知らない記号）は "" を返す。 */
+function baseOfSym(sym){
+  if(!sym || isMark(sym)) return "";
+  const b = String(sym).charAt(0);
+  return BASES.indexOf(b) >= 0 ? b : "";
+}
+const iOf = sym => { const b = baseOfSym(sym); return b ? BASES.indexOf(b) : -1; };
+
+const isTopSym     = sym => iOf(sym) >= iTop;
+const isWarnSym    = sym => { const i = iOf(sym); return i >= 0 && i <= iWarn; };
+const isReleaseSym = sym => iOf(sym) >= iRelease;   // 解放されるまで児童に出さない段
+
+/* valueOf という名前は使わない。Object.prototype.valueOf と同名で、
+   GAS ではトップレベル宣言がグローバルオブジェクト上のそれを隠す。 */
+function valueOfSym(sym){                          // "A++" → 16／スケール外は null
+  if(!sym || isMark(sym)) return null;
+  const i = LEVELS.indexOf(String(sym));
+  return i < 0 ? null : i + 1;
+}
+const symbolOf = v => LEVELS[v - 1];               // 16 → "A++"
+const baseOf   = v => baseOfSym(LEVELS[v - 1]);
+const isTopVal  = v => iOf(LEVELS[v - 1]) >= iTop;
+const isWarnVal = v => { const i = iOf(LEVELS[v - 1]); return i >= 0 && i <= iWarn; };
+
+/* 材質のクラス名。基本字ごとに1つ。 */
+const lookOf = sym => BASE_LOOK[baseOfSym(sym)] || "foil-gold";
+
+/* 帯の先頭の内部値。折れ線の目盛りを引くのに使う。 */
+function bandStart(base){
+  const i = LEVELS.indexOf(base + (MODS_OF[base] || MODS_FULL)[0]);
+  return i + 1;
+}
+const bandSize = base => (MODS_OF[base] || MODS_FULL).length;
+
+/* 児童に出してよい記号。解放されていない帯（Y 以上）を落とす。
+   すでに入っている記号は、値が消えないよう残す。 */
+function symsFor(opt){
+  const released = !!(opt && opt.released);
+  const keep     = opt && opt.keep;
+  return LEVELS.filter(s => released || !isReleaseSym(s) || s === keep);
+}
+
+/* 中央値が2段の間に落ちたときは下側を採る（水増ししない）。
+   順序尺度なので平均は取れない。 */
+const symbolOfMedian = m => (m == null) ? null : symbolOf(Math.floor(m));
+
+/* 古い記号を今の記号に置き換える表。
+   D の4段を1段に、C の4段を2段に畳んだぶん、**内部値は動く**。
+   意味が同じところへ寄せてある（D 系はすべて D、C−/C は C、C+/C++ は C+）。
+   B 以上は記号も意味も変わらない。
+
+   ※ 前の版（Z−/Z++ を捨てて Y を足した）からの置換もここに含めてある。
+     すでに置換ずみのシートに対しては、その行が当たらないだけで害はない。 */
+const SYM_MIGRATION = {
+  "D−":"D", "D+":"D", "D++":"D",          // D は1段に畳む
+  "C−":"C", "C++":"C+",                    // C は2段に畳む
+  "Z−":"Z", "Z++":"Y+"                     // 前の版の名残
+};
+</script>
+<script>
+const $ = id => document.getElementById(id);
+let B = null, subject = null, tab = "unit", unitName = null, term = 0;
+let editUnits = [];
+
+const clsOf = sym => !sym ? "none" : isMark(sym) ? "off"
+  : isTopSym(sym) ? "z" : isWarnSym(sym) ? "w" : sym[0] === "A" ? "a" : "";
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function say(msg, bad){
+  const e = $("said"); e.textContent = msg;
+  e.className = "said" + (bad ? " bad" : "");
+  setTimeout(()=>{ if(e.textContent === msg) e.textContent = ""; }, 4000);
+}
+function showErr(m){ const e = $("errbar"); e.textContent = m; e.classList.remove("hidden"); }
+function hideErr(){ $("errbar").classList.add("hidden"); }
+
+/* サーバ呼び出しを1つにまとめる。失敗はすべてここで拾う。
+   **終わるまで画面を物理的に覆う。** 採用や一斉入力は29人ぶんの書き込みが
+   走るので、終わる前に次を押されると二重に書くことになる。 */
+let busyDepth = 0;
+function busy(on, msg){
+  busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
+  if(msg) $("busyMsg").textContent = msg;
+  $("busy").classList.toggle("hidden", busyDepth === 0);
+}
+const BUSY_MSG = {
+  apiTeacherBoot:"よみこみ中…", apiUnitTable:"よみこみ中…", apiTermTable:"よみこみ中…",
+  apiAdoptAll:"採用しています…", apiAdoptRanks:"採用しています…",
+  apiBulk:"全員に入れています…", apiSaveUnits:"単元を保存しています…",
+  apiSaveRule:"設定を保存しています…", apiSaveSubject:"教科を保存しています…",
+  apiSetRated:"単元の評価をしています…", apiExportTerm:"書き出しています…"
+};
+function call(fn, args, done){
+  hideErr();
+  busy(true, BUSY_MSG[fn] || "処理中…");
+  google.script.run
+    .withSuccessHandler(function(r){
+      busy(false);
+      if(!r || !r.ok){ showErr((r && r.why) || "できませんでした"); return; }
+      try{ done(r); }catch(e){ showErr("画面を つくれませんでした（" + e.message + "）"); }
+    })
+    .withFailureHandler(function(e){ busy(false); showErr("つうしんが できませんでした"); })
+    [fn].apply(null, args || []);
+}
+
+/* ---------------- 上部 ---------------- */
+function renderTop(){
+  /* 相対リンクは iframe の中で解決されて別の場所へ飛ぶ。
+     サーバが返した絶対 URL を使う。 */
+  $("sheetLink").href = B.sheetUrl || "#";
+  $("sheetLink").classList.toggle("hidden", !B.sheetUrl);
+  $("studentLink").href = B.appUrl || "#";
+  $("studentLink").classList.toggle("hidden", !B.appUrl);
+
+  $("cls").textContent = B.className;
+  $("meta").textContent = B.year + "年度　" + B.names.length + "名　粘り強さ・自己調整のノート評価";
+
+  const tabs = [["unit","単元ごと"],["term","期末評定"],["setup","設定"]];
+  $("tabs").innerHTML = "";
+  tabs.forEach(([k, label])=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = label;
+    b.setAttribute("aria-pressed", String(k === tab));
+    b.addEventListener("click", ()=>{ tab = k; renderTop(); showTab(); });
+    $("tabs").appendChild(b);
+  });
+
+  const seg = $("subjSeg"); seg.innerHTML = "";
+  Object.keys(B.subjects).forEach(name=>{
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = name;
+    b.classList.toggle("closed", !B.subjects[name].open);
+    b.setAttribute("aria-pressed", String(name === subject));
+    b.addEventListener("click", ()=>{ if(name !== subject){ subject = name; unitName = null; showTab(); } });
+    seg.appendChild(b);
+  });
+}
+function showTab(){
+  ["unit","term","setup"].forEach(k => $("pane-" + k).classList.toggle("hidden", k !== tab));
+  renderTop();
+  if(tab === "unit")  loadUnit();
+  if(tab === "term")  loadTerm();
+  if(tab === "setup") renderSetup();
+}
+
+/* ---------------- 単元ごと ---------------- */
+function loadUnit(){
+  const units = (B.subjects[subject] || {}).units || [];
+  if(!units.length){ $("unitTbl").innerHTML = "<tbody><tr><td>単元がありません。設定タブで入れてください。</td></tr></tbody>"; return; }
+  if(!unitName || !units.filter(u => u.name === unitName).length) unitName = units[0].name;
+
+  const sel = $("unitSel"); sel.innerHTML = "";
+  units.forEach(u=>{
+    const o = document.createElement("option");
+    o.value = u.name;
+    o.textContent = u.name + "（No." + u.from + "〜" + u.to + "・" + u.term + "学期）"
+                  + (u.rated ? "　✓児童に見せている" : "");
+    o.selected = u.name === unitName;
+    sel.appendChild(o);
+  });
+  sel.onchange = ()=>{ unitName = sel.value; loadUnit(); };
+
+  const u = units.filter(x => x.name === unitName)[0];
+  const rb = $("ratedBtn");
+  rb.textContent = u.rated ? "児童に見せている（もどす）" : "単元の評価をする";
+  rb.className = "btn" + (u.rated ? " ghost" : "");
+  rb.onclick = ()=> call("apiSetRated", [subject, unitName, !u.rated], r=>{
+    u.rated = r.rated;
+    say(r.rated
+      ? ("児童に見せた" + ((r.adopted || r.skipped) ?
+          "（" + r.adopted + "人ぶん採用した" +
+          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）" : ""))
+      : "児童に見せないようにした");
+    loadUnit();
+  });
+
+  $("bulkNo").min = u.from; $("bulkNo").max = u.to;
+  if(!$("bulkNo").value || $("bulkNo").value < u.from || $("bulkNo").value > u.to) $("bulkNo").value = u.from;
+  if(!$("bulkSym").options.length){
+    $("bulkSym").innerHTML = ['<option value="">（消す）</option>',
+      '<option value="' + B.off + '">' + B.off + '</option>',
+      '<option value="' + B.skip + '">' + B.skip + '（評価に入れない）</option>']
+      .concat(B.syms.map(s => '<option value="' + s + '">' + s + '</option>')).join("");
+    $("bulkSym").value = B.off;
+  }
+
+  call("apiUnitTable", [subject, unitName], drawUnitTable);
+}
+
+/* 学級の真ん中から何段ずれているか。29人を1人ずつ見比べなくても、
+   外れているところだけ見に行けるようにする。 */
+function diffText(d){
+  if(d == null) return "—";
+  if(d === 0)   return "±0";
+  return (d > 0 ? "+" : "−") + Math.abs(d);
+}
+
+function drawUnitTable(t){
+  const unitFrom = t.unit.from;         // chip の位置 → No への変換に要る
+  $("ruleText").textContent = t.ruleText
+    + (t.mid ? "　／　学級の真ん中 " + t.mid + "（" + t.midN + "人）" : "");
+
+  /* 押すこと自体はいつでもできる。採用されるかどうかは1人ずつの記入率で
+     決まる（apiSetRated がサーバ側で見る）。学級全体で止めると、足の速い
+     児童の評価まで足の遅い児童に合わせて止まってしまうため。 */
+  $("ratedBtn").disabled = false;
+  $("ratedBtn").title = "";
+  const pct    = Math.round((t.fillRate || 0) * 100);
+  const minPct = Math.round((t.rateMin  || 0) * 100);
+  const readyN = t.rows.filter(r => r.ready).length;
+  const fn = $("fillNote");
+  fn.textContent = "記入率 " + pct + "%（学級全体）　／　"
+    + minPct + "%以上 " + readyN + "/" + t.rows.length + "人（採用の対象）";
+  fn.classList.toggle("warn", readyN < t.rows.length);
+  let h = '<thead><tr><th>児童</th><th>入力のならび（押すと1マス直せる）</th><th>入力</th><th>休</th><th>/</th>' +
+          '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
+          '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';
+  t.rows.forEach(r=>{
+    const chosen = r.final != null ? r.final : (r.prov || "");
+    h += '<tr>' +
+      '<td class="name">' + esc(r.name) + '</td>' +
+      '<td><div class="chips">' + r.seq.map((s,i) =>
+          '<span class="chip ' + (s ? clsOf(s) : "none") + (r.edited[i] ? " edited" : "") +
+          '" data-id="' + r.id + '" data-no="' + (unitFrom + i) + '" data-cur="' + (s || "") + '"' +
+          ' title="No.' + (unitFrom + i) + '　' + esc(r.name) + (r.edited[i] ? "　貫通ずみ" : "") + '">' +
+          (s || "·") + '</span>').join("") + '</div></td>' +
+      '<td class="num' + (r.ready ? "" : " not-ready") + '"' +
+        (r.ready ? "" : ' title="記入率が' + Math.round((t.rateMin || 0) * 100) + '%未満。「単元の評価をする」を押しても、この児童はまだ採用されない"') +
+        '>' + r.n + '/' + r.total + '</td>' +
+      '<td class="num">' + (r.off || "·") + '</td>' +
+      '<td class="num">' + (r.skip || "·") + '</td>' +
+      '<td><span class="prov ' + (r.prov ? clsOf(r.prov) : "none") + '">' + (r.prov || "—") + '</span></td>' +
+      '<td class="num diff' + (Math.abs(r.diff || 0) >= 2 ? " far" : "") + '">' + diffText(r.diff) + '</td>' +
+      '<td class="num">' + (r.all || "—") + '</td>' +
+      '<td class="num">' + (r.high || "—") + '</td>' +
+      '<td class="warncell' + (r.top ? "" : " zero") + '">' + r.top + '</td>' +
+      '<td class="warncell' + (r.c ? "" : " zero") + '">' + r.c + '</td>' +
+      '<td class="warncell' + (r.d ? "" : " zero") + '">' + r.d + '</td>' +
+      '<td><select class="final' + (r.prov && chosen !== r.prov ? " changed" : "") + '" data-id="' + r.id + '">' +
+        '<option value="">—</option>' +
+        B.syms.map(s => '<option value="' + s + '"' + (s === chosen ? " selected" : "") + '>' + s + '</option>').join("") +
+        '</select></td></tr>';
+  });
+  $("unitTbl").innerHTML = h + "</tbody>";
+  $("unitTbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>
+      call("apiAdopt", [subject, unitName, sel.dataset.id, sel.value], ()=> say("採用値を変えた")));
+  });
+}
+
+/* ---------------- 1マスを貫通して直す ----------------
+   誤って入れた記号がロック後に直せなくなったときの入口。
+   ロック・時間を貫通する（apiSaveAs）。押した瞬間に児童の画面へ響くので、
+   確認は挟まず、その場で結果を報告する（間違えたらもう一度押せばよい）。 */
+$("unitTbl").addEventListener("click", e=>{
+  const chip = e.target.closest ? e.target.closest(".chip") : null;
+  if(!chip) return;
+
+  const id = chip.dataset.id, no = Number(chip.dataset.no), cur = chip.dataset.cur;
+  const sel = document.createElement("select");
+  sel.className = "chipsel";
+  sel.innerHTML = '<option value="">（消す）</option>' +
+    '<option value="' + B.off + '"' + (cur === B.off ? " selected" : "") + '>' + B.off + '</option>' +
+    '<option value="' + B.skip + '"' + (cur === B.skip ? " selected" : "") + '>' + B.skip + '</option>' +
+    B.syms.map(s => '<option value="' + s + '"' + (s === cur ? " selected" : "") +
+                     '>' + s + '</option>').join("");
+  chip.replaceWith(sel);
+  sel.focus();
+
+  let done = false;
+  const apply = val => {
+    if(done) return; done = true;
+    if(val === cur){ loadUnit(); return; }        // 変えなかった。作り直すだけ
+    call("apiSaveAs", [subject, id, no, val || null], ()=>{
+      say("No." + no + " を " + (val || "空") + " に直した（貫通）"); loadUnit();
+    });
+  };
+  sel.addEventListener("change", ()=> apply(sel.value));
+  sel.addEventListener("blur",  ()=> apply(cur));   // 選ばずに離れたら、そのまま戻す
+});
+
+$("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
+  say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま" +
+    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）"); loadUnit(); });
+$("bulkGo").onclick = ()=> call("apiBulk",
+  [subject, Number($("bulkNo").value), $("bulkSym").value, $("bulkOver").checked], r=>{
+    say(r.put + "人に入れた" + (r.over ? "（うち上書き " + r.over + "）" : "")); loadUnit(); });
+
+/* ---------------- 期末評定 ---------------- */
+function loadTerm(){
+  $("termSel").value = String(term);
+  $("termSel").onchange = ()=>{ term = Number($("termSel").value); loadTerm(); };
+  call("apiTermTable", [subject, term], drawTerm);
+}
+function drawTerm(t){
+  $("termRule").textContent = t.ruleText;
+  const n = t.rows.length || 1;
+  const want = {A:[Math.round(n*0.25), Math.round(n*0.35)], B:[Math.round(n*0.6), Math.round(n*0.75)], C:[0,1]};
+  $("dist").innerHTML = ["A","B","C"].map(k=>{
+    const v = t.dist[k];
+    return '<div class="s' + k + '" style="flex:' + Math.max(v, 0.15) + '">' + (v ? k + " " + v : "") + '</div>';
+  }).join("");
+  $("distNote").innerHTML = ["A","B","C"].map(k=>{
+    const v = t.dist[k], w = want[k];
+    const off = v < w[0] || v > w[1];
+    return '<b>' + k + '</b> ' + v + '名 ' + Math.round(v / n * 100) + '%'
+         + '<span style="color:' + (off ? "var(--warn)" : "var(--ink-faint)") + '">'
+         + '　目安 ' + w[0] + '〜' + w[1] + '名</span>';
+  }).join("　　") + '　　C 評定はよほどのことがない限り出ない。ノート評価で C・D が続き、代表値が C 帯に入った児童だけ。';
+
+  let h = '<thead><tr><th>児童</th>' + t.units.map(u => '<th>' + esc(u) + '</th>').join("") +
+          '<th>まとめ</th><th>仮評定</th><th>採用</th></tr></thead><tbody>';
+  t.rows.forEach(r=>{
+    const chosen = r.final || r.rank || "";
+    h += '<tr><td class="name">' + esc(r.name) + '</td>' +
+      r.per.map(p => '<td><span class="chip ' + (p ? clsOf(p) : "none") + '">' + (p || "·") + '</span></td>').join("") +
+      '<td class="num">' + (r.sym || "—") + '</td>' +
+      '<td>' + (r.rank ? '<span class="rank ' + r.rank + '">' + r.rank + '</span>' : "—") + '</td>' +
+      '<td><select class="final' + (r.rank && chosen !== r.rank ? " changed" : "") + '" data-id="' + r.id + '">' +
+        ["", "A", "B", "C"].map(k => '<option value="' + k + '"' + (k === chosen ? " selected" : "") + '>' +
+          (k || "—") + '</option>').join("") + '</select></td></tr>';
+  });
+  $("termTbl").innerHTML = h + "</tbody>";
+  $("termTbl").querySelectorAll("select.final").forEach(sel=>{
+    sel.addEventListener("change", ()=>
+      call("apiSetRank", [subject, term, sel.dataset.id, sel.value], ()=>{ say("評定を変えた"); loadTerm(); }));
+  });
+}
+$("adoptRanks").onclick = ()=> call("apiAdoptRanks", [subject, term], r=>{
+  say(r.put + "人ぶん採用した"); loadTerm(); });
+$("exportBtn").onclick = ()=> call("apiExportTerm", [subject, term], r=>
+  say("シート「" + r.sheet + "」に " + r.rows + "人ぶん書き出した"));
+
+/* ---------------- 設定 ---------------- */
+function renderSetup(){
+  $("diag").innerHTML = (B.diagnose || []).map(l=>{
+    const c = l.indexOf("×") === 0 ? "ng" : l.indexOf("△") === 0 ? "warn" : "";
+    return '<div class="' + c + '">' + esc(l) + '</div>';
+  }).join("");
+
+  if(!$("aFrom").options.length){
+    const opts = B.syms.map(s => '<option value="' + s + '">' + s + '</option>').join("");
+    $("aFrom").innerHTML = opts; $("cTo").innerHTML = opts;
+  }
+  $("aFrom").value = symbolOf(B.rule.aFrom);
+  $("cTo").value   = symbolOf(B.rule.cTo);
+  $("stat").value  = B.rule.stat;
+  const p = n => String(n).padStart(2,"0");
+  $("openT").value = p(B.open.h) + ":" + p(B.open.m);
+  $("lockT").value = p(B.lock.h) + ":" + p(B.lock.m);
+
+  /* 上端（Y 以上）の解放。既定は児童に出さない。 */
+  $("relNote").innerHTML = "<b>" + B.releaseSyms.join("・") + "</b> は、いま児童に"
+    + (B.released ? "<b>出している</b>" : "出していない")
+    + "。天井を突き抜けた児童が出てきたときに開ける。開けるまでは、"
+    + "児童のプルダウンにも出ないし、サーバも児童からの保存を断る。";
+  const rb2 = $("relBtn");
+  rb2.textContent = B.released ? (B.releaseFrom + " をかくす") : (B.releaseFrom + " を児童にひらく");
+  rb2.className = "btn" + (B.released ? " ghost" : "");
+  rb2.onclick = ()=> call("apiSaveRule", [{released: !B.released}], ()=>{
+    say(B.released ? (B.releaseFrom + " をかくした") : (B.releaseFrom + " をひらいた")); reload(); });
+
+  let h = '<thead><tr><th>教科</th><th style="width:96px">開始No</th>' +
+          '<th style="width:96px">時数</th><th style="width:96px">範囲</th>' +
+          '<th style="width:150px">児童に見せる</th></tr></thead><tbody>';
+  Object.keys(B.subjects).forEach(n=>{
+    const s = B.subjects[n];
+    h += '<tr><td class="name">' + esc(n) + '</td>' +
+      '<td><input class="txt num" type="number" min="1" data-from="' + esc(n) + '"' +
+      ' value="' + s.from + '"></td>' +
+      '<td><input class="txt num" type="number" min="1" data-total="' + esc(n) + '"' +
+      ' value="' + s.total + '"></td>' +
+      '<td class="num">No.' + s.from + '〜' + s.to + '</td>' +
+      '<td><button class="btn ' + (s.open ? "" : "ghost") + '" data-subj="' + esc(n) + '">' +
+      (s.open ? "見せている" : "見せていない") + '</button></td></tr>';
+  });
+  $("subjTbl").innerHTML = h + "</tbody>";
+  $("subjTbl").querySelectorAll("button[data-subj]").forEach(b=>{
+    b.onclick = ()=>{
+      const n = b.dataset.subj, s = B.subjects[n];
+      call("apiSaveSubject", [n, s.total, !s.open, s.from], ()=>{ say(n + " の公開を変えた"); reload(); });
+    };
+  });
+  /* 時数は後から変えられる。減らしても記録は消えない（範囲の外に出るだけ）。 */
+  $("subjTbl").querySelectorAll("input[data-total]").forEach(inp=>{
+    inp.onchange = ()=>{
+      const n = inp.dataset.total, s = B.subjects[n];
+      const t = Math.max(1, Math.round(Number(inp.value)) || s.total);
+      call("apiSaveSubject", [n, t, s.open, s.from], ()=>{ say(n + " の時数を " + t + " にした"); reload(); });
+    };
+  });
+  /* 開始No。紙のノートで既に何時間か進めていて、続きの番号から
+     この道具を使いたい、という場合のため。No.1 からやり直す必要がない。 */
+  $("subjTbl").querySelectorAll("input[data-from]").forEach(inp=>{
+    inp.onchange = ()=>{
+      const n = inp.dataset.from, s = B.subjects[n];
+      const f = Math.max(1, Math.round(Number(inp.value)) || s.from);
+      call("apiSaveSubject", [n, s.total, s.open, f], ()=>{
+        say(n + " の開始番号を No." + f + " にした（すでにある記録は消えない）"); reload(); });
+    };
+  });
+
+  editUnits = ((B.subjects[subject] || {}).units || []).map(u => ({...u}));
+  drawUnitEdit();
+}
+
+function drawUnitEdit(){
+  const subj = B.subjects[subject] || {};
+  const subjFrom = subj.from || 1, subjTo = subj.to || subjFrom;
+  let h = '<thead><tr><th style="width:22px"></th><th>単元名</th><th style="width:84px">開始</th>' +
+          '<th style="width:84px">終了</th><th style="width:56px">時数</th><th style="width:92px">学期</th>' +
+          '<th style="width:200px">色</th><th style="width:56px"></th></tr></thead><tbody>';
+  editUnits.forEach((u,i)=>{
+    h += '<tr><td><span class="rowbar" style="--swc:var(--u' + (u.c % 20) + ')"></span></td>' +
+      '<td><input class="txt" data-i="' + i + '" data-k="name" value="' + esc(u.name) + '" style="width:100%"></td>' +
+      '<td><input class="txt num" type="number" data-i="' + i + '" data-k="from" value="' + u.from + '"></td>' +
+      '<td><input class="txt num" type="number" data-i="' + i + '" data-k="to" value="' + u.to + '"></td>' +
+      '<td class="num">' + Math.max(0, u.to - u.from + 1) + '</td>' +
+      '<td><select class="plain" data-i="' + i + '" data-k="term">' +
+        [1,2,3].map(t => '<option value="' + t + '"' + (u.term === t ? " selected" : "") + '>' + t + '学期</option>').join("") +
+        '</select></td>' +
+      '<td><div class="swatches">' + Array.from({length:20}, (_,c)=>c).map(c =>
+        '<button class="sw" style="background:var(--u' + c + ')" data-c="' + c + '" data-i="' + i + '"' +
+        ' aria-pressed="' + (u.c === c) + '"></button>').join("") + '</div></td>' +
+      '<td><button class="btn ghost" data-del="' + i + '">削除</button></td></tr>';
+  });
+  const t = $("unitEditTbl");
+  t.innerHTML = h + "</tbody>";
+  t.querySelectorAll("input[data-k],select[data-k]").forEach(el=>{
+    el.onchange = ()=>{
+      const u = editUnits[el.dataset.i], k = el.dataset.k;
+      if(k === "name") u.name = el.value.trim() || "（名前なし）";
+      else u[k] = Math.min(subjTo || 9999, Math.max(subjFrom, Math.round(Number(el.value)) || subjFrom));
+      if(k === "term") u.term = Number(el.value);
+      drawUnitEdit();
+    };
+  });
+  t.querySelectorAll("button.sw").forEach(b=>{
+    b.onclick = ()=>{ editUnits[b.dataset.i].c = Number(b.dataset.c); drawUnitEdit(); };
+  });
+  t.querySelectorAll("button[data-del]").forEach(b=>{
+    b.onclick = ()=>{ editUnits.splice(Number(b.dataset.del), 1); drawUnitEdit(); };
+  });
+
+  /* 検算。範囲の重なり・抜け・学期の逆転を出す。 */
+  const msgs = [];
+  editUnits.forEach((u,i)=>{
+    if(u.from > u.to) msgs.push("「" + u.name + "」の開始が終了より後");
+    editUnits.forEach((v,j)=>{ if(j > i && u.from <= v.to && v.from <= u.to)
+      msgs.push("「" + u.name + "」と「" + v.name + "」の範囲が重なっている"); });
+  });
+  const cov = {};
+  editUnits.forEach(u => { for(let i = u.from; i <= u.to; i++) cov[i] = 1; });
+  let miss = 0; for(let i = subjFrom; i <= subjTo; i++) if(!cov[i]) miss++;
+  if(miss) msgs.push("どの単元にも入らない授業が " + miss + "件");
+  const byNo = editUnits.slice().sort((a,b) => a.from - b.from);
+  for(let i = 1; i < byNo.length; i++)
+    if(byNo[i].term < byNo[i-1].term) msgs.push("学期が No の順に戻っている");
+  $("unitSaid").textContent = msgs.length ? "△ " + msgs.join(" / ") : "";
+  $("unitSaid").className = "said" + (msgs.length ? " bad" : "");
+}
+
+$("addUnit").onclick = ()=>{
+  const last = editUnits[editUnits.length - 1];
+  const from = last ? Math.min(last.to + 1, 9999) : ((B.subjects[subject] || {}).from || 1);
+  editUnits.push({name:"あたらしい単元", from:from, to:from,
+                  c:editUnits.length % 20, term:last ? last.term : 1, rated:false});
+  drawUnitEdit();
+};
+$("sortUnit").onclick = ()=>{ editUnits.sort((a,b) => a.from - b.from); drawUnitEdit(); };
+$("saveUnits").onclick = ()=> call("apiSaveUnits", [subject, editUnits], ()=>{ say("単元を保存した"); reload(); });
+$("saveRule").onclick = ()=> call("apiSaveRule", [{
+  aFrom:$("aFrom").value, cTo:$("cTo").value, stat:$("stat").value,
+  open:$("openT").value, lock:$("lockT").value }], ()=>{ say("設定を保存した"); reload(); });
+$("addSubj").onclick = ()=> call("apiSaveSubject",
+  [$("newSubj").value, Number($("newTotal").value), false, Number($("newFrom").value) || 1], ()=>{
+    say("教科を足した（まだ児童には出ない）");
+    $("newSubj").value = ""; $("newTotal").value = ""; $("newFrom").value = ""; reload(); });
+
+/* ---------------- 起動 ---------------- */
+function reload(){
+  call("apiTeacherBoot", [], r=>{
+    B = r;
+    const names = Object.keys(B.subjects);
+    if(!subject || names.indexOf(subject) < 0) subject = names[0] || null;
+    if(!subject){ showErr("教科がありません。設定タブの『教科を足す』から入れてください。"); tab = "setup"; }
+    showTab();
+  });
+}
+reload();
+</script>
+</body>
+</html>
