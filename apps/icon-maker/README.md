@@ -4,7 +4,7 @@
 
 ## Apps Scriptへの配置
 
-このフォルダを1つの独立したApps Scriptプロジェクトとして扱います。既存の `homeroom-tools/gas` プロジェクトとは混ぜません。
+このフォルダを1つの独立したApps Scriptプロジェクトとして扱います。ノート評価の `apps/note-assessment/gas/` プロジェクトとは混ぜません。
 
 1. Apps Scriptで新規プロジェクトを作成する。
 2. 最初からある `コード.gs` の内容を、`dist/Code.gs` の内容で置き換える（ファイル名は `Code.gs` にそろえる）。
@@ -25,3 +25,24 @@
 - カード余白をクリックするとカード全体をコピー
 - プレビューまたはセット項目を右クリックすると、コピー範囲を選択
 - SVG／PNG保存、横長カード／正方形カード、セットJSON入出力に対応
+- 「設定リンク」で現在のデザインを再現できるURLをコピー
+
+## デザイン再現URL
+
+URLパラメータで1つのデザインを再現できます。人が読める固定形式なので、AIへデザインを依頼するときも同じ条件を受け渡せます。
+
+```text
+?icon=book-open&label=教材&bg=%23147A42&mode=auto&size=large&shape=rounded&layout=icon
+```
+
+| パラメータ | 値 |
+|---|---|
+| `icon` | Lucideのアイコン名 |
+| `label` | 表示名（30文字まで） |
+| `bg` | `#RRGGBB`。URL内では`#`を`%23`にする |
+| `mode` | `auto` / `white` / `black` |
+| `size` | `basic` / `large` |
+| `shape` | `rounded` / `circle` / `diamond` / `cube` / `front-cube` / `star` |
+| `layout` | `icon` / `horizontal` / `square-card` |
+
+不正な値は安全な既定値へ戻します。既存のデプロイURLにこのパラメータを付ければ、端末やブラウザをまたいで同じデザインを開けます。
