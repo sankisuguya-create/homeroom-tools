@@ -3,17 +3,21 @@ import {mkdir,readFile,writeFile} from 'node:fs/promises';
 const root=new URL('../',import.meta.url);
 const output=new URL('dist/',root);
 await mkdir(output,{recursive:true});
-const [index,app,sprite,tags,manifest]=await Promise.all([
+const [index,app,sprite,tags,people,peopleTags,manifest]=await Promise.all([
   readFile(new URL('src/Index.html',root),'utf8'),
   readFile(new URL('src/JavaScript.html',root),'utf8'),
   readFile(new URL('src/assets/LucideSprite.html',root),'utf8'),
   readFile(new URL('src/assets/LucideTags.html',root),'utf8'),
+  readFile(new URL('src/assets/TablerPeople.html',root),'utf8'),
+  readFile(new URL('src/assets/TablerPeopleTags.html',root),'utf8'),
   readFile(new URL('src/appsscript.json',root),'utf8')
 ]);
-if(sprite.includes('<?xml'))throw new Error('LucideSprite.htmlにXML宣言が含まれています');
+if(sprite.includes('<?xml')||people.includes('<?xml'))throw new Error('SVGスプライトにXML宣言が含まれています');
 const inline=index
   .replace("<?!= include('LucideTags'); ?>",tags)
   .replace("<?!= include('LucideSprite'); ?>",sprite)
+  .replace("<?!= include('TablerPeopleTags'); ?>",peopleTags)
+  .replace("<?!= include('TablerPeople'); ?>",people)
   .replace("<?!= include('JavaScript'); ?>",app);
 if(inline.includes('<?!='))throw new Error('未展開のGASテンプレートがあります');
 const code=`function doGet() {

@@ -9,46 +9,45 @@
   <style>
     :root{color-scheme:light;--ink:#172033;--muted:#647086;--line:#dfe4ec;--panel:#fff;--bg:#f3f6fa;--accent:#1673d1;--shadow:0 16px 44px rgba(29,43,68,.1)}
     *{box-sizing:border-box}
-    body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;font-size:16px}
+    html,body{height:100%;overflow:hidden}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;font-size:16px}
     button,input,select{font:inherit}
     button{cursor:pointer}
-    .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
-    header{height:68px;padding:0 28px;display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,.9);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
-    .brand{display:flex;align-items:center;gap:12px;font-weight:800;letter-spacing:-.02em}
-    .brand-mark{width:36px;height:36px;border-radius:10px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:25px;line-height:1}
-    .status{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:7px}.status::before{content:"";width:8px;height:8px;border-radius:50%;background:#147a42}
-    main{padding:20px;display:grid;grid-template-columns:minmax(280px,1fr) minmax(340px,1.15fr) minmax(290px,.9fr);gap:16px;min-height:0}
-    .panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;box-shadow:0 3px 12px rgba(29,43,68,.04);min-height:0;overflow:hidden}
+    .app{height:100dvh;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr)}
+    header{height:44px;padding:0 14px;display:flex;align-items:center;background:rgba(255,255,255,.92);border-bottom:1px solid var(--line);backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;letter-spacing:-.02em}
+    .brand-mark{width:26px;height:26px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:#fff;font-size:19px;line-height:1}
+    main{padding:10px;display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1.15fr) minmax(290px,.9fr);gap:10px;min-height:0;overflow:hidden}
+    .panel{height:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 2px 8px rgba(29,43,68,.04);min-height:0;overflow:hidden}
     .panel-head{padding:18px 20px 14px;border-bottom:1px solid var(--line)}
     h1,h2,p{margin:0}h1{font-size:17px}h2{font-size:15px;letter-spacing:.01em}.sub{margin-top:5px;color:var(--muted);font-size:13px}
-    .search-wrap{padding:16px 16px 10px;position:relative}.search{width:100%;height:46px;padding:0 42px 0 14px;border:1px solid #cad2de;border-radius:12px;background:#f9fbfd;outline:none}.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.13)}
-    .search-count{position:absolute;right:29px;top:28px;color:var(--muted);font-size:12px}
-    .catalog-switch{padding:0 16px 12px}.catalog-switch .seg{max-width:260px}.icon-grid{padding:6px 14px 18px;display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;overflow:auto;max-height:calc(100vh - 158px);position:relative}
+    .catalog-panel{display:grid;grid-template-rows:auto minmax(0,1fr)}.search-wrap{padding:10px 10px 7px;position:relative}.search{width:100%;height:38px;padding:0 40px 0 12px;border:1px solid #cad2de;border-radius:10px;background:#f9fbfd;outline:none}.search:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.13)}
+    .search-count{position:absolute;right:22px;top:21px;color:var(--muted);font-size:11px}
+    .catalog-switch{padding:0 12px 8px}.catalog-switch .seg{max-width:260px}.icon-grid{padding:4px 10px 12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(58px,1fr));align-content:start;gap:6px;overflow:auto;max-height:none;position:relative}
     .icon-choice{height:64px;border:1px solid transparent;border-radius:13px;background:#f5f7fa;color:#354056;display:grid;place-items:center;position:relative}.icon-choice:hover{background:#edf3fa}.icon-choice.selected{background:#e8f2fc;border-color:#78aee2;color:#0e5ea8}.icon-choice svg{width:27px;height:27px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}.icon-choice span{position:absolute;inset:auto 5px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9px;color:#68758a;text-align:center}
     .pattern-tile{background-color:#eef2f7;background-image:repeating-linear-gradient(135deg,rgba(23,32,51,.10) 0,rgba(23,32,51,.10) 4px,transparent 4px,transparent 9px);border-color:#c8d0dc;color:#172033}.pattern-tile:hover{background-color:#e2eaf3}.pattern-tile span{color:#344054;font-weight:750}.group-tile.selected{border-color:#1673d1;background-color:#dfedfa}
     .empty{grid-column:1/-1;color:var(--muted);text-align:center;padding:32px 12px;line-height:1.7}.load-more{grid-column:1/-1;min-height:42px;border:1px solid #cad2de;border-radius:11px;background:#fff;color:#354056;font-weight:750}.load-more:hover{background:#f3f7fb}
-    .preview-panel{display:grid;grid-template-rows:auto 1fr auto}.preview-area{min-height:300px;display:grid;place-items:center;padding:26px;background:radial-gradient(circle at 50% 32%,#fff 0,#f7f9fc 46%,#edf1f6 100%)}
-    .preview-stack{width:100%;display:grid;place-items:center;gap:12px}.output-preview{display:grid;place-items:center;transition:.18s ease}.output-preview>svg{width:100%;height:auto;display:block;filter:drop-shadow(0 14px 22px rgba(29,43,68,.12))}.output-preview.layout-icon{width:152px}.output-preview.layout-horizontal{width:min(100%,430px)}.output-preview.layout-square-card{width:min(72%,280px)}.output-preview.bump{transform:scale(1.02)}
+    .preview-panel{display:grid;grid-template-rows:auto minmax(0,1fr) auto}.preview-area{min-height:0;display:grid;place-items:center;padding:12px;background:radial-gradient(circle at 50% 32%,#fff 0,#f7f9fc 46%,#edf1f6 100%)}
+    .preview-stack{width:100%;display:grid;place-items:center;gap:7px}.output-preview{display:grid;place-items:center;transition:.18s ease}.output-preview>svg{width:100%;height:auto;display:block;filter:drop-shadow(0 10px 18px rgba(29,43,68,.12))}.output-preview.layout-icon{width:132px}.output-preview.layout-horizontal{width:min(100%,400px)}.output-preview.layout-square-card{width:min(64%,230px)}.output-preview.bump{transform:scale(1.02)}
     .preview-name{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
-    .preview-controls{padding:16px 18px}.preview-controls.top{border-bottom:1px solid var(--line)}.preview-controls.bottom{border-top:1px solid var(--line)}.preview-controls .field:last-child{margin-bottom:0}.control-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px}.control-columns .field{margin-bottom:0}
-    .controls{padding:17px 18px 24px;overflow:auto;max-height:calc(100vh - 126px)}
-    .field{margin-bottom:18px}.field label,.field-title{display:block;font-weight:750;font-size:13px;margin-bottom:8px}.text-input,.select{width:100%;height:44px;border:1px solid #cad2de;border-radius:11px;padding:0 12px;background:#fff;outline:none}.text-input:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.12)}
-    .swatches{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}.swatch{aspect-ratio:1;border-radius:10px;border:3px solid #fff;outline:1px solid #d7dde6}.swatch.active{outline:3px solid var(--ink);outline-offset:1px}.custom-color{margin-top:10px;display:flex;gap:9px;align-items:center}.custom-color input[type=color]{width:44px;height:38px;padding:3px;border:1px solid #cad2de;border-radius:9px;background:#fff}.hex{font-size:13px;color:var(--muted);font-family:ui-monospace,monospace}
-    .seg{display:grid;grid-template-columns:repeat(3,1fr);padding:3px;background:#edf1f5;border-radius:11px}.seg.two{grid-template-columns:repeat(2,1fr)}.seg button{border:0;border-radius:8px;background:transparent;height:36px;color:#59667b;font-size:13px}.seg button.active{background:#fff;color:var(--ink);font-weight:750;box-shadow:0 1px 4px rgba(29,43,68,.12)}
-    .shape-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.shape-choice{min-width:0;height:60px;padding:6px 2px 5px;border:1px solid #d7dde6;border-radius:11px;background:#fff;color:#5d687a;display:grid;place-items:center;font-size:10px}.shape-choice svg{width:25px;height:25px;display:block}.shape-choice.active{border-color:#1673d1;background:#eaf3fc;color:#0e5ea8;box-shadow:0 0 0 1px #1673d1 inset}.shape-choice:hover{background:#f4f8fc}
-    .actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.btn{min-height:43px;border:1px solid #cad2de;border-radius:11px;background:#fff;color:var(--ink);font-weight:750;font-size:13px;padding:0 10px}.btn:hover{background:#f6f8fb}.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}.btn.wide{grid-column:1/-1}.divider{height:1px;background:var(--line);margin:20px 0}
+    .preview-controls{padding:10px 12px}.preview-controls.top{border-bottom:1px solid var(--line)}.preview-controls.bottom{border-top:1px solid var(--line)}.preview-controls .field:last-child{margin-bottom:0}.control-columns{display:grid;grid-template-columns:1fr 1fr;gap:10px}.control-columns .field{margin-bottom:0}
+    .controls{height:100%;padding:12px 14px 16px;overflow:auto;max-height:none}
+    .field{margin-bottom:12px}.field label,.field-title{display:block;font-weight:750;font-size:12px;margin-bottom:6px}.text-input,.select{width:100%;height:38px;border:1px solid #cad2de;border-radius:9px;padding:0 10px;background:#fff;outline:none}.text-input:focus,.select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,115,209,.12)}
+    .color-controls{display:flex;align-items:flex-start;gap:12px}.swatches{display:grid;grid-template-columns:repeat(7,22px);gap:6px}.swatch{width:22px;height:22px;padding:0;border-radius:6px;border:2px solid #fff;outline:1px solid #d7dde6}.swatch.active{outline:2px solid var(--ink);outline-offset:1px}.custom-color{display:flex;gap:7px;align-items:center;min-height:50px}.custom-color input[type=color]{width:36px;height:30px;padding:2px;border:1px solid #cad2de;border-radius:7px;background:#fff}.hex{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
+    .seg{display:grid;grid-template-columns:repeat(3,1fr);padding:2px;background:#edf1f5;border-radius:9px}.seg.two{grid-template-columns:repeat(2,1fr)}.seg button{border:0;border-radius:7px;background:transparent;height:30px;color:#59667b;font-size:12px}.seg button.active{background:#fff;color:var(--ink);font-weight:750;box-shadow:0 1px 4px rgba(29,43,68,.12)}
+    .shape-grid{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:4px}.shape-choice{min-width:0;height:46px;padding:4px 0 3px;border:1px solid #d7dde6;border-radius:8px;background:#fff;color:#5d687a;display:grid;place-items:center;font-size:9px;white-space:nowrap}.shape-choice svg{width:18px;height:18px;display:block}.shape-choice.active{border-color:#1673d1;background:#eaf3fc;color:#0e5ea8;box-shadow:0 0 0 1px #1673d1 inset}.shape-choice:hover{background:#f4f8fc}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.btn{min-height:36px;border:1px solid #cad2de;border-radius:9px;background:#fff;color:var(--ink);font-weight:750;font-size:12px;padding:0 8px}.btn:hover{background:#f6f8fb}.btn.primary{background:var(--ink);border-color:var(--ink);color:#fff}.btn.wide{grid-column:1/-1}.divider{height:1px;background:var(--line);margin:12px 0}
     .set-row{display:flex;gap:8px}.set-row .btn{flex:1}.set-list{margin-top:12px;display:grid;gap:7px;max-height:190px;overflow:auto}.set-item{display:grid;grid-template-columns:38px 1fr 30px;align-items:center;gap:9px;border:1px solid var(--line);border-radius:11px;padding:7px}.mini{width:34px;height:34px;display:grid;place-items:center}.mini>svg{width:100%;height:100%;overflow:visible}.set-name{font-size:13px;font-weight:700}.set-icon{font-size:10px;color:var(--muted)}.remove{width:28px;height:28px;border:0;background:transparent;border-radius:7px;color:#7a8495}.remove:hover{background:#f2f4f7;color:#b33030}
-    .copy-hint{margin:-7px 0 16px;color:var(--muted);font-size:11px;line-height:1.5}.copy-menu{position:fixed;z-index:20;min-width:180px;padding:6px;background:#fff;border:1px solid #ccd4df;border-radius:12px;box-shadow:0 16px 42px rgba(23,32,51,.22)}.copy-menu[hidden]{display:none}.copy-menu button{display:block;width:100%;height:38px;padding:0 11px;border:0;border-radius:8px;background:#fff;text-align:left;color:#263247;font-size:13px}.copy-menu button:hover{background:#eaf3fc}.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,16px);padding:11px 16px;border-radius:999px;background:#172033;color:#fff;font-size:13px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}
+    .copy-hint{margin:-4px 0 10px;color:var(--muted);font-size:10px;line-height:1.45}.copy-menu{position:fixed;z-index:20;min-width:180px;padding:6px;background:#fff;border:1px solid #ccd4df;border-radius:12px;box-shadow:0 16px 42px rgba(23,32,51,.22)}.copy-menu[hidden]{display:none}.copy-menu button{display:block;width:100%;height:38px;padding:0 11px;border:0;border-radius:8px;background:#fff;text-align:left;color:#263247;font-size:13px}.copy-menu button:hover{background:#eaf3fc}.toast{position:fixed;left:50%;bottom:18px;transform:translate(-50%,16px);padding:9px 14px;border-radius:999px;background:#172033;color:#fff;font-size:12px;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translate(-50%,0)}
     .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-    @media(max-width:980px){main{grid-template-columns:1fr 1fr}.controls-panel{grid-column:1/-1}.controls{max-height:none;display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.controls .divider{grid-column:1/-1}.icon-grid{max-height:520px}}
-    @media(max-width:680px){header{height:60px;padding:0 16px}.status{display:none}main{padding:10px;display:flex;flex-direction:column}.preview-panel{order:-1}.preview-area{min-height:260px;padding:20px}.output-preview.layout-icon{width:112px}.output-preview.layout-horizontal{width:100%}.output-preview.layout-square-card{width:220px}.icon-grid{max-height:390px}.controls{display:block;max-height:none}.panel{border-radius:17px}.shape-grid{grid-template-columns:repeat(5,minmax(52px,1fr));overflow-x:auto}}
+    @media(max-width:980px){html,body{height:auto}body{overflow:auto}.app{height:auto;min-height:100vh}main{grid-template-columns:1fr 1fr;overflow:visible}.panel{height:auto}.catalog-panel{min-height:560px}.controls-panel{grid-column:1/-1}.controls{display:grid;grid-template-columns:1fr 1fr;gap:0 22px}.controls .divider{grid-column:1/-1}.icon-grid{max-height:500px}}
+    @media(max-width:680px){header{height:44px;padding:0 12px}main{padding:8px;display:flex;flex-direction:column}.preview-panel{order:-1}.preview-area{min-height:240px;padding:14px}.output-preview.layout-icon{width:112px}.output-preview.layout-horizontal{width:100%}.output-preview.layout-square-card{width:210px}.catalog-panel{min-height:470px}.icon-grid{max-height:390px}.controls{display:block}.panel{border-radius:13px}.color-controls{gap:8px}.swatches{grid-template-columns:repeat(7,20px);gap:5px}.swatch{width:20px;height:20px}.shape-grid{grid-template-columns:repeat(9,minmax(48px,1fr));overflow-x:auto}}
   </style>
 </head>
 <body>
 <div class="app">
-  <header><div class="brand"><span class="brand-mark">＋</span><span>アイコンメーカー</span></div><div class="status">Lucide内蔵・外部接続なし</div></header>
+  <header><div class="brand"><span class="brand-mark">＋</span><span>アイコンメーカー</span></div></header>
   <main>
-    <section class="panel" aria-label="アイコン選択">
+    <section class="panel catalog-panel" aria-label="アイコン選択">
       <div class="search-wrap"><label class="sr-only" for="search">アイコン検索</label><input id="search" class="search" type="search" placeholder="例：本、提出、話し合い"><span id="count" class="search-count"></span></div>
       <div id="iconGrid" class="icon-grid" aria-live="polite"></div>
     </section>
@@ -59,14 +58,17 @@
       </div></div>
       <div class="preview-area"><div class="preview-stack"><div id="outputPreview" class="output-preview layout-icon" aria-hidden="true"></div><div id="previewName" class="preview-name">book-open</div></div></div>
       <div class="preview-controls bottom">
-        <div class="field"><span class="field-title">背景色</span><div id="swatches" class="swatches"></div><div class="custom-color"><input id="colorInput" type="color" value="#147a42" aria-label="自由な背景色"><span id="hexValue" class="hex">#147A42</span></div></div>
+        <div class="field"><span class="field-title">背景色</span><div class="color-controls"><div id="swatches" class="swatches"></div><div class="custom-color"><input id="colorInput" type="color" value="#147a42" aria-label="自由な背景色"><span id="hexValue" class="hex">#147A42</span></div></div></div>
         <div class="field"><span class="field-title">背景の形</span><div class="shape-grid" id="shapeMode">
           <button class="shape-choice active" data-shape="rounded"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5" fill="currentColor"/></svg><span>角丸</span></button>
           <button class="shape-choice" data-shape="circle"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/></svg><span>丸</span></button>
+          <button class="shape-choice" data-shape="sphere"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><radialGradient id="shapeSpherePreview" cx="32%" cy="25%" r="72%"><stop offset="0" stop-color="#fff"/><stop offset=".28" stop-color="currentColor"/><stop offset="1" stop-color="#172033"/></radialGradient></defs><circle cx="12" cy="12" r="10" fill="url(#shapeSpherePreview)"/></svg><span>球体</span></button>
           <button class="shape-choice" data-shape="diamond"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 22.5 12 12 22.5 1.5 12Z" fill="currentColor"/></svg><span>菱形</span></button>
+          <button class="shape-choice" data-shape="hexagon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1 21.5 6.5v11L12 23l-9.5-5.5v-11Z" fill="currentColor"/></svg><span>六角</span></button>
           <button class="shape-choice" data-shape="cube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 1.5 9 5v10l-9 5-9-5v-10Z" fill="currentColor"/><path d="m3 6.5 9 5 9-5M12 11.5v10" fill="none" stroke="white" stroke-opacity=".45"/></svg><span>立方体</span></button>
           <button class="shape-choice" data-shape="front-cube"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h14v14H3z" fill="currentColor"/><path d="m3 7 4-4h14l-4 4M17 7l4-4v14l-4 4" fill="currentColor" fill-opacity=".55" stroke="currentColor" stroke-linejoin="round"/></svg><span>正面立方体</span></button>
           <button class="shape-choice" data-shape="star"><svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="12,1 14.9,5.2 19.8,4.2 18.8,9.1 23,12 18.8,14.9 19.8,19.8 14.9,18.8 12,23 9.1,18.8 4.2,19.8 5.2,14.9 1,12 5.2,9.1 4.2,4.2 9.1,5.2" fill="currentColor"/></svg><span>八星</span></button>
+          <button class="shape-choice" data-shape="shield"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.5 21 5v6.7c0 5.6-3.7 9.9-9 11.8-5.3-1.9-9-6.2-9-11.8V5Z" fill="currentColor"/></svg><span>盾</span></button>
         </div></div>
       </div>
     </section>
@@ -76,7 +78,7 @@
         <div class="field"><span class="field-title">出力形式</span><div class="seg" id="layoutMode"><button data-layout="icon" class="active">アイコン</button><button data-layout="horizontal">横長</button><button data-layout="square-card">正方形</button></div></div>
         <p class="copy-hint">プレビューのアイコン部分をクリックすると背景付き、カード余白をクリックすると外枠ごと画像コピーします。右クリックでコピー範囲を選べます。</p>
         <div class="field"><label for="exportSize">PNGサイズ</label><select id="exportSize" class="select"><option value="256" selected>256 × 256</option><option value="512">512 × 512</option><option value="1024">1024 × 1024</option></select></div>
-        <div class="actions"><button id="copySvg" class="btn">SVGをコピー</button><button id="downloadSvg" class="btn">SVG保存</button><button id="downloadPng" class="btn primary wide">PNGを保存</button></div>
+        <div class="actions"><button id="copySvg" class="btn">SVGコピー</button><button id="downloadSvg" class="btn">SVG保存</button><button id="downloadPng" class="btn primary">PNG保存</button><button id="copyDesignLink" class="btn">設定リンク</button></div>
         <div class="divider"></div>
         <div class="field"><span class="field-title">アイコンセット</span><div class="set-row"><button id="addSet" class="btn primary">セットに追加</button><button id="exportJson" class="btn">保存</button><button id="importJson" class="btn">読み込み</button><input id="jsonFile" type="file" accept="application/json" hidden></div><div id="setList" class="set-list"></div></div>
       </div>
@@ -30367,14 +30369,142 @@
   </defs>
 </svg>
 </div>
+<script id="tablerPeopleTags" type="application/json">{
+  "person-run": ["run", "jog", "running", "走る", "ランニング", "かけ足", "持久走", "運動"],
+  "person-sprint": ["sprint", "dash", "race", "全力走", "短距離走", "競走", "運動"],
+  "person-walk": ["walk", "walking", "歩く", "徒歩", "移動", "散歩"],
+  "person-skateboard": ["skateboarding", "skater", "スケートボード", "スケボー", "運動"],
+  "person-stretch": ["stretching", "warmup", "ストレッチ", "準備運動", "柔軟", "運動"],
+  "person-stretch-side": ["stretching", "warmup", "横ストレッチ", "準備運動", "柔軟", "運動"],
+  "person-yoga": ["yoga", "pose", "ヨガ", "ポーズ", "体操", "運動"],
+  "person-wheelchair": ["wheelchair", "accessibility", "mobility", "車椅子", "車いす", "バリアフリー", "移動"],
+  "person-bike": ["bike", "bicycle", "cycling", "自転車", "サイクリング", "移動", "運動"],
+  "person-swim": ["swimming", "pool", "水泳", "泳ぐ", "プール", "運動"],
+  "person-football": ["football", "soccer", "サッカー", "蹴る", "ボール", "運動"],
+  "person-basketball": ["basketball", "バスケットボール", "バスケ", "ボール", "運動"],
+  "person-handball": ["handball", "throw", "ハンドボール", "投げる", "ボール", "運動"],
+  "person-volleyball": ["volleyball", "バレーボール", "バレー", "ボール", "運動"],
+  "person-karate": ["karate", "martial arts", "空手", "武道", "運動"],
+  "people-friends": ["friends", "people", "pair", "友達", "仲間", "二人", "ペア", "協働"]
+}
+</script>
+<div id="tablerPeopleSprite" hidden><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <symbol id="tabler-person-run" viewBox="0 0 24 24">
+    <path d="M11.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M4 17l5 1l.75 -1.5" />
+    <path d="M15 21v-4l-4 -3l1 -6" />
+    <path d="M7 12v-3l5 -1l3 3l3 1" />
+  </symbol>
+  <symbol id="tabler-person-sprint" viewBox="0 0 24 24">
+    <path d="M14.007 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+    <path d="M7 17l5 1l.75 -1.5" />
+    <path d="M18 21v-4l-4 -3l1 -6" />
+    <path d="M10 12v-3l5 -1l3 3l3 1" />
+    <path d="M10 5h-4" />
+    <path d="M6 10h-4" />
+  </symbol>
+  <symbol id="tabler-person-walk" viewBox="0 0 24 24">
+    <path d="M12 4a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    <path d="M7 21l3 -4" />
+    <path d="M16 21l-2 -4l-3 -3l1 -6" />
+    <path d="M6 12l2 -3l4 -1l3 3l3 1" />
+  </symbol>
+  <symbol id="tabler-person-skateboard" viewBox="0 0 24 24">
+    <path d="M5.5 15h3.5l.75 -1.5" />
+    <path d="M14 19v-5l-2.5 -3l2.5 -4" />
+    <path d="M8 8l3 -1h4l1 3h3" />
+    <path d="M17.5 21a.5 .5 0 1 0 0 -1a.5 .5 0 0 0 0 1" />
+    <path d="M3 18c0 .552 .895 1 2 1h14c1.105 0 2 -.448 2 -1" />
+    <path d="M6.5 21a.5 .5 0 1 0 0 -1a.5 .5 0 0 0 0 1" />
+    <path d="M14.007 4a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-person-stretch" viewBox="0 0 24 24">
+    <path d="M15 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    <path d="M5 20l5 -.5l1 -2" />
+    <path d="M18 20v-5h-5.5l2.5 -6.5l-5.5 1l1.5 2" />
+  </symbol>
+  <symbol id="tabler-person-stretch-side" viewBox="0 0 24 24">
+    <path d="M6.5 21l3.5 -5" />
+    <path d="M5 11l7 -2" />
+    <path d="M16 21l-4 -7v-5l7 -4" />
+    <path d="M9.007 6a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-person-yoga" viewBox="0 0 24 24">
+    <path d="M4 20h4l1.5 -3" />
+    <path d="M17 20l-1 -5h-5l1 -7" />
+    <path d="M4 10l4 -1l4 -1l4 1.5l4 1.5" />
+    <path d="M10.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-person-wheelchair" viewBox="0 0 24 24">
+    <path d="M3 16a5 5 0 1 0 10 0a5 5 0 1 0 -10 0" />
+    <path d="M17 19a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M19 17a3 3 0 0 0 -3 -3h-3.4" />
+    <path d="M3 3h1a2 2 0 0 1 2 2v6" />
+    <path d="M6 8h11" />
+    <path d="M15 8v6" />
+  </symbol>
+  <symbol id="tabler-person-bike" viewBox="0 0 24 24">
+    <path d="M2 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+    <path d="M16 18a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+    <path d="M12 19v-4l-3 -3l5 -4l2 3h3" />
+    <path d="M13.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-person-swim" viewBox="0 0 24 24">
+    <path d="M15 9a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
+    <path d="M6 11l4 -2l3.5 3l-1.5 2" />
+    <path d="M3 16.75a2.4 2.4 0 0 0 1 .25a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 2 -1a2.4 2.4 0 0 1 2 -1a2.4 2.4 0 0 1 2 1a2.4 2.4 0 0 0 2 1a2.4 2.4 0 0 0 1 -.25" />
+  </symbol>
+  <symbol id="tabler-person-football" viewBox="0 0 24 24">
+    <path d="M3 17l5 1l.75 -1.5" />
+    <path d="M14 21v-4l-4 -3l1 -6" />
+    <path d="M6 12v-3l5 -1l3 3l3 1" />
+    <path d="M18.007 19.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
+    <path d="M10.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-person-basketball" viewBox="0 0 24 24">
+    <path d="M9.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M5 21l3 -3l.75 -1.5" />
+    <path d="M14 21v-4l-4 -3l.5 -6" />
+    <path d="M5 12l1 -3l4.5 -1l3.5 3l4 -.5" />
+    <path d="M18.007 15.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
+  </symbol>
+  <symbol id="tabler-person-handball" viewBox="0 0 24 24">
+    <path d="M13 21l3.5 -2l-4.5 -4l2 -4.5" />
+    <path d="M5 7l4 3l5 .5l4 2.5l2.5 3" />
+    <path d="M4 20l5 -1l1.5 -2" />
+    <path d="M13.007 8a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M6.007 3.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
+  </symbol>
+  <symbol id="tabler-person-volleyball" viewBox="0 0 24 24">
+    <path d="M11.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M19.007 9.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0" />
+    <path d="M2 16l5 1l.5 -2.5" />
+    <path d="M11.5 21l2.5 -5.5l-5.5 -3.5l3.5 -4l3 4l4 2" />
+  </symbol>
+  <symbol id="tabler-person-karate" viewBox="0 0 24 24">
+    <path d="M3 9l4.5 1l3 2.5" />
+    <path d="M13 21v-8l3 -5.5" />
+    <path d="M8 4.5l4 2l4 1l4 3.5l-2 3.5" />
+    <path d="M15.007 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+  </symbol>
+  <symbol id="tabler-people-friends" viewBox="0 0 24 24">
+    <path d="M5 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M5 22v-5l-1 -1v-4a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4l-1 1v5" />
+    <path d="M15 5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+    <path d="M15 22v-4h-2l2 -6a1 1 0 0 1 1 -1h2a1 1 0 0 1 1 1l2 6h-2v4" />
+  </symbol>
+</svg>
+</div>
 <script>const COLORS=[['赤','#C62828'],['朱','#D84315'],['橙','#EF6C00'],['黄','#F9A825'],['黄緑','#558B2F'],['緑','#147A42'],['青緑','#00838F'],['水色','#0277BD'],['青','#1565C0'],['藍','#283593'],['紫','#6A1B9A'],['桃','#AD1457'],['灰','#64748B'],['濃灰','#374151']];
-const CURATED=['book-open','notebook','pencil','school','graduation-cap','users','user-round','calendar-days','clock','timer','clipboard-check','list-checks','file-text','folder','archive','upload','download','send','mail','message-square','messages-square','speech','circle-help','lightbulb','search','settings','bell','star','heart','check','circle-check','badge-check','target','trophy','chart-bar','chart-line','calculator','ruler','shapes','palette','music','image','video','mic','printer','link','globe','map','house','library','book-marked','bookmark','eraser','scissors','save','trash-2','plus','minus','x','refresh-cw','arrow-right','chevron-right','lock','unlock','eye','eye-off','info','triangle-alert','circle-alert','sparkles','party-popper','hand','thumbs-up','smile','brain','puzzle','workflow','network','layout-grid','table','panel-top','presentation','monitor','smartphone','wifi','cloud','database'];
+const CURATED=['book-open','notebook','pencil','school','graduation-cap','users','user-round','person-run','person-walk','person-wheelchair','people-friends','calendar-days','clock','timer','clipboard-check','list-checks','file-text','folder','archive','upload','download','send','mail','message-square','messages-square','speech','circle-help','lightbulb','search','settings','bell','star','heart','check','circle-check','badge-check','target','trophy','chart-bar','chart-line','calculator','ruler','shapes','palette','music','image','video','mic','printer','link','globe','map','house','library','book-marked','bookmark','eraser','scissors','save','trash-2','plus','minus','x','refresh-cw','arrow-right','chevron-right','lock','unlock','eye','eye-off','info','triangle-alert','circle-alert','sparkles','party-popper','hand','thumbs-up','smile','brain','puzzle','workflow','network','layout-grid','table','panel-top','presentation','monitor','smartphone','wifi','cloud','database'];
+const PERSON_PICTOGRAMS=['person-run','person-sprint','person-walk','person-skateboard','person-stretch','person-stretch-side','person-yoga','person-wheelchair','person-bike','person-swim','person-football','person-basketball','person-handball','person-volleyball','person-karate','people-friends'];
 const JA={
  '本 教材 読書 図書':['book-open','book','library','book-marked','notebook'],'学校 校舎':['school','graduation-cap','house'],'人 児童 先生 学級 グループ':['users','user-round','contact','user-check'],'予定 日程 日付':['calendar-days','calendar','clock'],'時間 時計':['clock','timer','alarm-clock'],'提出 送信':['send','upload','file-up','clipboard-check'],'保存':['save','archive','download'],'話し合い 対話 相談 意見':['messages-square','message-square','speech'],'課題 チェック 完了':['list-checks','clipboard-check','circle-check','badge-check'],'考える 思考 アイデア':['brain','lightbulb','sparkles'],'算数 計算':['calculator','sigma','divide','plus','minus'],'図形':['shapes','ruler','circle','triangle','square'],'お気に入り 星':['star','bookmark','heart'],'設定':['settings','sliders-horizontal','wrench'],'検索':['search','scan-search'],'通知':['bell','megaphone'],'印刷':['printer','file-output'],'画像 写真':['image','images','camera'],'動画':['video','film'],'音声 音楽':['mic','music','volume-2'],'リンク':['link','external-link','globe'],'注意 危険':['triangle-alert','circle-alert','shield-alert'],'成功 賞':['trophy','medal','party-popper'],'表 グラフ 分析':['table','chart-bar','chart-line','chart-pie'],'レイアウト 一覧':['layout-grid','panels-top-left','list'],'パズル 問題':['puzzle','circle-help'],'ネットワーク つながり':['network','workflow','share-2'],'パソコン 端末':['monitor','laptop','tablet','smartphone'],'クラウド データ':['cloud','database','hard-drive']
 };
 const CATEGORIES=[
  {id:'learning',label:'学習',icon:'book-open',terms:['book','school','graduation','pencil','notebook','calculator','ruler','brain','lightbulb','library','languages','sigma']},
  {id:'people',label:'人・学級',icon:'users',terms:['user','users','contact','baby','accessibility','hand','smile','frown']},
+ {id:'movement',label:'人物動作',icon:'person-run',names:PERSON_PICTOGRAMS,terms:[]},
  {id:'communication',label:'連絡',icon:'messages-square',terms:['message','mail','send','phone','speech','bell','megaphone','share']},
  {id:'calendar',label:'予定・時間',icon:'calendar-days',terms:['calendar','clock','timer','alarm','hourglass','watch']},
  {id:'files',label:'ファイル',icon:'folder',terms:['file','folder','archive','clipboard','save','download','upload','paperclip']},
@@ -30390,8 +30520,9 @@ const CATEGORIES=[
 ];
 
 const BATCH_SIZE=120,MAX_SET_ITEMS=500,MAX_JSON_BYTES=2*1024*1024;
-const VALID_MODES=new Set(['auto','white','black']),VALID_SIZES=new Set(['basic','large']),VALID_SHAPES=new Set(['rounded','circle','diamond','cube','front-cube','star']),VALID_LAYOUTS=new Set(['icon','horizontal','square-card']);
-let tags={},allNames=[],spriteRoot=null,searchIndex=new Map(),categoryIndex=new Map(),view='curated',activeCategory='',visibleLimit=BATCH_SIZE,currentResults=[],copyTarget=null,searchTimer=0,previewTimer=0;
+const VALID_MODES=new Set(['auto','white','black']),VALID_SIZES=new Set(['basic','large']),VALID_SHAPES=new Set(['rounded','circle','sphere','diamond','hexagon','cube','front-cube','star','shield']),VALID_LAYOUTS=new Set(['icon','horizontal','square-card']);
+const DESIGN_KEYS=['icon','label','bg','mode','size','shape','layout'];
+let tags={},allNames=[],spriteRoot=null,peopleRoot=null,searchIndex=new Map(),categoryIndex=new Map(),view='curated',activeCategory='',visibleLimit=BATCH_SIZE,currentResults=[],copyTarget=null,searchTimer=0,previewTimer=0;
 let state={icon:'book-open',label:'教材',bg:'#147A42',mode:'auto',size:'large',shape:'rounded',layout:'icon',set:loadSet()};
 const $=id=>document.getElementById(id);
 function loadSet(){try{const value=JSON.parse(localStorage.getItem('icon-studio-set')||'[]');return Array.isArray(value)?value.slice(0,MAX_SET_ITEMS):[]}catch{return[]}}
@@ -30400,8 +30531,11 @@ function appendImportedSet(current,items){const room=Math.max(0,MAX_SET_ITEMS-cu
 function xml(s){return String(s).replace(/[<>&\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\"':'&quot;',"'":'&apos;'}[c]))}
 function normalize(s){return s.toLowerCase().trim().replace(/[　_]+/g,' ')}
 function normalizeDesign(input={}){const mode=input.mode==='dark'?'black':input.mode;return {id:typeof input.id==='string'?input.id:'',icon:typeof input.icon==='string'&&(!allNames.length||allNames.includes(input.icon))?input.icon:'book-open',label:(typeof input.label==='string'?input.label.trim().slice(0,30):'')||'名称未設定',bg:typeof input.bg==='string'&&/^#[0-9a-f]{6}$/i.test(input.bg)?input.bg.toUpperCase():'#147A42',mode:VALID_MODES.has(mode)?mode:'auto',size:VALID_SIZES.has(input.size)?input.size:'large',shape:VALID_SHAPES.has(input.shape)?input.shape:'rounded',layout:VALID_LAYOUTS.has(input.layout)?input.layout:'icon'}}
-function symbolInner(name){return spriteRoot?.querySelector(`[id="lucide-${name}"]`)?.innerHTML||''}
-function plainIconSvg(name){return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#lucide-${name}"></use></svg>`}
+function designFromUrl(search=location.search){const params=new URLSearchParams(search);if(!DESIGN_KEYS.some(key=>params.has(key)))return null;const raw={};DESIGN_KEYS.forEach(key=>{if(params.has(key))raw[key]=params.get(key)});return normalizeDesign(raw)}
+function designUrl(input,href=location.href){const d=normalizeDesign(input),url=new URL(href);DESIGN_KEYS.forEach(key=>url.searchParams.set(key,d[key]));url.hash='';return url.toString()}
+function symbolId(name){return /^(person|people)-/.test(name)?`tabler-${name}`:`lucide-${name}`}
+function symbolInner(name){return (/^(person|people)-/.test(name)?peopleRoot:spriteRoot)?.querySelector(`[id="${symbolId(name)}"]`)?.innerHTML||''}
+function plainIconSvg(name){return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#${symbolId(name)}"></use></svg>`}
 function namespaceSprite(){const symbols=spriteRoot?.querySelectorAll('symbol[id]')||[];for(const symbol of symbols)if(!symbol.id.startsWith('lucide-'))symbol.id=`lucide-${symbol.id}`;if(symbols.length<1000)throw new Error('SVGシンボル件数不足')}
 function srgb(v){v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)}
 function luminance(hex){const v=hex.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16));return .2126*srgb(v[0])+.7152*srgb(v[1])+.0722*srgb(v[2])}
@@ -30409,10 +30543,13 @@ function contrast(a,b){const x=luminance(a),y=luminance(b);return (Math.max(x,y)
 function inkFor(d){if(d.mode==='white')return'#FFFFFF';if(d.mode==='black')return'#000000';return contrast(d.bg,'#FFFFFF')>=4.5?'#FFFFFF':'#000000'}
 function shapeMarkup(shape,bg){
  if(shape==='circle')return `<circle cx="256" cy="256" r="256" fill="${bg}"/>`;
+ if(shape==='sphere'){const id=`sphere-${bg.slice(1)}`;return `<defs><radialGradient id="${id}-light" cx="30%" cy="24%" r="62%"><stop offset="0" stop-color="#fff" stop-opacity=".72"/><stop offset=".38" stop-color="#fff" stop-opacity=".14"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient><radialGradient id="${id}-shade" cx="34%" cy="28%" r="78%"><stop offset=".46" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".38"/></radialGradient></defs><circle cx="256" cy="256" r="256" fill="${bg}"/><circle cx="256" cy="256" r="256" fill="url(#${id}-light)"/><circle cx="256" cy="256" r="256" fill="url(#${id}-shade)"/>`}
  if(shape==='diamond')return `<path d="M256 0 512 256 256 512 0 256Z" fill="${bg}"/>`;
+ if(shape==='hexagon')return `<path d="M256 0 478 128v256L256 512 34 384V128Z" fill="${bg}"/>`;
  if(shape==='cube')return `<path d="M256 12 488 142v228L256 500 24 370V142Z" fill="${bg}"/><path d="M24 142 256 272 488 142 256 12Z" fill="#fff" opacity=".14"/><path d="M256 272 488 142v228L256 500Z" fill="#000" opacity=".13"/>`;
  if(shape==='front-cube')return `<path d="M42 126 122 42h348l-80 84Z" fill="${bg}"/><path d="M42 126 122 42h348l-80 84Z" fill="#fff" opacity=".18"/><path d="M390 126 470 42v348l-80 84Z" fill="${bg}"/><path d="M390 126 470 42v348l-80 84Z" fill="#000" opacity=".14"/><rect x="42" y="126" width="348" height="348" fill="${bg}"/>`;
  if(shape==='star')return `<polygon points="256,4 323.3,93.4 434.2,77.8 418.6,188.7 508,256 418.6,323.3 434.2,434.2 323.3,418.6 256,508 188.7,418.6 77.8,434.2 93.4,323.3 4,256 93.4,188.7 77.8,77.8 188.7,93.4" fill="${bg}"/>`;
+ if(shape==='shield')return `<path d="M256 8 464 80v155c0 130-86 229-208 269C134 464 48 365 48 235V80Z" fill="${bg}"/>`;
  return `<rect width="512" height="512" rx="128" fill="${bg}"/>`;
 }
 function iconBox(d,forGlyph=false){const w=d.size==='large'?360:256;if(forGlyph||d.shape!=='front-cube')return{x:(512-w)/2,y:(512-w)/2,w};const fw=d.size==='large'?250:190;return{x:216-fw/2,y:300-fw/2,w:fw}}
@@ -30426,7 +30563,7 @@ function composeSvg(input,scope='full',interactive=false){const d=normalizeDesig
 function japaneseMatches(q){const out=[];for(const [keys,names] of Object.entries(JA))if(keys.includes(q)||q.split(/\s+/).some(w=>keys.includes(w)))out.push(...names);return out}
 function scoreName(name,q){if(name===q)return 0;if(name.startsWith(q))return 1;if(name.includes(q))return 2;return searchIndex.get(name)?.includes(q)?3:99}
 function categoryText(value){return ` ${value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()} `}
-function buildIndexes(){searchIndex=new Map();categoryIndex=new Map(CATEGORIES.map(c=>[c.id,[]]));const matched=new Set(),termsByCategory=new Map(CATEGORIES.filter(c=>c.id!=='misc').map(c=>[c.id,c.terms.map(categoryText)]));for(const name of allNames){const text=[name,...(tags[name]||[])].join(' ').toLowerCase();searchIndex.set(name,text);const hay=categoryText(text);for(const [id,terms] of termsByCategory)if(terms.some(term=>hay.includes(term))){categoryIndex.get(id).push(name);matched.add(name)}}categoryIndex.set('misc',allNames.filter(name=>!matched.has(name)))}
+function buildIndexes(){searchIndex=new Map();categoryIndex=new Map(CATEGORIES.map(c=>[c.id,[]]));const matched=new Set(),rulesByCategory=new Map(CATEGORIES.filter(c=>c.id!=='misc').map(c=>[c.id,{terms:c.terms.map(categoryText),names:new Set(c.names||[])}]));for(const name of allNames){const text=[name,...(tags[name]||[])].join(' ').toLowerCase();searchIndex.set(name,text);const hay=categoryText(text);for(const [id,rules] of rulesByCategory)if(rules.names.has(name)||rules.terms.some(term=>hay.includes(term))){categoryIndex.get(id).push(name);matched.add(name)}}categoryIndex.set('misc',allNames.filter(name=>!matched.has(name)))}
 function menuTile(){const b=document.createElement('button');b.className='icon-choice pattern-tile';b.type='button';b.title='分類メニュー';b.dataset.action='menu';b.setAttribute('aria-label','分類メニューを開く');b.innerHTML=plainIconSvg('menu')+'<span>メニュー</span>';return b}
 function renderCategories(){const grid=$('iconGrid'),fragment=document.createDocumentFragment(),groups=[{id:'curated',label:'おすすめ',icon:'sparkles'},{id:'all',label:'すべて',icon:'layout-grid'},...CATEGORIES];grid.textContent='';fragment.appendChild(menuTile());for(const group of groups){const b=document.createElement('button');b.className='icon-choice pattern-tile group-tile';b.type='button';b.title=group.label;b.dataset.group=group.id;b.innerHTML=plainIconSvg(group.icon)+`<span>${group.label}</span>`;fragment.appendChild(b)}grid.appendChild(fragment);$('count').textContent=`${groups.length}分類`}
 function searchIcons(){if(!allNames.length)return;if(view==='categories'&&!normalize($('search').value)){renderCategories();return}const q=normalize($('search').value);let names;if(q){const ja=japaneseMatches(q),latin=allNames.map(n=>[n,scoreName(n,q)]).filter(x=>x[1]<99).sort((a,b)=>a[1]-b[1]||a[0].localeCompare(b[0])).map(x=>x[0]);names=[...new Set([...ja,...latin])].filter(n=>searchIndex.has(n))}else if(view==='curated')names=CURATED.filter(n=>searchIndex.has(n));else if(view==='category')names=categoryIndex.get(activeCategory)||[];else names=allNames;currentResults=names;renderGrid(names)}
@@ -30446,8 +30583,27 @@ function showCopyMenu(e,input){e.preventDefault();copyTarget=normalizeDesign(inp
 function hideCopyMenu(){$('copyMenu').hidden=true}
 
 function renderSet(){const el=$('setList'),fragment=document.createDocumentFragment();el.textContent='';if(!state.set.length){el.innerHTML='<div class="sub">追加したアイコンがここに並びます。</div>';return}state.set.forEach((raw,i)=>{const it=normalizeDesign(raw),row=document.createElement('div');row.className='set-item';row.dataset.index=String(i);row.innerHTML=`<div class="mini">${composeSvg({...it,layout:'icon'},'tile')}</div><div><div class="set-name"></div><div class="set-icon"></div></div><button class="remove" type="button" aria-label="削除">×</button>`;row.querySelector('.set-name').textContent=it.label;row.querySelector('.set-icon').textContent=`${it.icon}・${it.layout==='horizontal'?'横長':it.layout==='square-card'?'正方形':it.size==='large'?'基本':'縮小'}`;fragment.appendChild(row)});el.appendChild(fragment)}
-async function loadAssets(){const embeddedTags=$('lucideTags'),embeddedSprite=$('lucideSprite');if(embeddedTags&&embeddedSprite){tags=JSON.parse(embeddedTags.textContent);spriteRoot=embeddedSprite.querySelector('svg');if(spriteRoot){embeddedSprite.replaceWith(spriteRoot);spriteRoot.hidden=true}}else{const [tagResponse,spriteResponse]=await Promise.all([fetch('lucide-tags.json'),fetch('lucide-sprite.svg')]);if(!tagResponse.ok||!spriteResponse.ok)throw new Error('アセット取得失敗');tags=await tagResponse.json();const template=document.createElement('template');template.innerHTML=await spriteResponse.text();spriteRoot=template.content.querySelector('svg');if(spriteRoot){spriteRoot.hidden=true;document.body.appendChild(spriteRoot)}}if(!tags||typeof tags!=='object'||!spriteRoot)throw new Error('アセット形式不正');namespaceSprite();allNames=Object.keys(tags);if(allNames.length<1000)throw new Error('アイコン件数不足');buildIndexes()}
-async function init(){try{await loadAssets();state.set=state.set.map(normalizeDesign).filter(x=>searchIndex.has(x.icon)).slice(0,MAX_SET_ITEMS);searchIcons()}catch(e){$('iconGrid').innerHTML='<div class="empty">アイコンデータを読み込めませんでした。ページを再読み込みしてください。</div>';console.error(e)}const fragment=document.createDocumentFragment();COLORS.forEach(([name,color])=>{const b=document.createElement('button');b.className='swatch';b.type='button';b.title=name;b.dataset.color=color;b.style.background=color;fragment.appendChild(b)});$('swatches').appendChild(fragment);update();renderSet()}
+async function loadAssets(){
+ const embeddedTags=$('lucideTags'),embeddedSprite=$('lucideSprite'),peopleTags=$('tablerPeopleTags'),peopleSprite=$('tablerPeopleSprite');
+ if(embeddedTags&&embeddedSprite){
+  tags=JSON.parse(embeddedTags.textContent);spriteRoot=embeddedSprite.querySelector('svg');
+  if(spriteRoot){embeddedSprite.replaceWith(spriteRoot);spriteRoot.hidden=true}
+ }else{
+  const [tagResponse,spriteResponse]=await Promise.all([fetch('lucide-tags.json'),fetch('lucide-sprite.svg')]);
+  if(!tagResponse.ok||!spriteResponse.ok)throw new Error('アセット取得失敗');
+  tags=await tagResponse.json();const template=document.createElement('template');template.innerHTML=await spriteResponse.text();spriteRoot=template.content.querySelector('svg');
+  if(spriteRoot){spriteRoot.hidden=true;document.body.appendChild(spriteRoot)}
+ }
+ const importedPeople=peopleTags?JSON.parse(peopleTags.textContent):null;
+ peopleRoot=peopleSprite?.querySelector('svg')||null;
+ if(peopleRoot){peopleSprite.replaceWith(peopleRoot);peopleRoot.hidden=true}
+ if(!tags||typeof tags!=='object'||!spriteRoot||!importedPeople||typeof importedPeople!=='object'||!peopleRoot)throw new Error('アセット形式不正');
+ Object.assign(tags,importedPeople);namespaceSprite();
+ const peopleSymbols=[...peopleRoot.querySelectorAll('symbol[id^="tabler-"]')];
+ if(peopleSymbols.length!==Object.keys(importedPeople).length||peopleSymbols.some(symbol=>!importedPeople[symbol.id.replace(/^tabler-/, '')]))throw new Error('人物ピクトグラム形式不正');
+ allNames=Object.keys(tags);if(allNames.length<1000)throw new Error('アイコン件数不足');buildIndexes()
+}
+async function init(){try{await loadAssets();const linked=designFromUrl();if(linked){Object.assign(state,linked);$('labelInput').value=state.label}state.set=state.set.map(normalizeDesign).filter(x=>searchIndex.has(x.icon)).slice(0,MAX_SET_ITEMS);searchIcons()}catch(e){$('iconGrid').innerHTML='<div class="empty">アイコンデータを読み込めませんでした。ページを再読み込みしてください。</div>';console.error(e)}const fragment=document.createDocumentFragment();COLORS.forEach(([name,color])=>{const b=document.createElement('button');b.className='swatch';b.type='button';b.title=name;b.setAttribute('aria-label',name);b.dataset.color=color;b.style.background=color;fragment.appendChild(b)});$('swatches').appendChild(fragment);update();renderSet()}
 
 $('search').addEventListener('input',scheduleSearch);
 $('iconGrid').addEventListener('click',e=>{const button=e.target.closest('button');if(!button)return;if(button.dataset.action==='menu'){view='categories';activeCategory='';$('search').value='';visibleLimit=BATCH_SIZE;searchIcons();return}if(button.dataset.action==='more'){visibleLimit+=BATCH_SIZE;renderGrid(currentResults);return}if(button.dataset.group){const id=button.dataset.group;view=id==='curated'?'curated':id==='all'?'all':'category';activeCategory=view==='category'?id:'';visibleLimit=BATCH_SIZE;searchIcons();return}if(button.dataset.icon){const previous=$('iconGrid').querySelector('.icon-choice.selected');previous?.classList.remove('selected');button.classList.add('selected');state.icon=button.dataset.icon;update()}});
@@ -30468,6 +30624,7 @@ $('setList').addEventListener('contextmenu',e=>{const row=e.target.closest('.set
 $('copySvg').onclick=async()=>{try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(composeSvg(state));toast('SVGをコピーしました')}catch{toast('SVGコピーが拒否されました')}};
 $('downloadSvg').onclick=()=>{try{download(svgBlob(composeSvg(state)),`${safeName()}.svg`)}catch{toast('SVGの保存に失敗しました')}};
 $('downloadPng').onclick=savePng;
+$('copyDesignLink').onclick=async()=>{try{if(!navigator.clipboard?.writeText)throw new Error();await navigator.clipboard.writeText(designUrl(state));toast('設定リンクをコピーしました')}catch{toast('設定リンクをコピーできませんでした')}};
 $('addSet').onclick=()=>{if(state.set.length>=MAX_SET_ITEMS){toast(`セットは${MAX_SET_ITEMS}件までです`);return}const id=globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;state.set.push({...normalizeDesign(state),id});if(saveSet()){renderSet();toast('セットに追加しました')}};
 $('exportJson').onclick=()=>{try{download(new Blob([JSON.stringify({version:3,icons:state.set},null,2)],{type:'application/json'}),'icon-set.json')}catch{toast('保存に失敗しました')}};
 $('importJson').onclick=()=>$('jsonFile').click();
