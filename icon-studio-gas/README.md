@@ -7,11 +7,11 @@
 このフォルダを1つの独立したApps Scriptプロジェクトとして扱います。既存の `homeroom-tools/gas` プロジェクトとは混ぜません。
 
 1. Apps Scriptで新規プロジェクトを作成する。
-2. このフォルダの `Code.gs`、4つのHTMLファイル、`appsscript.json` を同名で配置する。
+2. 手動配置では `dist` フォルダの `Code.gs`、`Index.html`、`appsscript.json` の3点だけを同名で配置する。
 3. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選ぶ。
 4. 実行ユーザーは自分、アクセス範囲は学校の運用方針に合わせる。
 
-`clasp`を使う場合は `.clasp.json.example` を `.clasp.json` にコピーし、`scriptId`を設定してから、このフォルダを作業ディレクトリとして `clasp push` を実行します。
+`clasp`を使う場合は `.clasp.json.example` を `.clasp.json` にコピーし、`scriptId`を設定してから、このフォルダを作業ディレクトリとして `clasp push` を実行します。通常の編集用ファイルは分割されていますが、`dist` は手動配置用にすべてを1つのHTMLへ展開した配布版です。
 
 ## 主な操作
 
