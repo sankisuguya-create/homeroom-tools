@@ -10,6 +10,7 @@ const [index,app,sprite,tags,manifest]=await Promise.all([
   readFile(new URL('LucideTags.html',root),'utf8'),
   readFile(new URL('appsscript.json',root),'utf8')
 ]);
+if(sprite.includes('<?xml'))throw new Error('LucideSprite.htmlにXML宣言が含まれています');
 const inline=index
   .replace("<?!= include('LucideTags'); ?>",tags)
   .replace("<?!= include('LucideSprite'); ?>",sprite)
