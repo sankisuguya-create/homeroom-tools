@@ -17,7 +17,7 @@ const inline=index
 if(inline.includes('<?!='))throw new Error('未展開のGASテンプレートがあります');
 const code=`function doGet() {
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Icon Studio')
+    .setTitle('アイコンメーカー')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
