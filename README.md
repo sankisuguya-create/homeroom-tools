@@ -9,6 +9,7 @@
 | [ノート評価](apps/note-assessment/) | 児童の自己転写から単元評価・期末評定を組み立てる | [概要](apps/note-assessment/README.md) |
 | [ダンスカウント表](apps/dance-count/) | 集団演技を8カウント単位で作成・印刷する | [概要](apps/dance-count/README.md) |
 | [アイコンメーカー](apps/icon-maker/) | 校務資料用の統一アイコンを作る | [概要](apps/icon-maker/README.md) |
+| [席替え](apps/seating/) | 条件と履歴を満たす座席配置を計算する（スプレッドシート拡張） | [概要](apps/seating/README.md) |
 
 週案（時間割の共同編集）は別リポジトリの [school-timetable](https://github.com/sankisuguya-create/school-timetable) が正本です。
 
@@ -29,6 +30,9 @@ python3 scripts/build.py --check
 node apps/note-assessment/gas/scripts/localcheck.js
 node apps/icon-maker/scripts/build.mjs
 node apps/icon-maker/tests/test-app.mjs
+node apps/seating/scripts/build.mjs --check
+node apps/seating/tests/test-solver.js
+node apps/seating/tests/test-code.js
 ```
 
 `dist/`を直しても次のビルドで上書きされます。変更は各`src/`または`shared/`へ入れます。
