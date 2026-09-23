@@ -62,7 +62,20 @@ aside h2{font-size:13px;margin:12px 0 6px;color:var(--ink-soft)}
 .views{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
 .views button{border:0;border-radius:0;min-width:64px}
 .views button[aria-pressed=true]{background:var(--ink);color:var(--sheet);font-weight:700}
-body[data-view=layout] .seatonly,body[data-view=weights] .seatonly{display:none}
+body[data-view=layout] .seatonly,body[data-view=weights] .seatonly,body[data-view=import] .seatonly{display:none}
+/* 取り込み */
+.form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%;max-width:820px}
+.form input,.form select{min-height:40px;font:inherit;border:1px solid var(--rule);border-radius:8px;padding:0 8px;background:var(--sheet);color:var(--ink)}
+.form input.url{flex:1;min-width:280px}
+.pv{border-collapse:collapse;font-size:12px}
+.pv td{border:1px solid var(--rule);min-width:56px;height:36px;padding:2px 4px;text-align:center;vertical-align:middle;line-height:1.2}
+.pv td.ok{background:#E3F2E8}
+.pv td.guess{background:#F7EBCB}
+.pv td.ng{background:var(--warn-bg);color:var(--warn);font-weight:600}
+.pv td.lb{color:var(--ink-faint)}
+.pv td small{display:block;color:var(--ink-soft)}
+.fix select{min-height:34px;font:inherit;max-width:180px}
+.legend span{display:inline-block;padding:0 6px;margin-right:4px;border-radius:4px}
 .tags{display:flex;gap:2px;margin-top:2px}
 .tags i{font-style:normal;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--sheet);color:var(--ink-soft);border:1px solid var(--rule)}
 .seat.edge{border-color:var(--ink)}
@@ -88,7 +101,7 @@ body[data-view=layout] .seatonly,body[data-view=weights] .seatonly{display:none}
 <body>
 <div class="bar">
   <div class="views" id="views">
-    <button data-v="seat" aria-pressed="true">席替え</button><button data-v="layout" aria-pressed="false">配置</button><button data-v="weights" aria-pressed="false">重視</button>
+    <button data-v="seat" aria-pressed="true">席替え</button><button data-v="layout" aria-pressed="false">配置</button><button data-v="weights" aria-pressed="false">重視</button><button data-v="import" aria-pressed="false">取り込み</button>
   </div>
   <button id="make" class="primary seatonly" disabled>席を作る</button>
   <div class="tabs seatonly" id="tabs" role="tablist"></div>
@@ -105,6 +118,9 @@ body[data-view=layout] .seatonly,body[data-view=weights] .seatonly{display:none}
 
 <script>
 /* @include solver.js */
+</script>
+<script>
+/* @include importer.js */
 </script>
 <script>
 var S = { input: null, cands: [], cur: -1, sel: -1, flip: false, pins: {}, hl: null, baseIssues: null, view: 'seat', ed: null };
@@ -148,10 +164,98 @@ function errorsOf(inp){
 function showView(v){
   S.view = v;
   document.body.dataset.view = v;
-  [].forEach.call($('views').children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === v)); });
+  /* ---- 取り込み（別のスプレッドシートの過去の座席表） ---- */
+function renderImport(){
+  var M = S.im || (S.im = { url: '', info: null, sheet: '', range: '', values: null, flip: null, overrides: {}, date: '', busy: false, msg: '' });
+  var h = '<div class="msg" style="max-width:860px;margin-top:0">' +
+    '<p><b>過去の座席表を履歴に取り込みます。</b>別のスプレッドシート（前の学期・去年の座席表など）の格子をそのまま読みます。' +
+    'セルは「番号」「氏名」「番号＋氏名」のどれでもよく、黒板・教卓・空席などの見出しは飛ばします。</p>' +
+    '<div class="form"><input class="url" id="imurl" placeholder="スプレッドシートの URL（空欄ならこのファイル）" value="' + esc(M.url) + '"><button id="imopen">開く</button></div>';
+  if(M.info){
+    h += '<div class="form" style="margin-top:8px"><span>「' + esc(M.info.name) + '」</span><select id="imsheet">' +
+      M.info.sheets.map(function(x){ return '<option' + (x.name === M.sheet ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') +
+      '</select><input id="imrange" placeholder="範囲（空欄＝シート全体、例 A1:H9）" value="' + esc(M.range) + '" style="width:16em"><button id="imread" class="primary">読む</button></div>';
+  }
+  if(M.msg) h += '<p style="color:var(--warn)">' + esc(M.msg) + '</p>';
+  h += '</div>';
+  var side = '<h2>手順</h2><p class="muted">1. URL を貼って「開く」<br>2. シートと範囲を選んで「読む」<br>3. 色で対応を確かめ、赤い所を直す<br>4. その席替えの日付を入れて取り込む</p>';
+  if(M.values){
+    var r = SeatImport.parse(M.values, S.input.students, { flip: M.flip, overrides: M.overrides });
+    M.last = r;
+    var key = {};
+    r.cells.forEach(function(x){ key[x.r + ',' + x.c] = x; });
+    r.labels.forEach(function(x){ key[x.r + ',' + x.c] = { label: true, raw: x.raw, skipped: x.skipped }; });
+    var t = '<table class="pv">';
+    M.values.forEach(function(row, i){
+      t += '<tr>' + row.map(function(v, j){
+        var x = key[i + ',' + j];
+        if(!x) return '<td></td>';
+        if(x.label) return '<td class="lb">' + esc(x.raw) + (x.skipped ? '<small>飛ばす</small>' : '') + '</td>';
+        var cls = x.id == null ? 'ng' : (x.sure || x.manual ? 'ok' : 'guess');
+        return '<td class="' + cls + '">' + esc(x.raw) + (x.id != null ? '<small>→ ' + esc(x.id) + '番</small>' : '') + '</td>';
+      }).join('') + '</tr>';
+    });
+    t += '</table>';
+    h += '<div class="form" style="justify-content:space-between"><span class="legend"><span style="background:#E3F2E8">対応した</span><span style="background:#F7EBCB">推定</span><span style="background:var(--warn-bg);color:var(--warn)">対応できない</span></span>' +
+      '<label><input type="checkbox" id="imflip"' + (r.flip ? ' checked' : '') + '> 教卓側から見た表（上下左右を反転）</label></div>' +
+      '<div style="overflow:auto;max-width:100%">' + t + '</div>';
+    if(r.twoBlocks) h += '<p style="color:var(--warn)">同じ児童がほぼ全員2回ずつ出ています。向きの違う座席表が2つ並んでいるようです。範囲に片方だけを指定してください（例：A1:H9）。</p>';
+    var roster = S.input.students.slice().sort(function(a, b){ return String(a.id).localeCompare(String(b.id), 'ja', { numeric: true }); });
+    var fixes = r.problems.map(function(x){
+      var opts = '<option value="">（選ぶ）</option><option value="skip">飛ばす（児童ではない）</option>' +
+        roster.map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.id) + '番 ' + esc(p.name) + '</option>'; }).join('');
+      return '<li class="fix' + (x.id == null ? ' hard' : '') + '"><b>' + esc(x.raw) + '</b>：' + esc(x.note) + '<br><select data-k="' + x.r + ',' + x.c + '">' + opts + '</select></li>';
+    }).join('');
+    side = '<h2>読んだ結果</h2><p><b>' + r.entries.length + '</b> 人を座席に対応づけました。</p>' +
+      (r.missing.length ? '<p class="muted">この表にいない在籍児童：' + r.missing.map(function(p){ return esc(p.id) + '番'; }).join('、') + '<br>（欠席・転入などで居なかった児童は、そのままで構いません）</p>' : '') +
+      (fixes ? '<h2>確かめる所（' + r.problems.length + '）</h2><ul class="issues">' + fixes + '</ul>' : '<p class="ok">確かめる所はありません。</p>') +
+      '<h2>取り込む</h2><div class="form"><input type="date" id="imdate" value="' + esc(M.date) + '"><button id="imgo" class="primary"' + (r.entries.length && M.date && !M.busy ? '' : ' disabled') + '>履歴に取り込む</button></div>' +
+      '<p class="muted">日付は、その席で過ごし始めた日。「前回」はこの日付の順で決まります。班の区切りは取り込みません（隣と席の位置だけを使います）。</p>';
+  }
+  $('stage').innerHTML = h;
+  $('side').innerHTML = side;
+  $('imopen').onclick = function(){
+    M.url = $('imurl').value; M.msg = ''; M.info = null; M.values = null; M.overrides = {};
+    server('sourceInfo', M.url).then(function(info){
+      M.info = info;
+      if(!info.sheets.length){ M.msg = '読めるシートがありません。'; }
+      else M.sheet = (info.sheets.filter(function(x){ return /座席|席/.test(x.name); })[0] || info.sheets[0]).name;
+      renderImport();
+    }).catch(function(e){ M.msg = e.message; renderImport(); });
+  };
+  if($('imread')) $('imread').onclick = function(){
+    M.sheet = $('imsheet').value; M.range = $('imrange').value; M.msg = ''; M.overrides = {}; M.flip = null;
+    this.disabled = true; this.textContent = '読んでいます…';
+    server('readSource', M.url, M.sheet, M.range).then(function(v){
+      M.values = SeatImport.trim(v);
+      if(!M.values.length){ M.values = null; M.msg = 'そのシート（範囲）は空です。'; }
+      renderImport();
+    }).catch(function(e){ M.msg = e.message; renderImport(); });
+  };
+  if($('imflip')) $('imflip').onchange = function(){ M.flip = this.checked; renderImport(); };
+  [].forEach.call(document.querySelectorAll('.fix select'), function(sel){
+    sel.onchange = function(){ if(sel.value){ M.overrides[sel.dataset.k] = sel.value === 'skip' ? 'skip' : sel.value; renderImport(); } };
+  });
+  if($('imdate')) $('imdate').onchange = function(){ M.date = this.value; renderImport(); };
+  if($('imgo')) $('imgo').onclick = function(){
+    var r = M.last;
+    if(r.problems.some(function(x){ return x.id == null; }) && !confirm('対応できないセルが残っています。それらを飛ばして取り込みますか？')) return;
+    M.busy = true; this.disabled = true; this.textContent = '取り込み中…';
+    server('importEntries', r.entries, M.date).then(function(res){
+      setInput(res.input);
+      S.im = { url: M.url, info: M.info, sheet: M.sheet, range: '', values: null, flip: null, overrides: {}, date: '', busy: false,
+        msg: '' };
+      renderImport();
+      $('side').innerHTML = '<p class="ok"><b>第' + res.round + '回として ' + r.entries.length + ' 人分を取り込みました。</b></p><p class="muted">過去の席替えは今 ' + res.input.history.length + ' 回分あります。続けて別の回を取り込めます。</p>';
+    }).catch(function(e){ M.busy = false; M.msg = e.message; renderImport(); });
+  };
+}
+
+[].forEach.call($('views').children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === v)); });
   if(!S.input) return;
   if(v === 'layout') return renderEditor();
   if(v === 'weights') return renderWeights();
+  if(v === 'import') return renderImport();
   if(S.cands.length) return render();
   var inp = S.input, errs = errorsOf(inp);
   $('make').disabled = !!errs.length;
@@ -499,6 +603,93 @@ function saveWeights(){
   renderWeights();
   clearTimeout(wTimer);
   wTimer = setTimeout(function(){ server('saveWeights', S.input.settings.weights).catch(function(e){ alert('設定を保存できませんでした：' + e.message); }); }, 400);
+}
+
+/* ---- 取り込み（別のスプレッドシートの過去の座席表） ---- */
+function renderImport(){
+  var M = S.im || (S.im = { url: '', info: null, sheet: '', range: '', values: null, flip: null, overrides: {}, date: '', busy: false, msg: '' });
+  var h = '<div class="msg" style="max-width:860px;margin-top:0">' +
+    '<p><b>過去の座席表を履歴に取り込みます。</b>別のスプレッドシート（前の学期・去年の座席表など）の格子をそのまま読みます。' +
+    'セルは「番号」「氏名」「番号＋氏名」のどれでもよく、黒板・教卓・空席などの見出しは飛ばします。</p>' +
+    '<div class="form"><input class="url" id="imurl" placeholder="スプレッドシートの URL（空欄ならこのファイル）" value="' + esc(M.url) + '"><button id="imopen">開く</button></div>';
+  if(M.info){
+    h += '<div class="form" style="margin-top:8px"><span>「' + esc(M.info.name) + '」</span><select id="imsheet">' +
+      M.info.sheets.map(function(x){ return '<option' + (x.name === M.sheet ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') +
+      '</select><input id="imrange" placeholder="範囲（空欄＝シート全体、例 A1:H9）" value="' + esc(M.range) + '" style="width:16em"><button id="imread" class="primary">読む</button></div>';
+  }
+  if(M.msg) h += '<p style="color:var(--warn)">' + esc(M.msg) + '</p>';
+  h += '</div>';
+  var side = '<h2>手順</h2><p class="muted">1. URL を貼って「開く」<br>2. シートと範囲を選んで「読む」<br>3. 色で対応を確かめ、赤い所を直す<br>4. その席替えの日付を入れて取り込む</p>';
+  if(M.values){
+    var r = SeatImport.parse(M.values, S.input.students, { flip: M.flip, overrides: M.overrides });
+    M.last = r;
+    var key = {};
+    r.cells.forEach(function(x){ key[x.r + ',' + x.c] = x; });
+    r.labels.forEach(function(x){ key[x.r + ',' + x.c] = { label: true, raw: x.raw, skipped: x.skipped }; });
+    var t = '<table class="pv">';
+    M.values.forEach(function(row, i){
+      t += '<tr>' + row.map(function(v, j){
+        var x = key[i + ',' + j];
+        if(!x) return '<td></td>';
+        if(x.label) return '<td class="lb">' + esc(x.raw) + (x.skipped ? '<small>飛ばす</small>' : '') + '</td>';
+        var cls = x.id == null ? 'ng' : (x.sure || x.manual ? 'ok' : 'guess');
+        return '<td class="' + cls + '">' + esc(x.raw) + (x.id != null ? '<small>→ ' + esc(x.id) + '番</small>' : '') + '</td>';
+      }).join('') + '</tr>';
+    });
+    t += '</table>';
+    h += '<div class="form" style="justify-content:space-between"><span class="legend"><span style="background:#E3F2E8">対応した</span><span style="background:#F7EBCB">推定</span><span style="background:var(--warn-bg);color:var(--warn)">対応できない</span></span>' +
+      '<label><input type="checkbox" id="imflip"' + (r.flip ? ' checked' : '') + '> 教卓側から見た表（上下左右を反転）</label></div>' +
+      '<div style="overflow:auto;max-width:100%">' + t + '</div>';
+    if(r.twoBlocks) h += '<p style="color:var(--warn)">同じ児童がほぼ全員2回ずつ出ています。向きの違う座席表が2つ並んでいるようです。範囲に片方だけを指定してください（例：A1:H9）。</p>';
+    var roster = S.input.students.slice().sort(function(a, b){ return String(a.id).localeCompare(String(b.id), 'ja', { numeric: true }); });
+    var fixes = r.problems.map(function(x){
+      var opts = '<option value="">（選ぶ）</option><option value="skip">飛ばす（児童ではない）</option>' +
+        roster.map(function(p){ return '<option value="' + esc(p.id) + '">' + esc(p.id) + '番 ' + esc(p.name) + '</option>'; }).join('');
+      return '<li class="fix' + (x.id == null ? ' hard' : '') + '"><b>' + esc(x.raw) + '</b>：' + esc(x.note) + '<br><select data-k="' + x.r + ',' + x.c + '">' + opts + '</select></li>';
+    }).join('');
+    side = '<h2>読んだ結果</h2><p><b>' + r.entries.length + '</b> 人を座席に対応づけました。</p>' +
+      (r.missing.length ? '<p class="muted">この表にいない在籍児童：' + r.missing.map(function(p){ return esc(p.id) + '番'; }).join('、') + '<br>（欠席・転入などで居なかった児童は、そのままで構いません）</p>' : '') +
+      (fixes ? '<h2>確かめる所（' + r.problems.length + '）</h2><ul class="issues">' + fixes + '</ul>' : '<p class="ok">確かめる所はありません。</p>') +
+      '<h2>取り込む</h2><div class="form"><input type="date" id="imdate" value="' + esc(M.date) + '"><button id="imgo" class="primary"' + (r.entries.length && M.date && !M.busy ? '' : ' disabled') + '>履歴に取り込む</button></div>' +
+      '<p class="muted">日付は、その席で過ごし始めた日。「前回」はこの日付の順で決まります。班の区切りは取り込みません（隣と席の位置だけを使います）。</p>';
+  }
+  $('stage').innerHTML = h;
+  $('side').innerHTML = side;
+  $('imopen').onclick = function(){
+    M.url = $('imurl').value; M.msg = ''; M.info = null; M.values = null; M.overrides = {};
+    server('sourceInfo', M.url).then(function(info){
+      M.info = info;
+      if(!info.sheets.length){ M.msg = '読めるシートがありません。'; }
+      else M.sheet = (info.sheets.filter(function(x){ return /座席|席/.test(x.name); })[0] || info.sheets[0]).name;
+      renderImport();
+    }).catch(function(e){ M.msg = e.message; renderImport(); });
+  };
+  if($('imread')) $('imread').onclick = function(){
+    M.sheet = $('imsheet').value; M.range = $('imrange').value; M.msg = ''; M.overrides = {}; M.flip = null;
+    this.disabled = true; this.textContent = '読んでいます…';
+    server('readSource', M.url, M.sheet, M.range).then(function(v){
+      M.values = SeatImport.trim(v);
+      if(!M.values.length){ M.values = null; M.msg = 'そのシート（範囲）は空です。'; }
+      renderImport();
+    }).catch(function(e){ M.msg = e.message; renderImport(); });
+  };
+  if($('imflip')) $('imflip').onchange = function(){ M.flip = this.checked; renderImport(); };
+  [].forEach.call(document.querySelectorAll('.fix select'), function(sel){
+    sel.onchange = function(){ if(sel.value){ M.overrides[sel.dataset.k] = sel.value === 'skip' ? 'skip' : sel.value; renderImport(); } };
+  });
+  if($('imdate')) $('imdate').onchange = function(){ M.date = this.value; renderImport(); };
+  if($('imgo')) $('imgo').onclick = function(){
+    var r = M.last;
+    if(r.problems.some(function(x){ return x.id == null; }) && !confirm('対応できないセルが残っています。それらを飛ばして取り込みますか？')) return;
+    M.busy = true; this.disabled = true; this.textContent = '取り込み中…';
+    server('importEntries', r.entries, M.date).then(function(res){
+      setInput(res.input);
+      S.im = { url: M.url, info: M.info, sheet: M.sheet, range: '', values: null, flip: null, overrides: {}, date: '', busy: false,
+        msg: '' };
+      renderImport();
+      $('side').innerHTML = '<p class="ok"><b>第' + res.round + '回として ' + r.entries.length + ' 人分を取り込みました。</b></p><p class="muted">過去の席替えは今 ' + res.input.history.length + ' 回分あります。続けて別の回を取り込めます。</p>';
+    }).catch(function(e){ M.busy = false; M.msg = e.message; renderImport(); });
+  };
 }
 
 [].forEach.call($('views').children, function(b){ b.onclick = function(){ showView(b.dataset.v); }; });

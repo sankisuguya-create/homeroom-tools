@@ -5,17 +5,21 @@ import {readFile,writeFile,mkdir} from 'node:fs/promises';
 
 const root=new URL('../',import.meta.url);
 const src=f=>readFile(new URL('src/'+f,root),'utf8');
-const [dialog,solver,code,manifest]=await Promise.all([src('Dialog.html'),src('solver.js'),src('Code.gs'),src('appsscript.json')]);
-const marker='/* @include solver.js */';
-if(!dialog.includes(marker))throw new Error('Dialog.html に '+marker+' がありません');
+const [dialog,solver,importer,code,manifest]=await Promise.all([src('Dialog.html'),src('solver.js'),src('importer.js'),src('Code.gs'),src('appsscript.json')]);
+const strip=js=>js.replace(/\nif\(typeof module[^\n]*\n?$/,'\n');
+let page=dialog;
+for(const [name,js] of [['solver.js',solver],['importer.js',importer]]){
+  const marker='/* @include '+name+' */';
+  if(!page.includes(marker))throw new Error('Dialog.html に '+marker+' がありません');
+  if(js.includes('</script'))throw new Error(name+' に </script が含まれている');
+  page=page.replace(marker,()=>'/* 生成物：apps/seating/src/'+name+' から埋め込み。直接編集しない。 */\n'+strip(js));
+}
 const banner='/* 生成物：apps/seating/src/ から scripts/build.mjs が作る。直接編集しない。 */\n';
 const out={
-  'Dialog.html':dialog.replace(marker,()=>banner+solver.replace(/\nif\(typeof module[^\n]*\n?$/,'\n')),
+  'Dialog.html':page,
   'Code.gs':banner+code,
   'appsscript.json':manifest
 };
-if(out['Dialog.html'].includes('</script'+'>')===false)throw new Error('script 終端がない');
-if(solver.includes('</script'))throw new Error('solver.js に </script が含まれている');
 const check=process.argv.includes('--check');
 await mkdir(new URL('dist/',root),{recursive:true});
 let stale=[];

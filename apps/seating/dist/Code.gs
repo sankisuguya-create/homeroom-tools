@@ -175,14 +175,76 @@ function importPast(){
   var msg = res.entries.length + ' 人分を ' + Utilities.formatDate(res.date, Session.getScriptTimeZone(), 'yyyy/MM/dd') + ' の席替えとして履歴に取り込みます。' +
     (res.warnings.length ? '\n\n' + res.warnings.join('\n') : '');
   if(ui.alert(msg, ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
-  var hist = ensureSheet_(ss, SHEET.history, HISTORY_HEAD);
-  var last = hist.getLastRow(), round = 1;
-  if(last > 1) round = Math.max.apply(null, hist.getRange(2, 2, last - 1, 1).getValues().map(function(r){ return +r[0] || 0; })) + 1;
-  var rows = res.entries.map(function(e){ return [res.date, round, e.id, e.name, e.r, e.c, e.group]; });
-  hist.getRange(last + 1, 1, rows.length, HISTORY_HEAD.length).setValues(rows);
+  var round = appendHistory_(ss, res.entries, res.date);
   sh.getRange(LAYOUT_TOP, 1, LAYOUT_MAX, LAYOUT_MAX).clearContent();
   sh.getRange(2, LAYOUT_MAX + 2).clearContent();
   ui.alert('取り込みました（第' + round + '回として）。');
+}
+
+/* 履歴に1回分を足し、付けた回の番号を返す */
+function appendHistory_(ss, entries, date){
+  var lock = LockService.getDocumentLock();
+  lock.waitLock(10000);
+  try {
+    var hist = ensureSheet_(ss, SHEET.history, HISTORY_HEAD);
+    var last = hist.getLastRow(), round = 1;
+    if(last > 1) round = Math.max.apply(null, hist.getRange(2, 2, last - 1, 1).getValues().map(function(r){ return +r[0] || 0; })) + 1;
+    var rows = entries.map(function(e){ return [date, round, e.id, e.name, e.r, e.c, e.group == null ? '' : e.group]; });
+    hist.getRange(last + 1, 1, rows.length, HISTORY_HEAD.length).setValues(rows);
+    return round;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- 別のスプレッドシートからの取り込み（ダイアログの「取り込み」から呼ぶ） ---------- */
+
+var IMPORT_MAX = 60;  // 読む範囲の上限（行・列）。座席表より大きい表は範囲を指定してもらう
+
+function openSource_(url){
+  url = String(url || '').trim();
+  if(!url) return SpreadsheetApp.getActive();
+  var m = url.match(/\/d\/([a-zA-Z0-9_-]{20,})/) || url.match(/^([a-zA-Z0-9_-]{20,})$/);
+  if(!m) throw new Error('スプレッドシートの URL として読めません。ブラウザのアドレス欄の URL をそのまま貼ってください。');
+  try { return SpreadsheetApp.openById(m[1]); }
+  catch(e){ throw new Error('開けませんでした。自分が閲覧できるファイルか確かめてください。'); }
+}
+
+function sourceInfo(url){
+  var ss = openSource_(url);
+  var own = ss.getId() === SpreadsheetApp.getActive().getId();
+  var skip = own ? [SHEET.roster, SHEET.cond, SHEET.settings, SHEET.history, SHEET.layout] : [];
+  return {
+    name: ss.getName(), own: own,
+    sheets: ss.getSheets().filter(function(sh){ return skip.indexOf(sh.getName()) < 0; })
+      .map(function(sh){ return { name: sh.getName(), rows: sh.getLastRow(), cols: sh.getLastColumn() }; })
+  };
+}
+
+/* 表示値で返す（「1-3」や日付に化けた値も見たままの文字で読む） */
+function readSource(url, sheetName, a1){
+  var ss = openSource_(url), sh = ss.getSheetByName(sheetName);
+  if(!sh) throw new Error('シート「' + sheetName + '」がありません。');
+  var rg;
+  a1 = String(a1 || '').trim().toUpperCase();
+  if(a1){
+    try { rg = sh.getRange(a1); } catch(e){ throw new Error('範囲「' + a1 + '」が読めません（例：A1:H9）。'); }
+  } else {
+    if(sh.getLastRow() < 1) return [];
+    rg = sh.getRange(1, 1, Math.min(sh.getLastRow(), IMPORT_MAX), Math.min(sh.getLastColumn(), IMPORT_MAX));
+  }
+  if(rg.getNumRows() > IMPORT_MAX || rg.getNumColumns() > IMPORT_MAX) throw new Error('範囲が大きすぎます（' + IMPORT_MAX + '行・' + IMPORT_MAX + '列まで）。座席表の部分だけを指定してください。');
+  return rg.getDisplayValues();
+}
+
+/* entries: [{id,name,r,c,group}]、date: 'yyyy-mm-dd' */
+function importEntries(entries, date){
+  var m = String(date || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) throw new Error('日付を入れてください。');
+  if(!entries || !entries.length) throw new Error('取り込む児童がいません。');
+  var ss = SpreadsheetApp.getActive();
+  var round = appendHistory_(ss, entries, new Date(+m[1], +m[2] - 1, +m[3]));
+  return { round: round, input: loadInput() };
 }
 
 /* 純関数。past は「過去の座席」シートの値（1行目＝前、2行目から枠、右に日付） */

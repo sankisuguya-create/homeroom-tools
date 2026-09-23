@@ -33,6 +33,7 @@ node apps/icon-maker/tests/test-app.mjs
 node apps/seating/scripts/build.mjs --check
 node apps/seating/tests/test-solver.js
 node apps/seating/tests/test-code.js
+node apps/seating/tests/test-importer.js
 ```
 
 `dist/`を直しても次のビルドで上書きされます。変更は各`src/`または`shared/`へ入れます。

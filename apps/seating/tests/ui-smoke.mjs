@@ -32,6 +32,13 @@ await page.addInitScript(inp=>{
   const handlers={
     loadInput:()=>inp,
     commit:(seats,round)=>{ window.__committed={seats,round}; return {ok:true,round}; },
+    sourceInfo:(url)=>({name:'去年の座席',own:false,sheets:[{name:'メモ',rows:3,cols:3},{name:'2学期の座席',rows:9,cols:8}]}),
+    readSource:(url,sheet,a1)=>[
+      ['','','黒板','',''],
+      ['1 あおき1','いとう2','','3',''],
+      ['えんどう4','だれか','','おおた5',''],
+      ['','','','','']],
+    importEntries:(entries,date)=>{ window.__imported={entries,date}; return {round:2,input:Object.assign({},inp,{history:[entries],settings:Object.assign({},inp.settings,{weights:window.__weights||{}})})}; },
     saveWeights:(w)=>{ window.__weights=w; return 'ok'; },
     saveLayout:(grid)=>{ window.__layout=grid;
       const seats=[]; grid.forEach((row,r)=>row.forEach((v,c)=>{ if(v!=='') seats.push({r:r+2,c:c+1,group:v==='○'?'':v}); }));
@@ -54,6 +61,25 @@ await page.click('#views [data-v=weights]');
 await page.click('.seg button[data-k=tall][data-l="4"]');
 await page.waitForFunction(()=>window.__weights&&window.__weights.tall===4);
 if(shot) await page.screenshot({path:shot.replace('.png','-weights.png')});
+// 取り込み：別ファイルを開く→読む→赤いセルを直す→日付→取り込む
+await page.click('#views [data-v=import]');
+await page.fill('#imurl','https://docs.google.com/spreadsheets/d/abcdefghijklmnopqrstuvwxyz0123/edit');
+await page.click('#imopen');
+await page.waitForSelector('#imsheet');
+if(await page.$eval('#imsheet',e=>e.value)!=='2学期の座席') throw new Error('座席らしいシートを既定で選ばない');
+await page.click('#imread');
+await page.waitForSelector('.pv');
+if(await page.$$eval('.pv td.ng',t=>t.length)!==1) throw new Error('対応できないセルの数');
+await page.selectOption('.fix select','skip');
+await page.fill('#imdate','2025-09-01');
+await page.dispatchEvent('#imdate','change');
+if(shot) await page.screenshot({path:shot.replace('.png','-import.png')});
+await page.click('#imgo');
+await page.waitForFunction(()=>window.__imported);
+const im=await page.evaluate(()=>window.__imported);
+if(im.date!=='2025-09-01'||im.entries.length!==5) throw new Error('取り込み内容 '+JSON.stringify(im));
+const e1=im.entries.find(e=>e.id===1);
+if(e1.r!==2||e1.c!==1) throw new Error('座標 '+JSON.stringify(e1));
 // 配置：ひな形「4人の島」→ 保存
 await page.click('#views [data-v=layout]');
 await page.click('[data-p="4人の島"]');
