@@ -696,7 +696,11 @@ function refreshFoot(){
   tfootEl.appendChild(tr);
 }
 function cycleMark(st, it, btn){
-  if(suppressClick){ suppressClick = false; return; }
+  /* なぞり直後の離しクリックだけを無効化する（時間窓で残存フラグを防ぐ） */
+  if(suppressClick && performance.now() - suppressClick < 900){
+    suppressClick = 0; return;
+  }
+  suppressClick = 0;
   const cur = getMark(st, it);
   const nxt = cur === "" ? "y" : cur === "y" ? "z" : cur === "z" ? "x" : "";
   setMark(st, it, nxt);
@@ -707,7 +711,7 @@ function cycleMark(st, it, btn){
   save();
   checkArch(false);
 }
-let suppressClick = false;
+let suppressClick = 0;
 
 /* 全員分そろった品目をアーカイブへ。quiet=true ではお知らせを出さない（読み込み直後など） */
 let toastT = null;
@@ -902,7 +906,7 @@ function endPaint(){
   tbodyEl.querySelectorAll(".ck[data-painting]").forEach(function(b){
     delete b.dataset.painting; b.classList.remove("pt");
   });
-  if(paintedN > 0){ suppressClick = true; save(); checkArch(false); }
+  if(paintedN > 0){ suppressClick = performance.now(); save(); checkArch(false); }
 }
 document.addEventListener("pointerup", endPaint);
 document.addEventListener("pointercancel", endPaint);
