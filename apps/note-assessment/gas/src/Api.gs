@@ -159,7 +159,7 @@ function apiSetRated(subject, unitName, rated){
   }
   if(!row) return {ok:false, why:"その単元がありません"};
 
-  let adopted = 0, skipped = 0;
+  let adopted = 0, skipped = 0, noSym = 0;
   if(rated){
     const subj = Master.subject(subject);
     const u = subj.units.filter(x => x.name === unitName)[0];
@@ -168,7 +168,9 @@ function apiSetRated(subject, unitName, rated){
     Roster.all().forEach(st => {
       if(Final.unitValue(subject, st.id, unitName)) return;   // 教師が直したものは残す
       const s = Aggregate.summarize(all[st.id] || {}, u);
-      if(!s.provSym) return;                          // 記号が1つも無ければ採用しようがない
+      /* 入力があっても値のもとになる記号（休・/ 以外）が無い児童は、
+         採用にも見送りにも入らない。別に数えて「採用の対象」とずれないようにする。 */
+      if(!s.provSym){ noSym++; return; }
       /* この児童自身の記入率が8割未満なら、まだ採用しない。
          見せる／見せないの旗を立てるだけの操作なので、あとで追いつけば
          次の「単元の評価をする」や「仮値をまとめて採用」で拾われる。 */
@@ -179,7 +181,7 @@ function apiSetRated(subject, unitName, rated){
 
   sh.getRange(row, 7).setValue(!!rated);
   Master.clearCache();
-  return {ok:true, rated: !!rated, adopted: adopted, skipped: skipped};
+  return {ok:true, rated: !!rated, adopted: adopted, skipped: skipped, noSym: noSym};
 }
 
 /* ==================================================================
@@ -250,10 +252,11 @@ function apiUnitTable(subject, unitName){
       prov: s.provSym, provVal: s.prov, all: symbolOfMedian(s.all),
       high: s.high ? symbolOf(s.high) : null,
       top: s.top, c: s.c, d: s.d,
-      /* この児童自身の記入率が採用の水準に達しているか。
-         「単元の評価をする」「仮値をまとめて採用」は、達していない児童を
-         採用しない（apiSetRated / apiAdoptAll）。画面にも先に見せておく。 */
-      ready: meetsRate_(s),
+      /* 「単元の評価をする」「仮値をまとめて採用」が実際に採用する児童か。
+         記入率が足りない児童と、値のもとになる記号が無い児童（休・/ だけ
+         か未入力）は採用されない（apiSetRated / apiAdoptAll と同じ条件）。 */
+      ready: meetsRate_(s) && !!s.provSym,
+      nosym: !s.provSym,
       final: Final.unitValue(subject, st.id, unitName)
     };
   });
@@ -278,7 +281,11 @@ function apiUnitTable(subject, unitName){
 
 function ruleText_(R){
   const stat = R.stat;
-  return "A ≧ " + symbolOf(R.aFrom) + " / C ≦ " + symbolOf(R.cTo)
+  /* しきい値が壊れているときは記号が引けない。そのまま表示すると
+     見た目は普通なのに中身が全員 A 相当になるので、ここで分かる形にする。 */
+  const a = (R.aFrom != null) ? symbolOf(R.aFrom) : "？（A下限が不正）";
+  const c = (R.cTo   != null) ? symbolOf(R.cTo)   : "？（C上限が不正）";
+  return "A ≧ " + a + " / C ≦ " + c
        + " ／ 代表値：" + stat + (stat === "後半の中央値" ? "（後半 1/" + R.late + "）" : "")
        + (R.withD ? "" : " ／ D を除く") + (R.withC ? "" : " ／ C を除く");
 }
@@ -296,17 +303,17 @@ function apiAdoptAll(subject, unitName, overwrite){
   const u = subj && subj.units.filter(x => x.name === unitName)[0];
   if(!u) return {ok:false, why:"その単元はありません"};
   const all = Store.readAll(subject);
-  let n = 0, skipped = 0;
+  let n = 0, skipped = 0, noSym = 0;
   Roster.all().forEach(st => {
     if(!overwrite && Final.unitValue(subject, st.id, unitName)) return;
     const s = Aggregate.summarize(all[st.id] || {}, u);
-    if(!s.provSym) return;
+    if(!s.provSym){ noSym++; return; }
     /* apiSetRated と同じしきい値。まとめて採用するボタンからでも、
        記入率8割未満の児童を素通りさせない。 */
     if(!meetsRate_(s)){ skipped++; return; }
     Final.set(subject, st.id, "単元", unitName, s.provSym); n++;
   });
-  return {ok:true, put:n, skipped:skipped};
+  return {ok:true, put:n, skipped:skipped, noSym:noSym};
 }
 
 /* 一斉入力。既定は空欄だけ。 */

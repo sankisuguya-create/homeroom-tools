@@ -397,12 +397,12 @@ const isReleaseSym = sym => iOf(sym) >= iRelease;   // 解放されるまで児�
 
 /* valueOf という名前は使わない。Object.prototype.valueOf と同名で、
    GAS ではトップレベル宣言がグローバルオブジェクト上のそれを隠す。 */
-function valueOfSym(sym){                          // "A++" → 16／スケール外は null
+function valueOfSym(sym){                          // "A++" → 11／スケール外は null
   if(!sym || isMark(sym)) return null;
   const i = LEVELS.indexOf(String(sym));
   return i < 0 ? null : i + 1;
 }
-const symbolOf = v => LEVELS[v - 1];               // 16 → "A++"
+const symbolOf = v => LEVELS[v - 1];               // 11 → "A++"
 const baseOf   = v => baseOfSym(LEVELS[v - 1]);
 const isTopVal  = v => iOf(LEVELS[v - 1]) >= iTop;
 const isWarnVal = v => { const i = iOf(LEVELS[v - 1]); return i >= 0 && i <= iWarn; };
@@ -553,9 +553,10 @@ function loadUnit(){
   rb.onclick = ()=> call("apiSetRated", [subject, unitName, !u.rated], r=>{
     u.rated = r.rated;
     say(r.rated
-      ? ("児童に見せた" + ((r.adopted || r.skipped) ?
+      ? ("児童に見せた" + ((r.adopted || r.skipped || r.noSym) ?
           "（" + r.adopted + "人ぶん採用した" +
-          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）" : ""))
+          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") +
+          (r.noSym   ? "・値のもとになる記号が無い " + r.noSym + "人" : "") + "）" : ""))
       : "児童に見せないようにした");
     loadUnit();
   });
@@ -611,7 +612,10 @@ function drawUnitTable(t){
           ' title="No.' + (unitFrom + i) + '　' + esc(r.name) + (r.edited[i] ? "　貫通ずみ" : "") + '">' +
           (s || "·") + '</span>').join("") + '</div></td>' +
       '<td class="num' + (r.ready ? "" : " not-ready") + '"' +
-        (r.ready ? "" : ' title="記入率が' + Math.round((t.rateMin || 0) * 100) + '%未満。「単元の評価をする」を押しても、この児童はまだ採用されない"') +
+        (r.ready ? "" : ' title="' +
+          (r.nosym ? "値のもとになる記号が無い（入力は 休・/ のみか、まだ無い）。採用される値がない"
+                   : "記入率が" + Math.round((t.rateMin || 0) * 100) + "%未満。「単元の評価をする」を押しても、この児童はまだ採用されない") +
+          '"') +
         '>' + r.n + '/' + r.total + '</td>' +
       '<td class="num">' + (r.off || "·") + '</td>' +
       '<td class="num">' + (r.skip || "·") + '</td>' +
@@ -667,7 +671,8 @@ $("unitTbl").addEventListener("click", e=>{
 
 $("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
   say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま" +
-    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）"); loadUnit(); });
+    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") +
+    (r.noSym   ? "・値のもとになる記号が無い " + r.noSym + "人" : "") + "）"); loadUnit(); });
 $("bulkGo").onclick = ()=> call("apiBulk",
   [subject, Number($("bulkNo").value), $("bulkSym").value, $("bulkOver").checked], r=>{
     say(r.put + "人に入れた" + (r.over ? "（うち上書き " + r.over + "）" : "")); loadUnit(); });
