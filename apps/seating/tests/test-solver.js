@@ -78,7 +78,7 @@ function touching(a, b){ return Math.abs(a.r - b.r) <= 1 && Math.abs(a.c - b.c) 
   });
   const [res] = S.solve(input, { seed: 5, count: 1 });
   assert.strictEqual(res.seats.filter(s => s.id == null).length, 6 * 6 - 30);
-  assert.ok(!res.issues.some(i => i.kind === '班長' && i.text.includes('いません')), res.issues.map(i=>i.text).join('\n'));
+  assert.ok(!res.issues.some(i => i.kind === 'リーダー' && i.text.includes('いません')), res.issues.map(i=>i.text).join('\n'));
   assert.ok(!res.issues.some(i => i.kind === '配慮'));
 }
 
@@ -101,6 +101,37 @@ console.log('solver: ok');
 {
   const input = makeInput(inp => { inp.students[0].leader = true; });
   const [res] = S.solve(input, { seed: 7, count: 1, iters: 20000 });
-  assert.ok(!res.issues.some(i => i.kind === '班長'));
+  assert.ok(!res.issues.some(i => i.kind === 'リーダー'));
 }
 console.log('solver extra: ok');
+
+// 8. 高身長・学習支援役・重視の段階
+{
+  const input = makeInput(inp => {
+    [3, 8, 20].forEach(i => inp.students[i - 1].tall = true);
+    for(let i = 1; i <= 9; i++) inp.students[i * 3 - 1].support = true;
+  });
+  const [res] = S.solve(input, { seed: 8, count: 1 });
+  [3, 8, 20].forEach(id => assert.ok(seatOf(res, id).r > 3, id + '番が前方'));
+  const groupsWithSupport = new Set(res.seats.filter(s => [3,6,9,12,15,18,21,24,27].includes(s.id)).map(s => s.group));
+  assert.strictEqual(groupsWithSupport.size, 9);
+}
+{
+  // 男女を「無視」にすると男女の問題は出ない。「必須」にすると同性の隣が必須違反になる
+  const off = makeInput(inp => { inp.settings.weights = { gender: 0 }; });
+  const ids = S.solve(off, { seed: 9, count: 1, iters: 5000 })[0].seats.map(s => s.id);
+  assert.ok(!S.evaluate(off, ids).issues.some(i => i.kind === '男女'));
+  const must = makeInput(inp => { inp.settings.weights = { gender: 4 }; });
+  const bad = must.seats.map((_, i) => i < 32 ? i + 1 : null);   // 番号順＝男が固まる
+  assert.ok(S.evaluate(must, bad).issues.some(i => i.kind === '男女' && i.hard));
+  // 割合で効く項目は必須にできない（強に丸める）
+  const m = S.buildModel(makeInput(inp => { inp.settings.weights = { histAdj: 4 }; }));
+  assert.strictEqual(m.w.histAdj, S.weights.histAdj * 2.5);
+}
+// 9. 班なしの座席（○）は班の関係を持たない
+{
+  const input = makeInput(inp => inp.seats.forEach(s => s.group = ''));
+  const [res] = S.solve(input, { seed: 10, count: 1, iters: 5000 });
+  assert.ok(!res.issues.some(i => i.text.includes('班')));
+}
+console.log('solver weights: ok');

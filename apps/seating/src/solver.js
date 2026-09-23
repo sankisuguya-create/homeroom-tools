@@ -8,10 +8,39 @@ var Seating = (function(){
     near: 30,
     genderPair: 20, genderGrid: 10, genderGroup: 10,
     leaderNone: 40, leaderExtra: 12,
+    supportNone: 30, supportExtra: 10,
     careGroup: 40, careAdj: 30,
+    tallFront: 25,
     histAdj: 50, histGroup: 12, histDecay: 0.6, sameSeat: 15,
     frontBias: 20
   };
+  /* 重視の項目。教員がダイアログで 0〜4 の段階を選ぶ（0=無視 1=弱 2=中 3=強 4=必須）。
+     must=false の項目は「必須」を選べない（割合で効く項目は必須にすると意味が壊れる）。 */
+  var CATEGORIES = [
+    { key: 'sep',       label: '「離す」の組',        keys: ['sepAdj', 'sepFb', 'sepDiag', 'sepGroup'], must: true },
+    { key: 'near',      label: '「近く」の組',        keys: ['near'], must: true },
+    { key: 'gender',    label: '男女の混ざり方',      keys: ['genderPair', 'genderGrid', 'genderGroup'], must: true },
+    { key: 'leader',    label: 'リーダーを各班に',    keys: ['leaderNone', 'leaderExtra'], must: true },
+    { key: 'support',   label: '学習支援役を各班に',  keys: ['supportNone', 'supportExtra'], must: true },
+    { key: 'care',      label: '配慮の児童を分ける',  keys: ['careGroup', 'careAdj'], must: true },
+    { key: 'tall',      label: '高身長は後ろへ',      keys: ['tallFront'], must: true },
+    { key: 'histAdj',   label: '最近の隣を避ける',    keys: ['histAdj'], must: false },
+    { key: 'histGroup', label: '最近の班を避ける',    keys: ['histGroup'], must: false },
+    { key: 'sameSeat',  label: '前回と同じ席を避ける', keys: ['sameSeat'], must: true },
+    { key: 'frontBias', label: '前・後ろの回り持ち',  keys: ['frontBias'], must: false }
+  ];
+  var LEVEL_MUL = [0, 0.4, 1, 2.5];
+
+  function effectiveWeights(levels){
+    var w = {};
+    Object.keys(W).forEach(function(k){ w[k] = W[k]; });
+    CATEGORIES.forEach(function(cat){
+      var lv = levels && levels[cat.key] != null ? +levels[cat.key] : 2;
+      if(lv >= 4 && !cat.must) lv = 3;
+      cat.keys.forEach(function(k){ w[k] = lv >= 4 ? HARD : W[k] * LEVEL_MUL[Math.max(0, lv)]; });
+    });
+    return w;
+  }
 
   function rng(seed){
     var a = seed >>> 0;
@@ -51,9 +80,9 @@ var Seating = (function(){
       });
       adj.push(a); fb.push(f); diag.push(d); grid4.push(a.concat(f));
     }
-    var groupOf = seats.map(function(s){ return String(s.group); });
+    var groupOf = seats.map(function(s){ var g = s.group == null ? '' : String(s.group); return g === '0' || g === '○' ? '' : g; });
     var groups = {};
-    groupOf.forEach(function(g, i){ (groups[g] = groups[g] || []).push(i); });
+    groupOf.forEach(function(g, i){ if(g !== '') (groups[g] = groups[g] || []).push(i); });  // '' ＝班なし
 
     function relation(i, j){
       if(adj[i].indexOf(j) >= 0) return 'adj';
@@ -88,7 +117,8 @@ var Seating = (function(){
       h.forEach(function(e){
         if(idx[e.id] === undefined) return;
         byPos[e.r + ',' + e.c] = idx[e.id];
-        (byGroup[e.group] = byGroup[e.group] || []).push(idx[e.id]);
+        var eg = e.group == null ? '' : String(e.group);
+        if(eg !== '' && eg !== '0' && eg !== '○') (byGroup[eg] = byGroup[eg] || []).push(idx[e.id]);
         if(k === 0) lastSeat[idx[e.id]] = e.r + ',' + e.c;
       });
       h.forEach(function(e){
@@ -96,7 +126,7 @@ var Seating = (function(){
         [byPos[e.r + ',' + (e.c - 1)], byPos[e.r + ',' + (e.c + 1)]].forEach(function(q){
           if(q !== undefined) histAdj[p][q] = (histAdj[p][q] || 0) + decay;
         });
-        (byGroup[e.group] || []).forEach(function(q){
+        (byGroup[String(e.group)] || []).forEach(function(q){
           if(q !== p) histGroup[p][q] = (histGroup[p][q] || 0) + decay;
         });
       });
@@ -135,7 +165,10 @@ var Seating = (function(){
       useLeaders: people.some(function(p){ return p.leader; }),
       /* 班長候補が班の数より少ないなら「いない班」は避けようがないので数えない */
       leadersEnough: people.filter(function(p){ return p.leader; }).length >= Object.keys(groups).length,
-      useCare: people.some(function(p){ return p.care; })
+      useCare: people.some(function(p){ return p.care; }),
+      useSupport: people.some(function(p){ return p.support; }),
+      supportEnough: people.filter(function(p){ return p.support; }).length >= Object.keys(groups).length,
+      w: effectiveWeights(input.settings.weights)
     });
   }
 
@@ -180,13 +213,16 @@ var Seating = (function(){
     var s = pos[p], P = m.people[p], c = 0;
     if(P.ghost) return 0;
     if(P.front && !m.isFront[s]){ c += HARD; if(out) out.push({ w: HARD, kind: '前方', text: label(P) + ' が前方の席ではありません。', seats: [s] }); }
+    if(P.tall && !P.front && m.isFront[s] && m.w.tallFront){
+      c += m.w.tallFront; if(out) out.push({ w: m.w.tallFront, kind: '高身長', text: label(P) + '（高身長）が前方の席です。', seats: [s] });
+    }
     // 場所の偏り
-    if(m.isFront[s] && m.frontRate[p] > m.meanFront && !P.front){
-      var v = W.frontBias * (m.frontRate[p] - m.meanFront);
+    if(m.w.frontBias && m.isFront[s] && m.frontRate[p] > m.meanFront && !P.front){
+      var v = m.w.frontBias * (m.frontRate[p] - m.meanFront);
       c += v; if(out && v >= 5) out.push({ w: v, kind: '偏り', text: label(P) + ' はこれまでも前方が多めです。', seats: [s] });
     }
-    if(m.lastSeat[p] && m.lastSeat[p] === m.seats[s].r + ',' + m.seats[s].c){
-      c += W.sameSeat; if(out) out.push({ w: W.sameSeat, kind: '履歴', text: label(P) + ' が前回と同じ席です。', seats: [s] });
+    if(m.w.sameSeat && m.lastSeat[p] && m.lastSeat[p] === m.seats[s].r + ',' + m.seats[s].c){
+      c += m.w.sameSeat; if(out) out.push({ w: m.w.sameSeat, kind: '履歴', text: label(P) + ' が前回と同じ席です。', seats: [s] });
     }
     return c;
   }
@@ -197,20 +233,20 @@ var Seating = (function(){
     if(A.ghost || B.ghost) return 0;
     var sa = pos[a], sb = pos[b], c = 0;
     var rel = m.relation(sa, sb);
-    var sameG = m.groupOf[sa] === m.groupOf[sb];
+    var sameG = (m.groupOf[sa] !== '' && m.groupOf[sa] === m.groupOf[sb]);
     // 履歴
     var ha = m.histAdj[a][b];
-    if(ha && rel === 'adj'){ var v = W.histAdj * ha; c += v; if(out) out.push({ w: v, kind: '履歴', text: label(A) + ' と ' + label(B) + ' は最近も隣でした。', seats: [sa, sb] }); }
+    if(ha && rel === 'adj' && m.w.histAdj){ var v = m.w.histAdj * ha; c += v; if(out) out.push({ w: v, kind: '履歴', text: label(A) + ' と ' + label(B) + ' は最近も隣でした。', seats: [sa, sb] }); }
     var hg = m.histGroup[a][b];
-    if(hg && sameG){ var v2 = W.histGroup * hg; c += v2; if(out && v2 >= 6) out.push({ w: v2, kind: '履歴', text: label(A) + ' と ' + label(B) + ' は最近も同じ班でした。', seats: [sa, sb] }); }
+    if(hg && sameG && m.w.histGroup){ var v2 = m.w.histGroup * hg; c += v2; if(out && v2 >= 6) out.push({ w: v2, kind: '履歴', text: label(A) + ' と ' + label(B) + ' は最近も同じ班でした。', seats: [sa, sb] }); }
     // 男女
     if(genderClash(m, a, b)){
-      if(m.genderMode === '隣は男女' && rel === 'adj'){ c += W.genderPair; if(out) out.push({ w: W.genderPair, kind: '男女', text: label(A) + ' と ' + label(B) + ' の隣が同性です。', seats: [sa, sb] }); }
-      if(m.genderMode === '市松' && (rel === 'adj' || rel === 'fb')){ c += W.genderGrid; if(out) out.push({ w: W.genderGrid, kind: '男女', text: label(A) + ' と ' + label(B) + ' が同性で接しています。', seats: [sa, sb] }); }
+      if(m.genderMode === '隣は男女' && rel === 'adj' && m.w.genderPair){ c += m.w.genderPair; if(out) out.push({ w: m.w.genderPair, kind: '男女', text: label(A) + ' と ' + label(B) + ' の隣が同性です。', seats: [sa, sb] }); }
+      if(m.genderMode === '市松' && (rel === 'adj' || rel === 'fb') && m.w.genderGrid){ c += m.w.genderGrid; if(out) out.push({ w: m.w.genderGrid, kind: '男女', text: label(A) + ' と ' + label(B) + ' が同性で接しています。', seats: [sa, sb] }); }
     }
     // 配慮
-    if(m.useCare && A.care && B.care && (rel === 'adj' || rel === 'fb')){
-      c += W.careAdj; if(out) out.push({ w: W.careAdj, kind: '配慮', text: label(A) + ' と ' + label(B) + '（配慮）が接しています。', seats: [sa, sb] });
+    if(m.useCare && m.w.careAdj && A.care && B.care && (rel === 'adj' || rel === 'fb')){
+      c += m.w.careAdj; if(out) out.push({ w: m.w.careAdj, kind: '配慮', text: label(A) + ' と ' + label(B) + '（配慮）が接しています。', seats: [sa, sb] });
     }
     return c;
   }
@@ -218,21 +254,21 @@ var Seating = (function(){
   function condCost(m, pos, k, out){
     var q = m.pairs[k], A = m.people[q.a], B = m.people[q.b];
     var sa = pos[q.a], sb = pos[q.b];
-    var rel = m.relation(sa, sb), sameG = m.groupOf[sa] === m.groupOf[sb], c = 0;
+    var rel = m.relation(sa, sb), sameG = (m.groupOf[sa] !== '' && m.groupOf[sa] === m.groupOf[sb]), c = 0;
     if(q.type === '離す'){
       var hit = [];
       if(q.must){
         if(rel || sameG){ c = HARD; hit.push(rel ? { adj: '隣', fb: '前後', diag: '斜め' }[rel] : '同じ班'); }
       } else {
-        if(rel === 'adj'){ c += W.sepAdj; hit.push('隣'); }
-        if(rel === 'fb'){ c += W.sepFb; hit.push('前後'); }
-        if(rel === 'diag'){ c += W.sepDiag; hit.push('斜め'); }
-        if(sameG){ c += W.sepGroup; hit.push('同じ班'); }
+        if(rel === 'adj'){ c += m.w.sepAdj; hit.push('隣'); }
+        if(rel === 'fb'){ c += m.w.sepFb; hit.push('前後'); }
+        if(rel === 'diag'){ c += m.w.sepDiag; hit.push('斜め'); }
+        if(sameG){ c += m.w.sepGroup; hit.push('同じ班'); }
       }
       if(c && out) out.push({ w: c, kind: '離す', text: label(A) + ' と ' + label(B) + ' が' + hit.join('・') + 'です（離す' + (q.must ? '・必須' : '') + '）。', seats: [sa, sb] });
     } else if(q.type === '近く'){
       if(!(rel === 'adj' || rel === 'fb' || sameG)){
-        c = q.must ? HARD : W.near;
+        c = q.must ? HARD : m.w.near;
         if(out) out.push({ w: c, kind: '近く', text: label(A) + ' と ' + label(B) + ' が離れています（近く' + (q.must ? '・必須' : '') + '）。', seats: [sa, sb] });
       }
     }
@@ -240,24 +276,29 @@ var Seating = (function(){
   }
 
   function groupCost(m, asg, g, out){
-    var list = m.groups[g], c = 0, boys = 0, girls = 0, leaders = 0, care = 0, members = 0;
+    var list = m.groups[g] || [], c = 0, boys = 0, girls = 0, leaders = 0, care = 0, support = 0, members = 0;
     list.forEach(function(s){
       var P = m.people[asg[s]]; if(P.ghost) return;
       members++;
       if(P.gender === '男') boys++; else if(P.gender === '女') girls++;
       if(P.leader) leaders++;
       if(P.care) care++;
+      if(P.support) support++;
     });
     if(members < 2) return 0;
-    if(m.genderMode !== '考えない'){
+    if(m.genderMode !== '考えない' && m.w.genderGroup){
       var diff = Math.abs(boys - girls) - 1;
-      if(diff > 0){ c += W.genderGroup * diff; if(out) out.push({ w: W.genderGroup * diff, kind: '男女', text: g + '班の男女が偏っています（男' + boys + '・女' + girls + '）。', seats: list }); }
+      if(diff > 0){ c += m.w.genderGroup * diff; if(out) out.push({ w: m.w.genderGroup * diff, kind: '男女', text: g + '班の男女が偏っています（男' + boys + '・女' + girls + '）。', seats: list }); }
     }
-    if(m.useLeaders){
-      if(leaders === 0 && m.leadersEnough){ c += W.leaderNone; if(out) out.push({ w: W.leaderNone, kind: '班長', text: g + '班に班長候補がいません。', seats: list }); }
-      else if(leaders > 1){ c += W.leaderExtra * (leaders - 1); if(out) out.push({ w: W.leaderExtra * (leaders - 1), kind: '班長', text: g + '班に班長候補が ' + leaders + ' 人います。', seats: list }); }
+    if(m.useLeaders && m.w.leaderNone){
+      if(leaders === 0 && m.leadersEnough){ c += m.w.leaderNone; if(out) out.push({ w: m.w.leaderNone, kind: 'リーダー', text: g + '班にリーダーがいません。', seats: list }); }
+      else if(leaders > 1){ c += m.w.leaderExtra * (leaders - 1); if(out) out.push({ w: m.w.leaderExtra * (leaders - 1), kind: 'リーダー', text: g + '班にリーダーが ' + leaders + ' 人います。', seats: list }); }
     }
-    if(m.useCare && care > 1){ c += W.careGroup * (care - 1); if(out) out.push({ w: W.careGroup * (care - 1), kind: '配慮', text: g + '班に配慮の児童が ' + care + ' 人います。', seats: list }); }
+    if(m.useSupport && m.w.supportNone){
+      if(support === 0 && m.supportEnough){ c += m.w.supportNone; if(out) out.push({ w: m.w.supportNone, kind: '学習支援', text: g + '班に学習支援役がいません。', seats: list }); }
+      else if(support > 1){ c += m.w.supportExtra * (support - 1); if(out) out.push({ w: m.w.supportExtra * (support - 1), kind: '学習支援', text: g + '班に学習支援役が ' + support + ' 人います。', seats: list }); }
+    }
+    if(m.useCare && m.w.careGroup && care > 1){ c += m.w.careGroup * (care - 1); if(out) out.push({ w: m.w.careGroup * (care - 1), kind: '配慮', text: g + '班に配慮の児童が ' + care + ' 人います。', seats: list }); }
     return c;
   }
 
@@ -267,7 +308,7 @@ var Seating = (function(){
     m.near = [];
     for(var s = 0; s < m.n; s++){
       var set = {};
-      m.adj[s].concat(m.fb[s], m.diag[s], m.groups[m.groupOf[s]]).forEach(function(t){ if(t !== s) set[t] = 1; });
+      m.adj[s].concat(m.fb[s], m.diag[s], m.groups[m.groupOf[s]] || []).forEach(function(t){ if(t !== s) set[t] = 1; });
       m.near.push(Object.keys(set).map(Number));
     }
     return m;
@@ -426,6 +467,6 @@ var Seating = (function(){
     return describe(m, asg);
   }
 
-  return { solve: solve, evaluate: evaluate, precheck: precheck, buildModel: buildModel, weights: W, HARD: HARD, _rng: rng };
+  return { solve: solve, evaluate: evaluate, precheck: precheck, buildModel: buildModel, weights: W, categories: CATEGORIES, HARD: HARD, _rng: rng };
 })();
 if(typeof module !== 'undefined') module.exports = Seating;

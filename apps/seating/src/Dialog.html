@@ -27,8 +27,8 @@ button:disabled{opacity:.45;cursor:default}
 main{display:grid;grid-template-columns:1fr 330px;height:calc(100vh - 61px)}
 #stage{overflow:auto;padding:14px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .front{background:var(--accent);color:var(--accent-ink);font-weight:700;text-align:center;border-radius:6px;padding:4px 0}
-.grid{display:grid;gap:6px}
-.seat{min-height:58px;border:1px solid var(--rule);border-radius:8px;padding:4px 6px;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;position:relative;user-select:none}
+.grid{display:grid;gap:3px}
+.seat{min-height:58px;border:1px solid var(--ink-faint);border-radius:8px;padding:4px 6px;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer;position:relative;user-select:none}
 .seat .no{font-size:11px;color:var(--ink-soft)}
 .seat .nm{font-size:15px;font-weight:600;text-align:center;line-height:1.2}
 .seat.empty .nm{color:var(--ink-faint);font-weight:400}
@@ -59,16 +59,43 @@ aside h2{font-size:13px;margin:12px 0 6px;color:var(--ink-soft)}
 #reveal .seat.hide .nm,#reveal .seat.hide .no{visibility:hidden}
 #reveal .seat.just{outline:4px solid var(--sel)}
 .hint{font-size:12px;color:var(--ink-soft);text-align:center}
+.views{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.views button{border:0;border-radius:0;min-width:64px}
+.views button[aria-pressed=true]{background:var(--ink);color:var(--sheet);font-weight:700}
+body[data-view=layout] .seatonly,body[data-view=weights] .seatonly{display:none}
+.tags{display:flex;gap:2px;margin-top:2px}
+.tags i{font-style:normal;font-size:10px;line-height:1;padding:2px 3px;border-radius:3px;background:var(--sheet);color:var(--ink-soft);border:1px solid var(--rule)}
+.seat.edge{border-color:var(--ink)}
+/* 配置エディタ */
+.ed{display:grid;gap:3px;touch-action:none}
+.ed div{width:52px;height:44px;border:1px dashed var(--rule);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;user-select:none;cursor:pointer}
+.ed div.on{border-style:solid;border-color:var(--ink-faint)}
+.tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;justify-content:center;max-width:720px}
+.tools button[aria-pressed=true]{outline:3px solid var(--sel)}
+.tools .sw{min-width:40px;padding:0 8px}
+.tools select{min-height:40px;font:inherit;border-radius:8px;border:1px solid var(--rule);padding:0 6px}
+/* 重視 */
+.wt{width:100%;max-width:640px;border-collapse:collapse}
+.wt td{padding:8px 6px;border-bottom:1px solid var(--rule);vertical-align:middle}
+.wt td:first-child{width:12em;font-weight:600}
+.seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{flex:1;border:0;border-radius:0;min-width:52px;padding:0 6px;border-left:1px solid var(--rule)}
+.seg button:first-child{border-left:0}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--accent-ink);font-weight:700}
+.seg button.must[aria-pressed=true]{background:var(--warn)}
 </style>
 </head>
 <body>
 <div class="bar">
-  <button id="make" class="primary" disabled>席を作る</button>
-  <div class="tabs" id="tabs" role="tablist"></div>
+  <div class="views" id="views">
+    <button data-v="seat" aria-pressed="true">席替え</button><button data-v="layout" aria-pressed="false">配置</button><button data-v="weights" aria-pressed="false">重視</button>
+  </div>
+  <button id="make" class="primary seatonly" disabled>席を作る</button>
+  <div class="tabs seatonly" id="tabs" role="tablist"></div>
   <span class="grow"></span>
-  <button id="flip" title="表示の向き">教卓側から見る</button>
-  <button id="show" disabled>発表</button>
-  <button id="commit" class="primary" disabled>この席で決定</button>
+  <button id="flip" class="seatonly" title="表示の向き">教卓側から見る</button>
+  <button id="show" class="seatonly" disabled>発表</button>
+  <button id="commit" class="primary seatonly" disabled>この席で決定</button>
 </div>
 <main id="main">
   <section id="stage"><div class="msg">読み込み中…</div></section>
@@ -80,7 +107,7 @@ aside h2{font-size:13px;margin:12px 0 6px;color:var(--ink-soft)}
 /* @include solver.js */
 </script>
 <script>
-var S = { input: null, cands: [], cur: -1, sel: -1, flip: false, pins: {}, hl: null, baseIssues: null };
+var S = { input: null, cands: [], cur: -1, sel: -1, flip: false, pins: {}, hl: null, baseIssues: null, view: 'seat', ed: null };
 var $ = function(id){ return document.getElementById(id); };
 
 function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){ return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]; }); }
@@ -101,18 +128,51 @@ function load(){
       $('setup').onclick = function(){ server('setupSheets').then(function(){ $('stage').innerHTML = '<div class="msg">シートを作りました。「名簿」に児童を入れてから、もう一度開いてください。<br><span class="muted">試すだけなら、メニュー「席替え」→「試し用の学級を入れる」。</span></div>'; }); };
       return;
     }
-    S.input = inp;
-    var errs = Seating.precheck(inp);
-    if(!inp.students.length) errs.unshift('名簿に在籍の児童がいません。');
-    if(errs.length){
-      $('stage').innerHTML = '<div class="msg err"><b>このままでは席を作れません</b><ul>' + errs.map(function(e){ return '<li>' + esc(e) + '</li>'; }).join('') + '</ul><p class="muted">シートを直したら、このウインドウを閉じて開き直してください。</p></div>';
-      return;
-    }
-    $('make').disabled = false;
-    var w = inp.warnings.length ? '<h2>読み飛ばした行</h2><ul class="issues">' + inp.warnings.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '';
-    $('stage').innerHTML = '<div class="msg"><p><b>' + inp.students.length + '人</b>・<b>' + inp.seats.length + '席</b>・条件 <b>' + inp.conditions.length + '件</b>・履歴 <b>' + inp.history.length + '回分</b> を読みました。</p><p>「席を作る」を押すと、条件と過去の席を踏まえた案を ' + inp.settings.count + ' つ出します。</p></div>';
-    $('side').innerHTML = w;
+    setInput(inp);
+    showView(S.view);
   }).catch(function(e){ $('stage').innerHTML = '<div class="msg err">' + esc(e.message) + '</div>'; });
+}
+
+function setInput(inp){
+  S.input = inp; S.cands = []; S.cur = -1; S.sel = -1; S.pins = {}; S.hl = null;
+  $('tabs').innerHTML = ''; $('commit').disabled = true; $('show').disabled = true;
+  $('make').textContent = '席を作る';
+}
+
+function errorsOf(inp){
+  var errs = Seating.precheck(inp);
+  if(!inp.students.length) errs.unshift('名簿に在籍の児童がいません。');
+  return errs;
+}
+
+function showView(v){
+  S.view = v;
+  document.body.dataset.view = v;
+  [].forEach.call($('views').children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v === v)); });
+  if(!S.input) return;
+  if(v === 'layout') return renderEditor();
+  if(v === 'weights') return renderWeights();
+  if(S.cands.length) return render();
+  var inp = S.input, errs = errorsOf(inp);
+  $('make').disabled = !!errs.length;
+  if(errs.length){
+    $('stage').innerHTML = '<div class="msg err"><b>このままでは席を作れません</b><ul>' + errs.map(function(e){ return '<li>' + esc(e) + '</li>'; }).join('') + '</ul><p class="muted">座席の数や位置は「配置」で直せます。名簿を直したら、このウインドウを閉じて開き直してください。</p></div>';
+  } else {
+    $('stage').innerHTML = '<div class="msg"><p><b>' + inp.students.length + '人</b>・<b>' + inp.seats.length + '席</b>・条件 <b>' + inp.conditions.length + '件</b>・過去の席替え <b>' + inp.history.length + '回分</b> を読みました。</p><p>「席を作る」を押すと、条件・属性・過去の席を踏まえた案を ' + inp.settings.count + ' つ出します。何を重視するかは「重視」で変えられます。</p>' + attrSummary(inp) + '</div>';
+  }
+  $('side').innerHTML = inp.warnings.length ? '<h2>読み飛ばした行</h2><ul class="issues">' + inp.warnings.map(function(t){ return '<li>' + esc(t) + '</li>'; }).join('') + '</ul>' : '';
+}
+
+function attrSummary(inp){
+  var n = function(k){ return inp.students.filter(function(p){ return p[k]; }).length; };
+  var groups = {};
+  inp.seats.forEach(function(s){ if(s.group) groups[s.group] = 1; });
+  var g = Object.keys(groups).length;
+  var t = '<p class="muted">班 ' + g + ' ／ リーダー ' + n('leader') + '人・学習支援役 ' + n('support') + '人・配慮 ' + n('care') + '人・高身長 ' + n('tall') + '人・前方 ' + n('front') + '人</p>';
+  var short = [];
+  if(g && n('leader') && n('leader') < g) short.push('リーダーが班の数より少ないので、「いない班」は数えず、同じ班に重ならないことだけを見ます。');
+  if(g && n('support') && n('support') < g) short.push('学習支援役が班の数より少ないので、同じ班に重ならないことだけを見ます。');
+  return t + short.map(function(x){ return '<p class="muted">' + x + '</p>'; }).join('');
 }
 
 /* ---- 作る ---- */
@@ -169,7 +229,7 @@ function renderTabs(){
 
 /* ---- 描画 ---- */
 function render(){
-  var c = S.cands[S.cur]; if(!c) return;
+  var c = S.cands[S.cur]; if(!c || S.view !== 'seat') return;
   var rows = S.input.rows, cols = [];
   c.seats.forEach(function(s){ if(cols.indexOf(s.c) < 0) cols.push(s.c); });
   var cmin = Math.min.apply(null, c.seats.map(function(s){ return s.c; }));
@@ -182,15 +242,24 @@ function render(){
     .forEach(function(v){ (v.seats || []).forEach(function(s){ bad[s] = 1; }); });
   var fixedIds = {};
   S.input.students.forEach(function(p){ if(p.fixed) fixedIds[p.id] = 1; });
+  var gAt = {};
+  c.seats.forEach(function(s){ gAt[s.r + ',' + s.c] = s.group || '○'; });
+  var byId = {};
+  S.input.students.forEach(function(p){ byId[p.id] = p; });
   var cells = c.seats.map(function(s, i){
     var y = s.r - rmin, x = s.c - cmin;
+    var bw = groupEdges(gAt, s, S.flip);
     if(S.flip){ y = H - 1 - y; x = W - 1 - x; }
+    var P = byId[s.id] || {};
+    var tags = (P.leader ? '<i title="リーダー">リ</i>' : '') + (P.support ? '<i title="学習支援役">支</i>' : '') +
+      (P.tall ? '<i title="高身長">高</i>' : '') + (P.front ? '<i title="前方">前</i>' : '') + (P.care ? '<i title="配慮">配</i>' : '');
     var pinned = S.pins[i] && S.pins[i].id === s.id;
     var cls = 'seat' + (s.id == null ? ' empty' : '') + (i === S.sel ? ' sel' : '') +
       (S.hl && bad[i] ? ' hl' : '') + (!S.hl && bad[i] ? ' bad' : '') + (fixedIds[s.id] ? ' fixed' : '');
-    return '<div class="' + cls + '" data-i="' + i + '" style="grid-row:' + (y + 1) + ';grid-column:' + (x + 1) + ';background:var(--g' + gnum(s.group) + ')">' +
+    return '<div class="' + cls + '" data-i="' + i + '" style="grid-row:' + (y + 1) + ';grid-column:' + (x + 1) + ';background:var(--g' + gnum(s.group) + ');' + bw + '">' +
       (fixedIds[s.id] ? '<span class="pin" title="名簿で固定">固定</span>' : pinned ? '<span class="pin" title="この場で固定">📌</span>' : '') +
-      '<span class="no">' + (s.id == null ? '' : esc(s.id)) + '</span><span class="nm">' + (s.id == null ? '空席' : esc(s.name)) + '</span></div>';
+      '<span class="no">' + (s.id == null ? '' : esc(s.id)) + '</span><span class="nm">' + (s.id == null ? '空席' : esc(s.name)) + '</span>' +
+      (tags ? '<span class="tags">' + tags + '</span>' : '') + '</div>';
   }).join('');
   var front = '<div class="front" style="width:' + (W * 96) + 'px;max-width:100%">' + (S.flip ? '教卓（前）' : '黒板（前）') + '</div>';
   var grid = '<div class="grid" style="grid-template-columns:repeat(' + W + ',minmax(64px,90px))">' + cells + '</div>';
@@ -198,6 +267,16 @@ function render(){
     '<p class="hint">席を2つ続けてタップすると入れ替わります。選んだ席の「📌固定」で、その席を残して作り直せます。</p>';
   [].forEach.call(document.querySelectorAll('#stage .seat'), function(el){ el.onclick = function(){ tap(+el.dataset.i); }; });
   renderSide();
+}
+
+/* 班の境目の辺だけ太くする。返り値は CSS の border-width（上 右 下 左） */
+function groupEdges(gAt, s, flip){
+  var g = s.group || '○';
+  function e(dr, dc){ var n = gAt[(s.r + dr) + ',' + (s.c + dc)]; return !n || g === '○' || n !== g; }
+  var t = e(-1, 0), r = e(0, 1), b = e(1, 0), l = e(0, -1);
+  var sides = flip ? [b, l, t, r] : [t, r, b, l];
+  return 'border-width:' + sides.map(function(x){ return x ? '3px' : '1px'; }).join(' ') +
+    ';border-color:' + sides.map(function(x){ return x ? 'var(--ink)' : 'var(--rule)'; }).join(' ');
 }
 
 function gnum(g){ var n = parseInt(g, 10); return isNaN(n) ? 10 : ((n - 1) % 10 + 10) % 10 + 1; }
@@ -210,7 +289,8 @@ function renderSide(){
     '<br>気になる点 <b>' + soft.length + '</b> 件　<span class="muted">（点数 ' + c.cost + '・小さいほど良い）</span></div>';
   if(S.sel >= 0){
     var s = c.seats[S.sel], pinned = !!S.pins[S.sel];
-    h += '<h2>選んだ席</h2><p>' + (s.id == null ? '空席' : esc(s.id) + '番 ' + esc(s.name)) + '（' + esc(s.group) + '班）</p>' +
+    h += '<h2>選んだ席</h2><p>' + (s.id == null ? '空席' : esc(s.id) + '番 ' + esc(s.name)) + '（' + (s.group ? esc(s.group) + '班' : '班なし') + '）</p>' +
+      (s.id != null ? pastNeighbors(s.id) : '') +
       (s.id != null ? '<button id="pinbtn">' + (pinned ? '📌 固定を外す' : '📌 この席に固定') + '</button> ' : '') +
       '<button id="unsel">選択をやめる</button>';
   }
@@ -234,6 +314,28 @@ function renderSide(){
   };
   if($('unsel')) $('unsel').onclick = function(){ S.sel = -1; render(); };
   if($('clearpins')) $('clearpins').onclick = function(e){ e.preventDefault(); S.pins = {}; render(); };
+}
+
+/* 選んだ児童が過去に隣・同じ班になった相手と回数 */
+function pastNeighbors(id){
+  var adj = {}, grp = {}, names = {};
+  S.input.students.forEach(function(p){ names[p.id] = p.name; });
+  S.input.history.forEach(function(h){
+    var me = null;
+    h.forEach(function(e){ if(String(e.id) === String(id)) me = e; });
+    if(!me) return;
+    h.forEach(function(e){
+      if(e === me) return;
+      if(e.r === me.r && Math.abs(e.c - me.c) === 1) adj[e.id] = (adj[e.id] || 0) + 1;
+      else if(me.group && me.group !== '○' && String(e.group) === String(me.group)) grp[e.id] = (grp[e.id] || 0) + 1;
+    });
+  });
+  function list(o){
+    var ks = Object.keys(o).sort(function(a, b){ return o[b] - o[a]; });
+    return ks.length ? ks.map(function(k){ return esc(k) + '番 ' + esc(names[k] || '') + (o[k] > 1 ? '×' + o[k] : ''); }).join('、') : 'なし';
+  }
+  if(!S.input.history.length) return '';
+  return '<p class="muted">過去' + S.input.history.length + '回で隣：' + list(adj) + '<br>同じ班：' + list(grp) + '</p>';
 }
 
 function tap(i){
@@ -294,6 +396,112 @@ function show(){
   document.addEventListener('keydown', key);
 }
 
+/* ---- 配置エディタ ---- */
+var PRESETS = {
+  '2人組×3列': function(R, C){ return fill(R, C, function(r, c){ var cols = [0, 1, 3, 4, 6, 7]; var k = cols.indexOf(c); return k < 0 || r > 5 ? '' : String(Math.floor(r / 2) * 3 + Math.floor(k / 2) + 1); }); },
+  '4人の島': function(R, C){ return fill(R, C, function(r, c){ if(r % 3 === 2 || c % 3 === 2 || r > 7) return ''; return String(Math.floor(r / 3) * 3 + Math.floor(c / 3) + 1); }); },
+  '6人の島': function(R, C){ return fill(R, C, function(r, c){ if(r % 4 === 3 || c % 3 === 2 || r > 6) return ''; return String(Math.floor(r / 4) * 3 + Math.floor(c / 3) + 1); }); },
+  'コの字': function(R, C){ return fill(R, C, function(r, c){ var onU = (r === 0 && c >= 2 && c <= 5) || ((c === 0 || c === 7) && r <= 5) || ((c === 1 || c === 6) && r <= 5); return onU ? '○' : ''; }); },
+  '1人ずつ': function(R, C){ return fill(R, C, function(r, c){ return c % 2 === 0 && r < 6 ? '○' : ''; }); }
+};
+function fill(R, C, f){ var g = []; for(var r = 0; r < R; r++){ g.push([]); for(var c = 0; c < C; c++) g[r].push(f(r, c) || ''); } return g; }
+
+function renderEditor(){
+  if(!S.ed){
+    var src = S.input.layoutGrid || fill(8, 8, function(){ return ''; });
+    S.ed = { grid: src.map(function(r){ return r.slice(); }), tool: '1', dirty: false };
+  }
+  var E = S.ed, R = E.grid.length, C = E.grid[0].length;
+  var sizes = function(id, v){ var o = ''; for(var k = 4; k <= 10; k++) o += '<option' + (k === v ? ' selected' : '') + '>' + k + '</option>'; return '<select id="' + id + '">' + o + '</select>'; };
+  var sw = '<button class="sw" data-t="" aria-pressed="' + (E.tool === '') + '">通路</button><button class="sw" data-t="○" aria-pressed="' + (E.tool === '○') + '">○班なし</button>';
+  for(var g = 1; g <= 12; g++) sw += '<button class="sw" data-t="' + g + '" style="background:var(--g' + gnum(g) + ')" aria-pressed="' + (E.tool === String(g)) + '">' + g + '</button>';
+  var gAt = {}, seats = 0;
+  E.grid.forEach(function(row, r){ row.forEach(function(v, c){ if(v !== ''){ gAt[r + ',' + c] = v; seats++; } }); });
+  var cells = '';
+  E.grid.forEach(function(row, r){ row.forEach(function(v, c){
+    var bw = v === '' ? '' : ';' + groupEdges(gAt, { r: r, c: c, group: v === '○' ? '' : v }, false);
+    cells += '<div data-r="' + r + '" data-c="' + c + '" class="' + (v !== '' ? 'on' : '') + '" style="' + (v !== '' ? 'background:var(--g' + gnum(v) + ')' : '') + bw + '">' + esc(v) + '</div>';
+  }); });
+  $('stage').innerHTML =
+    '<div class="tools">行 ' + sizes('edR', R) + ' 列 ' + sizes('edC', C) + '　ひな形：' +
+      Object.keys(PRESETS).map(function(k){ return '<button data-p="' + k + '">' + k + '</button>'; }).join('') + '</div>' +
+    '<div class="tools">塗る：' + sw + '</div>' +
+    '<div class="front" style="width:' + (C * 55) + 'px">前（黒板）</div>' +
+    '<div class="ed" id="ed" style="grid-template-columns:repeat(' + C + ',52px)">' + cells + '</div>' +
+    '<p class="hint">番号を選んでマスをなぞると、その班の座席になります。同じ番号のまとまりの外周に太線が引かれます。「通路」でなぞると消えます。</p>' +
+    '<div class="tools"><button id="edsave" class="primary"' + (E.dirty ? '' : ' disabled') + '>配置シートに保存（' + seats + '席）</button><button id="edreset"' + (E.dirty ? '' : ' disabled') + '>保存前に戻す</button></div>';
+  var groups = {};
+  E.grid.forEach(function(row){ row.forEach(function(v){ if(v !== '' && v !== '○') groups[v] = (groups[v] || 0) + 1; }); });
+  var gk = Object.keys(groups).sort(function(a, b){ return a - b; });
+  $('side').innerHTML = '<h2>この配置</h2><p><b>' + seats + '</b> 席（在籍 ' + S.input.students.length + ' 人）' +
+    (seats < S.input.students.length ? '<br><span style="color:var(--warn)">' + (S.input.students.length - seats) + ' 席足りません</span>' : '') + '</p>' +
+    '<h2>班ごとの席数</h2><p>' + (gk.length ? gk.map(function(k){ return k + '班 ' + groups[k]; }).join('<br>') : '班なし') + '</p>' +
+    '<p class="muted">保存すると、作った案は消えます（席の位置が変わるため）。</p>';
+  [].forEach.call(document.querySelectorAll('.tools .sw'), function(b){ b.onclick = function(){ E.tool = b.dataset.t; renderEditor(); }; });
+  [].forEach.call(document.querySelectorAll('.tools [data-p]'), function(b){ b.onclick = function(){ E.grid = PRESETS[b.dataset.p](R, C); E.dirty = true; renderEditor(); }; });
+  $('edR').onchange = $('edC').onchange = function(){
+    var nr = +$('edR').value, nc = +$('edC').value;
+    E.grid = fill(nr, nc, function(r, c){ return E.grid[r] && E.grid[r][c] !== undefined ? E.grid[r][c] : ''; });
+    E.dirty = true; renderEditor();
+  };
+  var ed = $('ed'), painting = false;
+  function paintAt(x, y){
+    var el = document.elementFromPoint(x, y);
+    if(!el || !el.dataset || el.dataset.r === undefined) return;
+    var r = +el.dataset.r, c = +el.dataset.c;
+    if(E.grid[r][c] === E.tool) return;
+    E.grid[r][c] = E.tool; E.dirty = true;
+    el.textContent = E.tool; el.className = E.tool !== '' ? 'on' : '';
+    el.style.background = E.tool !== '' ? 'var(--g' + gnum(E.tool) + ')' : '';
+  }
+  ed.onpointerdown = function(e){ painting = true; ed.setPointerCapture && ed.setPointerCapture(e.pointerId); paintAt(e.clientX, e.clientY); };
+  ed.onpointermove = function(e){ if(painting) paintAt(e.clientX, e.clientY); };
+  ed.onpointerup = ed.onpointercancel = function(){ if(painting){ painting = false; renderEditor(); } };
+  $('edsave').onclick = function(){
+    if(S.cands.length && !confirm('配置を保存すると、今の案は消えます。よろしいですか？')) return;
+    this.disabled = true; this.textContent = '保存中…';
+    server('saveLayout', E.grid).then(function(inp){ S.ed = null; setInput(inp); renderEditor(); })
+      .catch(function(e){ alert('保存できませんでした：' + e.message); renderEditor(); });
+  };
+  $('edreset').onclick = function(){ S.ed = null; renderEditor(); };
+}
+
+/* ---- 重視 ---- */
+var LEVELS = ['無視', '弱', '中', '強', '必須'];
+function renderWeights(){
+  var w = S.input.settings.weights || (S.input.settings.weights = {});
+  var rows = Seating.categories.map(function(cat){
+    var lv = w[cat.key] != null ? w[cat.key] : 2;
+    var btn = LEVELS.map(function(name, k){
+      if(k === 4 && !cat.must) return '';
+      return '<button data-k="' + cat.key + '" data-l="' + k + '" class="' + (k === 4 ? 'must' : '') + '" aria-pressed="' + (lv === k) + '">' + name + '</button>';
+    }).join('');
+    return '<tr><td>' + esc(cat.label) + '</td><td><div class="seg">' + btn + '</div></td></tr>';
+  }).join('');
+  $('stage').innerHTML = '<div class="msg" style="max-width:700px;margin-top:0"><p><b>何を重視するか</b>を選びます。「必須」は、満たせないと必須違反として赤で出します。' +
+    '「無視」はその項目を計算に入れません。選ぶとすぐ設定シートに保存し、今の案の点数も付け直します。</p>' +
+    '<table class="wt">' + rows + '</table>' +
+    '<p class="muted">個別の「離す／近く」で強さを「必須」にした組は、ここの段階によらず必須です。</p>' +
+    '<p><button id="wreset">すべて「中」に戻す</button></p></div>';
+  $('side').innerHTML = '<h2>段階の意味</h2><p class="muted">弱＝中の0.4倍、強＝中の2.5倍。<br>「最近の隣を避ける」などの履歴の項目と「前・後ろの回り持ち」は、割合で効くため「必須」を選べません。</p>' +
+    (S.cands.length ? '<h2>今の案</h2><p>' + S.cands.map(function(c, i){ return '案' + String.fromCharCode(65 + i) + '：気になる点 ' + c.issues.length + (c.hard ? '・必須違反 ' + c.hard : ''); }).join('<br>') + '</p><p class="muted">重視を大きく変えたら「作り直す」と、新しい重みで探し直します。</p>' : '');
+  [].forEach.call(document.querySelectorAll('.seg button'), function(b){
+    b.onclick = function(){ setWeight(b.dataset.k, +b.dataset.l); };
+  });
+  $('wreset').onclick = function(){ Seating.categories.forEach(function(c){ w[c.key] = 2; }); saveWeights(); };
+}
+function setWeight(k, lv){ S.input.settings.weights[k] = lv; saveWeights(); }
+var wTimer = null;
+function saveWeights(){
+  /* 今の案は並びを保ったまま新しい重みで採点し直す */
+  S.cands = S.cands.map(function(c){ return Seating.evaluate(S.input, c.seats.map(function(s){ return s.id; })); });
+  if(S.cands.length){ S.base = S.cands.map(function(c){ return c.issues; }); S.baseIssues = keys(S.base[S.cur]); renderTabs(); }
+  renderWeights();
+  clearTimeout(wTimer);
+  wTimer = setTimeout(function(){ server('saveWeights', S.input.settings.weights).catch(function(e){ alert('設定を保存できませんでした：' + e.message); }); }, 400);
+}
+
+[].forEach.call($('views').children, function(b){ b.onclick = function(){ showView(b.dataset.v); }; });
 $('make').onclick = make;
 $('commit').onclick = commit;
 $('show').onclick = show;

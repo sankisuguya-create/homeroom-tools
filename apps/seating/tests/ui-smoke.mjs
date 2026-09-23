@@ -17,7 +17,11 @@ const input=makeInput(inp=>{
   inp.students[4].leader=true;
   inp.conditions.push({a:1,b:2,type:'離す',must:true});
   inp.rows=[2,3,4,5,6,7]; inp.cols=[1,2,4,5,7,8]; inp.warnings=['条件シート 5行目：例']; inp.nextRound=1;
-  inp.settings.count=3;
+  inp.settings.count=3; inp.settings.weights={};
+  inp.students[2].tall=true; inp.students[5].support=true;
+  inp.layoutGrid=Array.from({length:8},(_,r)=>Array.from({length:8},(_,c)=>{
+    const s=inp.seats.find(x=>x.r===r+2&&x.c===c+1); return s?String(s.group):'';
+  }));
 });
 const browser=await chromium.launch({executablePath:process.env.PW_CHROMIUM||undefined});
 const page=await browser.newPage({viewport:{width:1100,height:720}});
@@ -27,7 +31,11 @@ await page.addInitScript(inp=>{
   window.__committed=null;
   const handlers={
     loadInput:()=>inp,
-    commit:(seats,round)=>{ window.__committed={seats,round}; return {ok:true,round}; }
+    commit:(seats,round)=>{ window.__committed={seats,round}; return {ok:true,round}; },
+    saveWeights:(w)=>{ window.__weights=w; return 'ok'; },
+    saveLayout:(grid)=>{ window.__layout=grid;
+      const seats=[]; grid.forEach((row,r)=>row.forEach((v,c)=>{ if(v!=='') seats.push({r:r+2,c:c+1,group:v==='○'?'':v}); }));
+      return Object.assign({},inp,{seats,layoutGrid:grid,rows:[...new Set(seats.map(s=>s.r))].sort((a,b)=>a-b)}); }
   };
   window.google={script:{run:new Proxy({},{get(_,k){
     let ok=()=>{},ng=()=>{};
@@ -41,12 +49,31 @@ await page.addInitScript(inp=>{
 },input);
 await page.goto('file://'+path.join(here,'../dist/Dialog.html'));
 await page.waitForSelector('#make:not([disabled])');
+// 重視：高身長を必須に
+await page.click('#views [data-v=weights]');
+await page.click('.seg button[data-k=tall][data-l="4"]');
+await page.waitForFunction(()=>window.__weights&&window.__weights.tall===4);
+if(shot) await page.screenshot({path:shot.replace('.png','-weights.png')});
+// 配置：ひな形「4人の島」→ 保存
+await page.click('#views [data-v=layout]');
+await page.click('[data-p="4人の島"]');
+// 1マスを班なしで塗る（ドラッグ）
+await page.click('.sw[data-t="○"]');
+const box=await page.locator('#ed div[data-r="0"][data-c="2"]').boundingBox();
+await page.mouse.move(box.x+10,box.y+10); await page.mouse.down(); await page.mouse.move(box.x+10,box.y+60); await page.mouse.up();
+if(shot) await page.screenshot({path:shot.replace('.png','-layout.png')});
+await page.click('#edsave');
+await page.waitForFunction(()=>window.__layout);
+const lay=await page.evaluate(()=>window.__layout);
+if(lay[0][2]!=='○'||lay[1][2]!=='○'||lay[0][0]!=='1') throw new Error('配置の保存内容 '+JSON.stringify(lay.slice(0,2)));
+await page.click('#views [data-v=seat]');
+await page.waitForSelector('#make:not([disabled])');
 await page.click('#make');
 await page.waitForSelector('.tab',{timeout:60000});
 const tabs=await page.$$eval('.tab',t=>t.length);
 if(tabs!==3) throw new Error('案が3つ出ない: '+tabs);
 const seats=await page.$$eval('#stage .seat',s=>s.length);
-if(seats!==36) throw new Error('座席数 '+seats);
+if(seats!==38) throw new Error('座席数 '+seats);
 // 入れ替え
 const before=await page.$$eval('#stage .seat .nm',s=>s.map(x=>x.textContent));
 await page.click('#stage .seat[data-i="10"]'); await page.click('#stage .seat[data-i="20"]');
@@ -58,6 +85,8 @@ await page.click('#commit');
 await page.waitForFunction(()=>window.__committed);
 const c=await page.evaluate(()=>window.__committed);
 if(c.round!==1||c.seats.filter(s=>s.id!=null).length!==32) throw new Error('決定の書き込み内容');
+const tallSeat=c.seats.find(s=>s.id===3);
+if(tallSeat.r<=3) throw new Error('高身長（必須）が前方');
 await page.click('#show'); await page.click('#rvnext'); await page.click('#rvall'); await page.click('#rvclose');
 if(errors.length) throw new Error(errors.join('\n'));
 await browser.close();
