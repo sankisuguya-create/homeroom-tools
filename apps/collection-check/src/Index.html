@@ -10,7 +10,37 @@ body{
   font-size:14px;line-height:1.7;-webkit-text-size-adjust:100%;
 }
 .mono{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;font-variant-numeric:tabular-nums}
-.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 80px;display:flex;flex-direction:column;gap:16px}
+.wrap{max-width:900px;margin:0 auto;padding:14px 12px 60px;display:flex;flex-direction:column;gap:12px}
+#vMain{display:flex;flex-direction:column;gap:12px}
+#vSet{display:flex;flex-direction:column;gap:12px}
+
+/* ---- 設定画面 ---- */
+.setbar{display:flex;align-items:center;gap:12px}
+.setbar h2{font-size:15px;margin:0;letter-spacing:.06em}
+.setbar .hint{font-size:12px;color:var(--ink-faint)}
+
+/* 品目の管理 */
+.irow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;
+  padding:7px 0;border-bottom:1px solid var(--rule-soft)}
+.irow:last-child{border-bottom:0}
+.irow .inm{flex:1 1 160px;min-width:120px;font:inherit;font-size:13px;font-weight:600;
+  padding:5px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink)}
+.irow input[type=date]{font:inherit;font-size:12px;padding:4px 6px;border:1px solid var(--rule);
+  border-radius:6px;background:var(--paper);color:var(--ink-soft)}
+.irow .iinf{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;font-size:12px;color:var(--ink-soft);white-space:nowrap}
+.irow .iinf.over{color:var(--warn);font-weight:700}
+.irow button{padding:6px 10px;font-size:12px}
+.tgwrap{display:flex;flex-wrap:wrap;gap:4px 14px;padding:8px 10px;margin:-2px 0 4px;
+  background:var(--paper);border:1px dashed var(--rule);border-radius:6px}
+.tgwrap label{display:flex;align-items:center;gap:5px;font-size:12.5px;white-space:nowrap;cursor:pointer}
+.tgwrap label input{width:16px;height:16px}
+
+/* トースト（アーカイブのお知らせなど） */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  background:var(--ink);color:var(--paper);padding:10px 20px;border-radius:8px;
+  font-size:13px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .25s;z-index:99}
+#toast.on{opacity:.93}
 
 /* ---- 見出し ---- */
 .head-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px 16px;
@@ -149,8 +179,10 @@ th.item{padding:4px 4px 3px;vertical-align:top}
 
 .ck{display:block;width:100%;min-height:38px;border:0;border-radius:0;
   background:transparent;font-size:16px;font-weight:700;line-height:1;
-  color:var(--ok);cursor:pointer;padding:0}
+  color:var(--ok);cursor:pointer;padding:0;
+  touch-action:none;-webkit-user-select:none;user-select:none}
 .ck:hover{background:var(--a-bg)}
+.ck.pt{outline:2px solid var(--accent);outline-offset:-2px;background:var(--a-bg)}
 .ck[data-v="x"]{color:var(--ink-faint);font-weight:400}
 .ck:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
@@ -195,7 +227,16 @@ footer ol{margin:.4em 0;padding-left:1.4em}
 @media print{
   body{background:#fff;color:#000;font-size:8.5pt}
   .wrap{max-width:none;padding:0;gap:3mm}
-  .bar,.note,.panel,.itops,.delrow,.addcol,.addstu,#addItem{display:none!important}
+  .bar,.note,.panel,.itops,.delrow,.addcol,.addstu,#addItem,.setbar{display:none!important}
+  #vSet{display:none!important}
+  #vMain{display:block!important}
+
+  /* 「未提出の一覧」だけを刷るときは一覧以外を隠す */
+  .pl #vMain{display:none!important}
+  .pl #vSet{display:flex!important}
+  .pl #vSet > *{display:none!important}
+  .pl #vSet > #missing{display:flex!important;border:0;padding:0}
+  .pl #missing .noprint{display:none!important}
   .head-row{border-bottom-width:1.5pt;padding-bottom:2px}
   .head-row h1{font-size:7pt}
   #title{font-size:14pt}
@@ -234,16 +275,13 @@ footer ol{margin:.4em 0;padding-left:1.4em}
   .idl{display:none!important}
   .dl{display:block;font-size:7pt;color:#000;margin-top:1mm}
   th.over{background:transparent!important}
-
-  /* 「未提出の一覧」だけを刷るときは一覧以外を隠す */
-  .pl .head-row,.pl .bar,.pl .note,.pl .tblwrap,.pl .empty,.pl footer,
-  .pl #roster,.pl #bulk{display:none!important}
-  .pl #missing{display:flex!important;border:0;padding:0}
-  .pl #missing .noprint{display:none!important}
 }
 </style>
 
 <div class="wrap">
+
+<!-- ==================== 一般画面（表） ==================== -->
+<div id="vMain">
 
   <div class="head-row">
     <h1>回収チェック表</h1>
@@ -258,17 +296,58 @@ footer ol{margin:.4em 0;padding-left:1.4em}
     <div class="stat"><b id="nRate">—</b><span>提出率</span></div>
     <span class="grow"></span>
     <span class="save" id="save" role="status">—</span>
-    <button type="button" id="rosterBtn">名簿の取り込み</button>
-    <button type="button" id="bulkBtn">番号でまとめて</button>
-    <button type="button" id="missBtn">未提出の一覧</button>
     <button type="button" id="maskBtn">名を隠す</button>
-    <button type="button" id="expBtn">書き出し</button>
-    <button type="button" id="impBtn">読み込み</button>
     <button type="button" id="prtBtn">印刷</button>
-    <input type="file" id="impFile" accept="application/json,.json" hidden>
+    <button type="button" id="setBtn">設定</button>
   </div>
 
-  <div class="panel" id="roster" hidden>
+  <div class="tblwrap" id="tblwrap" hidden>
+    <table id="tbl" aria-label="回収チェック表">
+      <colgroup id="colg"></colgroup>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+
+  <div class="empty" id="empty">
+    まだ名簿がありません。<br>
+    <button type="button" id="emptySet">設定で名簿を取り込む</button>
+  </div>
+
+  <footer>
+    <p><b>使い方</b></p>
+    <ol>
+      <li>名簿は「設定」でスプレッドシートから貼って取り込む。品目の追加・締切・対象の児童・アーカイブも設定画面で。</li>
+      <li>マスをクリックして 空欄→✓→済→− と印を付ける。「済」は中身・金額まで確かめた二段目の印。指でなぞると通った範囲がまとめて✓になる。</li>
+      <li>全員分そろった品目は表から消えて設定のアーカイブへ移る。紙に刷るときは印刷（品目が増えると自動で横長）。</li>
+    </ol>
+    <p><b>名簿の扱い。</b>氏名・印はこの端末のブラウザの中にだけ保存され、外部へは一切送信されません。別の端末へ渡すときは設定の<b>書き出し</b>でJSONを保存し、渡した先で<b>読み込み</b>。書き出したJSONと刷った表は名簿と同じ扱いで管理し、<b>公開リポジトリにはコミットしないでください</b>。</p>
+  </footer>
+
+</div>
+
+<!-- ==================== 設定画面 ==================== -->
+<div id="vSet" hidden>
+
+  <div class="setbar">
+    <button type="button" id="backBtn">← 表にもどる</button>
+    <h2>設定</h2>
+    <span class="hint">名簿・品目・書き出しはここで。印を付けるのは表の画面です。</span>
+  </div>
+
+  <div class="panel" id="itemsEd">
+    <h2>品目の管理</h2>
+    <div id="iedBody"></div>
+  </div>
+
+  <div class="panel" id="arch">
+    <h2>アーカイブ（全員分そろった品目）</h2>
+    <p>全員分そろうと表から消えてここへ移ります。「表に戻す」と再び表に出ます。</p>
+    <div id="archBody"></div>
+  </div>
+
+  <div class="panel" id="roster">
     <h2>名簿の取り込み</h2>
     <p>スプレッドシートの名簿表を範囲コピーして、下の欄に貼り付けてください。<b>列の役割（番号・氏名・使わない）を確かめてから</b>「置き換える」か「追加する」を押します。</p>
     <textarea id="rosterText" placeholder="ここに名簿を貼る（タブ区切り・カンマ区切り）" aria-label="名簿の貼り付け欄" spellcheck="false"></textarea>
@@ -283,7 +362,7 @@ footer ol{margin:.4em 0;padding-left:1.4em}
     </div>
   </div>
 
-  <div class="panel" id="bulk" hidden>
+  <div class="panel" id="bulk">
     <h2>番号でまとめて印を付ける</h2>
     <p>品目と印を選んで、番号をカンマ・空白・改行区切りで入れて「印を付ける」。紙を集めながら出席番号を読み上げて打つ使い方を想定しています。</p>
     <div class="blk-row">
@@ -304,56 +383,56 @@ footer ol{margin:.4em 0;padding-left:1.4em}
     </div>
   </div>
 
-  <div class="panel" id="missing" hidden>
+  <div class="panel" id="missing">
     <h2>未提出の一覧</h2>
     <div class="blk-row noprint">
       <label class="hd-opt"><input type="checkbox" id="missNum"> 番号だけで並べる（掲示用）</label>
       <button type="button" id="missPrint">この一覧を印刷</button>
-      <button type="button" id="missClose">とじる</button>
     </div>
     <div class="miss" id="missBody"></div>
   </div>
 
-  <div class="note">
-    <b>マスをクリックすると印が回ります。</b>空欄 → <b>✓</b>（収まった）→ <b>済</b>（中身まで確認した）→ −（対象外）→ 空欄。「番号でまとめて」は出席番号を打つだけで一括チェック、「未提出の一覧」は残っている児童を番号だけでも並べて刷れます。氏名はこの端末の中にだけ保存され、外へは一切送られません。
+  <div class="panel" id="io">
+    <h2>書き出し・読み込み</h2>
+    <p>別の端末へ渡すときは「書き出し」でJSONを保存し、渡した先で「読み込み」。JSONは名簿なので<b>公開リポジトリにはコミットしない</b>でください。</p>
+    <div class="blk-row">
+      <button type="button" id="expBtn">書き出し</button>
+      <button type="button" id="impBtn">読み込み</button>
+      <input type="file" id="impFile" accept="application/json,.json" hidden>
+    </div>
   </div>
-
-  <div class="tblwrap" id="tblwrap" hidden>
-    <table id="tbl" aria-label="回収チェック表">
-      <colgroup id="colg"></colgroup>
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-      <tfoot id="tfoot"></tfoot>
-    </table>
-  </div>
-
-  <div class="empty" id="empty">
-    まだ名簿がありません。<br>
-    上の <b>名簿の取り込み</b> を開いて、スプレッドシートの名簿表を貼り付けてください。
-  </div>
-
-  <footer>
-    <p><b>使い方</b></p>
-    <ol>
-      <li>名簿表（スプレッドシート）の範囲をコピーし、「名簿の取り込み」の欄に貼る。番号・氏名の列を確かめて適用する。</li>
-      <li>品目の列を足して名前と締め切りを入れる。マスをクリックして 空欄→✓→済→− と印を付ける。「済」は提出物の中身・金額まで確認したときの二段目の印です。</li>
-      <li>「番号でまとめて」は提出者の出席番号を打って一括で印を付け、「未提出の一覧」は残っている児童を抜き出して刷れます（番号だけにもできます）。「名を隠す」は投影や画面共有のときに氏名を伏せます。</li>
-      <li>列の下に「収まった数／出すべき数」が出る。紙に刷るときは印刷を押す（品目が増えると自動で横長になる）。</li>
-    </ol>
-    <p><b>名簿の扱い。</b>氏名・印はこの端末のブラウザの中にだけ保存され、外部へは一切送信されません。別の端末へ渡すときは<b>書き出し</b>でJSONを保存し、渡した先で<b>読み込み</b>。書き出したJSONと刷った表は名簿と同じ扱いで管理し、<b>公開リポジトリにはコミットしないでください</b>。</p>
-  </footer>
 
 </div>
+
+</div>
+
+<div id="toast" role="status"></div>
+    <h2>名簿の取り込み</h2>
+    <p>スプレッドシートの名簿表を範囲コピーして、下の欄に貼り付けてください。<b>列の役割（番号・氏名・使わない）を確かめてから</b>「置き換える」か「追加する」を押します。</p>
+    <textarea id="rosterText" placeholder="ここに名簿を貼る（タブ区切り・カンマ区切り）" aria-label="名簿の貼り付け欄" spellcheck="false"></textarea>
+    <div class="role-row" id="roleRow" hidden></div>
+    <label class="hd-opt" id="hdWrap" hidden><input type="checkbox" id="hdChk" checked> 1行目は見出し</label>
+    <div class="preview" id="preview" hidden></div>
+    <div class="apply-row" id="applyRow" hidden>
+      <button type="button" id="applyReplace">この名簿で置き換える</button>
+      <button type="button" id="applyAppend">末尾に追加する</button>
+      <button type="button" id="applyCancel">やめる</button>
+      <span class="hint" id="applyHint"></span>
+    </div>
+  </div>
+
+
 
 <style id="pgstyle"></style>
 
 <script>
 /* ==================================================================
    0. 状態
-   S = { title, group, students:[{id,no,name}], items:[{id,name,dl}],
+   S = { title, group, students:[{id,no,name}], items:[{id,name,dl,arch}],
          checks:{ 学生id: { 品目id: "y"|"z"|"x" } }, seq }
    "y"=収まった / "z"=中身まで確認した（済） / "x"=対象外 / 無し=まだ
    dl = 締め切り "YYYY-MM-DD"（空なら締切なし）
+   arch = 全員分そろって表から退いた品目（設定のアーカイブに出る）
 ================================================================== */
 (function(){
 "use strict";
@@ -362,7 +441,7 @@ const KEY = "homeroom.collection-check.v1";
 
 function nid(){ return "k" + (S.seq++); }
 function newStudent(no, name){ return { id:nid(), no:String(no == null ? "" : no), name:name || "" }; }
-function newItem(name){ return { id:nid(), name:name || "", dl:"" }; }
+function newItem(name){ return { id:nid(), name:name || "", dl:"", arch:false }; }
 function blank(){
   return { title:"", group:"", students:[], items:[], checks:{}, seq:1 };
 }
@@ -386,7 +465,8 @@ function clean(o){
     if(!it || typeof it !== "object") return;
     const id = typeof it.id === "string" && it.id ? it.id : "k" + (s.seq++);
     const ni = { id:id, name:typeof it.name === "string" ? it.name : "",
-                 dl:typeof it.dl === "string" ? it.dl : "" };
+                 dl:typeof it.dl === "string" ? it.dl : "",
+                 arch:it.arch === true };
     s.items.push(ni); itIds[id] = true;
   });
   if(o.checks && typeof o.checks === "object"){
@@ -444,6 +524,11 @@ function setMark(st, it, v){
   if(!S.checks[st.id]) S.checks[st.id] = {};
   S.checks[st.id][it.id] = v;
 }
+/* 表に出ている品目（アーカイブしていないもの）だけ */
+function actItems(){ return S.items.filter(function(it){ return !it.arch; }); }
+function stById(id){ return S.students.find(function(s){ return s.id === id; }); }
+function itById(id){ return S.items.find(function(i){ return i.id === id; }); }
+
 /* 品目ごと: 収まった数(✓と済) / 出すべき数（対象外を除く）。
    未確 = 収まったが「済」まで行っていない数 */
 function countItem(it){
@@ -457,10 +542,10 @@ function countItem(it){
   });
   return { y:y, t:t, left:t - y, unconf:y - conf, na:na };
 }
-/* 児童ごと: まだ出していない品目の数 */
+/* 児童ごと: まだ出していない品目の数（アーカイブ済みは数えない） */
 function countLeft(st){
   let n = 0;
-  S.items.forEach(function(it){ if(!getMark(st, it)) n++; });
+  actItems().forEach(function(it){ if(!getMark(st, it)) n++; });
   return n;
 }
 function totalLeft(){
@@ -515,16 +600,17 @@ function overdue(it){
 }
 
 function refreshCounts(){
+  const act = actItems();
   nStuEl.textContent  = S.students.length;
-  nItemEl.textContent = S.items.length;
+  nItemEl.textContent = act.length;
   const left = totalLeft();
   nLeftEl.textContent = left;
   nLeftEl.className = left ? "pending" : "";
   let done = 0, tgt = 0;
-  S.items.forEach(function(it){ const c = countItem(it); done += c.y; tgt += c.t; });
+  act.forEach(function(it){ const c = countItem(it); done += c.y; tgt += c.t; });
   nRateEl.textContent = tgt ? Math.round(done / tgt * 100) + "%" : "—";
   /* 品目が増えたら横長で刷る */
-  pgstyle.textContent = "@page{size:A4 " + (S.items.length > 5 ? "landscape" : "portrait") + ";margin:9mm}";
+  pgstyle.textContent = "@page{size:A4 " + (act.length > 5 ? "landscape" : "portrait") + ";margin:9mm}";
 }
 
 function refreshFoot(){
@@ -533,7 +619,7 @@ function refreshFoot(){
   const sum = el("td", "sum", "収 / 対象");
   sum.colSpan = 2;
   tr.appendChild(sum);
-  S.items.forEach(function(it){
+  actItems().forEach(function(it){
     const c = countItem(it);
     const td = document.createElement("td");
     const b = el("span", "frac" + (c.t ? "" : " zero"), c.y + "/" + c.t);
@@ -549,6 +635,7 @@ function refreshFoot(){
   tfootEl.appendChild(tr);
 }
 function cycleMark(st, it, btn){
+  if(suppressClick){ suppressClick = false; return; }
   const cur = getMark(st, it);
   const nxt = cur === "" ? "y" : cur === "y" ? "z" : cur === "z" ? "x" : "";
   setMark(st, it, nxt);
@@ -557,6 +644,29 @@ function cycleMark(st, it, btn){
   refreshCounts();
   refreshFoot();
   save();
+  checkArch(false);
+}
+let suppressClick = false;
+
+/* 全員分そろった品目をアーカイブへ。quiet=true ではお知らせを出さない（読み込み直後など） */
+let toastT = null;
+function toast(t){
+  const d = document.getElementById("toast");
+  d.textContent = t; d.classList.add("on");
+  clearTimeout(toastT);
+  toastT = setTimeout(function(){ d.classList.remove("on"); }, 2800);
+}
+function checkArch(quiet){
+  const moved = [];
+  S.items.forEach(function(it){
+    if(it.arch) return;
+    const c = countItem(it);
+    if(c.t > 0 && c.left === 0){ it.arch = true; moved.push(it.name || "品目"); }
+  });
+  if(!moved.length) return;
+  save(); render();
+  if(!vSet.hidden) buildSettings();
+  if(!quiet) toast(moved.join("・") + " は全員分そろったのでアーカイブへ");
 }
 function paintMark(btn, v){
   btn.dataset.v = v;
@@ -587,7 +697,7 @@ function render(){
   [["c-no"],["c-name"]].forEach(function(c){
     const col = document.createElement("col"); col.className = c[0]; colgEl.appendChild(col);
   });
-  S.items.forEach(function(){
+  actItems().forEach(function(){
     const col = document.createElement("col"); col.className = "c-item"; colgEl.appendChild(col);
   });
   ["c-add","c-left"].forEach(function(c){
@@ -609,38 +719,13 @@ function render(){
   noTh.appendChild(srt);
   hr.appendChild(noTh);
   hr.appendChild(el("th", "name", "氏名"));
-  S.items.forEach(function(it, ii){
+  actItems().forEach(function(it, ii){
     const th = el("th", "item" + (overdue(it) ? " over" : ""));
     const nm = el("div", "itname", it.name);
     nm.setAttribute("aria-label", (ii+1) + "番目の品目名");
     writable(nm, "品目名");
     nm.addEventListener("input", function(){ it.name = nm.textContent; save(); });
     th.appendChild(nm);
-    const ops = el("div", "itops");
-    ops.appendChild(smallBtn("◀", "ひとつ左へ", function(){
-      if(ii > 0){ S.items.splice(ii-1, 0, S.items.splice(ii,1)[0]); save(); render(); }
-    }));
-    ops.appendChild(smallBtn("▶", "ひとつ右へ", function(){
-      if(ii < S.items.length-1){ S.items.splice(ii+1, 0, S.items.splice(ii,1)[0]); save(); render(); }
-    }));
-    const del = smallBtn("×", "この品目を消す", function(){
-      if(window.confirm("「" + (it.name || "品目") + "」の列と印を消しますか？")){
-        S.items.splice(ii, 1);
-        S.students.forEach(function(st){
-          if(S.checks[st.id]) delete S.checks[st.id][it.id];
-        });
-        save(); render();
-      }
-    });
-    del.className = "del";
-    ops.appendChild(del);
-    th.appendChild(ops);
-    const dl = document.createElement("input");
-    dl.type = "date"; dl.className = "idl"; dl.title = "締め切り（任意）";
-    dl.value = it.dl || "";
-    dl.setAttribute("aria-label", (ii+1) + "番目の品目の締め切り");
-    dl.addEventListener("change", function(){ it.dl = dl.value; save(); render(); });
-    th.appendChild(dl);
     if(it.dl) th.appendChild(el("div", "dl", "締 " + it.dl.slice(5).replace("-", "/")));
     hr.appendChild(th);
   });
@@ -684,10 +769,11 @@ function render(){
     tdNm.appendChild(del);
     tr.appendChild(tdNm);
 
-    S.items.forEach(function(it){
+    actItems().forEach(function(it){
       const td = document.createElement("td");
       const b = document.createElement("button");
       b.type = "button"; b.className = "ck";
+      b.dataset.sid = st.id; b.dataset.iid = it.id;
       paintMark(b, getMark(st, it));
       b.addEventListener("click", function(){ cycleMark(st, it, b); });
       td.appendChild(b);
@@ -705,7 +791,7 @@ function render(){
   /* 児童を足す行 */
   const addTr = el("tr", "addstu");
   const addTd = document.createElement("td");
-  addTd.colSpan = S.items.length + 4;
+  addTd.colSpan = actItems().length + 4;
   const addB = document.createElement("button");
   addB.id = "addStu"; addB.type = "button"; addB.textContent = "＋ 児童を足す";
   addB.addEventListener("click", function(){
@@ -722,14 +808,48 @@ function render(){
 
   refreshFoot();
   refreshCounts();
-  if(!bulkEl.hidden) fillBulkItems();
-  if(!missEl.hidden) buildMissing();
+  checkArch(true);
 }
+
+/* ---- なぞり選択（タッチの撫で・マウスのドラッグ） ----
+   押し始めたマスの印を反転させた値を、通ったマスへ塗る。
+   タップ（その場で離す）は通常のクリックに任せる */
+let painting = false, paintVal = "", paintedN = 0;
+tbodyEl.addEventListener("pointerdown", function(ev){
+  const b = ev.target.closest(".ck");
+  if(!b) return;
+  painting = true; paintedN = 0;
+  const cur = b.dataset.v;
+  paintVal = (cur === "y" || cur === "z") ? "" : "y";
+});
+tbodyEl.addEventListener("pointermove", function(ev){
+  if(!painting) return;
+  const t = document.elementFromPoint(ev.clientX, ev.clientY);
+  const b = (t && t.closest) ? t.closest(".ck") : null;
+  if(!b || b.dataset.painting) return;
+  b.dataset.painting = "1";
+  paintedN++;
+  const st = stById(b.dataset.sid), it = itById(b.dataset.iid);
+  if(!st || !it) return;
+  setMark(st, it, paintVal);
+  paintMark(b, paintVal);
+  b.classList.add("pt");
+  refreshRowLeft(st); refreshCounts(); refreshFoot();
+});
+function endPaint(){
+  if(!painting) return;
+  painting = false;
+  tbodyEl.querySelectorAll(".ck[data-painting]").forEach(function(b){
+    delete b.dataset.painting; b.classList.remove("pt");
+  });
+  if(paintedN > 0){ suppressClick = true; save(); checkArch(false); }
+}
+document.addEventListener("pointerup", endPaint);
+document.addEventListener("pointercancel", endPaint);
 
 /* ==================================================================
    4. 名簿の取り込み
 ================================================================== */
-const rosterEl   = document.getElementById("roster");
 const rosterText = document.getElementById("rosterText");
 const roleRow    = document.getElementById("roleRow");
 const hdWrap     = document.getElementById("hdWrap");
@@ -941,24 +1061,19 @@ function applyRoster(replace){
   if(!S.items.length) S.items.push(newItem(""));
   save(); render();
   closeRoster();
+  showSet(false);
 }
 
-function openRoster(){ rosterEl.hidden = false; rosterText.focus(); }
+function openRoster(){ rosterText.focus(); }
 function closeRoster(){
-  rosterEl.hidden = true;
   rosterText.value = ""; parsed = null;
   roleRow.hidden = true; hdWrap.hidden = true;
   previewEl.hidden = true; applyRow.hidden = true;
 }
-document.getElementById("rosterBtn").addEventListener("click", function(){
-  if(rosterEl.hidden) openRoster(); else closeRoster();
-});
 
 /* ==================================================================
-   5. 番号でまとめて・未提出の一覧・名を隠す
+   5. 画面切り替え・品目の管理・アーカイブ・まとめて・未提出・名を隠す
 ================================================================== */
-const bulkEl   = document.getElementById("bulk");
-const missEl   = document.getElementById("missing");
 const bulkItem = document.getElementById("bulkItem");
 const bulkMark = document.getElementById("bulkMark");
 const bulkNums = document.getElementById("bulkNums");
@@ -977,7 +1092,7 @@ function stByNo(no){
 function fillBulkItems(){
   const cur = bulkItem.value;
   bulkItem.innerHTML = "";
-  S.items.forEach(function(it){
+  actItems().forEach(function(it){
     const o = document.createElement("option");
     o.value = it.id; o.textContent = it.name || "（名なし）";
     bulkItem.appendChild(o);
@@ -988,10 +1103,130 @@ function fillBulkItems(){
 function selItem(){ return S.items.find(function(it){ return it.id === bulkItem.value; }); }
 function bmsg(t){ bulkMsg.textContent = t; }
 
-document.getElementById("bulkBtn").addEventListener("click", function(){
-  if(bulkEl.hidden){ fillBulkItems(); bulkEl.hidden = false; }
-  else bulkEl.hidden = true;
+/* ---- 画面の切り替え ---- */
+const vMain = document.getElementById("vMain");
+const vSet  = document.getElementById("vSet");
+function showSet(on){
+  vMain.hidden = on;
+  vSet.hidden  = !on;
+  if(on) buildSettings();
+  window.scrollTo(0, 0);
+}
+document.getElementById("setBtn").addEventListener("click", function(){ showSet(true); });
+document.getElementById("backBtn").addEventListener("click", function(){ showSet(false); });
+document.getElementById("emptySet").addEventListener("click", function(){
+  showSet(true); rosterText.focus();
 });
+
+/* ---- 設定画面の中身 ---- */
+const iedBody  = document.getElementById("iedBody");
+const archBody = document.getElementById("archBody");
+function buildSettings(){
+  buildItemsEd(); buildArch(); fillBulkItems(); buildMissing();
+}
+
+function moveItem(it, dir){
+  const ix = S.items.indexOf(it);
+  let j = ix + dir;
+  while(j >= 0 && j < S.items.length && S.items[j].arch) j += dir;
+  if(j < 0 || j >= S.items.length) return;
+  const t = S.items[ix]; S.items[ix] = S.items[j]; S.items[j] = t;
+  save(); render(); buildSettings();
+}
+
+function buildItemsEd(){
+  iedBody.innerHTML = "";
+  const act = actItems();
+  if(!act.length){ iedBody.appendChild(el("div", "irow", "品目がありません。表の右端の「＋ 品目」で足せます。")); return; }
+  act.forEach(function(it, ii){
+    const row = el("div", "irow");
+    const nm = document.createElement("input");
+    nm.className = "inm"; nm.value = it.name; nm.placeholder = "品目名";
+    nm.setAttribute("aria-label", "品目名");
+    nm.addEventListener("input", function(){ it.name = nm.value; save(); render(); });
+    row.appendChild(nm);
+    const dl = document.createElement("input");
+    dl.type = "date"; dl.value = it.dl || ""; dl.title = "締め切り（任意）";
+    dl.setAttribute("aria-label", "締め切り");
+    dl.addEventListener("change", function(){ it.dl = dl.value; save(); render(); buildItemsEd(); });
+    row.appendChild(dl);
+    const c = countItem(it);
+    const inf = el("span", "iinf" + (overdue(it) ? " over" : ""),
+      "収 " + c.y + "/" + c.t + "　残 " + c.left + (c.na ? "　対象外 " + c.na : ""));
+    row.appendChild(inf);
+    const tg = smallBtn("対象者…", "この品目を出す児童をえらぶ", function(){
+      tgWrap.hidden = !tgWrap.hidden;
+    });
+    row.appendChild(tg);
+    row.appendChild(smallBtn("↑", "ひとつ前へ", function(){ moveItem(it, -1); }));
+    row.appendChild(smallBtn("↓", "ひとつ後ろへ", function(){ moveItem(it, 1); }));
+    row.appendChild(smallBtn("アーカイブへ", "表からはずす（あとで戻せる）", function(){
+      it.arch = true; save(); render(); buildSettings();
+    }));
+    const del = smallBtn("消す", "この品目と印を消す", function(){
+      if(window.confirm("「" + (it.name || "品目") + "」の列と印を消しますか？")){
+        S.items.splice(S.items.indexOf(it), 1);
+        S.students.forEach(function(st){
+          if(S.checks[st.id]) delete S.checks[st.id][it.id];
+        });
+        save(); render(); buildSettings();
+      }
+    });
+    row.appendChild(del);
+    iedBody.appendChild(row);
+
+    /* 対象の児童（チェックを外すと対象外になる） */
+    const tgWrap = el("div", "tgwrap");
+    tgWrap.hidden = true;
+    S.students.forEach(function(st){
+      const lab = document.createElement("label");
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = getMark(st, it) !== "x";
+      cb.addEventListener("change", function(){
+        const cur = getMark(st, it);
+        if(cb.checked && cur === "x") setMark(st, it, "");
+        else if(!cb.checked && cur !== "x") setMark(st, it, "x");
+        save(); refreshCounts(); refreshFoot(); buildMissing();
+        const cc = countItem(it);
+        inf.textContent = "収 " + cc.y + "/" + cc.t + "　残 " + cc.left + (cc.na ? "　対象外 " + cc.na : "");
+        inf.className = "iinf" + (overdue(it) ? " over" : "");
+        checkArch(false);
+      });
+      lab.appendChild(cb);
+      lab.appendChild(document.createTextNode((st.no ? st.no + " " : "") + (st.name || "（名なし）")));
+      tgWrap.appendChild(lab);
+    });
+    iedBody.appendChild(tgWrap);
+  });
+}
+
+function buildArch(){
+  archBody.innerHTML = "";
+  const arcs = S.items.filter(function(it){ return it.arch; });
+  if(!arcs.length){ archBody.appendChild(el("div", "irow", "まだありません")); return; }
+  arcs.forEach(function(it){
+    const row = el("div", "irow");
+    row.appendChild(el("span", "inm", it.name || "（名なし）"));
+    const c = countItem(it);
+    row.appendChild(el("span", "iinf", "収 " + c.y + "/" + c.t));
+    row.appendChild(smallBtn("表に戻す", "いったん表へ戻す", function(){
+      it.arch = false; save(); render(); buildSettings();
+    }));
+    const del = smallBtn("消す", "この品目と印を消す", function(){
+      if(window.confirm("「" + (it.name || "品目") + "」と印を完全に消しますか？")){
+        S.items.splice(S.items.indexOf(it), 1);
+        S.students.forEach(function(st){
+          if(S.checks[st.id]) delete S.checks[st.id][it.id];
+        });
+        save(); render(); buildSettings();
+      }
+    });
+    row.appendChild(del);
+    archBody.appendChild(row);
+  });
+}
+
 document.getElementById("bulkGo").addEventListener("click", function(){
   const it = selItem();
   if(!it){ bmsg("品目がありません"); return; }
@@ -1003,34 +1238,29 @@ document.getElementById("bulkGo").addEventListener("click", function(){
     const st = stByNo(n);
     if(st){ setMark(st, it, v); hit++; } else miss.push(n);
   });
-  render(); save();
+  save(); render(); buildSettings();
   bmsg("印を付けた " + hit + " 人" + (miss.length ? "、見つからない番号 " + miss.join(" ") : ""));
 });
 document.getElementById("bulkAll").addEventListener("click", function(){
   const it = selItem();
   if(!it){ bmsg("品目がありません"); return; }
   S.students.forEach(function(st){ setMark(st, it, "y"); });
-  render(); save(); bmsg("全員を ✓ にしました");
+  save(); render(); buildSettings(); bmsg("全員を ✓ にしました");
 });
 document.getElementById("bulkNone").addEventListener("click", function(){
   const it = selItem();
   if(!it){ bmsg("品目がありません"); return; }
   S.students.forEach(function(st){ setMark(st, it, ""); });
-  render(); save(); bmsg("印を全部消しました");
+  save(); render(); buildSettings(); bmsg("印を全部消しました");
 });
 
-document.getElementById("missBtn").addEventListener("click", function(){
-  if(missEl.hidden){ missEl.hidden = false; buildMissing(); }
-  else missEl.hidden = true;
-});
-document.getElementById("missClose").addEventListener("click", function(){ missEl.hidden = true; });
 missNum.addEventListener("change", buildMissing);
 function buildMissing(){
   missBody.innerHTML = "";
-  if(!S.items.length){ missBody.appendChild(el("div", "mrow", "品目がありません")); return; }
+  if(!actItems().length){ missBody.appendChild(el("div", "mrow", "品目がありません")); return; }
   const numOnly = missNum.checked;
   let any = false;
-  S.items.forEach(function(it){
+  actItems().forEach(function(it){
     const pend = S.students.filter(function(st){ return getMark(st, it) === ""; });
     if(!pend.length) return;
     any = true;
@@ -1105,6 +1335,7 @@ impFile.addEventListener("change", function(){
       groupEl.textContent = S.group;
       closeRoster();
       save(); render();
+      showSet(false);
     }catch(e){
       saveEl.dataset.s = ""; saveEl.textContent = "読み込めません";
     }
@@ -1116,7 +1347,7 @@ document.getElementById("prtBtn").addEventListener("click", function(){ window.p
 
 render();
 saveEl.dataset.s = "ok"; saveEl.textContent = "この端末に保存";
-/* 名簿がまだなら、取り込みの口を開いておく */
-if(!S.students.length) openRoster();
+/* 名簿がまだなら、設定画面を開いて取り込みへ誘導する */
+if(!S.students.length){ showSet(true); rosterText.focus(); }
 })();
 </script>
