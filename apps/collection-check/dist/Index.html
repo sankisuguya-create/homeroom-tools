@@ -1116,7 +1116,7 @@ function applyRoster(replace){
     p.list.forEach(function(r){ S.students.push(newStudent(r.no, r.name)); });
   }
   if(!S.items.length) S.items.push(newItem(""));
-  save(); render();
+  save(); render(); checkArch(false);
   closeRoster();
   showSet(false);
 }
@@ -1299,20 +1299,20 @@ document.getElementById("bulkGo").addEventListener("click", function(){
     const st = stByNo(n);
     if(st){ setMark(st, it, v); hit++; } else miss.push(n);
   });
-  save(); render(); buildSettings();
+  save(); render(); checkArch(false); buildSettings();
   bmsg("印を付けた " + hit + " 人" + (miss.length ? "、見つからない番号 " + miss.join(" ") : ""));
 });
 document.getElementById("bulkAll").addEventListener("click", function(){
   const it = selItem();
   if(!it){ bmsg("品目がありません"); return; }
   S.students.forEach(function(st){ setMark(st, it, "y"); });
-  save(); render(); buildSettings(); bmsg("全員を ✓ にしました");
+  save(); render(); checkArch(false); buildSettings(); bmsg("全員を ✓ にしました");
 });
 document.getElementById("bulkNone").addEventListener("click", function(){
   const it = selItem();
   if(!it){ bmsg("品目がありません"); return; }
   S.students.forEach(function(st){ setMark(st, it, ""); });
-  save(); render(); buildSettings(); bmsg("印を全部消しました");
+  save(); render(); checkArch(false); buildSettings(); bmsg("印を全部消しました");
 });
 
 missNum.addEventListener("change", buildMissing);
