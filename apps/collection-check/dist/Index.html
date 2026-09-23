@@ -480,21 +480,6 @@ footer ol{margin:.4em 0;padding-left:1.4em}
 </div>
 
 <div id="toast" role="status"></div>
-    <h2>名簿の取り込み</h2>
-    <p>スプレッドシートの名簿表を範囲コピーして、下の欄に貼り付けてください。<b>列の役割（番号・氏名・使わない）を確かめてから</b>「置き換える」か「追加する」を押します。</p>
-    <textarea id="rosterText" placeholder="ここに名簿を貼る（タブ区切り・カンマ区切り）" aria-label="名簿の貼り付け欄" spellcheck="false"></textarea>
-    <div class="role-row" id="roleRow" hidden></div>
-    <label class="hd-opt" id="hdWrap" hidden><input type="checkbox" id="hdChk" checked> 1行目は見出し</label>
-    <div class="preview" id="preview" hidden></div>
-    <div class="apply-row" id="applyRow" hidden>
-      <button type="button" id="applyReplace">この名簿で置き換える</button>
-      <button type="button" id="applyAppend">末尾に追加する</button>
-      <button type="button" id="applyCancel">やめる</button>
-      <span class="hint" id="applyHint"></span>
-    </div>
-  </div>
-
-
 
 <style id="pgstyle"></style>
 
@@ -881,7 +866,6 @@ function render(){
 
   refreshFoot();
   refreshCounts();
-  checkArch(true);
 }
 
 /* ---- なぞり選択（タッチの撫で・マウスのドラッグ） ----
@@ -1260,6 +1244,10 @@ function buildItemsEd(){
         const cur = getMark(st, it);
         if(cb.checked && cur === "x") setMark(st, it, "");
         else if(!cb.checked && cur !== "x") setMark(st, it, "x");
+        const cell = tbodyEl.querySelector(
+          '.ck[data-sid="' + st.id + '"][data-iid="' + it.id + '"]');
+        if(cell) paintMark(cell, getMark(st, it));
+        refreshRowLeft(st);
         save(); refreshCounts(); refreshFoot(); buildMissing();
         const cc = countItem(it);
         inf.textContent = "収 " + cc.y + "/" + cc.t + "　残 " + cc.left + (cc.na ? "　対象外 " + cc.na : "");
