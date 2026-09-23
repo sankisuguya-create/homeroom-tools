@@ -191,7 +191,7 @@ button:focus-visible,[contenteditable]:focus-visible,.panel textarea:focus-visib
 .miss .alldone{color:var(--ok);font-size:12px;font-weight:600}
 
 /* ---- 確認・締切・並べ替え ---- */
-.ck[data-v="z"]{color:var(--a-ink);font-size:12px;font-weight:700}
+.ck[data-v="z"]{font-size:12px;font-weight:700}
 th.over{background:var(--z-bg)}
 .idl{margin-top:2px;width:100%;max-width:118px;font:inherit;font-size:10px;
   padding:1px 2px;border:1px solid var(--rule);border-radius:4px;
@@ -256,7 +256,9 @@ th.item{padding:4px 4px 3px;vertical-align:top}
   touch-action:none;-webkit-user-select:none;user-select:none}
 .ck:hover{background:var(--a-bg)}
 .ck.pt{outline:2px solid var(--accent);outline-offset:-2px;background:var(--a-bg)}
-.ck[data-v="x"]{color:var(--ink-faint);font-weight:400}
+.ck[data-v="y"]{background:var(--a-bg);color:var(--a-ink)}
+.ck[data-v="z"]{background:var(--accent);color:var(--paper)}
+.ck[data-v="x"]{background:var(--off-bg);color:var(--off-ink);font-weight:400}
 .ck:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
 
 td.left{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
@@ -331,7 +333,8 @@ footer ol{margin:.4em 0;padding-left:1.4em}
   .itname{writing-mode:vertical-rl;height:24mm;margin:0 auto;font-size:8pt;
     font-weight:400;letter-spacing:.1em;word-break:normal}
   .itname:empty::before{content:""}
-  .ck{min-height:0;height:7.5mm;color:#000!important;font-size:11pt}
+  .ck{min-height:0;height:7.5mm;color:#000!important;font-size:11pt;
+    background:transparent!important}
   .ck[data-v="x"]{color:#666!important}
   td.left{color:#000!important;font-size:8pt}
   td.left.zero{color:#999!important}
