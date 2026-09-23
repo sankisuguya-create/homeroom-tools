@@ -1,0 +1,901 @@
+<title>回収チェック表</title>
+<style>
+/* @include tokens.css */
+
+*{box-sizing:border-box}
+*[hidden]{display:none!important}
+body{
+  margin:0;background:var(--paper);color:var(--ink);
+  font-family:"IBM Plex Sans JP","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
+  font-size:14px;line-height:1.7;-webkit-text-size-adjust:100%;
+}
+.mono{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 20px 80px;display:flex;flex-direction:column;gap:16px}
+
+/* ---- 見出し ---- */
+.head-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:4px 16px;
+  border-bottom:2px solid var(--ink);padding-bottom:8px}
+.head-row h1{font-size:15px;font-weight:700;margin:0;color:var(--ink-faint);
+  letter-spacing:.08em;white-space:nowrap}
+#title{font-size:clamp(22px,3.4vw,30px);font-weight:700;line-height:1.25;flex:1 1 260px;min-width:0}
+#group{font-size:13px;color:var(--ink-soft);flex:0 1 240px;min-width:0}
+#title,#group{border-bottom:1px dashed var(--rule);padding:0 2px 1px}
+#title:empty::before,#group:empty::before{
+  content:attr(data-ph);color:var(--ink-faint);font-weight:400}
+
+/* ---- 道具立て ---- */
+.bar{position:sticky;top:0;z-index:30;background:var(--sheet);border:1px solid var(--rule);
+  border-radius:8px;padding:9px 14px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center}
+.stat{display:flex;flex-direction:column;line-height:1.25}
+.stat b{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;font-size:18px;font-weight:600}
+.stat b.pending{color:var(--z-ink)}
+.stat span{font-size:11px;color:var(--ink-faint);font-weight:600;letter-spacing:.05em}
+.grow{flex:1 1 12px}
+button{font:inherit;font-size:12.5px;font-weight:600;padding:5px 13px;border:1px solid var(--rule);
+  border-radius:6px;background:var(--sheet);color:var(--ink);cursor:pointer}
+button:hover{background:var(--paper);border-color:var(--accent);color:var(--accent)}
+button:focus-visible,[contenteditable]:focus-visible,.roster textarea:focus-visible{
+  outline:2px solid var(--accent);outline-offset:1px}
+.save{font-size:11.5px;color:var(--ink-faint);min-width:7em;display:inline-flex;align-items:center;gap:5px}
+.save::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ink-faint);flex:none}
+.save[data-s="ok"]::before{background:var(--ok)}
+.save[data-s="wait"]::before{background:var(--z-line)}
+
+.note{font-size:12.5px;color:var(--ink-soft);background:var(--sheet);border:1px solid var(--rule);
+  border-left:3px solid var(--accent);border-radius:0 6px 6px 0;padding:9px 14px;line-height:1.6}
+.note b{color:var(--ink)}
+
+/* ---- 名簿の取り込み ---- */
+.roster{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;
+  padding:12px 16px;display:flex;flex-direction:column;gap:10px}
+.roster h2{font-size:13px;margin:0;color:var(--ink-soft);letter-spacing:.05em}
+.roster p{font-size:12.5px;color:var(--ink-soft);margin:0;line-height:1.6}
+.roster textarea{font:inherit;font-size:12.5px;line-height:1.6;min-height:120px;
+  padding:8px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);
+  color:var(--ink);resize:vertical;font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace}
+.roster .hd-opt{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
+.role-row{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.role{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--ink-faint)}
+.role select{font:inherit;font-size:12px;padding:2px 6px;border:1px solid var(--rule);
+  border-radius:5px;background:var(--sheet);color:var(--ink)}
+.role .sample{max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview{overflow:auto;border:1px solid var(--rule-soft);border-radius:6px;max-height:220px}
+.preview table{border-collapse:collapse;font-size:12px;min-width:100%}
+.preview td,.preview th{border:1px solid var(--rule-soft);padding:2px 8px;white-space:nowrap;
+  text-align:left;background:var(--sheet)}
+.preview th{color:var(--ink-faint);font-weight:600;font-size:11px}
+.preview tr.head td{background:var(--off-bg);color:var(--off-ink)}
+.apply-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.apply-row .hint{font-size:12px;color:var(--ink-faint)}
+.apply-row .hint b{color:var(--ink)}
+
+/* ---- 表 ---- */
+.tblwrap{overflow:auto;border:1px solid var(--rule);border-radius:8px;background:var(--sheet)}
+table{border-collapse:separate;border-spacing:0;width:100%;table-layout:fixed}
+.tblwrap table{min-width:560px}
+th,td{border-bottom:1px solid var(--rule-soft);border-right:1px solid var(--rule-soft);
+  padding:0;text-align:center;vertical-align:middle}
+th:last-child,td:last-child{border-right:0}
+tr:last-child td{border-bottom:0}
+thead th{position:sticky;top:0;z-index:10;background:var(--sheet);
+  border-bottom:1px solid var(--rule);padding:4px 4px}
+col.c-no{width:44px}
+col.c-name{width:200px}
+col.c-item{width:auto;min-width:0}
+col.c-add{width:46px}
+col.c-left{width:56px}
+
+th.no,td.no{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;font-size:12.5px;color:var(--ink-soft);
+  padding:4px 2px;font-weight:600}
+td.no input{font:inherit;color:inherit;text-align:center;width:38px;border:1px solid transparent;
+  border-radius:4px;background:transparent;padding:1px 2px}
+td.no input:hover{border-color:var(--rule)}
+td.no input:focus{outline:2px solid var(--accent);background:var(--paper)}
+td.name{text-align:left;padding:4px 6px 4px 10px;position:relative}
+td.name .nm{min-height:22px;font-size:13.5px;font-weight:600;padding:1px 4px;
+  border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td.name .nm:empty::before{content:"氏名";color:var(--ink-faint);font-weight:400}
+td.name .nm:focus{background:var(--a-bg)}
+.delrow{position:absolute;right:5px;top:50%;transform:translateY(-50%);
+  padding:0 7px;font-size:11px;line-height:1.6;border-radius:4px;color:var(--ink-faint);
+  border-color:transparent;opacity:0}
+tr:hover .delrow,.delrow:focus-visible{opacity:1;border-color:var(--rule)}
+.delrow:hover{color:var(--warn)}
+
+th.item{padding:4px 4px 3px;vertical-align:top}
+.itname{font-size:12.5px;font-weight:600;line-height:1.35;min-height:20px;
+  padding:1px 3px;border-radius:4px;word-break:break-all}
+.itname:empty::before{content:"品目名";color:var(--ink-faint);font-weight:400}
+.itname:focus{background:var(--a-bg)}
+.itops{display:flex;gap:2px;justify-content:center;margin-top:2px}
+.itops button{padding:0 6px;font-size:10.5px;border-radius:4px;line-height:1.5;
+  color:var(--ink-faint);border-color:transparent}
+.itops button:hover{color:var(--accent);border-color:var(--rule)}
+.itops button.del:hover{color:var(--warn)}
+
+.ck{display:block;width:100%;min-height:38px;border:0;border-radius:0;
+  background:transparent;font-size:16px;font-weight:700;line-height:1;
+  color:var(--ok);cursor:pointer;padding:0}
+.ck:hover{background:var(--a-bg)}
+.ck[data-v="x"]{color:var(--ink-faint);font-weight:400}
+.ck:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+
+td.left{font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;font-size:12.5px;font-weight:700;color:var(--z-ink)}
+td.left.zero{color:var(--ink-faint);font-weight:400}
+
+th.addcol,td.addcol{background:var(--paper)}
+#addItem{writing-mode:vertical-rl;padding:8px 2px;font-size:11.5px;height:100%;min-height:52px;
+  border-radius:0;border:0;color:var(--ink-soft)}
+#addItem:hover{color:var(--accent);background:var(--a-bg)}
+
+.addstu td{padding:6px;text-align:center;background:var(--paper)}
+#addStu{padding:4px 20px;color:var(--ink-soft)}
+
+tfoot td{background:var(--paper);border-top:2px solid var(--rule);
+  font-family:"IBM Plex Mono","Consolas",ui-monospace,monospace;
+  font-variant-numeric:tabular-nums;padding:4px 2px;line-height:1.3;vertical-align:top}
+tfoot .frac{font-size:13px;font-weight:700}
+tfoot .frac.zero{color:var(--ink-faint);font-weight:400}
+tfoot .sub{display:block;font-size:10px;color:var(--ink-faint);font-weight:400}
+tfoot td.sum{text-align:left;padding-left:10px;font-size:11.5px;color:var(--ink-soft);
+  font-family:inherit;font-variant-numeric:normal;font-weight:600;vertical-align:middle}
+
+.empty{background:var(--sheet);border:1px dashed var(--rule);border-radius:8px;
+  padding:36px 20px;text-align:center;color:var(--ink-faint);font-size:13px;line-height:1.8}
+
+footer{font-size:12px;color:var(--ink-soft);border-top:1px solid var(--rule);padding-top:12px;
+  line-height:1.7}
+footer b{color:var(--ink)}
+footer ol{margin:.4em 0;padding-left:1.4em}
+
+[contenteditable]{outline:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:820px){
+  .bar{position:static}
+  col.c-name{width:130px}
+}
+
+/* ---- A4 ---- */
+@page{size:A4 portrait;margin:9mm}
+@media print{
+  body{background:#fff;color:#000;font-size:8.5pt}
+  .wrap{max-width:none;padding:0;gap:3mm}
+  .bar,.note,.roster,.itops,.delrow,.addcol,.addstu,#addItem{display:none!important}
+  .head-row{border-bottom-width:1.5pt;padding-bottom:2px}
+  .head-row h1{font-size:7pt}
+  #title{font-size:14pt}
+  #group{font-size:8pt}
+  #title,#group{border-bottom:0;padding:0}
+  #title:empty::before,#group:empty::before{content:""}
+  .tblwrap{overflow:visible;border:0;border-radius:0}
+  table{min-width:0}
+  thead th{position:static}
+  th,td{border-color:#999;border-width:.5pt}
+  thead th{border-bottom:1pt solid #000;vertical-align:bottom;padding:2px}
+  col.c-no{width:8mm}
+  col.c-name{width:42mm}
+  col.c-left{width:9mm}
+  th.no,td.no{font-size:8pt;color:#000!important}
+  td.name{padding:2px 3px;height:7.5mm}
+  td.name .nm{font-size:9pt;font-weight:400;padding:0}
+  td.name .nm:empty::before{content:""}
+  .itname{writing-mode:vertical-rl;height:24mm;margin:0 auto;font-size:8pt;
+    font-weight:400;letter-spacing:.1em;word-break:normal}
+  .itname:empty::before{content:""}
+  .ck{min-height:0;height:7.5mm;color:#000!important;font-size:11pt}
+  .ck[data-v="x"]{color:#666!important}
+  td.left{color:#000!important;font-size:8pt}
+  td.left.zero{color:#999!important}
+  tfoot td{background:transparent!important;font-size:8pt;color:#000}
+  tfoot .frac{font-size:9pt}
+  tfoot .frac.zero{color:#999}
+  tfoot .sub{color:#666}
+  tr{page-break-inside:avoid;break-inside:avoid}
+  .empty{display:none}
+  footer{font-size:6.5pt;padding-top:4px;line-height:1.5;border-top-color:#999;
+    page-break-inside:avoid}
+  footer ol{display:none}
+}
+</style>
+
+<div class="wrap">
+
+  <div class="head-row">
+    <h1>回収チェック表</h1>
+    <div id="title" contenteditable="plaintext-only" data-ph="回収物・用途" role="textbox" aria-label="回収物・用途"></div>
+    <div id="group" contenteditable="plaintext-only" data-ph="学年・組" role="textbox" aria-label="学年・組"></div>
+  </div>
+
+  <div class="bar">
+    <div class="stat"><b id="nStu">0</b><span>児童</span></div>
+    <div class="stat"><b id="nItem">0</b><span>品目</span></div>
+    <div class="stat"><b id="nLeft" class="pending">0</b><span>残り</span></div>
+    <span class="grow"></span>
+    <span class="save" id="save" role="status">—</span>
+    <button type="button" id="rosterBtn">名簿の取り込み</button>
+    <button type="button" id="expBtn">書き出し</button>
+    <button type="button" id="impBtn">読み込み</button>
+    <button type="button" id="prtBtn">印刷</button>
+    <input type="file" id="impFile" accept="application/json,.json" hidden>
+  </div>
+
+  <div class="roster" id="roster" hidden>
+    <h2>名簿の取り込み</h2>
+    <p>スプレッドシートの名簿表を範囲コピーして、下の欄に貼り付けてください。<b>列の役割（番号・氏名・使わない）を確かめてから</b>「置き換える」か「追加する」を押します。</p>
+    <textarea id="rosterText" placeholder="ここに名簿を貼る（タブ区切り・カンマ区切り）" aria-label="名簿の貼り付け欄" spellcheck="false"></textarea>
+    <div class="role-row" id="roleRow" hidden></div>
+    <label class="hd-opt" id="hdWrap" hidden><input type="checkbox" id="hdChk" checked> 1行目は見出し</label>
+    <div class="preview" id="preview" hidden></div>
+    <div class="apply-row" id="applyRow" hidden>
+      <button type="button" id="applyReplace">この名簿で置き換える</button>
+      <button type="button" id="applyAppend">末尾に追加する</button>
+      <button type="button" id="applyCancel">やめる</button>
+      <span class="hint" id="applyHint"></span>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>マスをクリックすると印が回ります。</b>空欄 → <b>✓</b>（収まった）→ −（対象外）→ 空欄。名簿はスプレッドシートからコピーして「名簿の取り込み」へ。氏名はこの端末の中にだけ保存され、外へは一切送られません。
+  </div>
+
+  <div class="tblwrap" id="tblwrap" hidden>
+    <table id="tbl" aria-label="回収チェック表">
+      <colgroup id="colg"></colgroup>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
+
+  <div class="empty" id="empty">
+    まだ名簿がありません。<br>
+    上の <b>名簿の取り込み</b> を開いて、スプレッドシートの名簿表を貼り付けてください。
+  </div>
+
+  <footer>
+    <p><b>使い方</b></p>
+    <ol>
+      <li>名簿表（スプレッドシート）の範囲をコピーし、「名簿の取り込み」の欄に貼る。番号・氏名の列を確かめて適用する。</li>
+      <li>品目の列を足して名前を入れる。マスをクリックして 空欄→✓→− と印を付ける。</li>
+      <li>列の下に「収まった数／出すべき数」が出る。紙に刷るときは印刷を押す（品目が増えると自動で横長になる）。</li>
+    </ol>
+    <p><b>名簿の扱い。</b>氏名・印はこの端末のブラウザの中にだけ保存され、外部へは一切送信されません。別の端末へ渡すときは<b>書き出し</b>でJSONを保存し、渡した先で<b>読み込み</b>。書き出したJSONと刷った表は名簿と同じ扱いで管理し、<b>公開リポジトリにはコミットしないでください</b>。</p>
+  </footer>
+
+</div>
+
+<style id="pgstyle"></style>
+
+<script>
+/* ==================================================================
+   0. 状態
+   S = { title, group, students:[{id,no,name}], items:[{id,name}],
+         checks:{ 学生id: { 品目id: "y"|"x" } }, seq }
+   "y"=収まった / "x"=対象外 / 無し=まだ
+================================================================== */
+(function(){
+"use strict";
+
+const KEY = "homeroom.collection-check.v1";
+
+function nid(){ return "k" + (S.seq++); }
+function newStudent(no, name){ return { id:nid(), no:String(no == null ? "" : no), name:name || "" }; }
+function newItem(name){ return { id:nid(), name:name || "" }; }
+function blank(){
+  return { title:"", group:"", students:[], items:[], checks:{}, seq:1 };
+}
+
+/* 読み込んだものが壊れていても落ちないようにする */
+function clean(o){
+  const s = blank();
+  if(!o || typeof o !== "object") return s;
+  s.title = typeof o.title === "string" ? o.title : "";
+  s.group = typeof o.group === "string" ? o.group : "";
+  s.seq   = (typeof o.seq === "number" && o.seq >= 1) ? Math.floor(o.seq) : 1;
+  const stIds = {}, itIds = {};
+  (Array.isArray(o.students) ? o.students : []).forEach(function(st){
+    if(!st || typeof st !== "object") return;
+    const id = typeof st.id === "string" && st.id ? st.id : "k" + (s.seq++);
+    const ns = { id:id, no:typeof st.no === "string" ? st.no : String(st.no || ""),
+                 name:typeof st.name === "string" ? st.name : "" };
+    s.students.push(ns); stIds[id] = true;
+  });
+  (Array.isArray(o.items) ? o.items : []).forEach(function(it){
+    if(!it || typeof it !== "object") return;
+    const id = typeof it.id === "string" && it.id ? it.id : "k" + (s.seq++);
+    const ni = { id:id, name:typeof it.name === "string" ? it.name : "" };
+    s.items.push(ni); itIds[id] = true;
+  });
+  if(o.checks && typeof o.checks === "object"){
+    s.students.forEach(function(st){
+      const m = o.checks[st.id];
+      if(!m || typeof m !== "object") return;
+      const keep = {};
+      s.items.forEach(function(it){
+        if(m[it.id] === "y" || m[it.id] === "x") keep[it.id] = m[it.id];
+      });
+      if(Object.keys(keep).length) s.checks[st.id] = keep;
+    });
+  }
+  return s;
+}
+
+let S;
+try{ S = clean(JSON.parse(localStorage.getItem(KEY) || "null")); }
+catch(e){ S = blank(); }
+
+/* ==================================================================
+   1. 保存
+================================================================== */
+const saveEl = document.getElementById("save");
+let saveTimer = null;
+function save(){
+  if(saveTimer) clearTimeout(saveTimer);
+  saveEl.dataset.s = "wait"; saveEl.textContent = "保存中…";
+  saveTimer = setTimeout(function(){
+    saveTimer = null;
+    try{
+      localStorage.setItem(KEY, JSON.stringify(S));
+      saveEl.dataset.s = "ok"; saveEl.textContent = "保存しました";
+    }catch(err){
+      saveEl.dataset.s = ""; saveEl.textContent = "保存できません";
+    }
+  }, 500);
+}
+
+/* ==================================================================
+   2. 数える
+================================================================== */
+function getMark(st, it){
+  const m = S.checks[st.id];
+  return (m && (m[it.id] === "y" || m[it.id] === "x")) ? m[it.id] : "";
+}
+function setMark(st, it, v){
+  if(!v){
+    if(S.checks[st.id]){ delete S.checks[st.id][it.id];
+      if(!Object.keys(S.checks[st.id]).length) delete S.checks[st.id]; }
+    return;
+  }
+  if(!S.checks[st.id]) S.checks[st.id] = {};
+  S.checks[st.id][it.id] = v;
+}
+/* 品目ごと: 収まった数 / 出すべき数（対象外を除く） */
+function countItem(it){
+  let y = 0, t = 0;
+  S.students.forEach(function(st){
+    const v = getMark(st, it);
+    if(v === "x") return;
+    t++;
+    if(v === "y") y++;
+  });
+  return { y:y, t:t, left:t - y };
+}
+/* 児童ごと: まだ出していない品目の数 */
+function countLeft(st){
+  let n = 0;
+  S.items.forEach(function(it){ if(!getMark(st, it)) n++; });
+  return n;
+}
+function totalLeft(){
+  let n = 0;
+  S.students.forEach(function(st){ n += countLeft(st); });
+  return n;
+}
+
+/* ==================================================================
+   3. 描画
+   印を付けるたびに全体を組み直すとフォーカスが飛ぶので、
+   マスの書き換えはセルだけで済ませ、表の組み直しは構造が変わったときだけ。
+================================================================== */
+const tblwrap  = document.getElementById("tblwrap");
+const emptyEl  = document.getElementById("empty");
+const colgEl   = document.getElementById("colg");
+const theadEl  = document.getElementById("thead");
+const tbodyEl  = document.getElementById("tbody");
+const tfootEl  = document.getElementById("tfoot");
+const nStuEl   = document.getElementById("nStu");
+const nItemEl  = document.getElementById("nItem");
+const nLeftEl  = document.getElementById("nLeft");
+const pgstyle  = document.getElementById("pgstyle");
+
+function writable(el, ph){
+  el.setAttribute("contenteditable","plaintext-only");
+  if(el.contentEditable !== "plaintext-only") el.setAttribute("contenteditable","true");
+  el.setAttribute("role","textbox");
+  if(ph) el.setAttribute("data-ph", ph);
+  return el;
+}
+function el(tag, cls, text){
+  const d = document.createElement(tag);
+  if(cls) d.className = cls;
+  if(text != null) d.textContent = text;
+  return d;
+}
+function smallBtn(text, title, fn){
+  const b = document.createElement("button");
+  b.type = "button"; b.textContent = text; b.title = title;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+function refreshCounts(){
+  nStuEl.textContent  = S.students.length;
+  nItemEl.textContent = S.items.length;
+  const left = totalLeft();
+  nLeftEl.textContent = left;
+  nLeftEl.className = left ? "pending" : "";
+  /* 品目が増えたら横長で刷る */
+  pgstyle.textContent = "@page{size:A4 " + (S.items.length > 5 ? "landscape" : "portrait") + ";margin:9mm}";
+}
+
+function refreshFoot(){
+  tfootEl.textContent = "";
+  const tr = document.createElement("tr");
+  const sum = el("td", "sum", "収 / 対象");
+  sum.colSpan = 2;
+  tr.appendChild(sum);
+  S.items.forEach(function(it){
+    const c = countItem(it);
+    const td = document.createElement("td");
+    const b = el("span", "frac" + (c.t ? "" : " zero"), c.y + "/" + c.t);
+    td.appendChild(b);
+    const sub = el("span", "sub", "残 " + c.left + (countNa(it) ? " ・ 外 " + countNa(it) : ""));
+    td.appendChild(sub);
+    tr.appendChild(td);
+  });
+  tr.appendChild(el("td", "addcol"));
+  tr.appendChild(el("td", "", "残 " + totalLeft()));
+  tfootEl.appendChild(tr);
+}
+function countNa(it){
+  let n = 0;
+  S.students.forEach(function(st){ if(getMark(st, it) === "x") n++; });
+  return n;
+}
+
+function cycleMark(st, it, btn){
+  const cur = getMark(st, it);
+  const nxt = cur === "" ? "y" : cur === "y" ? "x" : "";
+  setMark(st, it, nxt);
+  paintMark(btn, nxt);
+  refreshRowLeft(st);
+  refreshCounts();
+  refreshFoot();
+  save();
+}
+function paintMark(btn, v){
+  btn.dataset.v = v;
+  btn.textContent = v === "y" ? "✓" : v === "x" ? "−" : "";
+  btn.setAttribute("aria-label",
+    v === "y" ? "収まった（クリックで対象外へ）" :
+    v === "x" ? "対象外（クリックで空欄へ）" : "まだ（クリックで収に）");
+}
+
+function refreshRowLeft(st){
+  const td = tbodyEl.querySelector('td.left[data-sid="' + st.id + '"]');
+  if(!td) return;
+  const n = countLeft(st);
+  td.textContent = n;
+  td.className = "left" + (n ? "" : " zero");
+}
+
+function render(){
+  const has = S.students.length > 0;
+  tblwrap.hidden = !has;
+  emptyEl.hidden = has;
+  colgEl.textContent = "";
+  theadEl.textContent = "";
+  tbodyEl.textContent = "";
+
+  /* 列 */
+  [["c-no"],["c-name"]].forEach(function(c){
+    const col = document.createElement("col"); col.className = c[0]; colgEl.appendChild(col);
+  });
+  S.items.forEach(function(){
+    const col = document.createElement("col"); col.className = "c-item"; colgEl.appendChild(col);
+  });
+  ["c-add","c-left"].forEach(function(c){
+    const col = document.createElement("col"); col.className = c; colgEl.appendChild(col);
+  });
+
+  /* 見出し行 */
+  const hr = document.createElement("tr");
+  hr.appendChild(el("th", "no", "番号"));
+  hr.appendChild(el("th", "name", "氏名"));
+  S.items.forEach(function(it, ii){
+    const th = el("th", "item");
+    const nm = el("div", "itname", it.name);
+    nm.setAttribute("aria-label", (ii+1) + "番目の品目名");
+    writable(nm, "品目名");
+    nm.addEventListener("input", function(){ it.name = nm.textContent; save(); });
+    th.appendChild(nm);
+    const ops = el("div", "itops");
+    ops.appendChild(smallBtn("◀", "ひとつ左へ", function(){
+      if(ii > 0){ S.items.splice(ii-1, 0, S.items.splice(ii,1)[0]); save(); render(); }
+    }));
+    ops.appendChild(smallBtn("▶", "ひとつ右へ", function(){
+      if(ii < S.items.length-1){ S.items.splice(ii+1, 0, S.items.splice(ii,1)[0]); save(); render(); }
+    }));
+    const del = smallBtn("×", "この品目を消す", function(){
+      if(window.confirm("「" + (it.name || "品目") + "」の列と印を消しますか？")){
+        S.items.splice(ii, 1);
+        S.students.forEach(function(st){
+          if(S.checks[st.id]) delete S.checks[st.id][it.id];
+        });
+        save(); render();
+      }
+    });
+    del.className = "del";
+    ops.appendChild(del);
+    th.appendChild(ops);
+    hr.appendChild(th);
+  });
+  const addTh = el("th", "addcol");
+  const addIt = document.createElement("button");
+  addIt.id = "addItem"; addIt.type = "button"; addIt.textContent = "＋ 品目";
+  addIt.title = "右に品目の列を足す";
+  addIt.addEventListener("click", function(){
+    S.items.push(newItem("")); save(); render();
+  });
+  addTh.appendChild(addIt);
+  hr.appendChild(addTh);
+  hr.appendChild(el("th", "left", "残"));
+  theadEl.appendChild(hr);
+
+  /* 児童の行 */
+  S.students.forEach(function(st){
+    const tr = document.createElement("tr");
+
+    const tdNo = el("td", "no");
+    const noIn = document.createElement("input");
+    noIn.value = st.no; noIn.setAttribute("aria-label", "出席番号");
+    noIn.setAttribute("inputmode", "numeric");
+    noIn.addEventListener("input", function(){ st.no = noIn.value; save(); });
+    tdNo.appendChild(noIn);
+    tr.appendChild(tdNo);
+
+    const tdNm = el("td", "name");
+    const nm = el("div", "nm", st.name);
+    nm.setAttribute("aria-label", "氏名");
+    writable(nm);
+    nm.addEventListener("input", function(){ st.name = nm.textContent; save(); });
+    tdNm.appendChild(nm);
+    const del = smallBtn("×", "この児童を名簿から消す", function(){
+      const ix = S.students.indexOf(st);
+      if(ix >= 0 && window.confirm((st.name || "この児童") + " を名簿から消しますか？")){
+        S.students.splice(ix, 1); delete S.checks[st.id]; save(); render();
+      }
+    });
+    del.className = "delrow";
+    tdNm.appendChild(del);
+    tr.appendChild(tdNm);
+
+    S.items.forEach(function(it){
+      const td = document.createElement("td");
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "ck";
+      paintMark(b, getMark(st, it));
+      b.addEventListener("click", function(){ cycleMark(st, it, b); });
+      td.appendChild(b);
+      tr.appendChild(td);
+    });
+
+    tr.appendChild(el("td", "addcol"));
+    const leftTd = el("td", "left");
+    leftTd.dataset.sid = st.id;
+    tr.appendChild(leftTd);
+    tbodyEl.appendChild(tr);
+    refreshRowLeft(st);
+  });
+
+  /* 児童を足す行 */
+  const addTr = el("tr", "addstu");
+  const addTd = document.createElement("td");
+  addTd.colSpan = S.items.length + 4;
+  const addB = document.createElement("button");
+  addB.id = "addStu"; addB.type = "button"; addB.textContent = "＋ 児童を足す";
+  addB.addEventListener("click", function(){
+    let mx = 0;
+    S.students.forEach(function(st){
+      const v = parseInt(z2h(st.no), 10);
+      if(isFinite(v) && v > mx) mx = v;
+    });
+    S.students.push(newStudent(mx + 1, "")); save(); render();
+  });
+  addTd.appendChild(addB);
+  addTr.appendChild(addTd);
+  tbodyEl.appendChild(addTr);
+
+  refreshFoot();
+  refreshCounts();
+}
+
+/* ==================================================================
+   4. 名簿の取り込み
+================================================================== */
+const rosterEl   = document.getElementById("roster");
+const rosterText = document.getElementById("rosterText");
+const roleRow    = document.getElementById("roleRow");
+const hdWrap     = document.getElementById("hdWrap");
+const hdChk      = document.getElementById("hdChk");
+const previewEl  = document.getElementById("preview");
+const applyRow   = document.getElementById("applyRow");
+const applyHint  = document.getElementById("applyHint");
+const applyReplace = document.getElementById("applyReplace");
+const applyAppend  = document.getElementById("applyAppend");
+
+let parsed = null;   /* { rows:[[cell..]], roles:[..], header:bool } */
+
+function z2h(s){ return String(s).replace(/[０-９]/g, function(c){
+  return String(c.charCodeAt(0) - 0xFF10); }); }
+
+function splitCells(line, delim){
+  const cells = line.split(delim);
+  return cells.map(function(c){
+    c = c.replace(/^\s+|\s+$/g, "");
+    if(c.length >= 2 && c[0] === '"' && c[c.length-1] === '"')
+      c = c.slice(1, -1).replace(/""/g, '"');
+    return c;
+  });
+}
+function parseTable(text){
+  const delim = text.indexOf("\t") >= 0 ? "\t" : ",";
+  const rows = [];
+  text.split(/\r\n|\r|\n/).forEach(function(line){
+    if(!line.replace(/\s/g, "")) return;
+    rows.push(splitCells(line, delim));
+  });
+  return rows;
+}
+/* 見出し語はセル全体の一致でだけ見る（氏名の中の「組」「番」に引っかからない） */
+const HEAD_WORD = /^(no|name|id|番号|出席番号|番|氏名|名前|生徒名|児童名|児童氏名|組|クラス|学年|メール|email|e-mail|児童id)$/i;
+const NUM_RE = /^[0-9]{1,2}$/;
+
+function looksHeader(row){
+  return row.some(function(c){ return HEAD_WORD.test(String(c).replace(/\s/g, "")); });
+}
+function guessRoles(rows, header){
+  const data = header ? rows.slice(1) : rows;
+  const ncols = rows.reduce(function(m, r){ return Math.max(m, r.length); }, 0);
+  const roles = [];
+  let numCol = -1, bestNum = 0;
+  for(let c = 0; c < ncols; c++){
+    let num = 0, tot = 0;
+    data.forEach(function(r){
+      const v = r[c]; if(v == null || v === "") return;
+      tot++;
+      if(NUM_RE.test(z2h(v))) num++;
+    });
+    const ratio = tot ? num / tot : 0;
+    if(ratio >= 0.6 && ratio > bestNum){ bestNum = ratio; numCol = c; }
+  }
+  /* 氏名らしさ: 数字列でなく、かな・漢字を含むセルが多い列 */
+  let nameCol = -1, bestName = 0;
+  for(let c = 0; c < ncols; c++){
+    if(c === numCol) continue;
+    let hit = 0, tot = 0;
+    data.forEach(function(r){
+      const v = r[c]; if(v == null || v === "") return;
+      tot++;
+      if(/[぀-ヿ一-龯]/.test(v) && v.indexOf("@") < 0) hit++;
+    });
+    const ratio = tot ? hit / tot : 0;
+    if(ratio > bestName){ bestName = ratio; nameCol = c; }
+  }
+  for(let c = 0; c < ncols; c++)
+    roles.push(c === numCol ? "no" : c === nameCol ? "name" : "skip");
+  return roles;
+}
+
+function showParse(){
+  const rows = parsed.rows;
+  const header = parsed.header;
+  const data = header ? rows.slice(1) : rows;
+  const ncols = parsed.roles.length;
+
+  roleRow.textContent = "";
+  for(let c = 0; c < ncols; c++){
+    const w = el("div", "role");
+    const sel = document.createElement("select");
+    sel.dataset.col = c;
+    sel.setAttribute("aria-label", (c+1) + "列目の役割");
+    [["no","番号"],["name","氏名"],["skip","使わない"]].forEach(function(o){
+      const op = document.createElement("option");
+      op.value = o[0]; op.textContent = o[1];
+      if(parsed.roles[c] === o[0]) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.addEventListener("change", function(){
+      parsed.roles[c] = sel.value;
+      if(sel.value !== "skip"){ /* 同じ役割の他列は「使わない」に戻す */
+        parsed.roles.forEach(function(r, cc){
+          if(cc !== c && r === sel.value){ parsed.roles[cc] = "skip"; }
+        });
+        syncRoleSelects();
+      }
+      updateApply();
+    });
+    const sample = el("span", "sample",
+      data.slice(0, 3).map(function(r){ return r[c]; }).join("・") || "（空）");
+    w.appendChild(sel); w.appendChild(sample);
+    roleRow.appendChild(w);
+  }
+  roleRow.hidden = false;
+
+  hdChk.checked = header;
+  hdWrap.hidden = false;
+
+  previewEl.textContent = "";
+  const tbl = document.createElement("table");
+  rows.slice(0, 8).forEach(function(r, ri){
+    const tr = document.createElement("tr");
+    if(header && ri === 0) tr.className = "head";
+    for(let c = 0; c < ncols; c++)
+      tr.appendChild(el("td", "", r[c] != null ? r[c] : ""));
+    tbl.appendChild(tr);
+  });
+  previewEl.appendChild(tbl);
+  previewEl.hidden = false;
+  applyRow.hidden = false;
+  updateApply();
+}
+function syncRoleSelects(){
+  roleRow.querySelectorAll("select").forEach(function(sel){
+    sel.value = parsed.roles[sel.dataset.col];
+  });
+}
+function picked(){
+  let noCol = -1, nameCol = -1;
+  parsed.roles.forEach(function(r, c){
+    if(r === "no") noCol = c;
+    if(r === "name") nameCol = c;
+  });
+  const data = (hdChk.checked ? parsed.rows.slice(1) : parsed.rows);
+  const list = [];
+  data.forEach(function(r){
+    const name = nameCol >= 0 ? (r[nameCol] || "") : "";
+    const no = noCol >= 0 ? z2h(r[noCol] || "").replace(/[^\d]/g, "") : "";
+    if(name === "") return;   /* 氏名のない行は名簿に入れない */
+    list.push({ no:no, name:name });
+  });
+  return { list:list, nameCol:nameCol };
+}
+function updateApply(){
+  if(!parsed) return;
+  const p = picked();
+  const ok = p.nameCol >= 0 && p.list.length > 0;
+  applyReplace.disabled = !ok;
+  applyAppend.disabled  = !ok;
+  if(p.nameCol < 0){
+    applyHint.innerHTML = "氏名の列を選んでください";
+  }else if(!p.list.length){
+    applyHint.innerHTML = "名簿になる行がありません";
+  }else{
+    applyHint.innerHTML = "<b>" + p.list.length + "</b> 名分を読みました";
+  }
+}
+
+rosterText.addEventListener("input", function(){
+  const text = rosterText.value;
+  const rows = parseTable(text);
+  if(!rows.length){
+    parsed = null;
+    roleRow.hidden = true; hdWrap.hidden = true;
+    previewEl.hidden = true; applyRow.hidden = true;
+    return;
+  }
+  const header = looksHeader(rows[0]);
+  parsed = { rows:rows, header:header, roles:guessRoles(rows, header) };
+  showParse();
+});
+hdChk.addEventListener("change", function(){
+  if(!parsed) return;
+  parsed.header = hdChk.checked;
+  parsed.roles = guessRoles(parsed.rows, parsed.header);
+  showParse();
+});
+
+applyReplace.addEventListener("click", function(){ applyRoster(true); });
+applyAppend .addEventListener("click", function(){ applyRoster(false); });
+document.getElementById("applyCancel").addEventListener("click", function(){
+  closeRoster();
+});
+
+function applyRoster(replace){
+  const p = picked();
+  if(p.nameCol < 0 || !p.list.length) return;
+
+  if(replace){
+    /* 番号＋氏名が一致する児童は同じ人とみなして印を引き継ぐ */
+    const oldByKey = {};
+    S.students.forEach(function(st){ oldByKey[st.no + "|" + st.name] = st; });
+    const students = [], checks = {};
+    p.list.forEach(function(r){
+      const old = oldByKey[r.no + "|" + r.name];
+      const st = old || newStudent(r.no, r.name);
+      if(old){ st.no = r.no; st.name = r.name; }
+      students.push(st);
+      if(S.checks[st.id]) checks[st.id] = S.checks[st.id];
+    });
+    S.students = students;
+    S.checks = checks;
+  }else{
+    p.list.forEach(function(r){ S.students.push(newStudent(r.no, r.name)); });
+  }
+  if(!S.items.length) S.items.push(newItem(""));
+  save(); render();
+  closeRoster();
+}
+
+function openRoster(){ rosterEl.hidden = false; rosterText.focus(); }
+function closeRoster(){
+  rosterEl.hidden = true;
+  rosterText.value = ""; parsed = null;
+  roleRow.hidden = true; hdWrap.hidden = true;
+  previewEl.hidden = true; applyRow.hidden = true;
+}
+document.getElementById("rosterBtn").addEventListener("click", function(){
+  if(rosterEl.hidden) openRoster(); else closeRoster();
+});
+
+/* ==================================================================
+   5. 見出し・書き出し・読み込み・印刷
+================================================================== */
+const titleEl = document.getElementById("title");
+const groupEl = document.getElementById("group");
+titleEl.textContent = S.title;
+groupEl.textContent = S.group;
+titleEl.addEventListener("input", function(){ S.title = titleEl.textContent; save(); });
+groupEl.addEventListener("input", function(){ S.group = groupEl.textContent; save(); });
+
+/* 貼り付けは書式を落とす。改行は空白に畳む */
+document.addEventListener("paste", function(ev){
+  const t = ev.target;
+  if(!t || !t.isContentEditable) return;
+  ev.preventDefault();
+  const s = (ev.clipboardData || window.clipboardData).getData("text/plain") || "";
+  document.execCommand("insertText", false, s.replace(/[\r\n]+/g, " "));
+});
+
+function slug(){
+  const t = (S.title || "collection-check").replace(/[\\/:*?"<>|\s]+/g, "_").slice(0, 40);
+  return t || "collection-check";
+}
+document.getElementById("expBtn").addEventListener("click", function(){
+  const blob = new Blob([JSON.stringify(S, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = slug() + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+});
+const impFile = document.getElementById("impFile");
+document.getElementById("impBtn").addEventListener("click", function(){ impFile.click(); });
+impFile.addEventListener("change", function(){
+  const f = impFile.files && impFile.files[0];
+  if(!f) return;
+  const r = new FileReader();
+  r.onload = function(){
+    try{
+      S = clean(JSON.parse(String(r.result)));
+      titleEl.textContent = S.title;
+      groupEl.textContent = S.group;
+      save(); render();
+    }catch(e){
+      saveEl.dataset.s = ""; saveEl.textContent = "読み込めません";
+    }
+    impFile.value = "";
+  };
+  r.readAsText(f);
+});
+document.getElementById("prtBtn").addEventListener("click", function(){ window.print(); });
+
+render();
+saveEl.dataset.s = "ok"; saveEl.textContent = "この端末に保存";
+/* 名簿がまだなら、取り込みの口を開いておく */
+if(!S.students.length) openRoster();
+})();
+</script>

@@ -28,12 +28,16 @@ GAS_DIST = NOTE / "gas" / "dist"
 DANCE = ROOT / "apps" / "dance-count"
 DANCE_SRC = DANCE / "src"
 DANCE_DIST = DANCE / "dist"
+COLLECT = ROOT / "apps" / "collection-check"
+COLLECT_SRC = COLLECT / "src"
+COLLECT_DIST = COLLECT / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 PAGES = [
     (NOTE_WEB_SRC / "grid-sheet.html", NOTE_WEB_DIST / "grid-sheet.html", [NOTE_WEB_SRC, SHARED_UI]),
     (NOTE_WEB_SRC / "teacher-view.html", NOTE_WEB_DIST / "teacher-view.html", [NOTE_WEB_SRC, SHARED_UI]),
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI]),
+    (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI]),
 ]
 GAS_ORDER = ["Scale.gs", "Config.gs", "Roster.gs", "Master.gs", "Lock.gs", "Hours.gs",
              "Store.gs", "Aggregate.gs", "Api.gs", "Export.gs", "Code.gs", "Setup.gs"]
