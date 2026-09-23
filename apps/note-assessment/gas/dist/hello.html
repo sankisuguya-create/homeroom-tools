@@ -105,12 +105,12 @@ const isReleaseSym = sym => iOf(sym) >= iRelease;   // 解放されるまで児�
 
 /* valueOf という名前は使わない。Object.prototype.valueOf と同名で、
    GAS ではトップレベル宣言がグローバルオブジェクト上のそれを隠す。 */
-function valueOfSym(sym){                          // "A++" → 16／スケール外は null
+function valueOfSym(sym){                          // "A++" → 11／スケール外は null
   if(!sym || isMark(sym)) return null;
   const i = LEVELS.indexOf(String(sym));
   return i < 0 ? null : i + 1;
 }
-const symbolOf = v => LEVELS[v - 1];               // 16 → "A++"
+const symbolOf = v => LEVELS[v - 1];               // 11 → "A++"
 const baseOf   = v => baseOfSym(LEVELS[v - 1]);
 const isTopVal  = v => iOf(LEVELS[v - 1]) >= iTop;
 const isWarnVal = v => { const i = iOf(LEVELS[v - 1]); return i >= 0 && i <= iWarn; };

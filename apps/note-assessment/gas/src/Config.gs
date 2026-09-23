@@ -62,6 +62,11 @@ const Config = (function(){
       .split(/[\s,、]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
   }
 
+  /* 真偽の欄。シートのチェックボックスは false が入るが、手で "FALSE" と
+     書いても同じ意味にしたい（文字列は偽として扱えず !== false をすり抜ける）。
+     「含める」系は既定が true なので、明示の false だけを偽にする。 */
+  const notFalse = v => v !== false && String(v).toUpperCase() !== "FALSE";
+
   /* 集計の式。teacher-view.html の R にあたる。 */
   function rule(){
     return {
@@ -69,8 +74,8 @@ const Config = (function(){
       cTo:    valueOfSym(String(get("C上限", "C+"))),
       stat:   String(get("代表値", "後半の中央値")),
       late:   Number(get("後半の範囲", 3)) || 3,
-      withD:  get("Dを含める", true) !== false,
-      withC:  get("Cを含める", true) !== false
+      withD:  notFalse(get("Dを含める", true)),
+      withC:  notFalse(get("Cを含める", true))
     };
   }
 

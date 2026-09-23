@@ -358,9 +358,10 @@ function loadUnit(){
   rb.onclick = ()=> call("apiSetRated", [subject, unitName, !u.rated], r=>{
     u.rated = r.rated;
     say(r.rated
-      ? ("児童に見せた" + ((r.adopted || r.skipped) ?
+      ? ("児童に見せた" + ((r.adopted || r.skipped || r.noSym) ?
           "（" + r.adopted + "人ぶん採用した" +
-          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）" : ""))
+          (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") +
+          (r.noSym   ? "・値のもとになる記号が無い " + r.noSym + "人" : "") + "）" : ""))
       : "児童に見せないようにした");
     loadUnit();
   });
@@ -416,7 +417,10 @@ function drawUnitTable(t){
           ' title="No.' + (unitFrom + i) + '　' + esc(r.name) + (r.edited[i] ? "　貫通ずみ" : "") + '">' +
           (s || "·") + '</span>').join("") + '</div></td>' +
       '<td class="num' + (r.ready ? "" : " not-ready") + '"' +
-        (r.ready ? "" : ' title="記入率が' + Math.round((t.rateMin || 0) * 100) + '%未満。「単元の評価をする」を押しても、この児童はまだ採用されない"') +
+        (r.ready ? "" : ' title="' +
+          (r.nosym ? "値のもとになる記号が無い（入力は 休・/ のみか、まだ無い）。採用される値がない"
+                   : "記入率が" + Math.round((t.rateMin || 0) * 100) + "%未満。「単元の評価をする」を押しても、この児童はまだ採用されない") +
+          '"') +
         '>' + r.n + '/' + r.total + '</td>' +
       '<td class="num">' + (r.off || "·") + '</td>' +
       '<td class="num">' + (r.skip || "·") + '</td>' +
@@ -472,7 +476,8 @@ $("unitTbl").addEventListener("click", e=>{
 
 $("adoptAll").onclick = ()=> call("apiAdoptAll", [subject, unitName, false], r=>{
   say(r.put + "人ぶん採用した（すでに採用ずみの人は そのまま" +
-    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") + "）"); loadUnit(); });
+    (r.skipped ? "・記入率8割未満の " + r.skipped + "人は見送った" : "") +
+    (r.noSym   ? "・値のもとになる記号が無い " + r.noSym + "人" : "") + "）"); loadUnit(); });
 $("bulkGo").onclick = ()=> call("apiBulk",
   [subject, Number($("bulkNo").value), $("bulkSym").value, $("bulkOver").checked], r=>{
     say(r.put + "人に入れた" + (r.over ? "（うち上書き " + r.over + "）" : "")); loadUnit(); });

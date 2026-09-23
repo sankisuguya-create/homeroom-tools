@@ -34,6 +34,38 @@ const Store = (function(){
   const TTL = 1800;                               // 30分
   const keyOf  = (subject, id) => "rec|" + subject + "|" + id;
   const statKey = subject => "lsn|" + subject;
+  /* 保存用の行索引：{児童ID → {"教科|No": 行番号}}。
+     全件をなめて作るのは索引が無いときだけ。ずれは検証（write_）で潰す。 */
+  const idxKey   = id => "ridx|" + id;
+  const IDX_BUILT = "ridx|built";                  // 索引を作った時点の行数
+
+  /* 記録シートを1回なめて全員ぶんの行索引を作る。
+     0件の児童も鍵を作る（無いと、行が無い児童の保存ごとに作り直しになる）。 */
+  function idxBuild_(){
+    const cs = CacheService.getScriptCache();
+    const sh = sheet();
+    const last = sh.getLastRow();
+    const per = {};
+    Roster.all().forEach(st => { per[String(st.id)] = {}; });
+    if(last >= 2){
+      const v = sh.getRange(2, 1, last - 1, 3).getValues();
+      for(let i = 0; i < v.length; i++){
+        const id = String(v[i][1]);
+        (per[id] || (per[id] = {}))[String(v[i][0]) + "|" + Number(v[i][2])] = i + 2;
+      }
+    }
+    const put = {};
+    Object.keys(per).forEach(id => { put[idxKey(id)] = JSON.stringify(per[id]); });
+    put[IDX_BUILT] = String(last);
+    try { cs.putAll(put, TTL); } catch(e) {}
+  }
+
+  /* 行の削除は全員の索引をずらすので、教科ではなくまとめて捨てる。 */
+  function idxDrop_(){
+    const cs = CacheService.getScriptCache();
+    cs.remove(IDX_BUILT);
+    Roster.all().forEach(st => cs.remove(idxKey(st.id)));
+  }
 
   /* 授業ごとの、学級全体の入った人数と評価の合計。
      {No: [入った人数, 評価の合計, 評価の人数]}。休 と / は人数には入るが
@@ -115,6 +147,7 @@ const Store = (function(){
     if(studentId) cs.remove(keyOf(subject, studentId));
     else Roster.all().forEach(st => cs.remove(keyOf(subject, st.id)));
     cs.remove(statKey(subject));
+    if(!studentId) idxDrop_();                    // 手直しを前提に全部捨てる
   }
 
   /* 書いたあと、その児童のキャッシュだけを新しい値に差し替える。
@@ -226,21 +259,40 @@ const Store = (function(){
 
   /* ------------------------------------------------------------------
      実際に書く。29人が同時に押すので、必ず排他で囲む。
+
+     行の位置はシートの全件スキャンではなく、児童ごとの行索引
+     （キャッシュ）から引く。全件スキャンは年度末でも数百msかかり、
+     ロックの内側にあると29人ぶんが直列に積み上がる。
+     索引はずれうる（行の削除・手で足した行）ので、当たった行の
+     キー列を毎回確かめる。1セルぶんの読み取りでずれに気づける。
   ------------------------------------------------------------------ */
   function write_(subject, studentId, no, sym, at, by, keepExisting){
     const lock = LockService.getScriptLock();
     if(!lock.tryLock(20000)) return {ok:false, why:"こんでいます。もう一度おしてください"};
     try{
       const sh   = sheet();
-      const last = sh.getLastRow();
-      let hit = 0;
-      if(last >= 2){
-        const key = sh.getRange(2, 1, last - 1, 3).getValues();
-        for(let i = 0; i < key.length; i++){
-          if(String(key[i][0]) === subject &&
-             String(key[i][1]) === String(studentId) &&
-             Number(key[i][2]) === no){ hit = i + 2; break; }
+      const cs   = CacheService.getScriptCache();
+      const iKey = idxKey(studentId), bKey = subject + "|" + no;
+
+      let idx = JSON.parse(cs.get(iKey) || "null");
+      if(idx === null){ idxBuild_(); idx = JSON.parse(cs.get(iKey) || "{}"); }
+      let hit = idx[bKey] || 0;
+
+      /* 索引が当たったら、そこが本当にその授業の行かを確かめる。
+         途中で行が消えて・挿し込まれてずれていれば、索引を作り直す。 */
+      if(hit){
+        const chk = sh.getRange(hit, 1, 1, 3).getValues()[0];
+        if(String(chk[0]) !== subject || String(chk[1]) !== String(studentId) ||
+           Number(chk[2]) !== no){
+          idxBuild_();
+          idx = JSON.parse(cs.get(iKey) || "{}");
+          hit = idx[bKey] || 0;
         }
+      }else if(sh.getLastRow() > Number(cs.get(IDX_BUILT) || 0)){
+        /* 索引を作ったあとに行が増えている。手で足された行かもしれないので作り直す。 */
+        idxBuild_();
+        idx = JSON.parse(cs.get(iKey) || "{}");
+        hit = idx[bKey] || 0;
       }
 
       /* 一斉入力の既定は「空欄だけ」。すでに入っていれば触らない。 */
@@ -257,13 +309,17 @@ const Store = (function(){
       }
 
       if(sym === null){
-        if(hit) sh.deleteRow(hit);
+        if(hit){ sh.deleteRow(hit); idxDrop_(); }   // 行番号がずれるので索引ごと捨てる
         touchCache_(subject, studentId, no, null, 0, "");
         return {ok:true, sym:null};
       }
       const row = [subject, studentId, no, sym, at, by || ""];
       if(hit) sh.getRange(hit, 1, 1, WIDTH).setValues([row]);
       else    sh.appendRow(row);
+      /* 自分が書いた位置を索引にも入れる（追記で行数が伸びたぶんも合わせる）。 */
+      idx[bKey] = hit || sh.getLastRow();
+      try { cs.put(iKey, JSON.stringify(idx), TTL);
+            cs.put(IDX_BUILT, String(sh.getLastRow()), TTL); } catch(e) {}
       touchCache_(subject, studentId, no, sym, at.getTime(), by || "");
       return {ok:true, sym:sym, savedAt:at.toISOString()};
     } finally {

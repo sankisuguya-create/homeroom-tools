@@ -78,10 +78,13 @@ const Aggregate = (function(){
     };
   }
 
-  /* 評定への写像。記号は上振れしているので、A になるのは A+ 以上。 */
+  /* 評定への写像。記号は上振れしているので、A になるのは A+ 以上。
+     しきい値（A下限・C上限）が壊れているときは null を返す——
+     null との比較は必ず真になるので、そのまま評定すると全員が A になる。
+     出さないほうが設定ミスに気づける。診断（diagnoseLines）もこの2つを見る。 */
   function rankOf(v, R){
     R = R || Config.rule();
-    if(v == null) return null;
+    if(v == null || R.aFrom == null || R.cTo == null) return null;
     return v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B";
   }
 
@@ -149,16 +152,27 @@ const Final = (function(){
     return sh.getRange(2, 1, last - 1, 6).getValues();
   }
 
+  /* {教科|児童ID|種別|対象 → {row, value}} の索引。実行のあいだだけ持つ。
+     これが無いと apiTermTable や exportTerm のように 児童 × 単元 で
+     find を呼ぶところが、呼ぶたびシート全体を読み直して数十秒かかる。
+     **1回読んで引ける形にする。** 書き込みは索引も一緒に直し、
+     行の削除（番号がずれる）のときだけ索引ごと捨てる。 */
+  let IDX_ = null;
+  const keyOf_ = (subject, studentId, kind, target) =>
+    subject + "|" + studentId + "|" + kind + "|" + target;
+
+  function idx(){
+    if(IDX_) return IDX_;
+    IDX_ = {};
+    all().forEach((r, i) => {
+      IDX_[keyOf_(r[COL.subject], r[COL.id], r[COL.kind], r[COL.target])] =
+        {row: i + 2, value: String(r[COL.value])};
+    });
+    return IDX_;
+  }
+
   function find(subject, studentId, kind, target){
-    const rows = all();
-    for(let i = 0; i < rows.length; i++){
-      const r = rows[i];
-      if(String(r[COL.subject]) === subject &&
-         String(r[COL.id])      === String(studentId) &&
-         String(r[COL.kind])    === kind &&
-         String(r[COL.target])  === String(target)) return {row: i + 2, value: String(r[COL.value])};
-    }
-    return null;
+    return idx()[keyOf_(subject, studentId, kind, target)] || null;
   }
 
   function unitValue(subject, studentId, unitName){
@@ -173,18 +187,31 @@ const Final = (function(){
   function set(subject, studentId, kind, target, value){
     const who = whoAmI();
     if(who.role !== "teacher") return {ok:false, why:"先生だけです"};
+    /* 値の語彙はここで守る。単元はスケールの記号、学期は A/B/C の評定。
+       外れた値が入ると読む側の検査で黙って落ち、壊れた行だけが残る。 */
+    if(value !== null && value !== ""){
+      const bad = (kind === "学期") ? ["A","B","C"].indexOf(value) < 0
+                : (kind === "単元") ? valueOfSym(value) === null : false;
+      if(bad) return {ok:false, why:"その値は置けません"};
+    }
     const lock = LockService.getScriptLock();
     if(!lock.tryLock(20000)) return {ok:false, why:"こんでいます"};
     try{
-      const sh = sheet();
+      const sh  = sheet();
       const hit = find(subject, studentId, kind, target);
       if(value === null || value === ""){
-        if(hit) sh.deleteRow(hit.row);
+        if(hit){ sh.deleteRow(hit.row); IDX_ = null; }   // 行番号がずれる
         return {ok:true, value:null};
       }
       const row = [subject, studentId, kind, target, value, new Date()];
-      if(hit) sh.getRange(hit.row, 1, 1, 6).setValues([row]);
-      else    sh.appendRow(row);
+      if(hit){
+        sh.getRange(hit.row, 1, 1, 6).setValues([row]);
+        hit.value = String(value);                       // 索引も当て直す
+      }else{
+        sh.appendRow(row);
+        idx()[keyOf_(subject, studentId, kind, target)] =
+          {row: sh.getLastRow(), value: String(value)};
+      }
       return {ok:true, value:value};
     } finally { lock.releaseLock(); }
   }

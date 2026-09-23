@@ -169,6 +169,15 @@ function diagnoseLines(){
          + (Config.released() ? "出している" : "出していない")
          + "。設定シートの「" + RELEASE_FROM + "解放」で変える");
 
+  /* 5.6 評定の線。ここが壊れていると rankOf が null を返して評定が出ない
+     （かつては全員が A になった）。A下限・C上限は記号で入れる。 */
+  const R = Config.rule();
+  const aBad = R.aFrom == null, cBad = R.cTo == null;
+  out.push((aBad || cBad ? "× " : "○ ")
+    + "評定の線 A ≧ " + (aBad ? "？「A下限」が不正（" + Config.get("A下限") + "）" : symbolOf(R.aFrom))
+    + " / C ≦ " + (cBad ? "？「C上限」が不正（" + Config.get("C上限") + "）" : symbolOf(R.cTo))
+    + ((aBad || cBad) ? "。設定シートの値を記号（例: A+・C+）に直す" : ""));
+
   /* 5.7 タイムゾーン */
   const tz = Session.getScriptTimeZone();
   const stz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
@@ -190,14 +199,17 @@ function diagnose(){
 }
 
 /* ==================================================================
-   migrateSymbols() — 上端の記号を新しい並びに置き換える。
+   migrateSymbols() — 古い記号を今の並びに置き換える。
 
-   Z−(17) Z(18) Z+(19) Z++(20) → Z(17) Z+(18) Y(19) Y+(20)
+   置換表は scale.js の SYM_MIGRATION が正本。今の表は
+   D 系 → D、C− → C、C++ → C+（D・C を畳んだぶん）と、
+   前の版の名残（Z− → Z、Z++ → Y+）を含む。
 
-   **内部値は動かない。** 位置で対応させているので、置換しても
-   その児童の順位も単元評価も変わらない。変わるのは表示の記号だけ。
-   1回だけ実行する。2回目は置き換えるものが無いので何も起きない
-   ……のではなく、Z → Z+ が二重にかかる。**必ず1回だけ。**
+   **畳み込みでは内部値が動く**（B− が 9 → 4）。記号で保存しているので
+   記録は壊れないが、しきい値との関係が変わるので、実行したあとに
+   設定シートの「A下限」「C上限」を確かめること。
+   置換先の記号は表のキーに無いので、**何度実行しても同じ結果になる**
+   （2回目は当たる行が無いだけ）。
 ================================================================== */
 function migrateSymbols(){
   const ss = SpreadsheetApp.getActive();
@@ -217,7 +229,11 @@ function migrateSymbols(){
     done.push(name + " " + hit + "件");
   });
 
-  return tell_("上端の記号を置き換えた", done.concat([
-    "", "Z− → Z / Z → Z+ / Z+ → Y / Z++ → Y+",
-    "内部の順位は動いていない。", "", "※ 2回実行すると二重にかかる。1回だけ。"]));
+  /* 記録のキャッシュは古い記号のまま残るので捨てる。 */
+  clearAllCache();
+
+  return tell_("記号を置き換えた", done.concat([
+    "", "置換表（scale.js SYM_MIGRATION）: D−/D+/D++ → D、C− → C、C++ → C+、Z− → Z、Z++ → Y+",
+    "D・C の畳み込みで内部の順位は動く。A下限・C上限を確かめる。",
+    "", "※ 置換先は表のキーに無いので、何度実行しても同じ結果。"]));
 }

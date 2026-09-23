@@ -66,6 +66,7 @@ const SHEETS = {
 let CURRENT_EMAIL = "sakura@example.ed.jp";
 const alerts = [];
 let sheetReads = 0;            // 記録シートを頭からなめた回数
+let finalReads = 0;            // 確定シートを頭からなめた回数
 
 /* 書ける偽シート。記録と確定は実際に行が増減するので、そこまで真似る。 */
 function fakeSheet(name){
@@ -80,6 +81,7 @@ function fakeSheet(name){
     return {
       getValues(){
         if(name === "記録" && row === 2 && nCol === 6) sheetReads++;
+        if(name === "確定" && row === 2 && nCol === 6) finalReads++;
         const out = [];
         for(let i = 0; i < nRow; i++){
           const src = v[r0 + i] || [];
@@ -154,6 +156,7 @@ sandbox.SH_HAS   = n => !!SHEETS[n];
 sandbox.SH_COUNT = n => (SHEETS[n] ? 1 : 0);
 sandbox.CURRENT_EMAIL_STUDENT = () => { CURRENT_EMAIL = "sakura@example.ed.jp"; };
 sandbox.SHEET_READS = () => sheetReads;
+sandbox.FINAL_READS = () => finalReads;
 /* 検査の式の中で CURRENT_EMAIL に代入しても、偽の Session が見ているのは
    こちら側の変数なので効かない。差し替えはこの関数を通す。
    as() と違ってキャッシュは消さない（キャッシュの効きを見る検査があるため）。 */
@@ -469,9 +472,22 @@ ok("押した時点で仮値が採用され、確定シートに入る",
    "apiSetRated('算数','九九の表とかけ算',true)");
 ok("採用ずみの値は押し直しても書き換えられない",
    "(function(){var v=Final.unitValue('算数','s09','九九の表とかけ算');" +
-   "Final.set('算数','s09','単元','九九の表とかけ算','Z++');" +
+   "Final.set('算数','s09','単元','九九の表とかけ算','Z+');" +
    "apiSetRated('算数','九九の表とかけ算',true);" +
-   "return Final.unitValue('算数','s09','九九の表とかけ算')==='Z++';})()");
+   "return Final.unitValue('算数','s09','九九の表とかけ算')==='Z+';})()")
+ok("スケールに無い記号は確定シートに置けない",
+   "(function(){var r=Final.set('算数','s09','単元','九九の表とかけ算','Z++');" +
+   "return r.ok===false && Final.unitValue('算数','s09','九九の表とかけ算')==='Z+';})()")
+ok("学期の確定値は A/B/C しか置けない",
+   "(function(){var bad=Final.set('算数','s09','学期','1','Z+');" +
+   "var ok_=Final.set('算数','s09','学期','1','A');" +
+   "return bad.ok===false && ok_.ok===true && Final.termRank('算数','s09',1)==='A';})()")
+ok("確定シートは 1回なめて索引にして引く",
+   "(function(){var before=FINAL_READS();" +
+   "Final.unitValue('算数','s01','九九の表とかけ算');" +
+   "Final.unitValue('算数','s02','わり算');" +
+   "Final.termRank('算数','s09',1);" +
+   "return FINAL_READS()===before;})()", "'reads=' + FINAL_READS()");
 ok("戻せる", "(function(){apiSetRated('算数','わり算',false);return Master.unitOf('算数',20).rated===false;})()");
 clockReal();
 
@@ -581,7 +597,18 @@ ok("消すと人数が減る",
    "(function(){var a=Store.lessonStats('算数')[65][0];" +
    " apiSaveAs('算数','s03',65,null);" +
    " var b=Store.lessonStats('算数')[65][0];" +
-   " return b===a-1;})()");
+   " return b===a-1;})()")
+ok("消したあとの行ずれでも次の保存は正しい行に当たる",
+   "(function(){apiSaveAs('算数','s01',66,'A');" +          /* 66 が最終行に入る */
+   " apiSaveAs('算数','s02',66,null);" +                  /* s02 の行を消す（ずれる） */
+   " apiSaveAs('算数','s01',66,'B');" +                   /* ずれた索引で書き直す */
+   " var rows=Store.read('算数','s01',new Date());" +
+   " return rows[65].sym==='B';})()")
+ok("索引が無いときも1回作って正しく当たる",
+   "(function(){ev_clear();" +
+   " var r=apiSaveAs('算数','s03',66,'C');" +
+   " var rows=Store.read('算数','s03',new Date());" +
+   " return r.ok && rows[65].sym==='C';})()");
 ok("保存しても記録のキャッシュは捨てない（シートを読み直さない）",
    "(function(){Store.read('算数','s01',new Date());" +          /* キャッシュを作る */
    " var before=SHEET_READS();" +

@@ -79,12 +79,12 @@ const isReleaseSym = sym => iOf(sym) >= iRelease;   // 解放されるまで児�
 
 /* valueOf という名前は使わない。Object.prototype.valueOf と同名で、
    GAS ではトップレベル宣言がグローバルオブジェクト上のそれを隠す。 */
-function valueOfSym(sym){                          // "A++" → 16／スケール外は null
+function valueOfSym(sym){                          // "A++" → 11／スケール外は null
   if(!sym || isMark(sym)) return null;
   const i = LEVELS.indexOf(String(sym));
   return i < 0 ? null : i + 1;
 }
-const symbolOf = v => LEVELS[v - 1];               // 16 → "A++"
+const symbolOf = v => LEVELS[v - 1];               // 11 → "A++"
 const baseOf   = v => baseOfSym(LEVELS[v - 1]);
 const isTopVal  = v => iOf(LEVELS[v - 1]) >= iTop;
 const isWarnVal = v => { const i = iOf(LEVELS[v - 1]); return i >= 0 && i <= iWarn; };
@@ -189,6 +189,11 @@ const Config = (function(){
       .split(/[\s,、]+/).map(s => s.trim().toLowerCase()).filter(Boolean);
   }
 
+  /* 真偽の欄。シートのチェックボックスは false が入るが、手で "FALSE" と
+     書いても同じ意味にしたい（文字列は偽として扱えず !== false をすり抜ける）。
+     「含める」系は既定が true なので、明示の false だけを偽にする。 */
+  const notFalse = v => v !== false && String(v).toUpperCase() !== "FALSE";
+
   /* 集計の式。teacher-view.html の R にあたる。 */
   function rule(){
     return {
@@ -196,8 +201,8 @@ const Config = (function(){
       cTo:    valueOfSym(String(get("C上限", "C+"))),
       stat:   String(get("代表値", "後半の中央値")),
       late:   Number(get("後半の範囲", 3)) || 3,
-      withD:  get("Dを含める", true) !== false,
-      withC:  get("Cを含める", true) !== false
+      withD:  notFalse(get("Dを含める", true)),
+      withC:  notFalse(get("Cを含める", true))
     };
   }
 
@@ -518,6 +523,38 @@ const Store = (function(){
   const TTL = 1800;                               // 30分
   const keyOf  = (subject, id) => "rec|" + subject + "|" + id;
   const statKey = subject => "lsn|" + subject;
+  /* 保存用の行索引：{児童ID → {"教科|No": 行番号}}。
+     全件をなめて作るのは索引が無いときだけ。ずれは検証（write_）で潰す。 */
+  const idxKey   = id => "ridx|" + id;
+  const IDX_BUILT = "ridx|built";                  // 索引を作った時点の行数
+
+  /* 記録シートを1回なめて全員ぶんの行索引を作る。
+     0件の児童も鍵を作る（無いと、行が無い児童の保存ごとに作り直しになる）。 */
+  function idxBuild_(){
+    const cs = CacheService.getScriptCache();
+    const sh = sheet();
+    const last = sh.getLastRow();
+    const per = {};
+    Roster.all().forEach(st => { per[String(st.id)] = {}; });
+    if(last >= 2){
+      const v = sh.getRange(2, 1, last - 1, 3).getValues();
+      for(let i = 0; i < v.length; i++){
+        const id = String(v[i][1]);
+        (per[id] || (per[id] = {}))[String(v[i][0]) + "|" + Number(v[i][2])] = i + 2;
+      }
+    }
+    const put = {};
+    Object.keys(per).forEach(id => { put[idxKey(id)] = JSON.stringify(per[id]); });
+    put[IDX_BUILT] = String(last);
+    try { cs.putAll(put, TTL); } catch(e) {}
+  }
+
+  /* 行の削除は全員の索引をずらすので、教科ではなくまとめて捨てる。 */
+  function idxDrop_(){
+    const cs = CacheService.getScriptCache();
+    cs.remove(IDX_BUILT);
+    Roster.all().forEach(st => cs.remove(idxKey(st.id)));
+  }
 
   /* 授業ごとの、学級全体の入った人数と評価の合計。
      {No: [入った人数, 評価の合計, 評価の人数]}。休 と / は人数には入るが
@@ -599,6 +636,7 @@ const Store = (function(){
     if(studentId) cs.remove(keyOf(subject, studentId));
     else Roster.all().forEach(st => cs.remove(keyOf(subject, st.id)));
     cs.remove(statKey(subject));
+    if(!studentId) idxDrop_();                    // 手直しを前提に全部捨てる
   }
 
   /* 書いたあと、その児童のキャッシュだけを新しい値に差し替える。
@@ -710,21 +748,40 @@ const Store = (function(){
 
   /* ------------------------------------------------------------------
      実際に書く。29人が同時に押すので、必ず排他で囲む。
+
+     行の位置はシートの全件スキャンではなく、児童ごとの行索引
+     （キャッシュ）から引く。全件スキャンは年度末でも数百msかかり、
+     ロックの内側にあると29人ぶんが直列に積み上がる。
+     索引はずれうる（行の削除・手で足した行）ので、当たった行の
+     キー列を毎回確かめる。1セルぶんの読み取りでずれに気づける。
   ------------------------------------------------------------------ */
   function write_(subject, studentId, no, sym, at, by, keepExisting){
     const lock = LockService.getScriptLock();
     if(!lock.tryLock(20000)) return {ok:false, why:"こんでいます。もう一度おしてください"};
     try{
       const sh   = sheet();
-      const last = sh.getLastRow();
-      let hit = 0;
-      if(last >= 2){
-        const key = sh.getRange(2, 1, last - 1, 3).getValues();
-        for(let i = 0; i < key.length; i++){
-          if(String(key[i][0]) === subject &&
-             String(key[i][1]) === String(studentId) &&
-             Number(key[i][2]) === no){ hit = i + 2; break; }
+      const cs   = CacheService.getScriptCache();
+      const iKey = idxKey(studentId), bKey = subject + "|" + no;
+
+      let idx = JSON.parse(cs.get(iKey) || "null");
+      if(idx === null){ idxBuild_(); idx = JSON.parse(cs.get(iKey) || "{}"); }
+      let hit = idx[bKey] || 0;
+
+      /* 索引が当たったら、そこが本当にその授業の行かを確かめる。
+         途中で行が消えて・挿し込まれてずれていれば、索引を作り直す。 */
+      if(hit){
+        const chk = sh.getRange(hit, 1, 1, 3).getValues()[0];
+        if(String(chk[0]) !== subject || String(chk[1]) !== String(studentId) ||
+           Number(chk[2]) !== no){
+          idxBuild_();
+          idx = JSON.parse(cs.get(iKey) || "{}");
+          hit = idx[bKey] || 0;
         }
+      }else if(sh.getLastRow() > Number(cs.get(IDX_BUILT) || 0)){
+        /* 索引を作ったあとに行が増えている。手で足された行かもしれないので作り直す。 */
+        idxBuild_();
+        idx = JSON.parse(cs.get(iKey) || "{}");
+        hit = idx[bKey] || 0;
       }
 
       /* 一斉入力の既定は「空欄だけ」。すでに入っていれば触らない。 */
@@ -741,13 +798,17 @@ const Store = (function(){
       }
 
       if(sym === null){
-        if(hit) sh.deleteRow(hit);
+        if(hit){ sh.deleteRow(hit); idxDrop_(); }   // 行番号がずれるので索引ごと捨てる
         touchCache_(subject, studentId, no, null, 0, "");
         return {ok:true, sym:null};
       }
       const row = [subject, studentId, no, sym, at, by || ""];
       if(hit) sh.getRange(hit, 1, 1, WIDTH).setValues([row]);
       else    sh.appendRow(row);
+      /* 自分が書いた位置を索引にも入れる（追記で行数が伸びたぶんも合わせる）。 */
+      idx[bKey] = hit || sh.getLastRow();
+      try { cs.put(iKey, JSON.stringify(idx), TTL);
+            cs.put(IDX_BUILT, String(sh.getLastRow()), TTL); } catch(e) {}
       touchCache_(subject, studentId, no, sym, at.getTime(), by || "");
       return {ok:true, sym:sym, savedAt:at.toISOString()};
     } finally {
@@ -856,10 +917,13 @@ const Aggregate = (function(){
     };
   }
 
-  /* 評定への写像。記号は上振れしているので、A になるのは A+ 以上。 */
+  /* 評定への写像。記号は上振れしているので、A になるのは A+ 以上。
+     しきい値（A下限・C上限）が壊れているときは null を返す——
+     null との比較は必ず真になるので、そのまま評定すると全員が A になる。
+     出さないほうが設定ミスに気づける。診断（diagnoseLines）もこの2つを見る。 */
   function rankOf(v, R){
     R = R || Config.rule();
-    if(v == null) return null;
+    if(v == null || R.aFrom == null || R.cTo == null) return null;
     return v >= R.aFrom ? "A" : v <= R.cTo ? "C" : "B";
   }
 
@@ -927,16 +991,27 @@ const Final = (function(){
     return sh.getRange(2, 1, last - 1, 6).getValues();
   }
 
+  /* {教科|児童ID|種別|対象 → {row, value}} の索引。実行のあいだだけ持つ。
+     これが無いと apiTermTable や exportTerm のように 児童 × 単元 で
+     find を呼ぶところが、呼ぶたびシート全体を読み直して数十秒かかる。
+     **1回読んで引ける形にする。** 書き込みは索引も一緒に直し、
+     行の削除（番号がずれる）のときだけ索引ごと捨てる。 */
+  let IDX_ = null;
+  const keyOf_ = (subject, studentId, kind, target) =>
+    subject + "|" + studentId + "|" + kind + "|" + target;
+
+  function idx(){
+    if(IDX_) return IDX_;
+    IDX_ = {};
+    all().forEach((r, i) => {
+      IDX_[keyOf_(r[COL.subject], r[COL.id], r[COL.kind], r[COL.target])] =
+        {row: i + 2, value: String(r[COL.value])};
+    });
+    return IDX_;
+  }
+
   function find(subject, studentId, kind, target){
-    const rows = all();
-    for(let i = 0; i < rows.length; i++){
-      const r = rows[i];
-      if(String(r[COL.subject]) === subject &&
-         String(r[COL.id])      === String(studentId) &&
-         String(r[COL.kind])    === kind &&
-         String(r[COL.target])  === String(target)) return {row: i + 2, value: String(r[COL.value])};
-    }
-    return null;
+    return idx()[keyOf_(subject, studentId, kind, target)] || null;
   }
 
   function unitValue(subject, studentId, unitName){
@@ -951,18 +1026,31 @@ const Final = (function(){
   function set(subject, studentId, kind, target, value){
     const who = whoAmI();
     if(who.role !== "teacher") return {ok:false, why:"先生だけです"};
+    /* 値の語彙はここで守る。単元はスケールの記号、学期は A/B/C の評定。
+       外れた値が入ると読む側の検査で黙って落ち、壊れた行だけが残る。 */
+    if(value !== null && value !== ""){
+      const bad = (kind === "学期") ? ["A","B","C"].indexOf(value) < 0
+                : (kind === "単元") ? valueOfSym(value) === null : false;
+      if(bad) return {ok:false, why:"その値は置けません"};
+    }
     const lock = LockService.getScriptLock();
     if(!lock.tryLock(20000)) return {ok:false, why:"こんでいます"};
     try{
-      const sh = sheet();
+      const sh  = sheet();
       const hit = find(subject, studentId, kind, target);
       if(value === null || value === ""){
-        if(hit) sh.deleteRow(hit.row);
+        if(hit){ sh.deleteRow(hit.row); IDX_ = null; }   // 行番号がずれる
         return {ok:true, value:null};
       }
       const row = [subject, studentId, kind, target, value, new Date()];
-      if(hit) sh.getRange(hit.row, 1, 1, 6).setValues([row]);
-      else    sh.appendRow(row);
+      if(hit){
+        sh.getRange(hit.row, 1, 1, 6).setValues([row]);
+        hit.value = String(value);                       // 索引も当て直す
+      }else{
+        sh.appendRow(row);
+        idx()[keyOf_(subject, studentId, kind, target)] =
+          {row: sh.getLastRow(), value: String(value)};
+      }
       return {ok:true, value:value};
     } finally { lock.releaseLock(); }
   }
@@ -1132,7 +1220,7 @@ function apiSetRated(subject, unitName, rated){
   }
   if(!row) return {ok:false, why:"その単元がありません"};
 
-  let adopted = 0, skipped = 0;
+  let adopted = 0, skipped = 0, noSym = 0;
   if(rated){
     const subj = Master.subject(subject);
     const u = subj.units.filter(x => x.name === unitName)[0];
@@ -1141,7 +1229,9 @@ function apiSetRated(subject, unitName, rated){
     Roster.all().forEach(st => {
       if(Final.unitValue(subject, st.id, unitName)) return;   // 教師が直したものは残す
       const s = Aggregate.summarize(all[st.id] || {}, u);
-      if(!s.provSym) return;                          // 記号が1つも無ければ採用しようがない
+      /* 入力があっても値のもとになる記号（休・/ 以外）が無い児童は、
+         採用にも見送りにも入らない。別に数えて「採用の対象」とずれないようにする。 */
+      if(!s.provSym){ noSym++; return; }
       /* この児童自身の記入率が8割未満なら、まだ採用しない。
          見せる／見せないの旗を立てるだけの操作なので、あとで追いつけば
          次の「単元の評価をする」や「仮値をまとめて採用」で拾われる。 */
@@ -1152,7 +1242,7 @@ function apiSetRated(subject, unitName, rated){
 
   sh.getRange(row, 7).setValue(!!rated);
   Master.clearCache();
-  return {ok:true, rated: !!rated, adopted: adopted, skipped: skipped};
+  return {ok:true, rated: !!rated, adopted: adopted, skipped: skipped, noSym: noSym};
 }
 
 /* ==================================================================
@@ -1223,10 +1313,11 @@ function apiUnitTable(subject, unitName){
       prov: s.provSym, provVal: s.prov, all: symbolOfMedian(s.all),
       high: s.high ? symbolOf(s.high) : null,
       top: s.top, c: s.c, d: s.d,
-      /* この児童自身の記入率が採用の水準に達しているか。
-         「単元の評価をする」「仮値をまとめて採用」は、達していない児童を
-         採用しない（apiSetRated / apiAdoptAll）。画面にも先に見せておく。 */
-      ready: meetsRate_(s),
+      /* 「単元の評価をする」「仮値をまとめて採用」が実際に採用する児童か。
+         記入率が足りない児童と、値のもとになる記号が無い児童（休・/ だけ
+         か未入力）は採用されない（apiSetRated / apiAdoptAll と同じ条件）。 */
+      ready: meetsRate_(s) && !!s.provSym,
+      nosym: !s.provSym,
       final: Final.unitValue(subject, st.id, unitName)
     };
   });
@@ -1251,7 +1342,11 @@ function apiUnitTable(subject, unitName){
 
 function ruleText_(R){
   const stat = R.stat;
-  return "A ≧ " + symbolOf(R.aFrom) + " / C ≦ " + symbolOf(R.cTo)
+  /* しきい値が壊れているときは記号が引けない。そのまま表示すると
+     見た目は普通なのに中身が全員 A 相当になるので、ここで分かる形にする。 */
+  const a = (R.aFrom != null) ? symbolOf(R.aFrom) : "？（A下限が不正）";
+  const c = (R.cTo   != null) ? symbolOf(R.cTo)   : "？（C上限が不正）";
+  return "A ≧ " + a + " / C ≦ " + c
        + " ／ 代表値：" + stat + (stat === "後半の中央値" ? "（後半 1/" + R.late + "）" : "")
        + (R.withD ? "" : " ／ D を除く") + (R.withC ? "" : " ／ C を除く");
 }
@@ -1269,17 +1364,17 @@ function apiAdoptAll(subject, unitName, overwrite){
   const u = subj && subj.units.filter(x => x.name === unitName)[0];
   if(!u) return {ok:false, why:"その単元はありません"};
   const all = Store.readAll(subject);
-  let n = 0, skipped = 0;
+  let n = 0, skipped = 0, noSym = 0;
   Roster.all().forEach(st => {
     if(!overwrite && Final.unitValue(subject, st.id, unitName)) return;
     const s = Aggregate.summarize(all[st.id] || {}, u);
-    if(!s.provSym) return;
+    if(!s.provSym){ noSym++; return; }
     /* apiSetRated と同じしきい値。まとめて採用するボタンからでも、
        記入率8割未満の児童を素通りさせない。 */
     if(!meetsRate_(s)){ skipped++; return; }
     Final.set(subject, st.id, "単元", unitName, s.provSym); n++;
   });
-  return {ok:true, put:n, skipped:skipped};
+  return {ok:true, put:n, skipped:skipped, noSym:noSym};
 }
 
 /* 一斉入力。既定は空欄だけ。 */
@@ -1698,6 +1793,15 @@ function diagnoseLines(){
          + (Config.released() ? "出している" : "出していない")
          + "。設定シートの「" + RELEASE_FROM + "解放」で変える");
 
+  /* 5.6 評定の線。ここが壊れていると rankOf が null を返して評定が出ない
+     （かつては全員が A になった）。A下限・C上限は記号で入れる。 */
+  const R = Config.rule();
+  const aBad = R.aFrom == null, cBad = R.cTo == null;
+  out.push((aBad || cBad ? "× " : "○ ")
+    + "評定の線 A ≧ " + (aBad ? "？「A下限」が不正（" + Config.get("A下限") + "）" : symbolOf(R.aFrom))
+    + " / C ≦ " + (cBad ? "？「C上限」が不正（" + Config.get("C上限") + "）" : symbolOf(R.cTo))
+    + ((aBad || cBad) ? "。設定シートの値を記号（例: A+・C+）に直す" : ""));
+
   /* 5.7 タイムゾーン */
   const tz = Session.getScriptTimeZone();
   const stz = SpreadsheetApp.getActive().getSpreadsheetTimeZone();
@@ -1719,14 +1823,17 @@ function diagnose(){
 }
 
 /* ==================================================================
-   migrateSymbols() — 上端の記号を新しい並びに置き換える。
+   migrateSymbols() — 古い記号を今の並びに置き換える。
 
-   Z−(17) Z(18) Z+(19) Z++(20) → Z(17) Z+(18) Y(19) Y+(20)
+   置換表は scale.js の SYM_MIGRATION が正本。今の表は
+   D 系 → D、C− → C、C++ → C+（D・C を畳んだぶん）と、
+   前の版の名残（Z− → Z、Z++ → Y+）を含む。
 
-   **内部値は動かない。** 位置で対応させているので、置換しても
-   その児童の順位も単元評価も変わらない。変わるのは表示の記号だけ。
-   1回だけ実行する。2回目は置き換えるものが無いので何も起きない
-   ……のではなく、Z → Z+ が二重にかかる。**必ず1回だけ。**
+   **畳み込みでは内部値が動く**（B− が 9 → 4）。記号で保存しているので
+   記録は壊れないが、しきい値との関係が変わるので、実行したあとに
+   設定シートの「A下限」「C上限」を確かめること。
+   置換先の記号は表のキーに無いので、**何度実行しても同じ結果になる**
+   （2回目は当たる行が無いだけ）。
 ================================================================== */
 function migrateSymbols(){
   const ss = SpreadsheetApp.getActive();
@@ -1746,7 +1853,11 @@ function migrateSymbols(){
     done.push(name + " " + hit + "件");
   });
 
-  return tell_("上端の記号を置き換えた", done.concat([
-    "", "Z− → Z / Z → Z+ / Z+ → Y / Z++ → Y+",
-    "内部の順位は動いていない。", "", "※ 2回実行すると二重にかかる。1回だけ。"]));
+  /* 記録のキャッシュは古い記号のまま残るので捨てる。 */
+  clearAllCache();
+
+  return tell_("記号を置き換えた", done.concat([
+    "", "置換表（scale.js SYM_MIGRATION）: D−/D+/D++ → D、C− → C、C++ → C+、Z− → Z、Z++ → Y+",
+    "D・C の畳み込みで内部の順位は動く。A下限・C上限を確かめる。",
+    "", "※ 置換先は表のキーに無いので、何度実行しても同じ結果。"]));
 }

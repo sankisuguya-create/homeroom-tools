@@ -130,6 +130,20 @@ h2 .fold{order:2}
 .unit-card .meta{font-size:11.5px;color:var(--ink-faint);
   font-family:"IBM Plex Mono",monospace;display:flex;gap:11px;flex-wrap:wrap}
 
+/* ---- 記号の推移（折れ線） ---- */
+.chartcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px 12px;overflow-x:auto}
+svg.trend{display:block;min-width:820px;width:100%;height:auto}
+svg.trend .band{fill:var(--rule-soft)}
+svg.trend .baseline{stroke:var(--rule);stroke-width:1}
+svg.trend .ylab{fill:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600}
+svg.trend .ysub{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9px}
+svg.trend .xlab{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9.5px}
+svg.trend .unitlab{fill:var(--ink-soft);font-family:"IBM Plex Sans JP","Hiragino Sans",sans-serif;font-size:11px;font-weight:600}
+svg.trend .sep{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
+svg.trend .path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+svg.trend .dot{fill:var(--accent)}
+svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
+
 /* 閉室（8:00 より前・ロック時刻より後） */
 .closed{display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;min-height:56vh;text-align:center;border:1px solid var(--rule);
@@ -215,6 +229,13 @@ h2 .fold{order:2}
   <section id="secUnits" class="hidden">
     <h2>単元の評価</h2>
     <div class="units" id="units"></div>
+  </section>
+
+  <section id="secTrend" class="hidden">
+    <h2>きろくの うつりかわり</h2>
+    <div class="chartcard">
+      <svg class="trend" id="trend" viewBox="0 0 1040 300" role="img" aria-label="授業ごとの評価の推移"></svg>
+    </div>
   </section>
 </div>
 
@@ -441,7 +462,7 @@ function onPick(c, l, sel){
     if(o) o.remove();
   }
   applyCellState(c, l);
-  renderHead(); renderTermCounts();
+  renderHead(); renderTermCounts(); drawTrend();
   c.classList.add("saving");
   sel.disabled = true;          // 往復のあいだ、そのセルだけ受け付けない
   hideErr();
@@ -452,14 +473,14 @@ function onPick(c, l, sel){
       if(r && r.ok){ applyCellState(c, l); return; }
       l.sym = before;                       // 断られたので戻す
       l.state = before ? "done" : "todo";
-      applyCellState(c, l); renderHead(); renderTermCounts();
+      applyCellState(c, l); renderHead(); renderTermCounts(); drawTrend();
       showErr((r && r.why) || "ほぞん できませんでした");
     })
     .withFailureHandler(function(e){
       c.classList.remove("saving");
       l.sym = before;
       l.state = before ? "done" : "todo";
-      applyCellState(c, l); renderHead(); renderTermCounts();
+      applyCellState(c, l); renderHead(); renderTermCounts(); drawTrend();
       showErr("つうしんが できませんでした。もう一度 えらんでください");
     })
     .apiSave(subject, l.no, next);
@@ -483,6 +504,55 @@ function renderTermCounts(){
     }
     tag.textContent = "のこり " + todo;
   }
+}
+
+/* ---- 記号の推移（折れ線） ----
+   動機づけ装置。自分が入れた記号の並びを、そのまま高さにして描く。
+   帯ごとの段数が違うので、目盛りは掛け算ではなく表（bandStart/bandSize）を引く。 */
+function drawTrend(){
+  const data = S.rows.filter(l => l.sym && !isMark(l.sym))
+                     .map(l => ({no:l.no, v:valueOfSym(l.sym), sym:l.sym}));
+  const W=1040, H=300, L=54, R=14, T=16, B=34;
+  const iw=W-L-R, ih=H-T-B, slot=ih/NLEVEL;
+  const x = i => L + (data.length<2 ? iw/2 : iw*i/(data.length-1));
+  const y = v => T + ih - (v - 0.5)*slot;
+
+  let s = "";
+  BASES.forEach((b, bi)=>{
+    const from = bandStart(b), n = bandSize(b);
+    if(bi % 2 === 0)
+      s += '<rect class="band" x="'+L+'" y="'+(T+ih-(from-1+n)*slot)+'" width="'+iw+'" height="'+(n*slot)+'"/>';
+    const cy = T + ih - (from - 1 + n/2)*slot;                    // 帯の中央
+    s += '<text class="ylab" x="'+(L-16)+'" y="'+(cy+4)+'" text-anchor="end">'+b+'</text>';
+    if(n > 2){                                                    // 4段の帯だけ端を書く
+      s += '<text class="ysub" x="'+(L-16)+'" y="'+(y(from)+3)+'" text-anchor="end">−</text>';
+      s += '<text class="ysub" x="'+(L-16)+'" y="'+(y(from+n-1)+3)+'" text-anchor="end">++</text>';
+    }
+  });
+  s += '<line class="baseline" x1="'+L+'" y1="'+(T+ih)+'" x2="'+(L+iw)+'" y2="'+(T+ih)+'"/>';
+
+  data.forEach((d,i)=>{
+    if(i>0 && unitOf(d.no) !== unitOf(data[i-1].no)){
+      const mx = (x(i)+x(i-1))/2;
+      s += '<line class="sep" x1="'+mx+'" y1="'+T+'" x2="'+mx+'" y2="'+(T+ih)+'"/>';
+    }
+  });
+  (S.units || []).forEach(u=>{
+    const idx = data.map((d,i)=>({d:d,i:i})).filter(o=>unitOf(o.d.no)===u);
+    if(!idx.length) return;
+    const mid = (x(idx[0].i) + x(idx[idx.length-1].i)) / 2;
+    s += '<text class="unitlab" x="'+mid+'" y="'+(T+11)+'" text-anchor="middle">'+u.name+'</text>';
+  });
+
+  if(data.length)
+    s += '<polyline class="path" points="' + data.map((d,i)=>x(i)+","+y(d.v)).join(" ") + '"/>';
+  data.forEach((d,i)=>{
+    const isTop = isTopSym(d.sym);
+    s += '<circle class="dot'+(isTop?" z":"")+'" cx="'+x(i)+'" cy="'+y(d.v)+'" r="'+(isTop?5.5:3.5)+'"/>';
+    if(i % 2 === 0 || isTop)
+      s += '<text class="xlab" x="'+x(i)+'" y="'+(T+ih+16)+'" text-anchor="middle">'+d.no+'</text>';
+  });
+  $("trend").innerHTML = s;
 }
 
 /* 「のこり」＝**済んだ授業のうち、自分が空のもの**。
@@ -627,7 +697,7 @@ function showOnly(which){
   const faces = {closed:"closedPanel", empty:"emptyPanel", loading:"loading"};
   Object.keys(faces).forEach(k => $(faces[k]).classList.toggle("hidden", k !== which));
   const body = (which === "sheet");
-  ["head","secLessons","secUnits"].forEach(id => $(id).classList.toggle("hidden", !body));
+  ["head","secLessons","secUnits","secTrend"].forEach(id => $(id).classList.toggle("hidden", !body));
   if(!body) $("soonbar").classList.add("hidden");
 }
 showOnly("loading");
@@ -658,7 +728,7 @@ function render(){
   }
 
   showOnly("sheet");
-  renderHead(); renderSoon(); renderGrid(); renderUnits(); scrollToNow();
+  renderHead(); renderSoon(); renderGrid(); renderUnits(); drawTrend(); scrollToNow();
 }
 
 function load(next){
