@@ -119,7 +119,7 @@ const Aggregate = (function(){
     const rec = foldRows(rows);
     return subj.units.map(u => {
       const s = summarize(rec, u);
-      const shown = u.rated;
+      const shown = u.rated && meetsRate_(s);
       return {
         name: u.name, from: u.from, to: u.to, c: u.c, term: u.term, rated: u.rated,
         n: s.n, total: s.total, off: s.off, skip: s.skip,

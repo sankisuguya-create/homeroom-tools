@@ -603,7 +603,8 @@ function drawUnitTable(t){
           '<th>仮値</th><th>学級差</th><th>全体</th><th>最高</th><th>' + TOP_FROM + '↑</th>' +
           '<th>C</th><th>D</th><th>採用値</th></tr></thead><tbody>';
   t.rows.forEach(r=>{
-    const chosen = r.final != null ? r.final : (r.prov || "");
+    const chosen = r.final || "";
+    const belowRate = r.total <= 0 || r.n / r.total < t.rateMin;
     h += '<tr>' +
       '<td class="name">' + esc(r.name) + '</td>' +
       '<td><div class="chips">' + r.seq.map((s,i) =>
@@ -626,8 +627,9 @@ function drawUnitTable(t){
       '<td class="warncell' + (r.top ? "" : " zero") + '">' + r.top + '</td>' +
       '<td class="warncell' + (r.c ? "" : " zero") + '">' + r.c + '</td>' +
       '<td class="warncell' + (r.d ? "" : " zero") + '">' + r.d + '</td>' +
-      '<td><select class="final' + (r.prov && chosen !== r.prov ? " changed" : "") + '" data-id="' + r.id + '">' +
-        '<option value="">—</option>' +
+      '<td><select class="final' + (chosen && r.prov && chosen !== r.prov ? " changed" : "") + '" data-id="' + r.id + '"' +
+        (belowRate ? ' disabled title="記入率が80%未満のため未評価です"' : '') + '>' +
+        '<option value="">-（未評価）</option>' +
         B.syms.map(s => '<option value="' + s + '"' + (s === chosen ? " selected" : "") + '>' + s + '</option>').join("") +
         '</select></td></tr>';
   });
@@ -704,7 +706,7 @@ function drawTerm(t){
   t.rows.forEach(r=>{
     const chosen = r.final || r.rank || "";
     h += '<tr><td class="name">' + esc(r.name) + '</td>' +
-      r.per.map(p => '<td><span class="chip ' + (p ? clsOf(p) : "none") + '">' + (p || "·") + '</span></td>').join("") +
+      r.per.map(p => '<td><span class="chip ' + (p ? clsOf(p) : "none") + '"' + (p ? '' : ' title="未評価"') + '>' + (p || "-") + '</span></td>').join("") +
       '<td class="num">' + (r.sym || "—") + '</td>' +
       '<td>' + (r.rank ? '<span class="rank ' + r.rank + '">' + r.rank + '</span>' : "—") + '</td>' +
       '<td><select class="final' + (r.rank && chosen !== r.rank ? " changed" : "") + '" data-id="' + r.id + '">' +
