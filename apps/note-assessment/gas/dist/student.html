@@ -902,7 +902,7 @@ function renderUnits(){
     card.dataset.u = u.c;
     card.innerHTML =
       '<div class="name">' + u.name + '</div>' +
-      '<div class="row"><span class="valbox mat ' + cls + '">' + (p || "—") + '</span>' +
+      '<div class="row"><span class="valbox mat ' + cls + '"' + (p ? '' : ' title="未評価"') + '>' + (p || "-") + '</span>' +
         '<span class="tag' + (p ? ' rated' : '') + '">' + tag + '</span></div>' +
       '<div class="meta">' +
         '<span>入力 ' + u.n + '/' + u.total + '</span>' +

@@ -761,6 +761,25 @@ ok("同じ名前で作り直しても増えない",
 ok("児童は書き出せない", "(function(){CURRENT_EMAIL_STUDENT();return exportTerm('算数',1).ok===false;})()");
 as("sensei@example.ed.jp");
 
+console.log("■ 80%の境界・個別採用・採用後の記入削除");
+ev("SpreadsheetApp.getActive().getSheetByName('単元マスタ').appendRow(['国語','境界検査',1,10,0,1,false]); Master.clearCache();" +
+   "for(var no=1;no<=7;no++) apiSaveAs('国語','s01',no,'B');");
+ok("70%では個別採用できない", "apiAdopt('国語','境界検査','s01','A').ok===false");
+ok("70%では期末評定にも混入しない", "apiTermTable('国語',1).rows[0].per[0]===null && apiTermTable('国語',1).rows[0].rank===null");
+ev("apiSaveAs('国語','s01',8,'休');");
+ok("休を含む80%ちょうどで採用できる", "apiSetRated('国語','境界検査',true).adopted===1 && apiUnitTable('国語','境界検査').rows[0].final==='B'");
+ok("80%では児童に採用値を返す", "Aggregate.unitsForStudent('国語','s01',Store.read('国語','s01'))[0].sym==='B'");
+ev("apiSaveAs('国語','s01',8,'');");
+ok("採用後に70%へ下がると教師画面は未評価", "apiUnitTable('国語','境界検査').rows[0].final===null");
+ok("採用後に70%へ下がると児童画面も未評価", "Aggregate.unitsForStudent('国語','s01',Store.read('国語','s01'))[0].sym===null");
+ok("保存済み評価があっても70%は期末集計から除外", "apiTermTable('国語',1).rows[0].per[0]===null && apiTermTable('国語',1).rows[0].rank===null");
+ev("exportTerm('国語',1)");
+ok("出力でも単元は -、仮評定は空欄", SHEETS['出力_国語_1学期'][1][2]==='-' && SHEETS['出力_国語_1学期'][1][4]==='');
+ok("80%未満でも採用取り消しは可能", "apiAdopt('国語','境界検査','s01','').ok===true");
+ev("apiSaveAs('国語','s01',8,'/');");
+ok("/を含む80%ちょうどで個別採用できる", "apiAdopt('国語','境界検査','s01','A').ok===true");
+ok("再び80%に達すると期末へ反映", "apiTermTable('国語',1).rows[0].per[0]==='A'");
+
 console.log("■ シートの用意");
 ev("setupSheets()");
 ok("setupSheets が走る（既にあるので何もしない）", alerts.length >= 1, "alerts.length");

@@ -32,7 +32,7 @@ function exportTerm(subject, term){
       const s = Aggregate.summarize(all[st.id] || {}, u, R);
       counts.n += s.n; counts.total += s.total; counts.off += s.off;
       counts.skip += s.skip; counts.c += s.c; counts.d += s.d;
-      per.push(Final.unitValue(subject, st.id, u.name) || s.provSym || "");
+      per.push(meetsRate_(s) ? (Final.unitValue(subject, st.id, u.name) || s.provSym || "-") : "-");
     });
     const t = Aggregate.termValue(per, R);
     rows.push([st.no, st.name].concat(per).concat([

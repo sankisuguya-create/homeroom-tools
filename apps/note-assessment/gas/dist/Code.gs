@@ -958,7 +958,7 @@ const Aggregate = (function(){
     const rec = foldRows(rows);
     return subj.units.map(u => {
       const s = summarize(rec, u);
-      const shown = u.rated;
+      const shown = u.rated && meetsRate_(s);
       return {
         name: u.name, from: u.from, to: u.to, c: u.c, term: u.term, rated: u.rated,
         n: s.n, total: s.total, off: s.off, skip: s.skip,
@@ -1318,7 +1318,7 @@ function apiUnitTable(subject, unitName){
          か未入力）は採用されない（apiSetRated / apiAdoptAll と同じ条件）。 */
       ready: meetsRate_(s) && !!s.provSym,
       nosym: !s.provSym,
-      final: Final.unitValue(subject, st.id, unitName)
+      final: meetsRate_(s) ? Final.unitValue(subject, st.id, unitName) : null
     };
   });
 
@@ -1354,6 +1354,13 @@ function ruleText_(R){
 /* 採用。値を空にすると採用を取り消す（仮値に戻る）。 */
 function apiAdopt(subject, unitName, studentId, value){
   const bad = teacherOnly_(); if(bad) return bad;
+  if(value !== null && value !== ""){
+    const subj = Master.subject(subject);
+    const u = subj && subj.units.find(x => x.name === unitName);
+    if(!u) return {ok:false, why:"その単元はありません"};
+    const s = Aggregate.summarize(Store.readAll(subject)[studentId] || {}, u);
+    if(!meetsRate_(s)) return {ok:false, why:"記入率が80%未満のため未評価です"};
+  }
   return Final.set(subject, studentId, "単元", unitName, value);
 }
 
@@ -1394,9 +1401,11 @@ function apiTermTable(subject, term){
 
   const rows = Roster.all().map(st => {
     const per = units.map(u => {
+      const s = Aggregate.summarize(all[st.id] || {}, u, R);
+      if(!meetsRate_(s)) return null;
       const f = Final.unitValue(subject, st.id, u.name);
       if(f) return f;
-      return Aggregate.summarize(all[st.id] || {}, u, R).provSym;
+      return s.provSym;
     });
     const t = Aggregate.termValue(per, R);
     return {
@@ -1502,7 +1511,7 @@ function exportTerm(subject, term){
       const s = Aggregate.summarize(all[st.id] || {}, u, R);
       counts.n += s.n; counts.total += s.total; counts.off += s.off;
       counts.skip += s.skip; counts.c += s.c; counts.d += s.d;
-      per.push(Final.unitValue(subject, st.id, u.name) || s.provSym || "");
+      per.push(meetsRate_(s) ? (Final.unitValue(subject, st.id, u.name) || s.provSym || "-") : "-");
     });
     const t = Aggregate.termValue(per, R);
     rows.push([st.no, st.name].concat(per).concat([
