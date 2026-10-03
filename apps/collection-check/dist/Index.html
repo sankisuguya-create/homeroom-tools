@@ -8,7 +8,14 @@
 /* ▼ src/tokens.css から。直すのは src のほう ▼ */
 /* 色と書体のトークン — 両画面が読む。@dark{} は build.py が
    @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
-   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
+   2つに展開する。暗い配色の値はここ1箇所にしかない。
+   中立トークン（書体・紙/ink/rule/accent）は base.css が正本。
+   このファイルが評価ドメインの色を足す。 */
+/* ▼ base.css から ▼ */
+/* 中立の色・書体トークン — 全ツールが読む最小共通セット。
+   評価ドメインの色（単元20色・A/B系・警告など）は tokens.css 側。
+   @dark{} は build.py が暗い配色の2ブロックへ展開する。
+   light 固定のツール（icon-maker）は build 側で @dark を除く。 */
 :root{
   /* 書体。ウェブフォントは読まない。--font-ja は左から
      Mac（Hiragino）→ Windows（Yu Gothic / BIZ UD / Meiryo）→ Chromebook
@@ -21,7 +28,21 @@
   --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
   --ink-soft:#5A6470; --ink-faint:#9AA3AD;
   --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
-
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
+  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
+  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
+}
+/* ▲ base.css ここまで ▲ */
+:root{
   /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
   --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
   --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
@@ -44,10 +65,6 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
-    --ink-soft:#A0A9B4; --ink-faint:#6A727C;
-    --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-
     --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
     --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
     --warn:#E5776A; --warn-bg:#2E1C1A;
@@ -66,10 +83,6 @@
   }
 }
 :root[data-theme="dark"]{
-  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
-  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
-  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-
   --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
   --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
   --warn:#E5776A; --warn-bg:#2E1C1A;

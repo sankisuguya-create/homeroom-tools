@@ -107,15 +107,28 @@ def html_doc(body: str) -> str:
     lang=\"ja\" が無いと漢字を中国語系字形で出す端末があるので必ず付ける。"""
     return HTML_HEAD + body.rstrip("\n") + HTML_TAIL
 
+def expand_css(path: pathlib.Path, search_dirs) -> str:
+    """css ファイル内の /* @include */ を再帰的に展開する。
+    tokens.css が base.css を読むような、共有cssの層構造に使う。"""
+    def sub(match):
+        name = match.group(1)
+        included = expand_css(include_file(name, search_dirs), search_dirs).rstrip("\n")
+        return ("/* ▼ %s から ▼ */\n" % name
+                + included
+                + "\n/* ▲ %s ここまで ▲ */" % name)
+    return INCLUDE.sub(sub, path.read_text(encoding="utf-8"))
+
 def render(src: pathlib.Path, search_dirs) -> str:
     body = src.read_text(encoding="utf-8")
     seen = []
     def sub(match):
         name = match.group(1)
         seen.append(name)
-        included = include_file(name, search_dirs).read_text(encoding="utf-8").rstrip("\n")
         if name.endswith(".css"):
-            included = expand_dark(included + "\n").rstrip("\n")
+            included = expand_css(include_file(name, search_dirs), search_dirs)
+            included = expand_dark(included.rstrip("\n") + "\n").rstrip("\n")
+        else:
+            included = include_file(name, search_dirs).read_text(encoding="utf-8").rstrip("\n")
         return ("/* ▼ src/%s から。直すのは src のほう ▼ */\n" % name
                 + included
                 + "\n/* ▲ src/%s ここまで ▲ */" % name)
@@ -132,10 +145,10 @@ def gas_targets():
     yield GAS_GENERATED / "Scale.gs", BANNER + scale
     yield GAS_GENERATED / "scale.html", note % "scale.js" + "<script>\n" + scale + "</script>\n"
 
-    material = expand_dark((NOTE_WEB_SRC / "material.css").read_text(encoding="utf-8"))
+    material = expand_dark(expand_css(NOTE_WEB_SRC / "material.css", [NOTE_WEB_SRC, SHARED_UI]))
     yield GAS_GENERATED / "material.html", note % "material.css" + "<style>\n" + material + "</style>\n"
 
-    tokens = expand_dark((SHARED_UI / "tokens.css").read_text(encoding="utf-8"))
+    tokens = expand_dark(expand_css(SHARED_UI / "tokens.css", [SHARED_UI]))
     token_note = ("<!-- shared/ui/tokens.css から scripts/build.py が作る。"
                   " 正本を直すこと。 -->\n")
     yield GAS_GENERATED / "tokens.html", token_note + "<style>\n" + tokens + "</style>\n"

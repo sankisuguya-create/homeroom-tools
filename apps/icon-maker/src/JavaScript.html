@@ -25,11 +25,18 @@ const CATEGORIES=[
 const BATCH_SIZE=120,MAX_SET_ITEMS=500,MAX_JSON_BYTES=2*1024*1024;
 const VALID_MODES=new Set(['auto','white','black']),VALID_SIZES=new Set(['basic','large']),VALID_SHAPES=new Set(['rounded','circle','sphere','diamond','hexagon','cube','front-cube','star','shield']),VALID_LAYOUTS=new Set(['icon','horizontal','square-card']);
 const DESIGN_KEYS=['icon','label','bg','mode','size','shape','layout'];
+const SET_KEY='homeroom.icon-maker.v1';
+const OLD_SET_KEY='icon-studio-set';
 let tags={},allNames=[],spriteRoot=null,peopleRoot=null,searchIndex=new Map(),categoryIndex=new Map(),view='curated',activeCategory='',visibleLimit=BATCH_SIZE,currentResults=[],copyTarget=null,searchTimer=0,previewTimer=0;
 let state={icon:'book-open',label:'教材',bg:'#147A42',mode:'auto',size:'large',shape:'rounded',layout:'icon',set:loadSet()};
 const $=id=>document.getElementById(id);
-function loadSet(){try{const value=JSON.parse(localStorage.getItem('icon-studio-set')||'[]');return Array.isArray(value)?value.slice(0,MAX_SET_ITEMS):[]}catch{return[]}}
-function saveSet(){try{localStorage.setItem('icon-studio-set',JSON.stringify(state.set));return true}catch{toast('端末の保存容量が不足しています');return false}}
+function loadSet(){try{
+  let raw=localStorage.getItem(SET_KEY);
+  if(raw===null){/* 旧ツール名時代のキーがあれば1回だけ引き継ぐ */
+    const old=localStorage.getItem(OLD_SET_KEY);
+    if(old!==null){raw=old;try{localStorage.setItem(SET_KEY,old);localStorage.removeItem(OLD_SET_KEY);}catch{}}}
+  const value=JSON.parse(raw||'[]');return Array.isArray(value)?value.slice(0,MAX_SET_ITEMS):[]}catch{return[]}}
+function saveSet(){try{localStorage.setItem(SET_KEY,JSON.stringify(state.set));return true}catch{toast('端末の保存容量が不足しています');return false}}
 function appendImportedSet(current,items){const room=Math.max(0,MAX_SET_ITEMS-current.length),added=Math.min(room,items.length);return{set:current.concat(items.slice(0,room)),added,truncated:added<items.length}}
 function xml(s){return String(s).replace(/[<>&\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\"':'&quot;',"'":'&apos;'}[c]))}
 function normalize(s){return s.toLowerCase().trim().replace(/[　_]+/g,' ')}

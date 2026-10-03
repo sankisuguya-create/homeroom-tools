@@ -1,19 +1,10 @@
 /* 色と書体のトークン — 両画面が読む。@dark{} は build.py が
    @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
-   2つに展開する。暗い配色の値はここ1箇所にしかない。 */
+   2つに展開する。暗い配色の値はここ1箇所にしかない。
+   中立トークン（書体・紙/ink/rule/accent）は base.css が正本。
+   このファイルが評価ドメインの色を足す。 */
+/* @include base.css */
 :root{
-  /* 書体。ウェブフォントは読まない。--font-ja は左から
-     Mac（Hiragino）→ Windows（Yu Gothic / BIZ UD / Meiryo）→ Chromebook
-     （Noto）の順に当たる。BIZ UD は Windows 10 以降の標準添付。
-     --font-mono は数・記号の桁そろえ用。日本語が入る場面（診断行など）は
-     後ろの BIZ UDゴシック／Noto Sans Mono CJK JP に落ちて読める。 */
-  --font-ja:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Meiryo",sans-serif;
-  --font-mono:"Consolas","Menlo","Roboto Mono","BIZ UDGothic","Noto Sans Mono CJK JP",monospace;
-
-  --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
-  --ink-soft:#5A6470; --ink-faint:#9AA3AD;
-  --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
-
   /* 評価の色。A 系と突破層にだけ置く。B 系は無色、警告層は文字だけ */
   --a-bg:#DCE8F6; --a-line:#8FB4DC; --a-ink:#173E70;
   --z-bg:#F7EBCB; --z-line:#D6B461; --z-ink:#5C4408;
@@ -35,10 +26,6 @@
   --u15:#7575CC; --u16:#BB5246; --u17:#4EBE65; --u18:#8E74CC; --u19:#B57043;
 }
 @dark{
-  --paper:#131619; --sheet:#1A1E23; --ink:#E8EBEF;
-  --ink-soft:#A0A9B4; --ink-faint:#6A727C;
-  --rule:#2E343B; --rule-soft:#242A30; --accent:#7BAAE4;
-
   --a-bg:#1E3352; --a-line:#3F6598; --a-ink:#BDD5F0;
   --z-bg:#3D3113; --z-line:#8A7028; --z-ink:#F0D794;
   --warn:#E5776A; --warn-bg:#2E1C1A;
