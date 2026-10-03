@@ -1,6 +1,8 @@
 # GAS 実装手順
 
-旧プロトタイプ（`web/dist/` にあった画面。現在は `../archive/` へ凍結移動済み）を Google Apps Script + スプレッドシートへ載せた手順。仕様の正本は [`spec.md`](spec.md)、画面の正本は `gas/src/`。
+**この文書は移植作業の記録。** 以後の変更は [`spec.md`](spec.md) を正本にする。
+
+旧プロトタイプ（`web/dist/` にあった画面。現在は `../archive/` へ凍結移動済み）を Google Apps Script + スプレッドシートへ載せた手順。画面の正本は `gas/src/`。
 
 ## 0. 先に読むところ
 
