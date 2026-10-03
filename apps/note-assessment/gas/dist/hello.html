@@ -5,10 +5,18 @@
 <meta charset="utf-8">
 <!-- shared/ui/tokens.css から scripts/build.py が作る。 正本を直すこと。 -->
 <style>
-/* 色トークン — 両画面が読む。@dark{} は build.py が
+/* 色と書体のトークン — 両画面が読む。@dark{} は build.py が
    @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
    2つに展開する。暗い配色の値はここ1箇所にしかない。 */
 :root{
+  /* 書体。ウェブフォントは読まない。--font-ja は左から
+     Mac（Hiragino）→ Windows（Yu Gothic / BIZ UD / Meiryo）→ Chromebook
+     （Noto）の順に当たる。BIZ UD は Windows 10 以降の標準添付。
+     --font-mono は数・記号の桁そろえ用。日本語が入る場面（診断行など）は
+     後ろの BIZ UDゴシック／Noto Sans Mono CJK JP に落ちて読める。 */
+  --font-ja:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Meiryo",sans-serif;
+  --font-mono:"Consolas","Menlo","Roboto Mono","BIZ UDGothic","Noto Sans Mono CJK JP",monospace;
+
   --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
   --ink-soft:#5A6470; --ink-faint:#9AA3AD;
   --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;
@@ -80,7 +88,7 @@
 </style>
 <style>
   body{margin:0;background:#FCFBF7;color:#1D2126;
-       font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.8}
+       font-family:var(--font-ja);font-size:16px;line-height:1.8}
   .wrap{max-width:640px;margin:0 auto;padding:32px 20px}
   h1{font-size:22px;margin:0 0 4px}
   .role{display:inline-block;border:1.5px solid currentColor;border-radius:6px;
@@ -91,7 +99,7 @@
   dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:22px 0 0;
      font-size:14px;border-top:1px solid var(--rule);padding-top:16px}
   dt{color:var(--ink-soft)}
-  dd{margin:0;font-family:"IBM Plex Mono",monospace;word-break:break-all}
+  dd{margin:0;font-family:var(--font-mono);word-break:break-all}
   .bad{color:var(--warn);font-weight:700}
 </style>
 </head>
@@ -228,7 +236,7 @@ const SYM_MIGRATION = {
 
 <script>
   /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。 */
-  const PAGE_BUILD = "BUILD_7e992384bee5";
+  const PAGE_BUILD = "BUILD_a3884a1c8957";
   const BOOT = <?!= boot ?>;
 
   const w = BOOT.who;

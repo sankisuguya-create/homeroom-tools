@@ -1,9 +1,17 @@
 <!-- shared/ui/tokens.css から scripts/build.py が作る。 正本を直すこと。 -->
 <style>
-/* 色トークン — 両画面が読む。@dark{} は build.py が
+/* 色と書体のトークン — 両画面が読む。@dark{} は build.py が
    @media (prefers-color-scheme:dark) 側と [data-theme="dark"] 側の
    2つに展開する。暗い配色の値はここ1箇所にしかない。 */
 :root{
+  /* 書体。ウェブフォントは読まない。--font-ja は左から
+     Mac（Hiragino）→ Windows（Yu Gothic / BIZ UD / Meiryo）→ Chromebook
+     （Noto）の順に当たる。BIZ UD は Windows 10 以降の標準添付。
+     --font-mono は数・記号の桁そろえ用。日本語が入る場面（診断行など）は
+     後ろの BIZ UDゴシック／Noto Sans Mono CJK JP に落ちて読める。 */
+  --font-ja:"Hiragino Sans","Yu Gothic UI","BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Meiryo",sans-serif;
+  --font-mono:"Consolas","Menlo","Roboto Mono","BIZ UDGothic","Noto Sans Mono CJK JP",monospace;
+
   --paper:#FCFBF7; --sheet:#FFFFFF; --ink:#1D2126;
   --ink-soft:#5A6470; --ink-faint:#9AA3AD;
   --rule:#DFDCD2; --rule-soft:#EDEAE2; --accent:#2C5C9E;

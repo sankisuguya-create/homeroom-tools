@@ -11,7 +11,7 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);
-  font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px;line-height:1.7}
+  font-family:var(--font-ja);font-size:15px;line-height:1.7}
 .wrap{max-width:1180px;margin:0 auto;padding:20px 20px 64px;display:flex;flex-direction:column;gap:22px}
 .hidden{display:none!important}
 
@@ -29,7 +29,7 @@ body{margin:0;background:var(--paper);color:var(--ink);
 .head h1{margin:0;font-size:22px;font-weight:700}
 .head h1 small{font-size:13px;font-weight:500;color:var(--ink-soft);margin-left:10px}
 .badges{display:flex;gap:8px;flex-wrap:wrap}
-.badge{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;
+.badge{font-family:var(--font-mono);font-size:12.5px;font-weight:600;
   border:1.5px solid currentColor;border-radius:6px;padding:2px 10px}
 /* 「のこり」は警告ではないので、警告帯（D・C）の赤を使わない。
    3年生は赤を「怒られている」と読む。数えているのは抜けであって非ではない。 */
@@ -50,10 +50,10 @@ h2 .fold{order:2}
   background:var(--rule-soft);border:1px solid var(--rule-soft);min-width:930px}
 @media (max-width:640px){ .grid{grid-template-columns:repeat(5,minmax(90px,1fr));min-width:470px} }
 .cell{background-color:var(--sheet);padding:6px 6px 7px;display:flex;flex-direction:column;gap:3px;position:relative}
-.cell .no{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--ink-faint);
+.cell .no{font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--ink-faint);
   display:flex;justify-content:space-between;align-items:center;gap:4px}
 .cell .unit{font-size:9.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:44px}
-.cell select{width:100%;appearance:none;font-family:"IBM Plex Mono",monospace;
+.cell select{width:100%;appearance:none;font-family:var(--font-mono);
   font-size:17px;font-weight:600;text-align:center;text-align-last:center;
   padding:4px 2px 5px;border:1px solid var(--rule);
   border-top:3px solid var(--ucol,var(--rule));border-radius:5px;--stripe-layer:none;
@@ -69,7 +69,7 @@ h2 .fold{order:2}
 .cell.future select:not(.is-skip){background-color:var(--rule-soft);color:var(--ink-faint);
   border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted;cursor:not-allowed}
 .cell.future select.is-skip{border-left-style:dotted;border-right-style:dotted;border-bottom-style:dotted}
-.cell .avg{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--ink-faint);
+.cell .avg{font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);
   display:flex;justify-content:space-between;gap:4px;line-height:1.3}
 .cell .avg b{font-weight:600;color:var(--ink-soft)}
 .cell.edited{box-shadow:inset 3px 0 0 var(--open)}
@@ -97,7 +97,7 @@ h2 .fold{order:2}
 .term-head .fold{order:2}
 /* 畳んだ学期の中に抜けが残っていることを、開かなくても分かるようにする。
    上の「のこり 12」は教科ぜんぶの数なので、学期を畳むと在りかが見えなくなる。 */
-.term-head .count{order:1;font-family:"IBM Plex Mono",monospace;font-size:11.5px;
+.term-head .count{order:1;font-family:var(--font-mono);font-size:11.5px;
   font-weight:600;letter-spacing:0;color:var(--ink-soft);
   border:1px solid currentColor;border-radius:5px;padding:0 7px}
 .term-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,320px));
@@ -120,7 +120,7 @@ h2 .fold{order:2}
   flex-wrap:wrap;row-gap:6px}
 .unit-card .valbox{display:inline-flex;align-items:center;justify-content:center;
   flex:none;width:126px;aspect-ratio:2.97;padding:0 8px;border-radius:5px;
-  border:1px solid var(--rule);font-family:"IBM Plex Mono",monospace;
+  border:1px solid var(--rule);font-family:var(--font-mono);
   font-size:25px;font-weight:600;position:relative;overflow:hidden;
   background-color:var(--sheet);color:var(--ink)}
 .unit-card .valbox.none{color:var(--ink-faint);font-size:19px}
@@ -128,17 +128,17 @@ h2 .fold{order:2}
   border:1px solid var(--rule);border-radius:999px;padding:1px 9px;white-space:nowrap}
 .tag.rated{color:var(--ink);border-color:var(--ink-soft);font-weight:700}
 .unit-card .meta{font-size:11.5px;color:var(--ink-faint);
-  font-family:"IBM Plex Mono",monospace;display:flex;gap:11px;flex-wrap:wrap}
+  font-family:var(--font-mono);display:flex;gap:11px;flex-wrap:wrap}
 
 /* ---- 記号の推移（折れ線） ---- */
 .chartcard{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:16px 18px 12px;overflow-x:auto}
 svg.trend{display:block;min-width:820px;width:100%;height:auto}
 svg.trend .band{fill:var(--rule-soft)}
 svg.trend .baseline{stroke:var(--rule);stroke-width:1}
-svg.trend .ylab{fill:var(--ink-soft);font-family:"IBM Plex Mono",monospace;font-size:12px;font-weight:600}
-svg.trend .ysub{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9px}
-svg.trend .xlab{fill:var(--ink-faint);font-family:"IBM Plex Mono",monospace;font-size:9.5px}
-svg.trend .unitlab{fill:var(--ink-soft);font-family:"IBM Plex Sans JP","Hiragino Sans",sans-serif;font-size:11px;font-weight:600}
+svg.trend .ylab{fill:var(--ink-soft);font-family:var(--font-mono);font-size:12px;font-weight:600}
+svg.trend .ysub{fill:var(--ink-faint);font-family:var(--font-mono);font-size:9px}
+svg.trend .xlab{fill:var(--ink-faint);font-family:var(--font-mono);font-size:9.5px}
+svg.trend .unitlab{fill:var(--ink-soft);font-family:var(--font-ja);font-size:11px;font-weight:600}
 svg.trend .sep{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
 svg.trend .path{fill:none;stroke:var(--accent);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
 svg.trend .dot{fill:var(--accent)}
@@ -154,7 +154,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 @keyframes spin{ to{ transform:rotate(360deg) } }
 .closed .big{margin:0;font-size:23px;font-weight:700}
 .closed .sub{margin:0;font-size:15px;color:var(--ink-soft)}
-.closed .sub b{font-family:"IBM Plex Mono",monospace;color:var(--ink)}
+.closed .sub b{font-family:var(--font-mono);color:var(--ink)}
 .loading{display:flex;align-items:center;justify-content:center;gap:14px;
   min-height:40vh;color:var(--ink-soft);font-size:15px;font-weight:600}
 .loading .mark{width:34px;height:34px;border-radius:50%;
@@ -173,7 +173,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 .busy .sub{font-size:14px;color:var(--ink-soft)}
 .soonbar{border:1px solid var(--open-line);background:var(--open-cell);
   border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
-.soonbar b{font-family:"IBM Plex Mono",monospace}
+.soonbar b{font-family:var(--font-mono)}
 .errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
   border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
 /* 版ずれは児童が直せないので、静かな小さい表示にとどめる。 */
