@@ -108,10 +108,7 @@ function flipLayout(lay) {
 
 /* ---- 上から見た図（机1台、机の左上が原点） ---- */
 function deskTopSvg() {
-  return '<rect x="0" y="0" width="' + DESK.w + '" height="' + DESK.d + '" rx="14" fill="' + WOOD + '" stroke="' + WOOD_EDGE + '" stroke-width="6"/>' +
-         // フックは天板の下で縁より内がわ（JIS S 1021）。上から見えない位置なので縁の内がわに小さな印だけ描く
-         '<rect x="4" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>' +
-         '<rect x="' + (DESK.w - 14) + '" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>';
+  return '<rect x="0" y="0" width="' + DESK.w + '" height="' + DESK.d + '" rx="14" fill="' + WOOD + '" stroke="' + WOOD_EDGE + '" stroke-width="6"/>';
 }
 function chairTopSvg() {
   var x = (DESK.w - CHAIR.w) / 2, y = DESK.d + CHAIR.gap;
