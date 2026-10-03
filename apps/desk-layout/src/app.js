@@ -25,7 +25,8 @@ function sanitize(s) {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false,
       top: l.top.filter(function (p) { return ITEMS[p.item] && ITEMS[p.item].kind === 'top'; }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : 'closed', x: +p.x || DESK.w / 2, y: +p.y || DESK.d / 2, r: +p.r || 0, label: !!p.label,
-                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined };
+                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
+                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined };
       }),
       hooks: {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -209,6 +210,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selTextBox').hidden = !it.text;
+    if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
     $('selColors').hidden = !it.colors;
@@ -307,6 +310,10 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('selText').addEventListener('input', function () {
+  var p = cur.top[sel]; if (!p) return;
+  p.text = this.value; save(); renderEdit();
 });
 $('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };

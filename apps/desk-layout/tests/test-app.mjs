@@ -76,6 +76,12 @@ for(const id of Object.keys(ITEMS))if(ITEMS[id].kind==='top')for(const st of Obj
   const wd=g.itemSize({item:id,state:st}); assert.ok(wd[0]>0&&wd[1]>0,id+':'+st);
 }
 
+// プリント：判型4種、文字は書き込めて、記号は無害化される
+assert.equal(g.itemSize({item:'print',state:'closed',size:'b4'}).join(),'257,364');
+{const sv=g.drawTopItem?null:null;}
+const ptxt=vm.runInContext("drawTopItem({item:'print',state:'closed',x:0,y:0,r:0,text:'<b>漢字'},0,'')",ctx);
+assert.ok(ptxt.includes('&lt;b&gt;漢字')&&!ptxt.includes('<b>'));
+
 // グリッド：細かい段は粗い段の交点をすべて含む／標準の配置は「こまかい」の交点上／snap は動かない点を動かさない
 const near=(a,b)=>Math.abs(a-b)<1e-6;
 for(let k=1;k<g.GRID_LEVELS.length;k++){

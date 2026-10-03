@@ -67,7 +67,7 @@ var ENOGU_COLORS = ['#2B2F36', '#2E4A7A', '#B9A3D6', '#5E6670', '#3D7EBF'];   //
 var MIRROR = 1;
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
-    '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + text + '</text></g>';
+    '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</text></g>';
 }
 function cover(w, h, col, title, ruled) {
   // 学習帳の表紙：色の地＋上に題名＋左下の白い面（方眼か罫線）＋下の名前欄
@@ -227,6 +227,15 @@ var ITEMS = {
     closed: { w: 26, d: 50, draw: function (w, h) { return R(0, 0, w, h, '#FFFFFF', 3) + R(0, 14, w, 24, '#3C78C8', 0, 2); } } } },
   shitajiki: { name: '{下|した}じき', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#CFE6F5', 6, 2); } } } },
+  /* プリント：判型を選び、識別のための文字（例：「漢字①」「宿題」）を書き込める。text を持つ物だけ編集画面に文字の欄が出る */
+  print: { name: 'プリント', kind: 'top', text: true,
+    sizes: { b5: { name: 'B5', w: 182, d: 257 }, a4: { name: 'A4', w: 210, d: 297 }, b4: { name: 'B4', w: 257, d: 364 }, a3: { name: 'A3', w: 297, d: 420 } },
+    states: {
+      closed: { draw: function (w, h, col, p) {
+        var t = (p && p.text) || '', fs = t ? Math.min(w * 0.22, (w - 30) / Math.max(1, t.length)) : 0, s = R(0, 0, w, h, '#FFFFFF', 2, 2);
+        for (var y = h * 0.5; y < h - 20; y += 26) s += L(20, y, w - 20, y, '#D6D2C8', 2);
+        return s + (t ? T(w / 2, h * 0.25, t, fs) : R(20, 20, w * 0.5, 22, '#EDEAE2', 2, 0));
+      } } } },
   test: { name: 'テスト', kind: 'top', states: {
     closed: { w: 364, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#FFFFFF', 2) + R(14, 14, w - 28, 34, '#EDEAE2', 2, 0); } } } },
   felt: { name: '{習字|しゅうじ}の{下|した}じき', kind: 'top', states: {
@@ -361,6 +370,27 @@ var DEFAULT_LAYOUTS = [
       { item: 'test', state: 'closed', x: gx(5), y: gy(4), r: 0 },
       { item: 'pencil', state: 'closed', x: gx(21, 24), y: gy(3), r: 0 },
       { item: 'pencil', state: 'closed', x: gx(11), y: gy(3), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(11), y: gy(6), r: 0 }
+    ],
+    hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
+    away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }, { item: 'notebook', place: 'tray' }] },
+  { id: 'zukei', name: '算数（図形）', yomi: 'さんすう（ずけい）', flip: true,
+    top: [
+      { item: 'notebook', state: 'open', x: gx(4), y: gy(5), r: 0, color: 0 },
+      { item: 'protractor', state: 'closed', x: gx(4), y: gy(1), r: 0 },
+      { item: 'tri45', state: 'closed', x: gx(9), y: gy(2), r: 0 },
+      { item: 'tri60', state: 'closed', x: gx(11), y: gy(5), r: 0 },
+      { item: 'compass', state: 'closed', x: gx(8), y: gy(5), r: 0 },
+      { item: 'pencil', state: 'closed', x: gx(9), y: gy(6), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(8), y: gy(7), r: 0 }
+    ],
+    hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
+    away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }] },
+  { id: 'print', name: 'プリント', yomi: '', flip: true,
+    top: [
+      { item: 'print', state: 'closed', x: gx(5), y: gy(4), r: 0, size: 'b4', text: '漢字①' },
+      { item: 'pencil', state: 'closed', x: gx(9), y: gy(4), r: 0 },
+      { item: 'redpencil', state: 'closed', x: gx(19, 24), y: gy(4), r: 0 },
       { item: 'eraser', state: 'closed', x: gx(11), y: gy(6), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },

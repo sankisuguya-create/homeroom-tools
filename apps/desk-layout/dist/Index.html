@@ -280,6 +280,7 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
         <button type="button" id="selSize"></button>
         <span id="selColors" class="swatches"></span>
         <button type="button" id="selRot">回す ↻</button>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
         <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
         <button type="button" id="selFront">いちばん上へ</button>
         <button type="button" id="selDel" class="danger">けす</button>
@@ -376,7 +377,7 @@ var ENOGU_COLORS = ['#2B2F36', '#2E4A7A', '#B9A3D6', '#5E6670', '#3D7EBF'];   //
 var MIRROR = 1;
 function T(cx, cy, text, fs, fill) {
   return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
-    '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + text + '</text></g>';
+    '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + String(text).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }) + '</text></g>';
 }
 function cover(w, h, col, title, ruled) {
   // 学習帳の表紙：色の地＋上に題名＋左下の白い面（方眼か罫線）＋下の名前欄
@@ -536,6 +537,15 @@ var ITEMS = {
     closed: { w: 26, d: 50, draw: function (w, h) { return R(0, 0, w, h, '#FFFFFF', 3) + R(0, 14, w, 24, '#3C78C8', 0, 2); } } } },
   shitajiki: { name: '{下|した}じき', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#CFE6F5', 6, 2); } } } },
+  /* プリント：判型を選び、識別のための文字（例：「漢字①」「宿題」）を書き込める。text を持つ物だけ編集画面に文字の欄が出る */
+  print: { name: 'プリント', kind: 'top', text: true,
+    sizes: { b5: { name: 'B5', w: 182, d: 257 }, a4: { name: 'A4', w: 210, d: 297 }, b4: { name: 'B4', w: 257, d: 364 }, a3: { name: 'A3', w: 297, d: 420 } },
+    states: {
+      closed: { draw: function (w, h, col, p) {
+        var t = (p && p.text) || '', fs = t ? Math.min(w * 0.22, (w - 30) / Math.max(1, t.length)) : 0, s = R(0, 0, w, h, '#FFFFFF', 2, 2);
+        for (var y = h * 0.5; y < h - 20; y += 26) s += L(20, y, w - 20, y, '#D6D2C8', 2);
+        return s + (t ? T(w / 2, h * 0.25, t, fs) : R(20, 20, w * 0.5, 22, '#EDEAE2', 2, 0));
+      } } } },
   test: { name: 'テスト', kind: 'top', states: {
     closed: { w: 364, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#FFFFFF', 2) + R(14, 14, w - 28, 34, '#EDEAE2', 2, 0); } } } },
   felt: { name: '{習字|しゅうじ}の{下|した}じき', kind: 'top', states: {
@@ -673,6 +683,27 @@ var DEFAULT_LAYOUTS = [
       { item: 'eraser', state: 'closed', x: gx(11), y: gy(6), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
+    away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }, { item: 'notebook', place: 'tray' }] },
+  { id: 'zukei', name: '算数（図形）', yomi: 'さんすう（ずけい）', flip: true,
+    top: [
+      { item: 'notebook', state: 'open', x: gx(4), y: gy(5), r: 0, color: 0 },
+      { item: 'protractor', state: 'closed', x: gx(4), y: gy(1), r: 0 },
+      { item: 'tri45', state: 'closed', x: gx(9), y: gy(2), r: 0 },
+      { item: 'tri60', state: 'closed', x: gx(11), y: gy(5), r: 0 },
+      { item: 'compass', state: 'closed', x: gx(8), y: gy(5), r: 0 },
+      { item: 'pencil', state: 'closed', x: gx(9), y: gy(6), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(8), y: gy(7), r: 0 }
+    ],
+    hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
+    away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }] },
+  { id: 'print', name: 'プリント', yomi: '', flip: true,
+    top: [
+      { item: 'print', state: 'closed', x: gx(5), y: gy(4), r: 0, size: 'b4', text: '漢字①' },
+      { item: 'pencil', state: 'closed', x: gx(9), y: gy(4), r: 0 },
+      { item: 'redpencil', state: 'closed', x: gx(19, 24), y: gy(4), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(11), y: gy(6), r: 0 }
+    ],
+    hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }, { item: 'notebook', place: 'tray' }] }
 ];
 /* ▲ src/data.js ここまで ▲ */
@@ -759,7 +790,7 @@ function rotBox(w, d, r) {
 function drawTopItem(p, i, cls) {
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
   MIRROR = p.m ? -1 : 1;
-  var body = st.draw(w, d, colorOf(p));
+  var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
          (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
@@ -1087,7 +1118,8 @@ function sanitize(s) {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false,
       top: l.top.filter(function (p) { return ITEMS[p.item] && ITEMS[p.item].kind === 'top'; }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : 'closed', x: +p.x || DESK.w / 2, y: +p.y || DESK.d / 2, r: +p.r || 0, label: !!p.label,
-                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined };
+                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
+                 text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined };
       }),
       hooks: {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -1271,6 +1303,8 @@ function renderEdit() {
       return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
     }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
+    $('selTextBox').hidden = !it.text;
+    if (it.text && document.activeElement !== $('selText')) $('selText').value = p.text || '';
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
     $('selColors').hidden = !it.colors;
@@ -1369,6 +1403,10 @@ $('selSize').onclick = function () {
 $('selColors').addEventListener('click', function (e) {
   var b = e.target.closest('[data-col]'); if (!b) return;
   cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
+$('selText').addEventListener('input', function () {
+  var p = cur.top[sel]; if (!p) return;
+  p.text = this.value; save(); renderEdit();
 });
 $('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };

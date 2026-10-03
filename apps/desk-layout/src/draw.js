@@ -80,7 +80,7 @@ function rotBox(w, d, r) {
 function drawTopItem(p, i, cls) {
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
   MIRROR = p.m ? -1 : 1;
-  var body = st.draw(w, d, colorOf(p));
+  var body = st.draw(w, d, colorOf(p), p);
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
          (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
