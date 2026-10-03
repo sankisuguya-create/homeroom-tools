@@ -574,20 +574,33 @@ const Store = (function(){
   }
 
   function loadAll_(subject){
-    const by = {};
-    Roster.all().forEach(st => { by[st.id] = {}; });   // 空の児童も鍵を作る
-    allRows().forEach(r => {
-      if(String(r[COL.subject]) !== subject) return;
-      const id = String(r[COL.id]);
-      const d  = toDate_(r[COL.savedAt]);
-      (by[id] || (by[id] = {}))[Number(r[COL.no])] =
-        [String(r[COL.sym]), d ? d.getTime() : 0, String(r[COL.by] || "")];
-    });
-    const put = {};
-    Object.keys(by).forEach(id => { put[keyOf(subject, id)] = JSON.stringify(by[id]); });
-    put[statKey(subject)] = JSON.stringify(statsFrom_(by));
-    try { CacheService.getScriptCache().putAll(put, TTL); } catch(e) { /* 入らなくても動く */ }
-    return by;
+    /* 年度保存はこのロックを取る。保存中にシートをなめると、消えるはずの
+       前年の値をキャッシュに入れてしまい、年度保存が捨てたあとも残る。
+       読み直しも同じロックの内側に入れ、取れないときはキャッシュを
+       作らずに読むだけにする（次の読みで作り直される）。 */
+    const lock = LockService.getScriptLock();
+    const mine = !lock.hasLock() && lock.tryLock(20000);
+    const canCache = lock.hasLock();
+    try{
+      const by = {};
+      Roster.all().forEach(st => { by[st.id] = {}; });   // 空の児童も鍵を作る
+      allRows().forEach(r => {
+        if(String(r[COL.subject]) !== subject) return;
+        const id = String(r[COL.id]);
+        const d  = toDate_(r[COL.savedAt]);
+        (by[id] || (by[id] = {}))[Number(r[COL.no])] =
+          [String(r[COL.sym]), d ? d.getTime() : 0, String(r[COL.by] || "")];
+      });
+      if(canCache){
+        const put = {};
+        Object.keys(by).forEach(id => { put[keyOf(subject, id)] = JSON.stringify(by[id]); });
+        put[statKey(subject)] = JSON.stringify(statsFrom_(by));
+        try { CacheService.getScriptCache().putAll(put, TTL); } catch(e) { /* 入らなくても動く */ }
+      }
+      return by;
+    }finally{
+      if(mine) lock.releaseLock();
+    }
   }
 
   /* 授業ごとの学級集計。
@@ -607,9 +620,9 @@ const Store = (function(){
       const v = got[keys[i]];
       if(v === undefined || v === null) missing = true; else by[id] = JSON.parse(v);
     });
-    const st = statsFrom_(missing ? loadAll_(subject) : by);
-    if(!missing){ try { cs.put(statKey(subject), JSON.stringify(st), TTL); } catch(e) {} }
-    return st;
+    /* ここで statKey に書き戻すと、ロックの外から保存中の値が
+       キャッシュに入りうる。statKey は loadAll_（ロック内）だけが作る。 */
+    return statsFrom_(missing ? loadAll_(subject) : by);
   }
 
   /* 「ここまで授業があった」とみなす番号。
@@ -1632,7 +1645,7 @@ function include(name){
    画面側（PAGE_BUILD）と照合して警告を出すための値。
    サーバと画面は別スコープなので名前を分ける（preview.js は1スコープに
    読むので、同名だと宣言が衝突する）。 */
-const SERVER_BUILD = "BUILD_7684f78bdf24";
+const SERVER_BUILD = "BUILD_1d6a88c11269";
 
 /* ------------------------------------------------------------------
    役割の判定。ここが Step 3 の山場。
