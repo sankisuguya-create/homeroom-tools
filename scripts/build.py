@@ -104,7 +104,10 @@ def html_doc(body: str) -> str:
     """静的ページを完全な HTML 文書に包む。src は <title> 始まりの
     フラグメントなので、head の後ろにそのまま置く。最初の非 head 要素で
     ブラウザが自動的に body を開く（<title> は head に入ったまま動く）。
-    lang=\"ja\" が無いと漢字を中国語系字形で出す端末があるので必ず付ける。"""
+    lang=\"ja\" が無いと漢字を中国語系字形で出す端末があるので必ず付ける。
+    desk-layout のように src 自身が完全文書のものは包まずそのまま返す。"""
+    if body.lstrip().lower().startswith("<!doctype"):
+        return body
     return HTML_HEAD + body.rstrip("\n") + HTML_TAIL
 
 def expand_css(path: pathlib.Path, search_dirs) -> str:
