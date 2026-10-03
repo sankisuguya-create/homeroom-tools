@@ -467,15 +467,15 @@ var ITEMS = {
     } },
     tablet: { w: 297, d: 213, draw: function (w, h) { return tabScreen(0, 0, w, h); } },
     tent: { w: 297, d: 200, draw: function (w, h) {
-      // 山がた（横から見ると「^」）を手前の上から：上がせまい台形の画面、左右に後ろの脚の面がのぞく
-      var k = 26, t = 30;   // k: 台形の下の張り出し、t: 上の内側への寄り
-      // 左右の辺に、後ろの脚（キーボードの面）の縁が三角にのぞく。辺の上の点から外へ張り出す
-      var ex = function (y) { return (k + t) - (t + 6) * y / h; };   // 左の辺の x
+      // 山がた（横から見ると「^」）を手前の上から。下の辺は ①〜③ と同じ幅、傾きは ② のキーボードと同じ（高さ130で10寄る）
+      var inset = h * 10 / 130;
+      var ex = function (y) { return inset * (1 - y / h); };   // 左の辺の x
+      // 左右の辺に、後ろの脚（キーボードの面）の縁が三角にのぞく
       var y0 = h * 0.22, y1 = h * 0.55;
       var leg = function (dir) {
         var a = dir < 0 ? ex(y0) : w - ex(y0), b = dir < 0 ? ex(y1) : w - ex(y1);
-        return '<path d="M' + a + ' ' + y0 + ' L' + (b + dir * 26) + ' ' + y1 + ' L' + b + ' ' + y1 + ' Z" fill="' + PC_BODY +
-               '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
+        return '<path d="' + roundPoly(dir < 0 ? [[a + 8, y0 - 6], [b + 8, y1], [b + dir * 26, y1]] : [[a - 8, y0 - 6], [b + dir * 26, y1], [b - 8, y1]], 6) +
+               '" fill="' + PC_BODY + '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
       };
       // 枠・黒い縁・画面を同じ傾きの台形にそろえる（左右の辺は ex(y) から一定の幅だけ内側）
       var band = function (top, bot, side, fill, stroke, r) {
