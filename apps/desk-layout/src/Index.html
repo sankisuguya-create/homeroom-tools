@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>机の配置図</title>
+<style>
+/* @include tokens.css */
+/* @include style.css */
+</style>
+</head>
+<body>
+
+<!-- ① えらぶ：活動カード -->
+<main id="vHome" class="home">
+  <header class="hbar">
+    <h1>机の配置図</h1>
+    <span class="sp"></span>
+    <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
+  </header>
+  <div id="cards" class="cards"></div>
+  <details class="data">
+    <summary>データの書き出し・読み込み</summary>
+    <div class="row">
+      <button type="button" id="dExport">書き出す（JSON）</button>
+      <label class="filebtn">読み込む<input type="file" id="dImport" accept="application/json,.json" hidden></label>
+      <button type="button" id="dReset" class="danger">標準の配置に戻す</button>
+    </div>
+    <p class="hint">配置はこの端末のブラウザに保存されます。別の端末へは書き出したファイルで移します。</p>
+  </details>
+</main>
+
+<!-- ② 見せる：モニターに映す -->
+<section id="vShow" class="show" hidden>
+  <div class="tools">
+    <button type="button" id="sBack" class="tb" aria-label="もどる">←</button>
+    <h2 id="sTitle" class="stitle"></h2>
+    <span class="sp"></span>
+    <div class="seg" role="group" aria-label="机の数">
+      <button type="button" id="sOne" class="tb">1人</button><button type="button" id="sFour" class="tb">4人</button>
+    </div>
+    <button type="button" id="sFlip" class="tb" aria-pressed="false">左右反転</button>
+    <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
+    <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
+    <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
+    <button type="button" id="sBig" class="primary">大きく映す</button>
+  </div>
+  <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
+  <button type="button" id="bigExit" class="bigexit" hidden aria-label="大きく映すのをやめる">×</button>
+  <div class="stage">
+    <svg id="stageSvg" preserveAspectRatio="xMidYMid meet" role="img"></svg>
+    <aside id="away" class="away"></aside>
+  </div>
+</section>
+
+<!-- ③ つくる・なおす -->
+<section id="vEdit" class="edit" hidden>
+  <header class="ebar">
+    <button type="button" id="eBack">← もどる</button>
+    <label class="fld">活動の名前<input id="eName" maxlength="20"></label>
+    <label class="fld">よみ<input id="eYomi" maxlength="30" placeholder="ひらがな"></label>
+    <label class="chk"><input type="checkbox" id="eFlip">左右反転してよい</label>
+    <div class="gridsel">グリッド<div id="eGrid" class="seg" role="group" aria-label="グリッドの細かさ"></div></div>
+    <span class="sp"></span>
+    <button type="button" id="eShow" class="primary">映す</button>
+    <button type="button" id="eCopy">複製</button>
+    <button type="button" id="eDel" class="danger">削除</button>
+  </header>
+  <div class="ebody">
+    <div class="ecanvas">
+      <div id="selBar" class="selbar" hidden>
+        <strong id="selName"></strong>
+        <span id="selState" class="seg"></span>
+        <button type="button" id="selSize"></button>
+        <span id="selColors" class="swatches"></span>
+        <button type="button" id="selRot">回す ↻</button>
+        <label id="selTextBox" class="fld" hidden>文字<input id="selText" maxlength="16" placeholder="例：漢字①"></label>
+        <button type="button" id="selLabel" aria-pressed="false">名前を出す</button>
+        <button type="button" id="selFront">いちばん上へ</button>
+        <button type="button" id="selDel" class="danger">けす</button>
+      </div>
+      <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="lists">
+        <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
+        <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
+        <div class="wide"><h3>しまう物</h3><div id="lAway" class="chips"></div></div>
+      </div>
+    </div>
+    <div class="palette">
+      <div class="tabs" role="tablist">
+        <button type="button" role="tab" data-tab="top" aria-selected="true">机の上</button>
+        <button type="button" role="tab" data-tab="hang" aria-selected="false">フック</button>
+        <button type="button" role="tab" data-tab="away" aria-selected="false">しまう</button>
+      </div>
+      <div id="pDest" class="seg dest"></div>
+      <div id="pItems" class="tiles"></div>
+    </div>
+  </div>
+</section>
+
+<div id="toast" role="status" hidden></div>
+
+<script>
+/* @include data.js */
+/* @include draw.js */
+/* @include app.js */
+</script>
+</body>
+</html>
