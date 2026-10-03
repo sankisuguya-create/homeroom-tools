@@ -48,14 +48,35 @@ function yearLog_(op, year, detail){
 
 /* ------------------------------------------------------------------
    年度の保存。値で写すので、写したあとに元が変わっても写しは残る。
-   同名シートがあればその写しは飛ばす（冪等）。
 
-   二度押しで年度が2回進むのを防ぐために、次のときは何もしない:
-     (a) 設定の「最終保存年度」が今年度以上 — 切り替え済み
-     (b) 前年度の名簿写しがあり、記録と確定がどちらも空 — 前の保存で
-         行を消した直後の状態と同じなので、再実行とみなす
+   再実行・中断への備え:
+     ・「最終保存年度」が今年度以上 — 切り替え済み。何もしない
+     ・「最終保存年度」が今年度より2つ以上前、かつ前年度の名簿写し
+       がある — 前回は年度を進めたあとで止まった。マーカーだけを
+       追いつかせて終わり、今年度ぶんの保存は次の年度替わりにまかせる
+     ・「最終保存日時」から 30日以内 — 二度押し・回復直後の再実行。
+       年に1度の操作なので、保存の直後に来た実行は何もしない
+       （記録の無い年度を本当に進めたいときは、日が経ってから実行する）
+     ・同名の写しは作らない（空の写しは作りかけと見なして作り直す）
+
+   複写と行消しのあいだに児童の保存が割り込むと、写しに入らない
+   評価が消える。Store.write_ と同じスクリプトロックで囲い、
+   割り込んだ書き込みには「こんでいます」を返させる。
 ------------------------------------------------------------------ */
 function archiveYear(){
+  const lock = LockService.getScriptLock();
+  if(!lock.tryLock(30000)){
+    return tell_("年度の保存",
+      ["× いま記録の書き込みが重なっています。少し待ってからもう一度実行してください"]);
+  }
+  try{
+    return archiveYear_();
+  }finally{
+    lock.releaseLock();
+  }
+}
+
+function archiveYear_(){
   const ss   = SpreadsheetApp.getActive();
   const year = Config.year();
   const done = Number(Config.get("最終保存年度", 0)) || 0;
@@ -65,24 +86,48 @@ function archiveYear(){
     return tell_("年度の保存", ["○ " + year + "年度の保存は済んでいます（何もしません）"]);
   }
 
-  const sheetRows = name => {
-    const sh = ss.getSheetByName(name);
-    return sh ? Math.max(0, sh.getLastRow() - 1) : -1;
-  };
-  const recRows = sheetRows("記録"), finRows = sheetRows("確定");
-  if(ss.getSheetByName("名簿_" + (year - 1)) && recRows === 0 && finRows === 0){
+  /* 前回が「年度を進めたあと・最終保存年度を書く前」で止まったとき。
+     このまま複写に進むと、進んだ年度の記録まで写して年度をもう
+     1つ進めてしまう。ここではマーカーだけを追いつかせて終わる。 */
+  if(year - done >= 2 && ss.getSheetByName("名簿_" + (year - 1))){
+    configSet({"最終保存年度": year - 1, "最終保存日時": new Date()});
+    yearLog_("年度保存", year - 1, "中断していた前回ぶんの回復");
     return tell_("年度の保存",
-      ["○ 前年度の保存は済んでいて、今年度の記録がまだありません（何もしません）"]);
+      ["○ 前回の年度保存が途中で止まっていたので回復しました",
+       "△ " + year + "年度の保存は、次の年度替わりに実行してください"]);
   }
 
-  /* 値の写し。同名シートがあれば飛ばすので、途中で止まっても再実行できる。 */
+  /* 年度の保存は1年に1回。保存の直後にもう一度押すと、記録の無い年度を
+     もう1つ進めてしまう（二度押し・回復直後の再実行）ので断る。
+     前の保存から日が経っていれば、記録の無い年度でも普通に進められる。 */
+  const lastAt = Config.get("最終保存日時", null);
+  if(done === year - 1 && lastAt
+     && (new Date() - new Date(lastAt)) < 30 * 24 * 60 * 60 * 1000){
+    return tell_("年度の保存",
+      ["○ " + (year - 1) + "年度の保存は先ほど済んでいます（何もしません）",
+       "△ 次の年度替わりにもう一度実行してください"]);
+  }
+
+  /* 値の写し。同名シートがあれば飛ばすので、途中で止まっても再実行できる。
+     空の写しは「作りかけで止まった」と見なして消して作り直す。 */
   YEAR_TARGETS.forEach(name => {
     const src = ss.getSheetByName(name), dn = name + "_" + year;
     if(!src){ msg.push("△ 「" + name + "」が無い（飛ばす）"); return; }
-    if(ss.getSheetByName(dn)){ msg.push("○ 「" + dn + "」はもうある（飛ばす）"); return; }
-    const v  = src.getDataRange().getValues();
-    const sh = ss.insertSheet(dn);
-    sh.getRange(1, 1, v.length, Math.max(1, v[0].length)).setValues(v);
+    const dup = ss.getSheetByName(dn);
+    if(dup){
+      if(dup.getLastRow() > 0){ msg.push("○ 「" + dn + "」はもうある（飛ばす）"); return; }
+      ss.deleteSheet(dup);
+    }
+    const v = src.getDataRange().getValues();
+    let sh = null;
+    try{
+      sh = ss.insertSheet(dn);
+      sh.getRange(1, 1, v.length, Math.max(1, v[0].length)).setValues(v);
+    }catch(e){
+      /* 空の写しを残すと、再実行が「もうある」と見なして元を消してしまう */
+      if(sh) try{ ss.deleteSheet(sh); }catch(_){}
+      throw e;
+    }
     msg.push("○ 「" + dn + "」に " + (v.length - 1) + "行 写した");
   });
 
@@ -95,11 +140,17 @@ function archiveYear(){
     msg.push("○ 「" + name + "」の今年度ぶん " + Math.max(0, n) + "行 を消した（写しに残る）");
   });
 
+  /* 消した記録がキャッシュに残っていると、画面には前年の評価が
+     キャッシュの寿命ぶん残り続ける。全教科ぶん捨てて、次の読み取りに
+     作り直させる（名簿は消していないので Roster のキャッシュは残す）。 */
+  try{ Master.subjectNames(true).forEach(name => Store.dropCache(name)); }catch(e){}
+
   msg.push("○ 年度を " + year + " → " + (year + 1) + " に進めた");
   msg.push("△ 名簿は前年のまま残っている。新しい児童の名簿に書き換えると新年度になる");
 
   configSet({"年度": year + 1});
-  configSet({"最終保存年度": year});          /* この2行を最後に書く。止まったら再実行で追いつく */
+  configSet({"最終保存年度": year, "最終保存日時": new Date()});
+            /* この2行を最後に書く。止まったら再実行で追いつく */
   yearLog_("年度保存", year, msg.filter(m => m.slice(0, 1) === "○").join(" / "));
   return tell_("年度の保存", msg);
 }

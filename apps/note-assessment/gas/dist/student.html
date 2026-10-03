@@ -554,7 +554,7 @@ const SYM_MIGRATION = {
 const $ = id => document.getElementById(id);
 /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。
    サーバが返す build と違ったら、Code.gs と html が別の版で混在している。 */
-const PAGE_BUILD = "BUILD_7ff134ef6971";
+const PAGE_BUILD = "BUILD_7684f78bdf24";
 let S = null;                      // サーバから来たもの
 let subject = null;
 let viewId = null;                 // 教師が見ている児童（児童本人のときは null）
@@ -781,6 +781,13 @@ function onPick(c, l, sel){
   sel.disabled = true;          // 往復のあいだ、そのセルだけ受け付けない
   hideErr();
 
+  /* 教師は「見ている児童」のぶんを書く（apiSaveAs。更新者に教師の
+     メールが残る）。apiSave は児童本人専用なので教師からは断られる。 */
+  const vid = viewId || (S.viewing && S.viewing.id);
+  const api = (S.who && S.who.role === "teacher" && vid)
+    ? ["apiSaveAs", subject, vid, l.no, next]
+    : ["apiSave", subject, l.no, next];
+
   google.script.run
     .withSuccessHandler(function(r){
       c.classList.remove("saving");
@@ -797,7 +804,7 @@ function onPick(c, l, sel){
       applyCellState(c, l); renderHead(); renderTermCounts(); drawTrend();
       showErr("つうしんが できませんでした。もう一度 えらんでください");
     })
-    .apiSave(subject, l.no, next);
+    [api[0]].apply(null, api.slice(1));
 }
 
 /* 見出しの「のこり ◯」だけ当て直す。表は作り直さない。 */
