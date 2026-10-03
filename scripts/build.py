@@ -6,6 +6,7 @@
   apps/note-assessment/web/src/
   apps/note-assessment/gas/src/
   apps/dance-count/src/
+  apps/desk-layout/src/
 
 生成物:
   apps/note-assessment/web/dist/
@@ -31,6 +32,9 @@ DANCE_DIST = DANCE / "dist"
 COLLECT = ROOT / "apps" / "collection-check"
 COLLECT_SRC = COLLECT / "src"
 COLLECT_DIST = COLLECT / "dist"
+DESK = ROOT / "apps" / "desk-layout"
+DESK_SRC = DESK / "src"
+DESK_DIST = DESK / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 PAGES = [
@@ -38,6 +42,7 @@ PAGES = [
     (NOTE_WEB_SRC / "teacher-view.html", NOTE_WEB_DIST / "teacher-view.html", [NOTE_WEB_SRC, SHARED_UI]),
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI]),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI]),
+    (DESK_SRC / "Index.html", DESK_DIST / "Index.html", [DESK_SRC, SHARED_UI]),
 ]
 GAS_ORDER = ["Scale.gs", "Config.gs", "Roster.gs", "Master.gs", "Lock.gs", "Hours.gs",
              "Store.gs", "Aggregate.gs", "Api.gs", "Export.gs", "Code.gs", "Setup.gs"]

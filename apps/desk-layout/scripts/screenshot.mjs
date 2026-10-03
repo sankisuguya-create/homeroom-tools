@@ -1,0 +1,23 @@
+// 画面を撮って目で確かめる: node apps/desk-layout/scripts/screenshot.mjs <出力フォルダ>
+import {chromium} from 'playwright';
+const out=process.argv[2]||'.';
+const url=new URL('../dist/Index.html',import.meta.url).href;
+const b=await chromium.launch({executablePath:'/opt/pw-browsers/chromium'});
+const p=await b.newPage({viewport:{width:1920,height:1080}});
+const errs=[];p.on('pageerror',e=>errs.push(String(e)));p.on('console',m=>m.type()==='error'&&errs.push(m.text()));
+await p.goto(url);
+await p.screenshot({path:out+'/1-home.png'});
+await p.click('[data-id="math"]');await p.screenshot({path:out+'/2-math.png'});
+await p.click('#sChair');await p.screenshot({path:out+'/3-math-chair.png'});await p.click('#sChair');
+await p.click('#sFlip');await p.screenshot({path:out+'/4-math-flip.png'});
+await p.click('#sFour');await p.screenshot({path:out+'/5-group.png'});await p.click('#sOne');
+await p.click('#sBack');await p.click('[data-fix="shuji"]');
+await p.click('#editSvg .it[data-i="3"]');await p.click('#selLabel');
+await p.click('#editSvg .it[data-i="5"]');await p.click('#selLabel');
+await p.click('#editSvg .it[data-i="1"]');await p.click('#selLabel');
+await p.click('#lHookR [data-lab]');
+await p.screenshot({path:out+'/6-edit.png'});
+await p.click('#eShow');await p.screenshot({path:out+'/7-shuji-labels.png'});
+await p.click('#sBack');await p.click('[data-id="pc"]');await p.screenshot({path:out+'/8-pc.png'});
+console.log(errs.length?errs.join('\n'):'no errors');
+await b.close();
