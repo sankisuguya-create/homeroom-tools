@@ -838,11 +838,12 @@ ok("名簿を替えても名簿_2026の前年値は残る",
    SHEETS["名簿_2026"][1][2] === "あおい" && SHEETS["名簿_2026"][1][3] === "aoi@example.ed.jp");
 ok("新しい名簿が読める", "Roster.all()[0].name==='ひなた'");
 
-/* 二度目の実行は行を重ねない（冪等） */
+/* 保存直後の再実行は行を重ねない（二度押し・冪等は「最終保存日時」で守る） */
 const rosterSnapshotLen = SHEETS["名簿_2026"].length;
 ev("archiveYear();");
 ok("二度目で名簿_2027は作られない",
-   !SHEETS["名簿_2027"] && SHEETS["名簿_2026"].length === rosterSnapshotLen);
+   !SHEETS["名簿_2027"] && SHEETS["名簿_2026"].length === rosterSnapshotLen
+   && ev("Config.year()") === 2027);
 
 /* 消去の拒否（何も変わらないこと） */
 as("sakura@example.ed.jp");
@@ -870,6 +871,52 @@ ok("運用ログに個人情報を残さない",
    SHEETS["運用ログ"] && SHEETS["運用ログ"].flat().join(" ").indexOf("@") < 0);
 ok("現行の名簿（新年度）は消さない",
    SHEETS["名簿"][1][2] === "ひなた" && SHEETS["名簿"][1][3] === "hinata@example.ed.jp");
+
+console.log("■ 年度保存の強化（レビュー指摘の回帰）");
+
+/* 記録のキャッシュは年度保存で捨てる（前年の評価が画面に残らない） */
+ev("apiReadAs('算数','t01');");
+ok("保存前は児童の記録キャッシュがある",
+   "CacheService.getScriptCache().get('rec|算数|t01')!==null");
+
+/* 前の保存から日が経っていれば、記録の無い年度でも普通に進められる */
+ev("configSet({'最終保存日時': new Date(Date.now() - 60*24*3600*1000)});");
+ev("archiveYear();");
+ok("無記録の年度も保存して 2028 へ進む",
+   SHEETS["名簿_2027"] && SHEETS["名簿_2027"][1][2] === "ひなた"
+   && ev("Config.year()") === 2028);
+ok("無記録年度の記録_2027は見出しだけの写し",
+   SHEETS["記録_2027"] && SHEETS["記録_2027"].length === 1);
+ok("年度保存で記録キャッシュが捨てられる",
+   "CacheService.getScriptCache().get('rec|算数|t01')===null"
+   + " && CacheService.getScriptCache().get('lsn|算数')===null");
+
+/* ロックが取れないときは年度保存を断る（複写のあいだに保存が割り込まない） */
+ev("LockService = {getScriptLock: () => ({tryLock: () => false, releaseLock(){}})};");
+ok("ロック中は年度保存を断る", "archiveYear().join('').indexOf('×')>=0");
+ev("LockService = {getScriptLock: () => ({tryLock: () => true, releaseLock(){}})};");
+
+/* 作りかけで止まった空の写しは作り直す（中身の無い写しのまま元を消さない） */
+SHEETS["名簿_2028"] = [];
+ev("configSet({'最終保存日時': new Date(Date.now() - 60*24*3600*1000)});");
+ev("archiveYear();");
+ok("空の写しは作り直して 2029 へ進む",
+   SHEETS["名簿_2028"].length > 1 && SHEETS["名簿_2028"][1][2] === "ひなた"
+   && ev("Config.year()") === 2029);
+
+/* 「年度を進めたあと・最終保存年度を書く前」で止まった前回ぶんの回復 */
+SHEETS["名簿_2030"] = SHEETS["名簿"].map(r => r.slice());
+ev("configSet({'年度':2031});");
+ev("archiveYear();");
+ok("中断していた前回ぶんはマーカーだけ追いつかせる",
+   "Config.get('最終保存年度',0)===2030 && Config.year()===2031");
+ok("回復時は今年度の写しを作らない", !SHEETS["名簿_2031"]);
+ev("archiveYear();");
+ok("回復直後の再実行も何もしない", !SHEETS["名簿_2031"] && ev("Config.year()") === 2031);
+ev("configSet({'最終保存日時': new Date(Date.now() - 60*24*3600*1000)});");
+ev("archiveYear();");
+ok("日が経てば今年度を普通に保存できる",
+   SHEETS["名簿_2031"] && ev("Config.year()") === 2032);
 
 console.log(ng ? "\n× " + ng + " 件だめだった" : "\n○ ぜんぶ通った");
 process.exit(ng ? 1 : 0);
