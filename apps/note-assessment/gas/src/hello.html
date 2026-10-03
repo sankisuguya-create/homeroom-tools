@@ -3,21 +3,22 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
+<?!= include('tokens') ?>
 <style>
   body{margin:0;background:#FCFBF7;color:#1D2126;
-       font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.8}
+       font-family:var(--font-ja);font-size:16px;line-height:1.8}
   .wrap{max-width:640px;margin:0 auto;padding:32px 20px}
   h1{font-size:22px;margin:0 0 4px}
   .role{display:inline-block;border:1.5px solid currentColor;border-radius:6px;
         padding:2px 12px;font-size:13px;font-weight:700}
   .role.student{color:#2C5C9E}
   .role.teacher{color:#2E7D8A}
-  .role.unknown{color:#B0392B}
+  .role.unknown{color:var(--warn)}
   dl{display:grid;grid-template-columns:auto 1fr;gap:6px 18px;margin:22px 0 0;
-     font-size:14px;border-top:1px solid #DFDCD2;padding-top:16px}
-  dt{color:#5A6470}
-  dd{margin:0;font-family:"IBM Plex Mono",monospace;word-break:break-all}
-  .bad{color:#B0392B;font-weight:700}
+     font-size:14px;border-top:1px solid var(--rule);padding-top:16px}
+  dt{color:var(--ink-soft)}
+  dd{margin:0;font-family:var(--font-mono);word-break:break-all}
+  .bad{color:var(--warn);font-weight:700}
 </style>
 </head>
 <body>
@@ -31,6 +32,8 @@
 <?!= include('scale') ?>
 
 <script>
+  /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。 */
+  const PAGE_BUILD = "@@BUILD@@";
   const BOOT = <?!= boot ?>;
 
   const w = BOOT.who;
@@ -57,6 +60,9 @@
       })()]
   ];
   if(w.reason) rows.push(["理由", w.reason]);
+  rows.push(["貼り付け版", PAGE_BUILD]);
+  if(PAGE_BUILD !== BOOT.build)
+    rows.push(["版ずれ", "× 貼ったファイルが混在しています。一式を貼り直してください（サーバは " + BOOT.build + "）"]);
 
   document.getElementById("detail").innerHTML = rows.map(function(x){
     const bad = /^×|取れていない/.test(x[1]) ? ' class="bad"' : "";

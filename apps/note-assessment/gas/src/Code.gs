@@ -30,6 +30,13 @@ function include(name){
   return HtmlService.createHtmlOutputFromFile(name).getContent();
 }
 
+/* 貼り付け一式の版。build.py が dist を作るとき、一式の内容ハッシュで
+   上書きする。手貼りで Code.gs と html が違う版で混在したときに、
+   画面側（PAGE_BUILD）と照合して警告を出すための値。
+   サーバと画面は別スコープなので名前を分ける（preview.js は1スコープに
+   読むので、同名だと宣言が衝突する）。 */
+const SERVER_BUILD = "@@BUILD@@";
+
 /* ------------------------------------------------------------------
    役割の判定。ここが Step 3 の山場。
    同一 Workspace ドメイン内なら、「自分として実行」でも
@@ -65,7 +72,8 @@ function bootData(who){
     closed:   Hours.isClosedFor(w),        // 児童は時間外だと true
     toClose:  Hours.minutesToClose(),
     subjects: (w.role === "unknown") ? [] : Master.subjectNames(isTeacher),
-    boundary: Lock.lastBoundary().toISOString()
+    boundary: Lock.lastBoundary().toISOString(),
+    build:    SERVER_BUILD
   };
 }
 

@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
 const root=new URL('../',import.meta.url);
-const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicense]=await Promise.all([
+const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicense,lucideLicense]=await Promise.all([
   readFile(new URL('src/JavaScript.html',root),'utf8'),
   readFile(new URL('src/assets/LucideTags.html',root),'utf8'),
   readFile(new URL('src/assets/LucideSprite.html',root),'utf8'),
@@ -11,7 +11,8 @@ const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicens
   readFile(new URL('src/assets/TablerPeople.html',root),'utf8'),
   readFile(new URL('dist/Index.html',root),'utf8'),
   readFile(new URL('THIRD_PARTY_NOTICES.md',root),'utf8'),
-  readFile(new URL('licenses/Tabler-Icons-MIT.txt',root),'utf8')
+  readFile(new URL('licenses/Tabler-Icons-MIT.txt',root),'utf8'),
+  readFile(new URL('licenses/Lucide-ISC.txt',root),'utf8')
 ]);
 new Function(app);
 const tags=JSON.parse(tagsText);
@@ -26,6 +27,11 @@ assert.ok(!sprite.includes('<?xml'));
 assert.ok(!peopleSprite.includes('<?xml'));
 assert.ok(notices.includes('v3.47.0')&&notices.includes('9fd36e0ce5ad0ec8ed0aecc60d4bb2278364e71c'));
 assert.ok(tablerLicense.includes('MIT License')&&tablerLicense.includes('Copyright (c) 2020-2026 Paweł Kuna'));
+assert.ok(sprite.includes('<!-- @license lucide-static v1.47.0 - ISC -->'));
+assert.ok(lucideLicense.includes('ISC License')&&lucideLicense.includes('Lucide'));
+assert.ok(notices.includes('## Lucide')&&notices.includes('lucide-static')&&notices.includes('v1.47.0')
+  &&notices.includes('Lucide-ISC.txt')&&notices.includes('7865288e9632f4be2f2fe0efcacfa17f4603b976175bc57224f31ecdf736cd62'));
+assert.ok(tagsText.trimStart().startsWith('{'));
 assert.ok(!dist.includes('<?!='));
 assert.ok(dist.includes('<title>アイコンメーカー</title>'));
 assert.ok(dist.includes('<span>アイコンメーカー</span>'));
@@ -43,14 +49,18 @@ assert.ok(dist.includes('grid-template-columns:repeat(9,minmax(0,1fr))'));
 assert.ok(dist.includes('data-shape="sphere"')&&dist.includes('data-shape="hexagon"')&&dist.includes('data-shape="shield"'));
 assert.ok(dist.includes('id="tabler-person-run"')&&dist.includes('id="tabler-people-friends"'));
 assert.ok(dist.includes('>保存</button>')&&dist.includes('>読み込み</button>'));
+assert.ok(dist.includes("SET_KEY='homeroom.icon-maker.v1'")&&dist.includes("OLD_SET_KEY='icon-studio-set'")&&dist.includes('removeItem(OLD_SET_KEY)'));
+assert.ok(dist.includes('--paper:#FCFBF7')&&dist.includes('--font-ja:')&&dist.includes('--accent:#1673d1')&&!dist.includes('@dark{\n'));
+assert.ok(!dist.includes('--muted')&&!dist.includes('var(--line)')&&!dist.includes('var(--panel)')&&!dist.includes('var(--bg)'));
 assert.ok(!dist.includes('>JSON保存</button>')&&!dist.includes('>JSON読込</button>'));
 const pure=app.slice(0,app.indexOf("$('search').addEventListener"))+`
 tags={...JSON.parse(TEST_TAGS),...JSON.parse(TEST_PEOPLE_TAGS)};allNames=Object.keys(tags);
 spriteRoot={querySelector:()=>({innerHTML:'<path d="M1 1h22v22"/>'})};
 peopleRoot={querySelector:()=>({innerHTML:'<path d="M2 2h20v20"/>'})};
 buildIndexes();
-RESULT={all:allNames.length,indexed:searchIndex.size,missing:CATEGORIES.filter(x=>!searchIndex.has(x.icon)).length,counts:CATEGORIES.map(x=>(categoryIndex.get(x.id)||[]).length),movementCount:(categoryIndex.get('movement')||[]).length,peopleSearch:searchIndex.get('person-run').includes('走る'),peopleSymbol:symbolId('person-run'),lucideSymbol:symbolId('book-open'),invalid:normalizeDesign({icon:'bad',bg:'bad',mode:'bad'}),front:composeSvg({...state,shape:'front-cube'}).includes('x="42"'),sphere:composeSvg({...state,shape:'sphere'}).includes('radialGradient'),hexagon:composeSvg({...state,shape:'hexagon'}).includes('M256 0 478 128'),shield:composeSvg({...state,shape:'shield'}).includes('M256 8 464 80'),append:appendImportedSet([{icon:'a'}],[{icon:'b'},{icon:'c'}]),limitedAppend:appendImportedSet(Array.from({length:499},()=>({icon:'a'})),[{icon:'b'},{icon:'c'}]),different:pickDifferent(['a','b'],'a'),same:pickDifferent(['a'],'a'),linked:designFromUrl('?icon=star&label=%E6%A0%A1%E5%86%85%E6%8E%B2%E7%A4%BA&bg=%23C62828&mode=white&size=basic&shape=circle&layout=horizontal'),link:designUrl({icon:'star',label:'教材',bg:'#C62828',mode:'white',size:'basic',shape:'circle',layout:'horizontal'},'https://example.test/exec?authuser=0#old')};`;
-const context={TEST_TAGS:tagsText,TEST_PEOPLE_TAGS:peopleTagsText,RESULT:null,localStorage:{getItem:()=>null,setItem:()=>{}},document:{getElementById:()=>null},URL,URLSearchParams,console};
+RESULT={all:allNames.length,indexed:searchIndex.size,missing:CATEGORIES.filter(x=>!searchIndex.has(x.icon)).length,counts:CATEGORIES.map(x=>(categoryIndex.get(x.id)||[]).length),movementCount:(categoryIndex.get('movement')||[]).length,peopleSearch:searchIndex.get('person-run').includes('走る'),peopleSymbol:symbolId('person-run'),lucideSymbol:symbolId('book-open'),invalid:normalizeDesign({icon:'bad',bg:'bad',mode:'bad'}),front:composeSvg({...state,shape:'front-cube'}).includes('x="42"'),sphere:composeSvg({...state,shape:'sphere'}).includes('radialGradient'),hexagon:composeSvg({...state,shape:'hexagon'}).includes('M256 0 478 128'),shield:composeSvg({...state,shape:'shield'}).includes('M256 8 464 80'),append:appendImportedSet([{icon:'a'}],[{icon:'b'},{icon:'c'}]),limitedAppend:appendImportedSet(Array.from({length:499},()=>({icon:'a'})),[{icon:'b'},{icon:'c'}]),different:pickDifferent(['a','b'],'a'),same:pickDifferent(['a'],'a'),migratedSet:loadSet(),storeNew:STORE[SET_KEY]||null,storeOldGone:STORE[OLD_SET_KEY]===undefined,linked:designFromUrl('?icon=star&label=%E6%A0%A1%E5%86%85%E6%8E%B2%E7%A4%BA&bg=%23C62828&mode=white&size=basic&shape=circle&layout=horizontal'),link:designUrl({icon:'star',label:'教材',bg:'#C62828',mode:'white',size:'basic',shape:'circle',layout:'horizontal'},'https://example.test/exec?authuser=0#old')};`;
+const STORE={'icon-studio-set':'[{"icon":"star","label":"旧"}]'};
+const context={TEST_TAGS:tagsText,TEST_PEOPLE_TAGS:peopleTagsText,RESULT:null,STORE,localStorage:{getItem:k=>k in STORE?STORE[k]:null,setItem:(k,v)=>{STORE[k]=String(v)},removeItem:k=>{delete STORE[k]}},document:{getElementById:()=>null},URL,URLSearchParams,console};
 vm.createContext(context);vm.runInContext(pure,context);
 const result=JSON.parse(JSON.stringify(context.RESULT));
 assert.equal(result.all,1864);assert.equal(result.indexed,1864);assert.equal(result.missing,0);
@@ -60,6 +70,9 @@ assert.equal(result.peopleSearch,true);assert.equal(result.peopleSymbol,'tabler-
 assert.equal(result.sphere,true);assert.equal(result.hexagon,true);assert.equal(result.shield,true);
 assert.equal(result.append.added,2);assert.equal(result.append.set.length,3);assert.equal(result.limitedAppend.added,1);assert.equal(result.limitedAppend.set.length,500);assert.equal(result.limitedAppend.truncated,true);
 assert.equal(result.different,'b');assert.equal(result.same,'a');
+assert.deepEqual(result.migratedSet,[{icon:'star',label:'旧'}]);
+assert.equal(result.storeNew,'[{"icon":"star","label":"旧"}]');
+assert.equal(result.storeOldGone,true);
 assert.deepEqual(result.linked,{id:'',icon:'star',label:'校内掲示',bg:'#C62828',mode:'white',size:'basic',shape:'circle',layout:'horizontal'});
 assert.ok(result.link.includes('authuser=0'));assert.ok(result.link.includes('icon=star'));assert.ok(result.link.includes('bg=%23C62828'));assert.ok(!result.link.includes('#old'));
 console.log('アイコンメーカー checks passed');

@@ -67,7 +67,7 @@ const Config = (function(){
      「含める」系は既定が true なので、明示の false だけを偽にする。 */
   const notFalse = v => v !== false && String(v).toUpperCase() !== "FALSE";
 
-  /* 集計の式。teacher-view.html の R にあたる。 */
+  /* 集計の式。旧プロトタイプ（現 archive/teacher-view.html）の R にあたる。 */
   function rule(){
     return {
       aFrom:  valueOfSym(String(get("A下限", "A+"))),

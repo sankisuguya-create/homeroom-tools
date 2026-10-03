@@ -56,7 +56,8 @@ function apiBoot(subject){
     closed:    Hours.isClosedFor(who, at),
     released:  Config.released(),
     appUrl:    appUrl_(),
-    toClose:   Hours.minutesToClose(at)
+    toClose:   Hours.minutesToClose(at),
+    build:     SERVER_BUILD
   };
   /* 教科が1つも無いときは、その理由まで返す。
      画面が黙って空になると、何を直せばいいのか誰にも分からない。 */
@@ -97,6 +98,9 @@ function apiRead(subject){
 
   const out = {
     ok: true, subject: subject,
+    /* だれの分を見ているか。教師が開いた画面が「先生」名義で
+       名簿先頭の児童の記録を出さないように、対象を応答に載せる。 */
+    viewing: viewedStudent_(id),
     total: subj.total,
     units: Aggregate.unitsForStudent(subject, id, rows),
     rows: rows,
@@ -105,21 +109,40 @@ function apiRead(subject){
        線を引かないと、まだ習っていない授業まで「のこり」に入り、
        9月に3学期ぶんの22が赤で出る。 */
     taught: Store.taughtUpTo(subject),
-    toClose: Hours.minutesToClose(at)
+    toClose: Hours.minutesToClose(at),
+    build: SERVER_BUILD
   };
 
-  /* 教師が見るときだけ、授業ごとの学級平均を添える。
+  /* 教師が見るときだけ、授業ごとの学級平均と「見る児童」の名簿を添える。
      児童には返さない（自分と学級を比べる情報を児童の画面に置かない）。 */
   if(isTeacher){
-    const st = Store.lessonStats(subject);
-    const avg = {};
-    Object.keys(st).forEach(no=>{
-      const a = st[no];
-      avg[no] = {n: a[0], sym: a[2] ? symbolOfMedian(a[1] / a[2]) : null, scored: a[2]};
-    });
-    out.avg = avg;
+    out.avg = teacherAvg_(subject);
+    out.roster = rosterView_();
   }
   return out;
+}
+
+/* 応答に載せる「だれの分か」。名簿にいない id は null。 */
+function viewedStudent_(id){
+  if(!id) return null;
+  const s = Roster.all().filter(x => x.id === id)[0];
+  return s ? {id: s.id, no: s.no, name: s.name} : null;
+}
+
+/* 教師画面の「見る児童」選択用。メールは応答に要らないので載せない。 */
+function rosterView_(){
+  return Roster.all().map(s => ({id: s.id, no: s.no, name: s.name}));
+}
+
+/* 授業ごとの学級平均。教師の閲覧だけに添える（apiRead / apiReadAs 共通）。 */
+function teacherAvg_(subject){
+  const st = Store.lessonStats(subject);
+  const avg = {};
+  Object.keys(st).forEach(no=>{
+    const a = st[no];
+    avg[no] = {n: a[0], sym: a[2] ? symbolOfMedian(a[1] / a[2]) : null, scored: a[2]};
+  });
+  return avg;
 }
 
 /* 時計の確認だけ。記録シートを読まない。
@@ -219,7 +242,8 @@ function apiTeacherBoot(){
     appUrl:   appUrl_(),
     releaseSyms: LEVELS.filter(isReleaseSym),
     syms: ALL_SYMS, off: OFF, skip: SKIP,
-    diagnose: diagnoseLines()
+    diagnose: diagnoseLines(),
+    build: SERVER_BUILD
   };
 }
 
@@ -407,10 +431,27 @@ function apiDiagnose(){
   return {ok:true, lines: diagnoseLines()};
 }
 
-/* 教師が児童の画面を見る。名簿から誰の分かを選べる。 */
+/* 教師が児童の画面を見る。名簿から誰の分かを選べる。
+   返す形は apiRead の教師分岐と同じにして、画面側で分けない。 */
 function apiReadAs(subject, studentId){
   const bad = teacherOnly_(); if(bad) return bad;
-  const rows = Store.read(subject, studentId);
-  return {ok:true, subject:subject, rows:rows,
-          units: Aggregate.unitsForStudent(subject, studentId, rows)};
+  const at  = new Date();
+  const target = viewedStudent_(studentId);
+  if(!target) return {ok:false, why:"その児童は名簿にいません"};
+  const subj = Master.subject(subject);
+  if(!subj) return {ok:false, why:"その教科はありません"};
+
+  const rows = Store.read(subject, studentId, at);
+  return {
+    ok: true, subject: subject,
+    viewing: target,
+    total: subj.total,
+    units: Aggregate.unitsForStudent(subject, studentId, rows),
+    rows: rows,
+    taught: Store.taughtUpTo(subject),
+    toClose: Hours.minutesToClose(at),
+    avg: teacherAvg_(subject),
+    roster: rosterView_(),
+    build: SERVER_BUILD
+  };
 }

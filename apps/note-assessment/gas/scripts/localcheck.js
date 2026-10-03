@@ -45,8 +45,11 @@ const SHEETS = {
     ["学級","3年3組"],["年度",2026],["開室時刻","8:00"],["ロック時刻","16:00"],
     ["A下限","A+"],["C上限","C+"],["代表値","後半の中央値"],["後半の範囲",3],
     ["Y解放",false],["Dを含める",true],["Cを含める",true],["教師メール","sensei@example.ed.jp"]],
-  "教科マスタ": [["教科","時数","公開"],
-    ["算数",70,true],["国語",60,true],["体育",105,false],["社会",70,false]],
+  /* SETUP_SHEETS と同じ4列（「公開」が3列目・「開始No」が4列目。
+     Master.gs は列位置で読むので、ヘッダに無くても動くが検査は正しい形で）。
+     社会は開始Noを21にして from≠1 の経路を通す。 */
+  "教科マスタ": [["教科","時数","公開","開始No"],
+    ["算数",70,true,1],["国語",60,true,1],["体育",105,false,1],["社会",70,false,21]],
   /* 「3人以上が入れた授業を済んだとみなす」を試すには、名簿が3人以上要る。 */
   "名簿": [["児童ID","出席番号","氏名","メール"],
     ["s01",1,"あおい","aoi@example.ed.jp"],
@@ -111,6 +114,7 @@ function fakeSheet(name){
     getLastRow: () => v.length,
     appendRow: r => { v.push(r.slice()); },
     deleteRow: n => { v.splice(n - 1, 1); },
+    deleteRows: (r, n) => { v.splice(r - 1, n); },
     setFrozenRows(){}, autoResizeColumns(){}
   };
 }
@@ -124,13 +128,16 @@ const sandbox = {
       getSpreadsheetTimeZone: () => "Asia/Tokyo",
       setSpreadsheetTimeZone: () => {},
       getSheetByName: fakeSheet,
+      getOwner: () => ({ getEmail: () => "sensei@example.ed.jp" }),
       deleteSheet: sh => { if(sh && sh.__name) delete SHEETS[sh.__name]; },
       insertSheet: n => { SHEETS[n] = [[]]; return fakeSheet(n) || {
         getRange: () => ({setValues(){return this;},setFontWeight(){return this;},
                           setBackground(){return this;},setNumberFormat(){return this;}}),
         getLastRow: () => 1, setFrozenRows(){}, autoResizeColumns(){} }; }
     }),
-    getUi: () => ({ alert: m => alerts.push(m) })
+    getUi: () => ({ alert: m => alerts.push(m),
+      prompt: (t, m) => ({ getResponseText: () => "", getSelectedButton: () => "ok" }),
+      ButtonSet: { YES_NO: "yn", OK_CANCEL: "oc" }, Button: { YES: "y", OK: "ok" } })
   },
   /* 本物と同じく、呼ぶたびに同じ入れ物を返す。
      毎回まっさらな Map を返していたので、キャッシュの経路が
@@ -206,9 +213,9 @@ order.forEach(f => {
   catch(e){ console.log("  × " + f + "  → " + e.message); ng++; }
 });
 
-console.log("■ スケール（20段の往復）");
+console.log("■ スケール（15段の往復）");
 ok("NLEVEL は 15", "NLEVEL === 15", "NLEVEL");
-ok("1〜20 すべて往復する",
+ok("1〜15 すべて往復する",
    "(function(){for(let v=1;v<=NLEVEL;v++) if(valueOfSym(symbolOf(v))!==v) return false; return NLEVEL>0;})()");
 ok("A++ は上から5番目", "symbolOf(NLEVEL - 4) === 'A++'", "symbolOf(NLEVEL-4)");
 ok("記号と値が対応する", "valueOfSym(symbolOf(11)) === 11 && symbolOf(11) === 'A++'", "symbolOf(11)");
@@ -521,6 +528,18 @@ ok("diagnose が走り、行を返す",
    "(function(){var r=diagnose();return Array.isArray(r) && r.length>0;})()");
 ok("diagnose がタイムゾーンを見ている",
    "diagnose().join('|').indexOf('タイムゾーン') >= 0", "diagnose().join(' / ')");
+ok("マスタの開始Noが4列目から読める（from≠1）",
+   "Master.subject('社会').from===21 && Master.subject('社会').to===90");
+
+/* ヘッダのずれを diagnose が見る。名簿は列名を1つ書き換えて戻す（位置で読むので他の検査は無事） */
+SHEETS["名簿"][0][2] = "名前";
+ok("名簿の見出しが違うと diagnose が × を出す",
+   "diagnose().join('|').indexOf('見出し') >= 0 && diagnose().join('|').indexOf('×') >= 0");
+SHEETS["名簿"][0][2] = "氏名";
+SHEETS["教科マスタ"][0] = ["教科","時数","公開"];
+ok("教科マスタに開始Noが無いのは △ 情報行（動くので × ではない）",
+   "diagnose().join('|').indexOf('開始No') >= 0 && diagnose().join('|').indexOf('△') >= 0 && diagnose().join('|').indexOf('× 「教科マスタ」') < 0");
+SHEETS["教科マスタ"][0] = ["教科","時数","公開","開始No"];
 clockReal();
 
 console.log("■ 教師画面の入口");
@@ -574,6 +593,16 @@ ok("教科を足せる／公開を切り替えられる",
 ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
 ok("教師は児童を選んでその画面を見られる",
    "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");
+ok("教師が見る画面は対象児童の名・番が返る",
+   "(function(){var r=apiReadAs('算数','s09');" +
+   "return r.viewing && r.viewing.id==='s09' && r.viewing.name==='さくら' && r.viewing.no===9 && " +
+   "Array.isArray(r.roster) && r.roster.length>0;})()");
+ok("教師の apiRead は名簿先頭の児童を viewing に返す",
+   "(function(){var r=apiRead('算数');" +
+   "return r.viewing && r.viewing.id==='s01' && r.viewing.name==='あおい' && Array.isArray(r.roster);})()");
+ok("児童の apiRead には roster が無い",
+   "(function(){BE('sakura@example.ed.jp');var r=apiRead('算数');" +
+   "return r.viewing && r.viewing.id==='s09' && r.roster===undefined;})()");
 clockReal();
 
 console.log("■ 学級の集計（済んだ授業の線・授業ごとの平均）");
@@ -783,6 +812,64 @@ ok("再び80%に達すると期末へ反映", "apiTermTable('国語',1).rows[0].
 console.log("■ シートの用意");
 ev("setupSheets()");
 ok("setupSheets が走る（既にあるので何もしない）", alerts.length >= 1, "alerts.length");
+
+console.log("■ 年度替わり（archiveYear / erasePersonalInfo）");
+as("sensei@example.ed.jp");
+ev("apiSaveAs('算数','s01',1,'A');");   /* 消える更新者を確かめるため教師の書き込みを入れる */
+ok("記録の更新者にメールが入る（消去対象の列）",
+   SHEETS["記録"].slice(1).some(r => r[5] === "sensei@example.ed.jp"));
+
+ev("archiveYear();");
+ok("名簿_2026 に名簿が値で残る",
+   SHEETS["名簿_2026"] && SHEETS["名簿_2026"][1][2] === "あおい"
+   && SHEETS["名簿_2026"][1][3] === "aoi@example.ed.jp");
+ok("記録_2026 に今年度の記録が写る",
+   SHEETS["記録_2026"] && SHEETS["記録_2026"].slice(1).some(r => r[5] === "sensei@example.ed.jp"));
+ok("現行の記録・確定のデータ行は消えている",
+   SHEETS["記録"].length === 1 && SHEETS["確定"].length === 1);
+ok("年度が 2027 に進んだ", "Config.year()===2027");
+ok("現行の名簿は消えていない", SHEETS["名簿"] && SHEETS["名簿"].length === 5);
+
+/* 名簿を新年度に入れ替えても、前年ぶんは名簿_2026 に残る */
+SHEETS["名簿"] = [["児童ID","出席番号","氏名","メール"],
+  ["t01",1,"ひなた","hinata@example.ed.jp"]];
+ev("clearAllCache()");
+ok("名簿を替えても名簿_2026の前年値は残る",
+   SHEETS["名簿_2026"][1][2] === "あおい" && SHEETS["名簿_2026"][1][3] === "aoi@example.ed.jp");
+ok("新しい名簿が読める", "Roster.all()[0].name==='ひなた'");
+
+/* 二度目の実行は行を重ねない（冪等） */
+const rosterSnapshotLen = SHEETS["名簿_2026"].length;
+ev("archiveYear();");
+ok("二度目で名簿_2027は作られない",
+   !SHEETS["名簿_2027"] && SHEETS["名簿_2026"].length === rosterSnapshotLen);
+
+/* 消去の拒否（何も変わらないこと） */
+as("sakura@example.ed.jp");
+ok("所有者でなければ消せない",
+   "erasePersonalInfo(2026,'2026年度の個人情報を消去').join('').indexOf('×')>=0");
+as("sensei@example.ed.jp");
+ok("確認の語が違うと確定しない",
+   "erasePersonalInfo(2026,'消去します').join('').indexOf('×')>=0");
+ok("今年度は消せない",
+   "erasePersonalInfo(2027,'2027年度の個人情報を消去').join('').indexOf('×')>=0");
+ok("拒否では何も変わらない",
+   SHEETS["名簿_2026"][1][2] === "あおい"
+   && SHEETS["記録_2026"].slice(1).some(r => r[5] === "sensei@example.ed.jp"));
+
+ev("erasePersonalInfo(2026,'2026年度の個人情報を消去');");
+ok("名簿_2026 の氏名が 児童NNN になる",
+   SHEETS["名簿_2026"][1][2] === "児童001" && SHEETS["名簿_2026"][4][2] === "児童004");
+ok("名簿_2026 のメールが <年度>-児童NNN になる",
+   SHEETS["名簿_2026"][1][3] === "2026-児童001" && SHEETS["名簿_2026"][4][3] === "2026-児童004");
+ok("記録_2026 の更新者も仮名になる",
+   SHEETS["記録_2026"].slice(1).every(r => !r[5] || r[5] === "2026-教師001")
+   && SHEETS["記録_2026"].slice(1).some(r => r[5] === "2026-教師001"));
+ok("仮名の対応表は終わったら消す", "SH_HAS('消去_対応表')===false");
+ok("運用ログに個人情報を残さない",
+   SHEETS["運用ログ"] && SHEETS["運用ログ"].flat().join(" ").indexOf("@") < 0);
+ok("現行の名簿（新年度）は消さない",
+   SHEETS["名簿"][1][2] === "ひなた" && SHEETS["名簿"][1][3] === "hinata@example.ed.jp");
 
 console.log(ng ? "\n× " + ng + " 件だめだった" : "\n○ ぜんぶ通った");
 process.exit(ng ? 1 : 0);

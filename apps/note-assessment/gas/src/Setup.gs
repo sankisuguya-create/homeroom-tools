@@ -118,10 +118,24 @@ function diagnoseLines(){
     return sh ? Math.max(0, sh.getLastRow() - 1) : -1;
   };
 
-  /* 1. シート */
+  /* 1. シート。存在だけでなく、見出し行が SETUP_SHEETS と合うかも見る。
+     「開始No」だけは末尾が無くても動く設計（列Dを位置で読む）なので、
+     教科マスタのその1列の欠落は △ 情報行に留める。 */
   Object.keys(SETUP_SHEETS).forEach(n => {
     const c = row(n);
-    if(c < 0) out.push("× シート「" + n + "」が無い。setupSheets を実行する");
+    if(c < 0){ out.push("× シート「" + n + "」が無い。setupSheets を実行する"); return; }
+    const sh   = ss.getSheetByName(n);
+    const want = SETUP_SHEETS[n];
+    const head = sh.getRange(1, 1, 1, want.length).getValues()[0]
+                   .map(x => String(x).trim());
+    const missing = want.filter((h, i) => head[i] !== h);
+    if(missing.length){
+      const tolerated = n === "教科マスタ" && missing.length === 1
+                        && missing[0] === "開始No" && !head[3];
+      out.push((tolerated ? "△ " : "× ") + "「" + n + "」の見出しが違う（"
+             + missing.join("、") + " が無いか別名。いま: " + head.join(" / ") + "）"
+             + (tolerated ? "。無くても列Dを位置で読むので動く" : ""));
+    }
   });
 
   /* 2. 教師メール */

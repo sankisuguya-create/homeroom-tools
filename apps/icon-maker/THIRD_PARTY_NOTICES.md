@@ -27,3 +27,17 @@ SVGからコメントと外側の`<svg>`要素を除き、パスをローカル�
 | `person-volleyball` | `play-volleyball.svg` | `b7b0b6becfc4534fd2f142897de449ed4a1a807f` |
 | `person-karate` | `karate.svg` | `d58c62ec90368b91af0543a83fcb1969f07d65e7` |
 | `people-friends` | `friends.svg` | `b8e3731f7be47c28e5685863e1ebe0b2694f3050` |
+
+## Lucide
+
+- Source: [lucide-static](https://www.npmjs.com/package/lucide-static)（[lucide-icons/lucide](https://github.com/lucide-icons/lucide) が生成するパッケージ）
+- Version: `v1.47.0`
+- License: ISC（全文は `licenses/Lucide-ISC.txt`。一部の Feather 由来アイコンは MIT。ライセンスファイル内に一覧あり）
+- Imported: 2026-09-21
+
+`LucideSprite.html` は配布物の `sprite.svg` から `<?xml?>` 宣言1行を除いただけのもの、`LucideTags.html` は `tags.json` をそのまま複写したものです（いずれも内容の変更なし）。`LucideTags.html` は `<script type="application/json">` に埋め込んで JSON.parse するため、ライセンスコメントをファイル内に書けず、表記は本ファイルと `licenses/` に寄せています。npm パッケージの tarball 完全性ハッシュ: `sha512-yWIrkdXc688Feq5VjOktsKmV5Ikc7y5Nu3rrdtbr8nWjkJWk8QlnZfVtIak22Af+fNhZ7k4cTJpZo1zmj7X5sA==`
+
+| 内部ファイル | 上流ファイル | SHA-256 |
+|---|---|---|
+| `LucideSprite.html` | `sprite.svg`（`<?xml?>` 行除去） | `7865288e9632f4be2f2fe0efcacfa17f4603b976175bc57224f31ecdf736cd62` |
+| `LucideTags.html` | `tags.json` | `2c5b54d36c25c1fec2a51d724ff7e775e8d279d719160193509085f5c9057d2f` |

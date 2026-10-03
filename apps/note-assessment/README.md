@@ -13,12 +13,11 @@
 
 | 場所 | 内容 |
 |---|---|
-| `web/src/` | 児童・教師画面の正本、評価スケール、単元例、材質CSS |
-| `gas/src/` | GASの手書きコードとHTML |
+| `web/src/` | 評価スケール（scale.js）と材質CSSの正本。児童・教師画面の正本は `gas/src/` |
+| `gas/src/` | GASの手書きコードと、児童・教師画面（HTML）の正本 |
 | `gas/generated/` | `web/src/`と`shared/`から作る中間生成物。編集禁止 |
-| `web/dist/` | ブラウザで確認できる完成HTML。編集禁止 |
 | `gas/dist/` | Apps Scriptへ貼る完成物。編集禁止 |
-| `archive/` | 不採用案。現行実装ではない |
+| `archive/` | 不採用案・凍結した旧画面。現行実装ではない |
 
 色トークンの正本は、ダンスカウント表と共用する [`../../shared/ui/tokens.css`](../../shared/ui/tokens.css) です。
 
