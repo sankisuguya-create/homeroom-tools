@@ -213,9 +213,9 @@ order.forEach(f => {
   catch(e){ console.log("  × " + f + "  → " + e.message); ng++; }
 });
 
-console.log("■ スケール（20段の往復）");
+console.log("■ スケール（15段の往復）");
 ok("NLEVEL は 15", "NLEVEL === 15", "NLEVEL");
-ok("1〜20 すべて往復する",
+ok("1〜15 すべて往復する",
    "(function(){for(let v=1;v<=NLEVEL;v++) if(valueOfSym(symbolOf(v))!==v) return false; return NLEVEL>0;})()");
 ok("A++ は上から5番目", "symbolOf(NLEVEL - 4) === 'A++'", "symbolOf(NLEVEL-4)");
 ok("記号と値が対応する", "valueOfSym(symbolOf(11)) === 11 && symbolOf(11) === 'A++'", "symbolOf(11)");

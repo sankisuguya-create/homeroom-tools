@@ -215,7 +215,7 @@ const Store = (function(){
 
     if(who.role === "unknown") return {ok:false, why:"だれか わかりません"};
 
-    /* 記号の検査。20段のほか 休 と / だけ。空は消去。 */
+    /* 記号の検査。15段のほか 休 と / だけ。空は消去。 */
     const s = (sym === null || sym === undefined || sym === "") ? null : String(sym);
     if(s !== null && !isMark(s) && valueOfSym(s) === null)
       return {ok:false, why:"知らない記号"};

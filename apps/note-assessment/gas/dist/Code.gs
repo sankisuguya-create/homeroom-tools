@@ -704,7 +704,7 @@ const Store = (function(){
 
     if(who.role === "unknown") return {ok:false, why:"だれか わかりません"};
 
-    /* 記号の検査。20段のほか 休 と / だけ。空は消去。 */
+    /* 記号の検査。15段のほか 休 と / だけ。空は消去。 */
     const s = (sym === null || sym === undefined || sym === "") ? null : String(sym);
     if(s !== null && !isMark(s) && valueOfSym(s) === null)
       return {ok:false, why:"知らない記号"};
@@ -1632,7 +1632,7 @@ function include(name){
    画面側（PAGE_BUILD）と照合して警告を出すための値。
    サーバと画面は別スコープなので名前を分ける（preview.js は1スコープに
    読むので、同名だと宣言が衝突する）。 */
-const SERVER_BUILD = "BUILD_5cddf01d7492";
+const SERVER_BUILD = "BUILD_9e2677e21d05";
 
 /* ------------------------------------------------------------------
    役割の判定。ここが Step 3 の山場。
