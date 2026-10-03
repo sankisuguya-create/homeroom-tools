@@ -10,7 +10,7 @@ var DESK = {
   top: 25,                 // 天板の厚み
   trayV: 25, trayH: 105,   // 物入れ：天板の下 25〜130
   trayInset: 22,
-  hookY: 330,              // フックの前後位置（前から）。写真では児童がわ寄り
+  hookY: 225,              // フックの前後位置（前から）。左右の面の中央
   hookV: 48,               // フックの高さ（天板の上面から下へ）
   legInset: 28,
   crop: 560                // 横から見た図は上から 560mm までを描き、脚の下は切る
@@ -114,17 +114,30 @@ var ITEMS = {
     } } } },
   pc: { name: 'パソコン', kind: 'top', states: {
     closed: { w: 297, d: 213, draw: function (w, h) { return R(0, 0, w, h, '#4C535C', 12); } },
-    open: { w: 297, d: 258, draw: function (w, h) {
-      return R(0, 0, w, 48, '#2B3036', 8) + R(0, 46, w, h - 46, '#5A626B', 12) + R(20, 66, w - 40, 104, '#3A4048', 4, 0) + R(w / 2 - 44, 186, 88, 54, '#6A727B', 6, 0);
+    /* 開いた形はやや斜め（手前の上）から見た絵：画面が立ち、キーボードは台形に見える。
+       真上からだと画面が細い帯にしか見えず、開いているのか分からないため */
+    open: { w: 297, d: 300, draw: function (w, h) {
+      var sh = 170, k = 18;
+      return R(k, 0, w - 2 * k, sh, '#2B3036', 10) + R(k + 14, 14, w - 2 * k - 28, sh - 28, '#7FA9C9', 4, 0) +
+             '<path d="M' + k + ' ' + sh + ' L' + (w - k) + ' ' + sh + ' L' + w + ' ' + h + ' L0 ' + h + ' Z" fill="#5A626B" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>' +
+             '<path d="M' + (k + 22) + ' ' + (sh + 12) + ' L' + (w - k - 22) + ' ' + (sh + 12) + ' L' + (w - 18) + ' ' + (sh + 74) + ' L18 ' + (sh + 74) + ' Z" fill="#3A4048"/>' +
+             R(w / 2 - 40, sh + 84, 80, 36, '#6A727B', 6, 0);
     } } } },
   glue: { name: 'のり', kind: 'top', states: {
-    closed: { w: 34, d: 34, draw: function () { return C(17, 17, 16, '#F2C94C'); } } } },
+    /* 立てたスティックのりをやや斜めから：キャップ（色）・胴（白）・上の楕円 */
+    closed: { w: 34, d: 84, draw: function (w, h) {
+      return '<path d="M0 12 L0 ' + (h - 8) + ' A17 7 0 0 0 34 ' + (h - 8) + ' L34 12 Z" fill="#FFFFFF" stroke="' + INK + '" stroke-width="3"/>' +
+             '<path d="M0 12 L0 38 A17 7 0 0 0 34 38 L34 12 Z" fill="#F2C94C" stroke="' + INK + '" stroke-width="3"/>' +
+             '<ellipse cx="17" cy="12" rx="17" ry="7" fill="#F7DC7A" stroke="' + INK + '" stroke-width="3"/>';
+    } } } },
   scissors: { name: 'はさみ', kind: 'top', states: {
     closed: { w: 70, d: 165, draw: function () {
       return '<path d="M30 2 L40 2 L44 100 L26 100 Z" fill="#C7CCD1" stroke="' + INK + '" stroke-width="3"/>' + C(17, 132, 18, '#E2574C') + C(53, 132, 18, '#E2574C');
     } } } },
   ruler: { name: 'じょうぎ', kind: 'top', states: {
     closed: { w: 30, d: 170, draw: function (w, h) { return R(0, 0, w, h, '#E7F1F8', 3) + L(0, 50, 14, 50, INK, 2) + L(0, 100, 14, 100, INK, 2) + L(0, 150, 14, 150, INK, 2); } } } },
+  redpencil: { name: '{赤鉛筆|あかえんぴつ}', kind: 'top', states: {
+    closed: { w: 10, d: 175, draw: function (w, h) { return R(0, 22, w, h - 22, '#E5484D', 2, 2) + '<path d="M0 22 L5 0 L10 22 Z" fill="#E8D3B0" stroke="' + INK + '" stroke-width="2"/>' + '<path d="M3 8 L5 0 L7 8 Z" fill="#E5484D"/>'; } } } },
   pencil: { name: '{鉛筆|えんぴつ}', kind: 'top', states: {
     closed: { w: 10, d: 175, draw: function (w, h) { return R(0, 22, w, h - 22, '#F2C94C', 2, 2) + '<path d="M0 22 L5 0 L10 22 Z" fill="#E8D3B0" stroke="' + INK + '" stroke-width="2"/>'; } } } },
   eraser: { name: '{消|け}しゴム', kind: 'top', states: {
@@ -143,8 +156,13 @@ var ITEMS = {
     closed: { w: 100, d: 160, draw: function (w, h) { return R(0, 0, w, h, '#2F2F33', 12) + R(12, 12, w - 24, 44, '#151517', 8, 0); } } } },
   fude: { name: '{筆|ふで}', kind: 'top', states: {
     closed: { w: 12, d: 210, draw: function (w, h) { return R(0, 40, w, h - 40, '#C9A56B', 3, 2) + '<path d="M0 42 Q6 -4 12 42 Z" fill="#1F1F1F" stroke="' + INK + '" stroke-width="2"/>'; } } } },
+  /* 墨汁の容器をやや斜めから：キャップ・肩・胴・ラベル */
   bokuju: { name: '{墨汁|ぼくじゅう}', kind: 'top', states: {
-    closed: { w: 50, d: 50, draw: function () { return C(25, 25, 24, '#1F1F1F'); } } } },
+    closed: { w: 56, d: 130, draw: function (w, h) {
+      return '<path d="M0 46 L0 ' + (h - 8) + ' A28 8 0 0 0 56 ' + (h - 8) + ' L56 46 Z" fill="#1F1F1F" stroke="' + INK + '" stroke-width="3"/>' +
+             '<path d="M0 46 Q0 26 18 24 L38 24 Q56 26 56 46 Z" fill="#1F1F1F" stroke="' + INK + '" stroke-width="3"/>' +
+             R(16, 4, 24, 22, '#E5484D', 5, 3) + R(6, 62, 44, 40, '#FFFFFF', 3, 2);
+    } } } },
   shodobox: { name: '{習字|しゅうじ}セット', kind: 'top', states: {
     closed: { w: 350, d: 240, draw: function (w, h) { return R(0, 0, w, h, '#3E4F7A', 10); } },
     open: { w: 350, d: 480, draw: function (w, h) { return R(0, 0, w, h / 2, '#5B6E9C', 10) + R(0, h / 2, w, h / 2, '#DCE1EC', 10); } } } },
@@ -210,7 +228,10 @@ var DEFAULT_LAYOUTS = [
     top: [
       { item: 'textbook', state: 'open', x: gx(5), y: gy(2), r: 0 },
       { item: 'notebook', state: 'open', x: gx(5), y: gy(6), r: 0, color: 0 },
-      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 }
+      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 },
+      { item: 'pencil', state: 'closed', x: gx(10), y: gy(6), r: 0 },
+      { item: 'redpencil', state: 'closed', x: gx(21, 24), y: gy(6), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(11), y: gy(7), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'drill', place: 'tray' }, { item: 'renraku', place: 'tray' }] },
@@ -218,7 +239,10 @@ var DEFAULT_LAYOUTS = [
     top: [
       { item: 'textbook', state: 'open', x: gx(5), y: gy(2), r: 0 },
       { item: 'notebook', state: 'open', x: gx(5), y: gy(6), r: 0, color: 1 },
-      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 }
+      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 },
+      { item: 'pencil', state: 'closed', x: gx(10), y: gy(6), r: 0 },
+      { item: 'redpencil', state: 'closed', x: gx(21, 24), y: gy(6), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(11), y: gy(7), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'drill', place: 'tray' }] },
