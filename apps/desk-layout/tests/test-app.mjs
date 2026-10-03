@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const src=f=>readFile(new URL('../src/'+f,import.meta.url),'utf8');
 const ctx=vm.createContext({});
 vm.runInContext((await src('data.js'))+'\n'+(await src('draw.js')),ctx);
-const g=vm.runInContext('({GRID_LEVELS,gridLevel,gridPoints,snap,DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg})',ctx);
+const g=vm.runInContext('({itemSize,colorOf,GRID_LEVELS,gridLevel,gridPoints,snap,DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg})',ctx);
 const {DESK,ITEMS,DEFAULT_LAYOUTS}=g;
 
 // 標準の配置：知らない用具・知らない状態・机の外の中心を持たない
@@ -62,6 +62,17 @@ const bare=JSON.parse(JSON.stringify(math)); bare.hooks={left:[],right:[]};
 assert.ok(!g.composeSingle(bare,{}).svg.includes('class="cap"'));
 assert.equal((g.composeSingle(math,{}).svg.match(/class="cap"/g)||[]).length,4);
 for(const id of Object.keys(ITEMS))assert.ok(g.iconSvg(id,40).startsWith('<svg'));
+
+// 判型：ノートは B5／A4、開くと幅2倍。色は表紙だけ
+assert.equal(g.itemSize({item:'notebook',state:'closed'}).join(),'179,252');
+assert.equal(g.itemSize({item:'notebook',state:'closed',size:'a4'}).join(),'210,297');
+assert.equal(g.itemSize({item:'notebook',state:'open',size:'a4'}).join(),'420,297');
+assert.equal(g.itemSize({item:'textbook',state:'open',size:'ab'}).join(),'420,257');
+assert.equal(g.itemSize({item:'notebook',state:'closed',size:'xx'}).join(),'179,252','知らない判型は既定へ');
+assert.ok(g.colorOf({item:'notebook',color:6}).startsWith('#'));
+for(const id of Object.keys(ITEMS))if(ITEMS[id].kind==='top')for(const st of Object.keys(ITEMS[id].states)){
+  const wd=g.itemSize({item:id,state:st}); assert.ok(wd[0]>0&&wd[1]>0,id+':'+st);
+}
 
 // グリッド：細かい段は粗い段の交点をすべて含む／標準の配置は「こまかい」の交点上／snap は動かない点を動かさない
 const near=(a,b)=>Math.abs(a-b)<1e-6;

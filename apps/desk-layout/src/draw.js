@@ -54,9 +54,19 @@ function stateOf(p) {
   var st = ITEMS[p.item].states;
   return st[p.state] ? p.state : 'closed';
 }
+function sizeOf(p) {           // 判型を選べる物の判型の id
+  var sz = ITEMS[p.item].sizes;
+  return sz ? (sz[p.size] ? p.size : Object.keys(sz)[0]) : null;
+}
+function colorOf(p) {
+  var c = ITEMS[p.item].colors;
+  return c ? c[(p.color | 0) % c.length] : null;
+}
+/* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
 function itemSize(p) {
-  var s = ITEMS[p.item].states[stateOf(p)];
-  return [s.w, s.d];
+  var it = ITEMS[p.item], st = stateOf(p);
+  if (it.sizes) { var z = it.sizes[sizeOf(p)]; return [st === 'open' ? z.w * 2 : z.w, z.d]; }
+  return [it.states[st].w, it.states[st].d];
 }
 /* 回転したときの外接箱の幅・奥行き */
 function rotBox(w, d, r) {
@@ -64,15 +74,15 @@ function rotBox(w, d, r) {
   return [w * c + d * s, w * s + d * c];
 }
 function drawTopItem(p, i, cls) {
-  var st = ITEMS[p.item].states[stateOf(p)], w = st.w, d = st.d;
+  var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + st.draw(w, d) +
+         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + st.draw(w, d, colorOf(p)) +
          (cls === 'sel' ? '<rect class="selbox" x="-10" y="-10" width="' + (w + 20) + '" height="' + (d + 20) + '" rx="10"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
   if (it.kind === 'hang') { w = it.side[0]; d = it.side[1] + 80; body = '<g transform="translate(' + w / 2 + ' 4)">' + hangFace(it) + '</g>'; }
-  else { var s = it.states.closed; w = s.w; d = s.d; body = s.draw(w, d); }
+  else { var p = { item: itemId, state: 'closed' }, wd = itemSize(p); w = wd[0]; d = wd[1]; body = it.states.closed.draw(w, d, colorOf(p)); }
   var pad = 8;
   return '<svg viewBox="' + (-pad) + ' ' + (-pad) + ' ' + (w + pad * 2) + ' ' + (d + pad * 2) + '" width="' + size + '" height="' + size + '" aria-hidden="true">' + body + '</svg>';
 }
