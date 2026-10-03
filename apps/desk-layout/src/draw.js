@@ -312,6 +312,7 @@ function composeSingle(lay, o) {
   var top = topView(L0, o), parts = [place(top, 0, 0)], tb = top.box;
   var cy = DESK.d / 2;
   var k = SIDE_SCALE, mid = DESK.w / 2 * (1 - k);
+  if (o.topOnly) return finish(parts);   // 真上からの図だけ
   if (hasHang(L0, 'left')) { var e = elevation('left', L0, o); parts.push(place(e, tb.x0 - VIEW_GAP - e.box.x1 * k, cy - (e.box.y0 + e.box.y1) * k / 2, k)); }
   if (hasHang(L0, 'right')) { var f = elevation('right', L0, o); parts.push(place(f, tb.x1 + VIEW_GAP - f.box.x0 * k, cy - (f.box.y0 + f.box.y1) * k / 2, k)); }
   if (hasHang(L0, 'left') || hasHang(L0, 'right')) {

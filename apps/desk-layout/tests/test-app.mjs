@@ -21,7 +21,7 @@ for(const l of DEFAULT_LAYOUTS){
 }
 // 開く物は閉じた形と開いた形の両方を持つ
 for(const id of ['textbook','notebook','drill','renraku','pencase','colorpencil','pc','shodobox','palette','enogubox'])
-  assert.equal(Object.keys(ITEMS[id].states).sort().join(),"closed,open",id);
+  assert.ok(ITEMS[id].states.closed&&ITEMS[id].states.open,id);
 // ふりがな記法
 assert.deepEqual(JSON.parse(JSON.stringify(g.parseName('{消|け}しゴム'))),[{b:'消',r:'け'},{b:'しゴム',r:''}]);
 assert.equal(g.plainName('{絵|え}の{具|ぐ}バッグ'),'絵の具バッグ');
@@ -61,6 +61,8 @@ for(const l of DEFAULT_LAYOUTS)for(const flip of [false,true])for(const chair of
 const bare=JSON.parse(JSON.stringify(math)); bare.hooks={left:[],right:[]};
 assert.ok(!g.composeSingle(bare,{}).svg.includes('class="cap"'));
 assert.equal((g.composeSingle(math,{}).svg.match(/class="cap"/g)||[]).length,4);
+assert.ok(!g.composeSingle(math,{topOnly:true}).svg.includes('class="cap"'),'真上だけ');
+assert.equal(Object.keys(ITEMS.pc.states).join(),'closed,open,tablet,tent');
 for(const id of Object.keys(ITEMS))assert.ok(g.iconSvg(id,40).startsWith('<svg'));
 
 // 判型：ノートは B5／A4、開くと幅2倍。色は表紙だけ

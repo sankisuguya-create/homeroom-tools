@@ -5,7 +5,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal' } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false } };
 }
 function load() {
   try {
@@ -129,6 +129,7 @@ function openShow(id) {
 }
 function renderShow() {
   var o = { ruby: S.prefs.ruby, chair: S.prefs.chair, flip: flip && cur.flip };
+  o.topOnly = S.prefs.topOnly;
   var c = S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
   var svg = $('stageSvg');
   svg.setAttribute('viewBox', c.viewBox); svg.innerHTML = c.svg;
@@ -138,6 +139,8 @@ function renderShow() {
   $('sFlip').disabled = !cur.flip; $('sFlip').setAttribute('aria-pressed', String(flip && cur.flip));
   $('sFlip').title = cur.flip ? '' : 'この活動は左右反転しない設定です';
   $('sChair').setAttribute('aria-pressed', String(S.prefs.chair));
+  $('sSides').setAttribute('aria-pressed', String(!S.prefs.topOnly));
+  $('sSides').disabled = S.prefs.group;
   $('sRuby').setAttribute('aria-pressed', String(S.prefs.ruby));
   renderAway();
 }
@@ -156,6 +159,7 @@ $('sBack').onclick = renderHome;
 $('sOne').onclick = function () { S.prefs.group = false; save(); renderShow(); };
 $('sFour').onclick = function () { S.prefs.group = true; save(); renderShow(); };
 $('sFlip').onclick = function () { flip = !flip; renderShow(); };
+$('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
 $('sFull').onclick = function () {
@@ -191,7 +195,9 @@ function renderEdit() {
     var it = ITEMS[p.item], keys = Object.keys(it.states);
     $('selName').textContent = plainName(it.name);
     $('selState').hidden = keys.length < 2;
-    $('selState').textContent = stateOf(p) === 'open' ? 'とじる' : 'ひらく';
+    $('selState').innerHTML = keys.map(function (k) {
+      return '<button type="button" data-st="' + k + '" class="' + (k === stateOf(p) ? 'on' : '') + '">' + (STATE_NAMES[k] || k) + '</button>';
+    }).join('');
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
@@ -280,7 +286,10 @@ $('eDel').onclick = function () {
   S.recent = S.recent.filter(function (x) { return x !== cur.id; });
   save(); renderHome(); toast('削除しました');
 };
-$('selState').onclick = function () { var p = cur.top[sel]; p.state = stateOf(p) === 'open' ? 'closed' : 'open'; clampP(p); save(); renderEdit(); };
+$('selState').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-st]'); if (!b) return;
+  var p = cur.top[sel]; p.state = b.getAttribute('data-st'); clampP(p); save(); renderEdit();
+});
 $('selSize').onclick = function () {
   var p = cur.top[sel], ks = Object.keys(ITEMS[p.item].sizes);
   p.size = ks[(ks.indexOf(sizeOf(p)) + 1) % ks.length]; save(); renderEdit();

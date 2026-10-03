@@ -76,6 +76,14 @@ function cover(w, h, col, title, ruled) {
          R(10, gy, gw, gh, '#FFFFFF', 3, 0) + (ruled ? rules(10, gy, gw, gh, 16, '#C9DDF0') : grid(10, gy, gw, gh, 16, '#C9DDF0')) +
          R(12, h * 0.85, w - 24, h * 0.1, '#FFFFFF', 8, 2);
 }
+var PC_BUMPER = '#3E4247', PC_BODY = '#878C92', PC_SCREEN = '#7FA9C9';   // バンパー・本体（ミネラルグレー）・画面
+function tabShell(w, h) { return R(0, 0, w, h, PC_BUMPER, 18); }
+function tabScreen(x, y, w, h) {   // バンパー＋黒い縁＋画面
+  return R(x, y, w, h, PC_BUMPER, 16) + R(x + 10, y + 10, w - 20, h - 20, '#1E2124', 8, 0) + R(x + 26, y + 22, w - 52, h - 44, PC_SCREEN, 3, 0);
+}
+/* 状態の呼び名（編集画面のボタン） */
+var STATE_NAMES = { closed: 'とじる', open: 'ひらく', tablet: 'タブレット', tent: '山がた' };
+
 var ITEMS = {
   textbook: { name: '{教科書|きょうかしょ}', kind: 'top',
     sizes: { b5: { name: 'B5', w: 182, d: 257 }, ab: { name: 'AB', w: 210, d: 257 } },
@@ -112,16 +120,26 @@ var ITEMS = {
       for (var i = 0; i < 12; i++) s += R(20 + i * 13, 16, 10, h - 32, RAINBOW[i], 2, 0);
       return s;
     } } } },
-  pc: { name: 'パソコン', kind: 'top', states: {
-    closed: { w: 297, d: 213, draw: function (w, h) { return R(0, 0, w, h, '#4C535C', 12); } },
-    /* 開いた形はやや斜め（手前の上）から見た絵：画面が立ち、キーボードは台形に見える。
-       真上からだと画面が細い帯にしか見えず、開いているのか分からないため */
+  /* 児童用タブレット：ASUS Chromebook CZ11 Flip（CZ1104F）。ミネラルグレーの本体を、濃い色のゴムのバンパーが一周囲む。
+     360°回る画面で4つの形をとる。閉じる・タブレットは真上から、開く・山がたは手前の上から見た絵 */
+  pc: { name: 'タブレット', kind: 'top', states: {
+    closed: { w: 297, d: 213, draw: function (w, h) { return tabShell(w, h) + R(16, 16, w - 32, h - 32, PC_BODY, 8, 0) + L(30, 10, w - 30, 10, '#2A2D31', 4); } },
     open: { w: 297, d: 300, draw: function (w, h) {
       var sh = 170, k = 18;
-      return R(k, 0, w - 2 * k, sh, '#2B3036', 10) + R(k + 14, 14, w - 2 * k - 28, sh - 28, '#7FA9C9', 4, 0) +
-             '<path d="M' + k + ' ' + sh + ' L' + (w - k) + ' ' + sh + ' L' + w + ' ' + h + ' L0 ' + h + ' Z" fill="#5A626B" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>' +
-             '<path d="M' + (k + 22) + ' ' + (sh + 12) + ' L' + (w - k - 22) + ' ' + (sh + 12) + ' L' + (w - 18) + ' ' + (sh + 74) + ' L18 ' + (sh + 74) + ' Z" fill="#3A4048"/>' +
-             R(w / 2 - 40, sh + 84, 80, 36, '#6A727B', 6, 0);
+      return tabScreen(k, 0, w - 2 * k, sh) +
+             '<path d="M' + k + ' ' + sh + ' L' + (w - k) + ' ' + sh + ' L' + w + ' ' + h + ' L0 ' + h + ' Z" fill="' + PC_BUMPER + '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>' +
+             '<path d="M' + (k + 10) + ' ' + (sh + 8) + ' L' + (w - k - 10) + ' ' + (sh + 8) + ' L' + (w - 10) + ' ' + (h - 10) + ' L10 ' + (h - 10) + ' Z" fill="' + PC_BODY + '"/>' +
+             '<path d="M' + (k + 26) + ' ' + (sh + 16) + ' L' + (w - k - 26) + ' ' + (sh + 16) + ' L' + (w - 22) + ' ' + (sh + 76) + ' L22 ' + (sh + 76) + ' Z" fill="#2E3236"/>' +
+             R(w / 2 - 40, sh + 86, 80, 32, '#9AA0A6', 6, 0);
+    } },
+    tablet: { w: 297, d: 213, draw: function (w, h) { return tabScreen(0, 0, w, h); } },
+    tent: { w: 297, d: 200, draw: function (w, h) {
+      // 横から見ると「^」：奥の面（キーボードの裏）が細く見え、手前の面は画面が手前上を向く
+      var ridge = 34;
+      return '<path d="M14 ' + ridge + ' L28 4 L' + (w - 28) + ' 4 L' + (w - 14) + ' ' + ridge + ' Z" fill="' + PC_BODY + '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>' +
+             '<path d="M14 ' + ridge + ' L' + (w - 14) + ' ' + ridge + ' L' + w + ' ' + h + ' L0 ' + h + ' Z" fill="' + PC_BUMPER + '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>' +
+             '<path d="M30 ' + (ridge + 12) + ' L' + (w - 30) + ' ' + (ridge + 12) + ' L' + (w - 18) + ' ' + (h - 12) + ' L18 ' + (h - 12) + ' Z" fill="#1E2124"/>' +
+             '<path d="M44 ' + (ridge + 24) + ' L' + (w - 44) + ' ' + (ridge + 24) + ' L' + (w - 32) + ' ' + (h - 24) + ' L32 ' + (h - 24) + ' Z" fill="' + PC_SCREEN + '"/>';
     } } } },
   glue: { name: 'のり', kind: 'top', states: {
     /* 立てたスティックのりをやや斜めから：キャップ（色）・胴（白）・上の楕円 */
@@ -266,7 +284,7 @@ var DEFAULT_LAYOUTS = [
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'enogubag' }] },
     away: [{ item: 'pencase', place: 'tray' }] },
-  { id: 'pc', name: 'パソコン', yomi: '', flip: true,
+  { id: 'pc', name: 'タブレット', yomi: '', flip: true,
     top: [
       { item: 'pc', state: 'open', x: gx(6), y: gy(3), r: 0 },
       { item: 'pencase', state: 'closed', x: gx(6), y: gy(7), r: 0 }
