@@ -68,5 +68,8 @@ function onOpen(){
     .addItem("キャッシュを消す", "clearAllCache")
     .addSeparator()
     .addItem("上端の記号を置き換える（1回だけ）", "migrateSymbols")
+    .addSeparator()
+    .addItem("年度を保存して進める", "menuArchiveYear")
+    .addItem("前年度の個人情報を消す", "menuErasePersonalInfo")
     .addToUi();
 }

@@ -32,7 +32,7 @@ const readGas = name => fs.readFileSync(gasPath(name), "utf8");
    このプレビューでは同じ窓に入るので scale.html 側の定義とぶつかる。
    中身は同じ1つの元（src/scale.js）から出ているので、片方で足りる。 */
 const gsOrder = ["Config.gs","Roster.gs","Master.gs","Lock.gs","Hours.gs",
-                 "Store.gs","Aggregate.gs","Api.gs","Export.gs","Code.gs","Setup.gs"];
+                 "Store.gs","Aggregate.gs","Api.gs","Export.gs","Code.gs","Setup.gs","Year.gs"];
 const server = gsOrder.map(f => readGas(f)).join("\n");
 
 const WHICH = (process.argv[3] === "teacher") ? "teacher" : "student";
