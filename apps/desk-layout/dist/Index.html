@@ -390,6 +390,21 @@ function tabShell(w, h) { return R(0, 0, w, h, PC_BUMPER, 18); }
 function tabScreen(x, y, w, h) {   // バンパー＋黒い縁＋画面
   return R(x, y, w, h, PC_BUMPER, 16) + R(x + 10, y + 10, w - 20, h - 20, '#1E2124', 8, 0) + R(x + 26, y + 22, w - 52, h - 44, PC_SCREEN, 3, 0);
 }
+/* 角を丸めた多角形（台形のバンパーを ① ③ と同じ丸みにするため）。pts は時計回りの頂点、r は角の丸み */
+function roundPoly(pts, r) {
+  var n = pts.length, d = '';
+  for (var i = 0; i < n; i++) {
+    var p = pts[i], a = pts[(i + n - 1) % n], b = pts[(i + 1) % n];
+    var la = Math.hypot(a[0] - p[0], a[1] - p[1]), lb = Math.hypot(b[0] - p[0], b[1] - p[1]), k = Math.min(r, la / 2, lb / 2);
+    var p1 = [p[0] + (a[0] - p[0]) * k / la, p[1] + (a[1] - p[1]) * k / la], p2 = [p[0] + (b[0] - p[0]) * k / lb, p[1] + (b[1] - p[1]) * k / lb];
+    d += (i ? ' L' : 'M') + p1[0] + ' ' + p1[1] + ' Q' + p[0] + ' ' + p[1] + ' ' + p2[0] + ' ' + p2[1];
+  }
+  return d + ' Z';
+}
+function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // 上の辺を insetTop、下の辺を insetBot だけ内に寄せた角丸の台形
+  return '<path d="' + roundPoly([[x0 + insetTop, y0], [x1 - insetTop, y0], [x1 - insetBot, y1], [x0 + insetBot, y1]], r) + '" fill="' + fill + '"' +
+         (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
+}
 /* 状態の呼び名（編集画面のボタン） */
 var STATE_NAMES = { closed: 'とじる', open: 'ひらく', tablet: 'タブレット', tent: '山がた' };
 
@@ -446,12 +461,9 @@ var ITEMS = {
     open: { w: 297, d: 300, draw: function (w, h) {
       // 画面が立ち、手前にキーボードの面。奥が少しだけせまい台形（手前の上から見ているため）
       var sh = 170, q = 10;
-      var trap = function (x0, y0, x1, y1, inset, fill, stroke) {   // 奥（上）の辺を inset だけ内に寄せた台形
-        return '<path d="M' + (x0 + inset) + ' ' + y0 + ' L' + (x1 - inset) + ' ' + y0 + ' L' + x1 + ' ' + y1 + ' L' + x0 + ' ' + y1 + ' Z" fill="' + fill + '"' +
-               (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
-      };
-      return tabScreen(18, 0, w - 36, sh) + trap(0, sh, w, h, q, PC_BUMPER, true) + trap(10, sh + 10, w - 10, h - 10, q * 0.9, PC_BODY) +
-             trap(24, sh + 18, w - 24, sh + 80, q * 0.6, '#2E3236') + R(w / 2 - 40, sh + 88, 80, 30, '#9AA0A6', 6, 0);
+      var trap = function (x0, y0, x1, y1, inset, fill, stroke, r) { return roundTrap(x0, y0, x1, y1, inset, 0, r, fill, stroke); };
+      return tabScreen(18, 0, w - 36, sh) + trap(0, sh, w, h, q, PC_BUMPER, true, 16) + trap(10, sh + 10, w - 10, h - 10, q * 0.9, PC_BODY, false, 8) +
+             trap(24, sh + 18, w - 24, sh + 80, q * 0.6, '#2E3236', false, 4) + R(w / 2 - 40, sh + 88, 80, 30, '#9AA0A6', 6, 0);
     } },
     tablet: { w: 297, d: 213, draw: function (w, h) { return tabScreen(0, 0, w, h); } },
     tent: { w: 297, d: 200, draw: function (w, h) {
@@ -466,11 +478,11 @@ var ITEMS = {
                '" stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"/>';
       };
       // 枠・黒い縁・画面を同じ傾きの台形にそろえる（左右の辺は ex(y) から一定の幅だけ内側）
-      var band = function (top, bot, side, fill, stroke) {
-        return '<path d="M' + (ex(top) + side) + ' ' + top + ' L' + (w - ex(top) - side) + ' ' + top + ' L' + (w - ex(bot) - side) + ' ' + bot + ' L' + (ex(bot) + side) + ' ' + bot +
-               ' Z" fill="' + fill + '"' + (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
+      var band = function (top, bot, side, fill, stroke, r) {
+        return '<path d="' + roundPoly([[ex(top) + side, top], [w - ex(top) - side, top], [w - ex(bot) - side, bot], [ex(bot) + side, bot]], r) + '" fill="' + fill + '"' +
+               (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
       };
-      return leg(-1) + leg(1) + band(0, h, 0, PC_BUMPER, true) + band(10, h - 22, 12, '#1E2124') + band(22, h - 34, 26, PC_SCREEN);
+      return leg(-1) + leg(1) + band(0, h, 0, PC_BUMPER, true, 18) + band(10, h - 22, 12, '#1E2124', false, 8) + band(22, h - 34, 26, PC_SCREEN, false, 3);
     } } } },
   glue: { name: 'のり', kind: 'top', states: {
     /* 立てたスティックのりをやや斜めから：キャップ（色）・胴（白）・上の楕円 */
