@@ -157,13 +157,14 @@ const Final = (function(){
      find を呼ぶところが、呼ぶたびシート全体を読み直して数十秒かかる。
      **1回読んで引ける形にする。** 書き込みは索引も一緒に直し、
      行の削除（番号がずれる）のときだけ索引ごと捨てる。 */
-  let IDX_ = null;
+  let IDX_ = null, IDX_LAST_ = 0;   // 索引を作った・当て直した時点の最終行
   const keyOf_ = (subject, studentId, kind, target) =>
     subject + "|" + studentId + "|" + kind + "|" + target;
 
   function idx(){
     if(IDX_) return IDX_;
     IDX_ = {};
+    IDX_LAST_ = sheet().getLastRow();
     all().forEach((r, i) => {
       IDX_[keyOf_(r[COL.subject], r[COL.id], r[COL.kind], r[COL.target])] =
         {row: i + 2, value: String(r[COL.value])};
@@ -198,7 +199,19 @@ const Final = (function(){
     if(!lock.tryLock(20000)) return {ok:false, why:"こんでいます"};
     try{
       const sh  = sheet();
-      const hit = find(subject, studentId, kind, target);
+      let hit = find(subject, studentId, kind, target);
+      /* 索引はロックの外で作られていることがある（unitValue の下見など）。
+         そのあいだに別のタブが行を消すと番号がずれ、他の児童の行を
+         上書き・削除してしまう。**書く前にその行がまだ同じ鍵か確かめ、
+         違えば読み直す。** 無かった鍵は、最終行が索引の時点から動いていたら
+         （別のタブが足した・消した）読み直す。 */
+      const k = keyOf_(subject, studentId, kind, target);
+      const last = sh.getLastRow();
+      const stale = hit
+        ? (hit.row > last ||
+           keyOf_.apply(null, sh.getRange(hit.row, 1, 1, 4).getValues()[0]) !== k)
+        : (!!IDX_ && last !== IDX_LAST_);
+      if(stale){ IDX_ = null; hit = find(subject, studentId, kind, target); }
       if(value === null || value === ""){
         if(hit){ sh.deleteRow(hit.row); IDX_ = null; }   // 行番号がずれる
         return {ok:true, value:null};
@@ -209,8 +222,8 @@ const Final = (function(){
         hit.value = String(value);                       // 索引も当て直す
       }else{
         sh.appendRow(row);
-        idx()[keyOf_(subject, studentId, kind, target)] =
-          {row: sh.getLastRow(), value: String(value)};
+        IDX_LAST_ = sh.getLastRow();
+        idx()[k] = {row: IDX_LAST_, value: String(value)};
       }
       return {ok:true, value:value};
     } finally { lock.releaseLock(); }

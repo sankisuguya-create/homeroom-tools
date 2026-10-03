@@ -495,6 +495,22 @@ ok("確定シートは 1回なめて索引にして引く",
    "Final.unitValue('算数','s02','わり算');" +
    "Final.termRank('算数','s09',1);" +
    "return FINAL_READS()===before;})()", "'reads=' + FINAL_READS()");
+/* 別のタブが確定シートの行を消すと、この実行の索引は番号がずれる。
+   ずれた番号のまま書くと他の児童の値を上書きするので、書く前に確かめる。 */
+{
+  ev("Final.termRank('算数','s09',1)");                 // 索引を作らせる
+  const fin = SHEETS["確定"];
+  const victim = fin.findIndex((r, i) => i > 0 && !(r[1] === "s09" && r[2] === "学期"));
+  const removed = fin.splice(victim, 1)[0];              // 別のタブが1行消した
+  const others = JSON.stringify(fin.filter(r => !(r[1] === "s09" && r[2] === "学期")));
+  ev("Final.set('算数','s09','学期',1,'B')");
+  const s09 = fin.filter(r => r[1] === "s09" && r[2] === "学期");
+  const kept = JSON.stringify(fin.filter(r => !(r[1] === "s09" && r[2] === "学期"))) === others;
+  ok("行がずれても他の児童の確定値を上書きしない",
+     String(kept && s09.length === 1 && s09[0][4] === "B"), JSON.stringify(JSON.stringify(fin)));
+  fin.splice(victim, 0, removed);                        // 後の検査のために戻す
+  ev("Final.termRank('算数','s09',1)");
+}
 ok("戻せる", "(function(){apiSetRated('算数','わり算',false);return Master.unitOf('算数',20).rated===false;})()");
 clockReal();
 
