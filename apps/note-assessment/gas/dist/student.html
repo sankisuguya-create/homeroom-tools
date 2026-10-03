@@ -337,6 +337,8 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 .soonbar b{font-family:"IBM Plex Mono",monospace}
 .errbar{border:1px solid var(--warn);background:var(--warn-bg);color:var(--warn);
   border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
+/* 版ずれは児童が直せないので、静かな小さい表示にとどめる。 */
+.buildwarn{font-size:11px;color:var(--ink-soft);text-align:center}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -356,6 +358,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   </div>
 
   <div class="errbar hidden" id="errbar"></div>
+  <div class="buildwarn hidden" id="buildwarn">はってつけた ファイルが まざっています（せんせいに つたえて）</div>
 
   <div class="loading" id="loading">
     <div class="mark" aria-hidden="true"></div>
@@ -524,6 +527,9 @@ const SYM_MIGRATION = {
 </script>
 <script>
 const $ = id => document.getElementById(id);
+/* 貼り付け一式の版。build.py が dist を作るとき焼き込む。
+   サーバが返す build と違ったら、Code.gs と html が別の版で混在している。 */
+const PAGE_BUILD = "BUILD_ded22c306c54";
 let S = null;                      // サーバから来たもの
 let subject = null;
 
@@ -933,6 +939,12 @@ function scrollToNow(){
    1マスの保存には使わない（押した瞬間に反映するのが要点なので、
    そこで画面を止めると転写がかえって遅くなる。代わりにそのマスだけ止める）。 */
 let busyDepth = 0;
+/* 版ずれは児童には直せないので、静かな1行だけ出す。 */
+function checkBuild(r){
+  if(r && r.build && r.build !== PAGE_BUILD)
+    $("buildwarn").classList.remove("hidden");
+}
+
 function busy(on, msg){
   busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
   const b = $("busy");
@@ -1019,6 +1031,7 @@ function load(next){
     .withSuccessHandler(function(r){
       busy(false);
       try{
+        checkBuild(r);
         if(!r || !r.ok){
           /* 断られたときも面を1つ選ぶ。半端な画面を残さない。 */
           S = Object.assign(S || {}, r || {});

@@ -18,7 +18,7 @@
   python3 scripts/build.py
   python3 scripts/build.py --check
 """
-import sys, pathlib, re
+import sys, pathlib, re, hashlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 NOTE = ROOT / "apps" / "note-assessment"
@@ -136,6 +136,19 @@ def dist_targets():
         yield GAS_DIST / name, merged_html(name)
     yield GAS_DIST / "appsscript.json", (GAS_SRC / "appsscript.json").read_text(encoding="utf-8")
 
+# 手貼り運用の版ずれ検知。gas/dist 一式（焼き込み前の本文）の内容ハッシュから
+# BUILD 値を決め、各ファイルの @@BUILD@@ 印に同じ値を焼き込む。
+# 生成時刻ではなく内容ハッシュにするのは、--check の決定性（dist ≡ 正本からの
+# fresh render）を保つため。appsscript.json は JSON で印を置けないので、
+# ハッシュの入力だけに含める。
+BUILD_TOKEN = "@@BUILD@@"
+
+def build_stamp(arts):
+    digests = [hashlib.sha256(built.encode("utf-8")).hexdigest()[:8]
+               for _, built in arts]
+    build = "BUILD_" + hashlib.sha256("".join(digests).encode("utf-8")).hexdigest()[:12]
+    return build, [(d, c.replace(BUILD_TOKEN, build)) for d, c in arts]
+
 def write_or_check(dest: pathlib.Path, built: str, check: bool, bad):
     if check:
         current = dest.read_text(encoding="utf-8") if dest.exists() else ""
@@ -158,10 +171,11 @@ def main():
         if not check:
             print("  %-18s ← 正本" % dest.name)
 
-    for dest, built in dist_targets():
+    build, stamped = build_stamp(list(dist_targets()))
+    for dest, built in stamped:
         write_or_check(dest, built, check, bad)
         if not check:
-            print("  %-18s ← gas/src + generated" % ("dist/" + dest.name))
+            print("  %-18s ← gas/src + generated（%s）" % (("dist/" + dest.name), build))
 
     if check:
         if bad:

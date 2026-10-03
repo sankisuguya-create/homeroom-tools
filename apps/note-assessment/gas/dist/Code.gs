@@ -1117,7 +1117,8 @@ function apiBoot(subject){
     closed:    Hours.isClosedFor(who, at),
     released:  Config.released(),
     appUrl:    appUrl_(),
-    toClose:   Hours.minutesToClose(at)
+    toClose:   Hours.minutesToClose(at),
+    build:     SERVER_BUILD
   };
   /* 教科が1つも無いときは、その理由まで返す。
      画面が黙って空になると、何を直せばいいのか誰にも分からない。 */
@@ -1166,7 +1167,8 @@ function apiRead(subject){
        線を引かないと、まだ習っていない授業まで「のこり」に入り、
        9月に3学期ぶんの22が赤で出る。 */
     taught: Store.taughtUpTo(subject),
-    toClose: Hours.minutesToClose(at)
+    toClose: Hours.minutesToClose(at),
+    build: SERVER_BUILD
   };
 
   /* 教師が見るときだけ、授業ごとの学級平均を添える。
@@ -1280,7 +1282,8 @@ function apiTeacherBoot(){
     appUrl:   appUrl_(),
     releaseSyms: LEVELS.filter(isReleaseSym),
     syms: ALL_SYMS, off: OFF, skip: SKIP,
-    diagnose: diagnoseLines()
+    diagnose: diagnoseLines(),
+    build: SERVER_BUILD
   };
 }
 
@@ -1473,7 +1476,8 @@ function apiReadAs(subject, studentId){
   const bad = teacherOnly_(); if(bad) return bad;
   const rows = Store.read(subject, studentId);
   return {ok:true, subject:subject, rows:rows,
-          units: Aggregate.unitsForStudent(subject, studentId, rows)};
+          units: Aggregate.unitsForStudent(subject, studentId, rows),
+          build: SERVER_BUILD};
 }
 
 /* ==================== Export.gs ==================== */
@@ -1583,6 +1587,13 @@ function include(name){
   return HtmlService.createHtmlOutputFromFile(name).getContent();
 }
 
+/* 貼り付け一式の版。build.py が dist を作るとき、一式の内容ハッシュで
+   上書きする。手貼りで Code.gs と html が違う版で混在したときに、
+   画面側（PAGE_BUILD）と照合して警告を出すための値。
+   サーバと画面は別スコープなので名前を分ける（preview.js は1スコープに
+   読むので、同名だと宣言が衝突する）。 */
+const SERVER_BUILD = "BUILD_ded22c306c54";
+
 /* ------------------------------------------------------------------
    役割の判定。ここが Step 3 の山場。
    同一 Workspace ドメイン内なら、「自分として実行」でも
@@ -1618,7 +1629,8 @@ function bootData(who){
     closed:   Hours.isClosedFor(w),        // 児童は時間外だと true
     toClose:  Hours.minutesToClose(),
     subjects: (w.role === "unknown") ? [] : Master.subjectNames(isTeacher),
-    boundary: Lock.lastBoundary().toISOString()
+    boundary: Lock.lastBoundary().toISOString(),
+    build:    SERVER_BUILD
   };
 }
 

@@ -56,7 +56,8 @@ function apiBoot(subject){
     closed:    Hours.isClosedFor(who, at),
     released:  Config.released(),
     appUrl:    appUrl_(),
-    toClose:   Hours.minutesToClose(at)
+    toClose:   Hours.minutesToClose(at),
+    build:     SERVER_BUILD
   };
   /* 教科が1つも無いときは、その理由まで返す。
      画面が黙って空になると、何を直せばいいのか誰にも分からない。 */
@@ -105,7 +106,8 @@ function apiRead(subject){
        線を引かないと、まだ習っていない授業まで「のこり」に入り、
        9月に3学期ぶんの22が赤で出る。 */
     taught: Store.taughtUpTo(subject),
-    toClose: Hours.minutesToClose(at)
+    toClose: Hours.minutesToClose(at),
+    build: SERVER_BUILD
   };
 
   /* 教師が見るときだけ、授業ごとの学級平均を添える。
@@ -219,7 +221,8 @@ function apiTeacherBoot(){
     appUrl:   appUrl_(),
     releaseSyms: LEVELS.filter(isReleaseSym),
     syms: ALL_SYMS, off: OFF, skip: SKIP,
-    diagnose: diagnoseLines()
+    diagnose: diagnoseLines(),
+    build: SERVER_BUILD
   };
 }
 
@@ -412,5 +415,6 @@ function apiReadAs(subject, studentId){
   const bad = teacherOnly_(); if(bad) return bad;
   const rows = Store.read(subject, studentId);
   return {ok:true, subject:subject, rows:rows,
-          units: Aggregate.unitsForStudent(subject, studentId, rows)};
+          units: Aggregate.unitsForStudent(subject, studentId, rows),
+          build: SERVER_BUILD};
 }

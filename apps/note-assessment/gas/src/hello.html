@@ -31,6 +31,8 @@
 <?!= include('scale') ?>
 
 <script>
+  /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。 */
+  const PAGE_BUILD = "@@BUILD@@";
   const BOOT = <?!= boot ?>;
 
   const w = BOOT.who;
@@ -57,6 +59,9 @@
       })()]
   ];
   if(w.reason) rows.push(["理由", w.reason]);
+  rows.push(["貼り付け版", PAGE_BUILD]);
+  if(PAGE_BUILD !== BOOT.build)
+    rows.push(["版ずれ", "× 貼ったファイルが混在しています。一式を貼り直してください（サーバは " + BOOT.build + "）"]);
 
   document.getElementById("detail").innerHTML = rows.map(function(x){
     const bad = /^×|取れていない/.test(x[1]) ? ' class="bad"' : "";
