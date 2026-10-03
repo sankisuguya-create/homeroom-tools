@@ -6,7 +6,7 @@ import vm from 'node:vm';
 const src=f=>readFile(new URL('../src/'+f,import.meta.url),'utf8');
 const ctx=vm.createContext({});
 vm.runInContext((await src('data.js'))+'\n'+(await src('draw.js')),ctx);
-const g=vm.runInContext('({DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg})',ctx);
+const g=vm.runInContext('({GRID_LEVELS,gridLevel,gridPoints,snap,DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg})',ctx);
 const {DESK,ITEMS,DEFAULT_LAYOUTS}=g;
 
 // 標準の配置：知らない用具・知らない状態・机の外の中心を持たない
@@ -30,7 +30,7 @@ assert.equal(g.plainName('{絵|え}の{具|ぐ}バッグ'),'絵の具バッグ')
 for(const l of DEFAULT_LAYOUTS){
   const f=g.flipLayout(l), ff=g.flipLayout(f);
   assert.equal(JSON.stringify(f.hooks.left),JSON.stringify(l.hooks.right));
-  ff.top.forEach((p,i)=>{assert.equal(p.x,l.top[i].x);assert.equal(!!p.m,false);assert.equal(p.r||0,l.top[i].r||0);});
+  ff.top.forEach((p,i)=>{assert.ok(Math.abs(p.x-l.top[i].x)<1e-9);assert.equal(!!p.m,false);assert.equal(p.r||0,l.top[i].r||0);});
 }
 
 // 名前の吹き出し：初期状態では出さない／出すと同じ辺で重ならない
@@ -62,6 +62,19 @@ const bare=JSON.parse(JSON.stringify(math)); bare.hooks={left:[],right:[]};
 assert.ok(!g.composeSingle(bare,{}).svg.includes('class="cap"'));
 assert.equal((g.composeSingle(math,{}).svg.match(/class="cap"/g)||[]).length,4);
 for(const id of Object.keys(ITEMS))assert.ok(g.iconSvg(id,40).startsWith('<svg'));
+
+// グリッド：細かい段は粗い段の交点をすべて含む／標準の配置は「こまかい」の交点上／snap は動かない点を動かさない
+const near=(a,b)=>Math.abs(a-b)<1e-6;
+for(let k=1;k<g.GRID_LEVELS.length;k++){
+  const fine=g.gridPoints(g.GRID_LEVELS[k]);
+  for(const p of g.gridPoints(g.GRID_LEVELS[k-1]))assert.ok(fine.some(q=>near(q.x,p.x)&&near(q.y,p.y)),'段の包含');
+}
+const fineLv=g.gridLevel('fine');
+for(const l of DEFAULT_LAYOUTS)for(const p of l.top){
+  const q=g.snap(p.x,p.y,fineLv); assert.ok(near(q.x,p.x)&&near(q.y,p.y),l.id+':'+p.item+' がグリッドの交点にない');
+}
+for(const lv of g.GRID_LEVELS)for(const p of g.gridPoints(lv)){const q=g.snap(p.x,p.y,lv);assert.ok(near(q.x,p.x)&&near(q.y,p.y));}
+const c0=g.snap(-50,9999,g.gridLevel('normal')); assert.ok(c0.x>0&&c0.y<DESK.d,'机の外は端の交点へ');
 
 // 配布物
 const dist=await readFile(new URL('../dist/Index.html',import.meta.url),'utf8');

@@ -25,3 +25,37 @@
 ## 保存
 - 名簿などの個人情報を持たないので、サーバ（GAS）を使わずブラウザ保存にした。端末をまたぐときは JSON の書き出し・読み込みを使う。
 - 校内で配置を共有したくなったら、保存の層（load/save）を GAS に差し替える。
+
+## 置き場所のグリッド
+- 自由な位置にすると、教師に指先での細かい操作を求めることになる。物の中心は、天板を等分した線の交点にだけ置ける。
+- 細かさは3段：あらい 6×4（約108×113mm）／ふつう 12×8（約54×56mm、初期設定）／こまかい 24×16（約27×28mm）。
+  分割数を2倍ずつにしているので、細かい段は粗い段の交点をすべて含む。段を切り替えても、置いた物はずれない。
+- 動かし方は3つ：ドラッグ（いちばん近い交点に吸着）、物を選んでから机の空いた所を押す、矢印キーで1目ずつ。
+- 物が机からはみ出すのは許す。教科書にノートを重ねるなど、実際の机でも起きるため。
+
+## 寸法と出典
+「目安」は根拠となる資料が見つからなかったもの。製品によって差が大きい物は代表値を採っている。
+
+| 物 | 採用した寸法(mm) | 出典 |
+|---|---|---|
+| 机の天板 | 650×450 | 新JIS（JIS S 1021）[コクヨ](https://www.kokuyo-furniture.co.jp/manabi/products/detail/30.html)・[サイズ.com](https://www.sizekensaku.com/sonota/desk.html) |
+| フックの位置 | 天板の縁より内がわ | JIS S 1021「附属品の最外端は甲板の縁より内側」[kikakurui](https://kikakurui.com/s/S1021-2011-01.html)。前後の位置は実物の写真から（目安） |
+| 椅子（3号） | 座面幅360・座面高340 | [look-it](https://www.look-it.jp/shopdetail/000000003892/) |
+| 教科書 | 182×257（B5）、開いて364 | [大倉印刷](https://ohkura-insatsu.co.jp/column/sassi-hansokubutsu/kyoukasyo)。教科によってはAB判（210×257） |
+| ノート | 179×252（セミB5）、開いて358 | B5ノートの一般的な寸法（目安） |
+| ドリル・下じき | 182×257 | B5（目安） |
+| 筆箱（両面開き） | 222×89、開いて178 | [tuduru](https://tuduru.jp/life/17396/)（ヨコピタ 222×89） |
+| パソコン | 297×213 | ASUS CZ11 Flip（CZ1104F）[ASUS](https://www.asus.com/jp/news/aujz3gqvsfusrafp/) |
+| 習字の下じき | 270×360 | [習字屋](https://www.shujiya.com/product/39) |
+| 半紙 | 242×333 | 半紙の規格 |
+| 文鎮 | 130×18 | [become](https://www.become.co.jp/home-supplies/writing_material/other/%E5%B0%8F%E5%AD%A6%E7%94%9F%E6%9B%B8%E9%81%93%E3%82%BB%E3%83%83%E3%83%88.html) |
+| すずり・筆・墨汁 | 100×160・210・直径50 | 目安 |
+| 習字バッグ | 350×240、厚み60 | [become](https://www.become.co.jp/home-supplies/writing_material/other/%E5%B0%8F%E5%AD%A6%E7%94%9F%E6%9B%B8%E9%81%93%E3%82%BB%E3%83%83%E3%83%88.html) |
+| 画用紙（八つ切） | 270×380 | [モノタロウ](https://www.monotaro.com/s/q-%E7%94%BB%E7%94%A8%E7%B4%99%20%E5%85%AB%E3%81%A4%E5%88%87/) |
+| パレット | 開いて279×213 | サクラ パレット24K [すくすく](https://sp-sukusuku.jp/article/2070390008-2/) |
+| 筆洗 | 200×110 | 目安（4槽式） |
+| 絵の具バッグ | 幅325・高さ140・厚み140 | [heim](https://heim.jp/magazine/3050865)（サクラ 32.5×14×14cm） |
+| 給食袋 | 200×260 | [kakaku](https://search.kakaku.com/%E5%B0%8F%E5%AD%A6%E7%94%9F%20%E7%B5%A6%E9%A3%9F%E8%A2%8B%20%E3%82%B5%E3%82%A4%E3%82%BA/)（M） |
+| 体操服袋 | 350×400 | [ベビシア](https://bebicia.com/blogs/pedia/gym_clothes_bag)（低学年） |
+| 上ばき入れ | 220×320 | [ふたご絵日記](https://futagoe.com/fukuromonosize/) |
+| 連絡帳・色鉛筆・はさみ・のり・じょうぎ・鉛筆・消しゴム・ぞうきん・絵の具セット・習字セット | 現状の値 | 目安 |

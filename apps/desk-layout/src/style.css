@@ -68,6 +68,10 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .cap{fill:var(--ink-soft);font-weight:700}
 .cut{stroke:var(--ink-faint);stroke-width:3;stroke-dasharray:14 10}
 .chair.ghost{opacity:.35}
+.grid{pointer-events:none}
+.grid line{stroke:rgba(29,33,38,.28);stroke-width:2}
+.grid circle{fill:rgba(255,255,255,.85);stroke:rgba(29,33,38,.55);stroke-width:2}
+.snapmark{fill:none;stroke:var(--accent);stroke-width:5;pointer-events:none}
 .selbox{fill:none;stroke:var(--accent);stroke-width:6;stroke-dasharray:18 10}
 
 /* ---- ③ つくる ---- */
@@ -77,6 +81,8 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 .fld input{width:9em;min-height:40px;padding:4px 8px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);color:var(--ink);font-size:16px}
 .chk{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer}
 .chk input{width:20px;height:20px}
+.gridsel{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-soft)}
+.gridsel .seg>button{min-height:36px;padding:4px 10px;font-size:13px}
 .ebody{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:12px;padding:12px}
 .ecanvas{display:flex;flex-direction:column;gap:10px;min-width:0}
 #editSvg{width:100%;height:min(62vh,620px);background:var(--sheet);border:1px solid var(--rule-soft);border-radius:12px;touch-action:none}

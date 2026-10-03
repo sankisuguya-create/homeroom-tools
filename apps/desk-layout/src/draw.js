@@ -92,8 +92,9 @@ function flipLayout(lay) {
 /* ---- 上から見た図（机1台、机の左上が原点） ---- */
 function deskTopSvg() {
   return '<rect x="0" y="0" width="' + DESK.w + '" height="' + DESK.d + '" rx="14" fill="' + WOOD + '" stroke="' + WOOD_EDGE + '" stroke-width="6"/>' +
-         '<rect x="-10" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>' +
-         '<rect x="' + DESK.w + '" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>';
+         // フックは天板の下で縁より内がわ（JIS S 1021）。上から見えない位置なので縁の内がわに小さな印だけ描く
+         '<rect x="4" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>' +
+         '<rect x="' + (DESK.w - 14) + '" y="' + (DESK.hookY - 9) + '" width="10" height="18" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>';
 }
 function chairTopSvg() {
   var x = (DESK.w - CHAIR.w) / 2, y = DESK.d + CHAIR.gap;
@@ -162,6 +163,7 @@ function topView(lay, o) {
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = deskTopSvg() + (o.chair ? chairTopSvg() : '');
   lay.top.forEach(function (p, i) { s += drawTopItem(p, i, o.sel === i ? 'sel' : ''); });
+  if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin;
   return { svg: s, labels: lab.labels, box: { x0: -Math.max(m.L, 20), y0: -Math.max(m.T, 20), x1: DESK.w + Math.max(m.R, 20), y1: bottom + Math.max(m.B, 20) } };
@@ -247,7 +249,7 @@ function elevation(view, lay, o) {
         u0 = Math.min(u0, Math.min(a, b) - 10); u1 = Math.max(u1, Math.max(a, b) + 10);
         v1 = Math.max(v1, DESK.hookV + hangBottom(it) + 20);
       });
-      s += '<rect x="' + (edge === 0 ? -14 : edge) + '" y="' + (DESK.hookV - 8) + '" width="14" height="16" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>';
+      s += '<rect x="' + (edge === 0 ? 2 : edge - 16) + '" y="' + (DESK.hookV - 8) + '" width="14" height="16" rx="3" fill="' + PIPE + '" stroke="' + INK + '" stroke-width="2"/>';
     });
   }
   // 脚の下は切った印
@@ -333,4 +335,24 @@ function finish(parts) {
     viewBox: (b.x0 - pad) + ' ' + (b.y0 - pad) + ' ' + (b.x1 - b.x0 + pad * 2) + ' ' + (b.y1 - b.y0 + pad * 2),
     svg: parts.map(function (p) { return p.svg; }).join('')
   };
+}
+
+/* ---- 編集用：グリッドの交点 ---- */
+function gridLevel(id) { return GRID_LEVELS.filter(function (g) { return g.id === id; })[0] || GRID_LEVELS[1]; }
+function gridPoints(level) {
+  var pts = [];
+  for (var j = 1; j < level.ny; j++) for (var i = 1; i < level.nx; i++) pts.push({ x: i * DESK.w / level.nx, y: j * DESK.d / level.ny, i: i, j: j });
+  return pts;
+}
+function snap(x, y, level) {
+  var sx = DESK.w / level.nx, sy = DESK.d / level.ny;
+  var i = Math.min(level.nx - 1, Math.max(1, Math.round(x / sx))), j = Math.min(level.ny - 1, Math.max(1, Math.round(y / sy)));
+  return { x: i * sx, y: j * sy };
+}
+function gridSvg(level) {
+  var s = '<g class="grid">';
+  for (var i = 1; i < level.nx; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="0" x2="' + i * DESK.w / level.nx + '" y2="' + DESK.d + '"/>';
+  for (var j = 1; j < level.ny; j++) s += '<line x1="0" y1="' + j * DESK.d / level.ny + '" x2="' + DESK.w + '" y2="' + j * DESK.d / level.ny + '"/>';
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) + '"/>'; });
+  return s + '</g>';
 }

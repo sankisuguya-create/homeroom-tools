@@ -6,7 +6,7 @@
 
 /* 机：写真の机（天板は平ら・物入れは児童がわに開く・フックは左右両側）に合わせる */
 var DESK = {
-  w: 650, d: 450,          // 天板（新JIS相当）
+  w: 650, d: 450,          // 天板：新JIS（JIS S 1021）の 650×450
   top: 25,                 // 天板の厚み
   trayV: 25, trayH: 105,   // 物入れ：天板の下 25〜130
   trayInset: 22,
@@ -15,7 +15,8 @@ var DESK = {
   legInset: 28,
   crop: 560                // 横から見た図は上から 560mm までを描き、脚の下は切る
 };
-var CHAIR = { w: 380, d: 350, gap: 40, seatV: 330, backV: 70 };
+/* 椅子：新JIS 3号（座面幅360・座面高340）。机3号（高さ580）と組むので座面は天板の 240 下 */
+var CHAIR = { w: 360, d: 340, gap: 40, seatV: 240, backV: 20 };
 
 var SIDES = ['left', 'right'];   // フックのある面
 var PLACES = [
@@ -58,17 +59,17 @@ var RAINBOW = ['#E5484D', '#F2994A', '#F2C94C', '#6FCF97', '#2F9E6E', '#56CCF2',
    kind:'hang' フックに掛ける。side=[幅,高さ]（横から見た大きさ）, t=厚み */
 var ITEMS = {
   textbook: { name: '{教科書|きょうかしょ}', kind: 'top', states: {
-    closed: { w: 210, d: 257, draw: function (w, h) {
-      return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0) + R(45, 45, 130, 60, '#FFFFFF', 4, 2) + C(110, 175, 34, '#F2C94C', 2);
+    closed: { w: 182, d: 257, draw: function (w, h) {
+      return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0) + R(34, 45, 120, 60, '#FFFFFF', 4, 2) + C(95, 175, 34, '#F2C94C', 2);
     } },
-    open: { w: 420, d: 257, draw: function (w, h) {
-      return book(w, h, function (x, pw, ph) { return rules(x + 24, 20, pw - 48, ph - 40, 22, '#C9C3B6'); }) + R(w / 2 + 40, 40, 120, 80, '#BFDDEF', 4, 2);
+    open: { w: 364, d: 257, draw: function (w, h) {
+      return book(w, h, function (x, pw, ph) { return rules(x + 24, 20, pw - 48, ph - 40, 22, '#C9C3B6'); }) + R(w / 2 + 30, 40, 120, 80, '#BFDDEF', 4, 2);
     } } } },
   notebook: { name: 'ノート', kind: 'top', states: {
-    closed: { w: 182, d: 252, draw: function (w, h) {
+    closed: { w: 179, d: 252, draw: function (w, h) {
       return R(0, 0, w, h, '#F1E3A8') + R(28, 40, w - 56, 70, '#FFFFFF', 4, 2) + rules(36, 46, w - 72, 58, 18, '#C9C3B6');
     } },
-    open: { w: 364, d: 252, draw: function (w, h) {
+    open: { w: 358, d: 252, draw: function (w, h) {
       return book(w, h, function (x, pw, ph) { return grid(x + 10, 10, pw - 20, ph - 20, 19, '#BCD3E8'); });
     } } } },
   drill: { name: 'ドリル', kind: 'top', states: {
@@ -88,13 +89,13 @@ var ITEMS = {
       return book(w, h, function (x, pw, ph) { return rules(x + 14, 12, pw - 28, ph - 24, 20, '#C9C3B6'); });
     } } } },
   pencase: { name: '{筆箱|ふでばこ}', kind: 'top', states: {
-    closed: { w: 210, d: 75, draw: function (w, h) { return R(0, 0, w, h, '#5E86BD', 14) + L(10, 16, w - 10, 16, '#3F638F', 3); } },
-    open: { w: 210, d: 150, draw: function (w, h) {
-      var s = R(0, 0, w, 75, '#89A9D3', 14) + R(0, 75, w, 75, '#DDE6F2', 14);
+    closed: { w: 222, d: 89, draw: function (w, h) { return R(0, 0, w, h, '#5E86BD', 14) + L(10, 18, w - 10, 18, '#3F638F', 3); } },
+    open: { w: 222, d: 178, draw: function (w, h) {
+      var s = R(0, 0, w, h / 2, '#89A9D3', 14) + R(0, h / 2, w, h / 2, '#DDE6F2', 14);
       for (var i = 0; i < 4; i++) {
-        var y = 86 + i * 14;
-        s += R(30, y, 140, 9, ['#F2C94C', '#E5484D', '#2F80ED', '#6FCF97'][i], 2, 2) +
-             '<path d="M170 ' + y + ' l14 4.5 l-14 4.5z" fill="#E8D3B0" stroke="' + INK + '" stroke-width="2"/>';
+        var y = h / 2 + 14 + i * 17;
+        s += R(30, y, 150, 10, ['#F2C94C', '#E5484D', '#2F80ED', '#6FCF97'][i], 2, 2) +
+             '<path d="M180 ' + y + ' l15 5 l-15 5z" fill="#E8D3B0" stroke="' + INK + '" stroke-width="2"/>';
       }
       return s;
     } } } },
@@ -109,12 +110,12 @@ var ITEMS = {
       return s;
     } } } },
   pc: { name: 'パソコン', kind: 'top', states: {
-    closed: { w: 292, d: 204, draw: function (w, h) { return R(0, 0, w, h, '#4C535C', 12) + R(14, 14, w - 28, h - 28, '#5A626B', 8, 1.5, '#3A4048'); } },
-    open: { w: 292, d: 250, draw: function (w, h) {
+    closed: { w: 297, d: 213, draw: function (w, h) { return R(0, 0, w, h, '#4C535C', 12) + R(14, 14, w - 28, h - 28, '#5A626B', 8, 1.5, '#3A4048'); } },
+    open: { w: 297, d: 258, draw: function (w, h) {
       var s = R(0, 0, w, 48, '#2B3036', 8) + R(10, 8, w - 20, 30, '#5E87A8', 4, 1.5) +
               R(0, 46, w, h - 46, '#5A626B', 12) + R(20, 66, w - 40, 104, '#3A4048', 4, 2);
       for (var r = 0; r < 4; r++) for (var c = 0; c < 10; c++) s += R(26 + c * 24.5, 72 + r * 24.5, 20, 20, '#626A73', 3, 1);
-      return s + R(w / 2 - 44, 186, 88, 50, '#6A727B', 6, 2);
+      return s + R(w / 2 - 44, 190, 88, 54, '#6A727B', 6, 2);
     } } } },
   glue: { name: 'のり', kind: 'top', states: {
     closed: { w: 34, d: 34, draw: function (w, h) { return C(17, 17, 16, '#F2C94C') + C(17, 17, 7, '#FFFFFF', 2); } } } },
@@ -145,34 +146,36 @@ var ITEMS = {
       return s;
     } } } },
   felt: { name: '{習字|しゅうじ}の{下|した}じき', kind: 'top', states: {
-    closed: { w: 270, d: 370, draw: function (w, h) { return R(0, 0, w, h, '#2E3B5C', 4); } } } },
+    closed: { w: 270, d: 360, draw: function (w, h) { return R(0, 0, w, h, '#2E3B5C', 4); } } } },
   hanshi: { name: '{半紙|はんし}', kind: 'top', states: {
     closed: { w: 242, d: 333, draw: function (w, h) { return R(0, 0, w, h, '#FBFAF4', 1, 2, '#8D877B'); } } } },
   bunchin: { name: '{文鎮|ぶんちん}', kind: 'top', states: {
-    closed: { w: 210, d: 22, draw: function (w, h) { return R(0, 0, w, h, '#2B2B2B', 4); } } } },
+    closed: { w: 130, d: 18, draw: function (w, h) { return R(0, 0, w, h, '#2B2B2B', 4); } } } },
   suzuri: { name: 'すずり', kind: 'top', states: {
-    closed: { w: 105, d: 180, draw: function (w, h) { return R(0, 0, w, h, '#2F2F33', 12) + R(12, 12, w - 24, h - 24, '#4A4A50', 8, 2) + R(12, 12, w - 24, 46, '#151517', 8, 2); } } } },
+    closed: { w: 100, d: 160, draw: function (w, h) { return R(0, 0, w, h, '#2F2F33', 12) + R(12, 12, w - 24, h - 24, '#4A4A50', 8, 2) + R(12, 12, w - 24, 46, '#151517', 8, 2); } } } },
   fude: { name: '{筆|ふで}', kind: 'top', states: {
-    closed: { w: 12, d: 200, draw: function (w, h) {
+    closed: { w: 12, d: 210, draw: function (w, h) {
       return R(0, 40, w, h - 40, '#C9A56B', 3, 2) + '<path d="M0 42 Q6 -4 12 42 Z" fill="#1F1F1F" stroke="' + INK + '" stroke-width="2"/>';
     } } } },
   bokuju: { name: '{墨汁|ぼくじゅう}', kind: 'top', states: {
-    closed: { w: 46, d: 46, draw: function () { return C(23, 23, 22, '#1F1F1F') + C(23, 23, 10, '#E5484D', 2); } } } },
+    closed: { w: 50, d: 50, draw: function () { return C(25, 25, 24, '#1F1F1F') + C(25, 25, 11, '#E5484D', 2); } } } },
   shodobox: { name: '{習字|しゅうじ}セット', kind: 'top', states: {
-    closed: { w: 300, d: 200, draw: function (w, h) { return R(0, 0, w, h, '#3E4F7A', 10) + R(30, 30, w - 60, 30, '#5B6E9C', 4, 2); } },
-    open: { w: 300, d: 400, draw: function (w, h) {
-      return R(0, 0, w, 200, '#5B6E9C', 10) + R(0, 200, w, 200, '#DCE1EC', 10) +
-             R(14, 214, 110, 172, '#C6CDDD', 6, 2) + R(136, 214, 150, 80, '#C6CDDD', 6, 2) + R(136, 306, 150, 80, '#C6CDDD', 6, 2);
+    closed: { w: 350, d: 240, draw: function (w, h) { return R(0, 0, w, h, '#3E4F7A', 10) + R(30, 30, w - 60, 30, '#5B6E9C', 4, 2); } },
+    open: { w: 350, d: 480, draw: function (w, h) {
+      var m = h / 2;
+      return R(0, 0, w, m, '#5B6E9C', 10) + R(0, m, w, m, '#DCE1EC', 10) +
+             R(14, m + 14, 120, m - 28, '#C6CDDD', 6, 2) + R(146, m + 14, w - 160, (m - 40) / 2, '#C6CDDD', 6, 2) +
+             R(146, m + 26 + (m - 40) / 2, w - 160, (m - 40) / 2, '#C6CDDD', 6, 2);
     } } } },
   paper: { name: '{画用紙|がようし}', kind: 'top', states: {
     closed: { w: 270, d: 380, draw: function (w, h) { return R(0, 0, w, h, '#FFFDF5', 1, 2, '#8D877B'); } } } },
   palette: { name: 'パレット', kind: 'top', states: {
-    closed: { w: 120, d: 230, draw: function (w, h) { return R(0, 0, w, h, '#F7F7F7', 10) + R(14, 14, w - 28, h - 28, '#FFFFFF', 6, 1.5, '#B5B0A6'); } },
-    open: { w: 240, d: 230, draw: function (w, h) {
-      var s = R(0, 0, w, h, '#F7F7F7', 10) + L(w / 2, 0, w / 2, h, '#B5B0A6', 2);
-      for (var i = 0; i < 8; i++) s += R(12, 12 + i * 26, 30, 22, '#FFFFFF', 4, 1.5, '#B5B0A6');
-      return s + R(54, 14, 60, 200, '#FFFFFF', 6, 1.5, '#B5B0A6') + R(w / 2 + 12, 14, w / 2 - 24, 96, '#FFFFFF', 6, 1.5, '#B5B0A6') +
-             R(w / 2 + 12, 120, w / 2 - 24, 96, '#FFFFFF', 6, 1.5, '#B5B0A6');
+    closed: { w: 140, d: 213, draw: function (w, h) { return R(0, 0, w, h, '#F7F7F7', 10) + R(14, 14, w - 28, h - 28, '#FFFFFF', 6, 1.5, '#B5B0A6'); } },
+    open: { w: 279, d: 213, draw: function (w, h) {
+      var s = R(0, 0, w, h, '#F7F7F7', 10) + L(w / 2, 0, w / 2, h, '#B5B0A6', 2), cell = (h - 24) / 8;
+      for (var i = 0; i < 8; i++) s += R(12, 12 + i * cell, 30, cell - 4, '#FFFFFF', 4, 1.5, '#B5B0A6');
+      return s + R(54, 12, w / 2 - 66, h - 24, '#FFFFFF', 6, 1.5, '#B5B0A6') + R(w / 2 + 12, 12, w / 2 - 24, (h - 36) / 2, '#FFFFFF', 6, 1.5, '#B5B0A6') +
+             R(w / 2 + 12, 24 + (h - 36) / 2, w / 2 - 24, (h - 36) / 2, '#FFFFFF', 6, 1.5, '#B5B0A6');
     } } } },
   fudearai: { name: '{筆洗|ひっせん}', kind: 'top', states: {
     closed: { w: 200, d: 110, draw: function (w, h) { return R(0, 0, w, h, '#A9D3E8', 14) + L(70, 8, 70, h - 8, INK, 3) + L(135, 8, 135, h - 8, INK, 3); } } } },
@@ -186,70 +189,81 @@ var ITEMS = {
   zoukin: { name: 'ぞうきん', kind: 'top', states: {
     closed: { w: 120, d: 120, draw: function (w, h) { return R(0, 0, w, h, '#F3F0E6', 4) + L(14, 14, w - 14, h - 14, '#B5B0A6', 2) + L(w - 14, 14, 14, h - 14, '#B5B0A6', 2); } } } },
 
-  kyushoku: { name: '{給食袋|きゅうしょくぶくろ}', kind: 'hang', side: [190, 240], t: 40, color: '#F2B8B5', style: 'string' },
-  taisou:   { name: '{体操服|たいそうふく}', kind: 'hang', side: [300, 370], t: 70, color: '#7FB8A6', style: 'string' },
-  uwabaki:  { name: '{上|うわ}ばき', kind: 'hang', side: [220, 300], t: 60, color: '#B9A6D9', style: 'string' },
+  kyushoku: { name: '{給食袋|きゅうしょくぶくろ}', kind: 'hang', side: [200, 260], t: 40, color: '#F2B8B5', style: 'string' },
+  taisou:   { name: '{体操服|たいそうふく}', kind: 'hang', side: [350, 400], t: 50, color: '#7FB8A6', style: 'string' },
+  uwabaki:  { name: '{上|うわ}ばき', kind: 'hang', side: [220, 320], t: 60, color: '#B9A6D9', style: 'string' },
   tesage:   { name: '{手|て}さげ', kind: 'hang', side: [320, 300], t: 50, color: '#D8C49A', style: 'handle' },
-  shodobag: { name: '{習字|しゅうじ}バッグ', kind: 'hang', side: [400, 300], t: 90, color: '#3E4F7A', style: 'handle' },
-  enogubag: { name: '{絵|え}の{具|ぐ}バッグ', kind: 'hang', side: [330, 290], t: 80, color: '#E8A33D', style: 'handle' }
+  shodobag: { name: '{習字|しゅうじ}バッグ', kind: 'hang', side: [350, 240], t: 60, color: '#3E4F7A', style: 'handle' },
+  enogubag: { name: '{絵|え}の{具|ぐ}バッグ', kind: 'hang', side: [325, 140], t: 140, color: '#E8A33D', style: 'handle' }
 };
+
+/* ---- 置き場所のグリッド ----
+   物の中心は、天板を等分した線の交点にだけ置ける。細かい段は粗い段の交点をすべて含む
+   （分割数が2倍ずつ）ので、段を切り替えても置いた物はずれない。 */
+var GRID_LEVELS = [
+  { id: 'coarse', name: 'あらい',   nx: 6,  ny: 4 },    // 約108×113mm
+  { id: 'normal', name: 'ふつう',   nx: 12, ny: 8 },    // 約54×56mm
+  { id: 'fine',   name: 'こまかい', nx: 24, ny: 16 }    // 約27×28mm
+];
+function gx(k, n) { return k * DESK.w / (n || 12); }   // 標準の配置は「ふつう」の交点で書く
+function gy(k, n) { return k * DESK.d / (n || 8); }
 
 /* ---- 標準の配置 ----
    name, yomi: 活動名とその読み（読みは名前全体に付ける）
-   top:   { item, state, x, y（中心）, r（回転°）, label（名前を出すか） }
+   top:   { item, state, x, y（中心。グリッドの交点）, r（回転°）, label（名前を出すか） }
    hooks: { left:[{item,label}], right:[…] }
    away:  [{ item, place, label }]
    flip:  左右反転してよいか（習字は右手で書く指導が通例なので false） */
 var DEFAULT_LAYOUTS = [
   { id: 'math', name: '算数', yomi: 'さんすう', flip: true,
     top: [
-      { item: 'textbook', state: 'open', x: 300, y: 130, r: 0 },
-      { item: 'notebook', state: 'open', x: 300, y: 324, r: 0 },
-      { item: 'pencase', state: 'closed', x: 600, y: 130, r: 90 }
+      { item: 'textbook', state: 'open', x: gx(5), y: gy(2), r: 0 },
+      { item: 'notebook', state: 'open', x: gx(5), y: gy(6), r: 0 },
+      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'drill', place: 'tray' }, { item: 'renraku', place: 'tray' }] },
   { id: 'kokugo', name: '国語', yomi: 'こくご', flip: true,
     top: [
-      { item: 'textbook', state: 'open', x: 300, y: 130, r: 0 },
-      { item: 'notebook', state: 'open', x: 300, y: 324, r: 0 },
-      { item: 'pencase', state: 'closed', x: 600, y: 130, r: 90 }
+      { item: 'textbook', state: 'open', x: gx(5), y: gy(2), r: 0 },
+      { item: 'notebook', state: 'open', x: gx(5), y: gy(6), r: 0 },
+      { item: 'pencase', state: 'closed', x: gx(10), y: gy(2), r: 90 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'drill', place: 'tray' }] },
   { id: 'shuji', name: '習字', yomi: 'しゅうじ', flip: false,
     top: [
-      { item: 'felt', state: 'closed', x: 250, y: 225, r: 0 },
-      { item: 'hanshi', state: 'closed', x: 250, y: 225, r: 0 },
-      { item: 'bunchin', state: 'closed', x: 250, y: 72, r: 0 },
-      { item: 'suzuri', state: 'closed', x: 500, y: 150, r: 0 },
-      { item: 'fude', state: 'closed', x: 590, y: 150, r: 0 },
-      { item: 'bokuju', state: 'closed', x: 500, y: 300, r: 0 }
+      { item: 'felt', state: 'closed', x: gx(4), y: gy(4), r: 0 },
+      { item: 'hanshi', state: 'closed', x: gx(4), y: gy(4), r: 0 },
+      { item: 'bunchin', state: 'closed', x: gx(4), y: gy(3, 16), r: 0 },
+      { item: 'suzuri', state: 'closed', x: gx(9), y: gy(3), r: 0 },
+      { item: 'fude', state: 'closed', x: gx(11), y: gy(3), r: 0 },
+      { item: 'bokuju', state: 'closed', x: gx(9), y: gy(6), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'shodobag' }] },
     away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }] },
   { id: 'enogu', name: '絵の具', yomi: 'えのぐ', flip: true,
     top: [
-      { item: 'paper', state: 'closed', x: 150, y: 225, r: 0 },
-      { item: 'palette', state: 'open', x: 440, y: 125, r: 0 },
-      { item: 'fudearai', state: 'closed', x: 430, y: 330, r: 0 },
-      { item: 'zoukin', state: 'closed', x: 588, y: 380, r: 0 }
+      { item: 'paper', state: 'closed', x: gx(3), y: gy(4), r: 0 },
+      { item: 'palette', state: 'open', x: gx(8), y: gy(2), r: 0 },
+      { item: 'fudearai', state: 'closed', x: gx(8), y: gy(6), r: 0 },
+      { item: 'zoukin', state: 'closed', x: gx(11), y: gy(7), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'enogubag' }] },
     away: [{ item: 'pencase', place: 'tray' }] },
   { id: 'pc', name: 'パソコン', yomi: '', flip: true,
     top: [
-      { item: 'pc', state: 'open', x: 325, y: 175, r: 0 },
-      { item: 'pencase', state: 'closed', x: 325, y: 380, r: 0 }
+      { item: 'pc', state: 'open', x: gx(6), y: gy(3), r: 0 },
+      { item: 'pencase', state: 'closed', x: gx(6), y: gy(7), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'textbook', place: 'tray' }, { item: 'notebook', place: 'tray' }] },
   { id: 'test', name: 'テスト', yomi: '', flip: true,
     top: [
-      { item: 'test', state: 'closed', x: 300, y: 225, r: 0 },
-      { item: 'pencil', state: 'closed', x: 560, y: 210, r: 0 },
-      { item: 'pencil', state: 'closed', x: 585, y: 210, r: 0 },
-      { item: 'eraser', state: 'closed', x: 610, y: 340, r: 0 }
+      { item: 'test', state: 'closed', x: gx(5), y: gy(4), r: 0 },
+      { item: 'pencil', state: 'closed', x: gx(21, 24), y: gy(3), r: 0 },
+      { item: 'pencil', state: 'closed', x: gx(11), y: gy(3), r: 0 },
+      { item: 'eraser', state: 'closed', x: gx(11), y: gy(6), r: 0 }
     ],
     hooks: { left: [{ item: 'kyushoku' }], right: [{ item: 'taisou' }] },
     away: [{ item: 'pencase', place: 'tray' }, { item: 'textbook', place: 'tray' }, { item: 'notebook', place: 'tray' }] }

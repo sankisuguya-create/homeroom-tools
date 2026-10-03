@@ -5,7 +5,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal' } };
 }
 function load() {
   try {
@@ -177,7 +177,7 @@ function openEdit(id) {
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
-  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel });
+  var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: gridLevel(S.prefs.grid) });
   var b = t.box, pad = 60;
   var svg = $('editSvg');
   // 余白は広めに固定して、吹き出しが増えても机が跳ねないようにする
@@ -194,7 +194,14 @@ function renderEdit() {
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
   }
   renderChips();
+  $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
+    return '<button type="button" data-grid="' + g.id + '" class="' + (g.id === gridLevel(S.prefs.grid).id ? 'on' : '') + '">' + g.name + '</button>';
+  }).join('');
 }
+$('eGrid').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-grid]'); if (!b) return;
+  S.prefs.grid = b.getAttribute('data-grid'); save(); renderEdit();
+});
 function chipHtml(entry, where, k, extra) {
   return '<span class="chip">' + iconSvg(entry.item, 34) + '<span>' + esc(plainName(ITEMS[entry.item].name)) + '</span>' + (extra || '') +
     '<button type="button" data-lab="' + where + ':' + k + '" aria-pressed="' + !!entry.label + '">名前</button>' +
@@ -273,10 +280,11 @@ $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
 $('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
 function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
 
-/* 物の中心を机の上にとどめる（はみ出しは物の半分まで許す：教科書とノートの重ねなど実際どおり） */
+/* 物の中心をいちばん近いグリッドの交点に合わせる。
+   物が机からはみ出すのは許す（教科書にノートを重ねるなど、実際の机でも起きる） */
 function clampP(p) {
-  p.x = Math.max(0, Math.min(DESK.w, p.x));
-  p.y = Math.max(0, Math.min(DESK.d, p.y));
+  var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
+  p.x = q.x; p.y = q.y;
 }
 
 /* ドラッグ：動かしている間は transform だけを書き換え、離したら描き直す */
@@ -287,7 +295,14 @@ function svgPoint(svg, e) {
 }
 $('editSvg').addEventListener('pointerdown', function (e) {
   var g = e.target.closest('.it');
-  if (!g) { if (sel >= 0) { sel = -1; renderEdit(); } return; }
+  if (!g) {
+    // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
+    var q = svgPoint(this, e);
+    if (sel >= 0 && q.x >= 0 && q.x <= DESK.w && q.y >= 0 && q.y <= DESK.d) {
+      var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
+    } else if (sel >= 0) { sel = -1; renderEdit(); }
+    return;
+  }
   var i = +g.getAttribute('data-i'), p = cur.top[i], pt = svgPoint(this, e);
   if (sel !== i) { sel = i; renderEdit(); g = this.querySelector('.it[data-i="' + i + '"]'); }
   drag = { el: g, p: p, dx: pt.x - p.x, dy: pt.y - p.y, moved: false };
@@ -296,8 +311,9 @@ $('editSvg').addEventListener('pointerdown', function (e) {
 $('editSvg').addEventListener('pointermove', function (e) {
   if (!drag) return;
   var pt = svgPoint(this, e), p = drag.p;
-  p.x = Math.round((pt.x - drag.dx) / 5) * 5; p.y = Math.round((pt.y - drag.dy) / 5) * 5; clampP(p);
-  drag.moved = true;
+  var nx = p.x, ny = p.y;
+  p.x = pt.x - drag.dx; p.y = pt.y - drag.dy; clampP(p);
+  if (p.x !== nx || p.y !== ny) drag.moved = true;
   drag.el.setAttribute('transform', 'translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')');
 });
 function endDrag() {
@@ -306,6 +322,14 @@ function endDrag() {
   if (moved) { save(); renderEdit(); }
 }
 $('editSvg').addEventListener('pointerup', endDrag);
+document.addEventListener('keydown', function (e) {   // 矢印キーでグリッド1目ずつ動かす
+  if ($('vEdit').hidden || sel < 0 || e.target.closest('input')) return;
+  var d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+  if (!d) return;
+  e.preventDefault();
+  var g = gridLevel(S.prefs.grid), p = cur.top[sel];
+  p.x += d[0] * DESK.w / g.nx; p.y += d[1] * DESK.d / g.ny; clampP(p); save(); renderEdit();
+});
 $('editSvg').addEventListener('pointercancel', endDrag);
 
 renderHome();
