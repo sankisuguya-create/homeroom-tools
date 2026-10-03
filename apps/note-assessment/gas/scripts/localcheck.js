@@ -574,6 +574,16 @@ ok("教科を足せる／公開を切り替えられる",
 ok("apiDiagnose が行を返す", "apiDiagnose().lines.length > 0");
 ok("教師は児童を選んでその画面を見られる",
    "(function(){var r=apiReadAs('算数','s09');return r.ok && r.rows.length===70;})()");
+ok("教師が見る画面は対象児童の名・番が返る",
+   "(function(){var r=apiReadAs('算数','s09');" +
+   "return r.viewing && r.viewing.id==='s09' && r.viewing.name==='さくら' && r.viewing.no===9 && " +
+   "Array.isArray(r.roster) && r.roster.length>0;})()");
+ok("教師の apiRead は名簿先頭の児童を viewing に返す",
+   "(function(){var r=apiRead('算数');" +
+   "return r.viewing && r.viewing.id==='s01' && r.viewing.name==='あおい' && Array.isArray(r.roster);})()");
+ok("児童の apiRead には roster が無い",
+   "(function(){BE('sakura@example.ed.jp');var r=apiRead('算数');" +
+   "return r.viewing && r.viewing.id==='s09' && r.roster===undefined;})()");
 clockReal();
 
 console.log("■ 学級の集計（済んだ授業の線・授業ごとの平均）");

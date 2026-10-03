@@ -178,6 +178,9 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   border-radius:8px;padding:9px 14px;font-size:13.5px;font-weight:600}
 /* 版ずれは児童が直せないので、静かな小さい表示にとどめる。 */
 .buildwarn{font-size:11px;color:var(--ink-soft);text-align:center}
+/* 教師の「見る児童」セレクト。児童には出さない（段階的開示）。 */
+.viewsel{font-size:12px;padding:2px 6px;border:1px solid var(--rule);border-radius:6px;
+  background:var(--sheet);color:var(--ink)}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -221,6 +224,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
     <div class="badges">
       <span class="badge todo" id="todoBadge"></span>
       <span class="badge locked" id="lockBadge"></span>
+      <select class="viewsel hidden" id="viewSel" aria-label="見る児童"></select>
     </div>
   </div>
 
@@ -250,6 +254,7 @@ const $ = id => document.getElementById(id);
 const PAGE_BUILD = "@@BUILD@@";
 let S = null;                      // サーバから来たもの
 let subject = null;
+let viewId = null;                 // 教師が見ている児童（児童本人のときは null）
 
 /* ---- 記号の材質。scale.js の BASE_LOOK を使う ---- */
 function paint(sel, sym){
@@ -578,9 +583,32 @@ function renderHead(){
   tb.textContent = todo ? "のこり " + todo : "ぜんぶ おわり";
   tb.classList.toggle("clear", todo === 0);
   $("lockBadge").textContent = "確定 " + locked;
-  $("title").innerHTML = S.who.name +
-    '<small>' + subject + '　' + S.className + '　' + S.year + '年度</small>';
+  /* 教師が見ているときは「だれの画面か」を名で出す
+     （旧プロトタイプにあった「教師表示」の印。消えていた回帰）。 */
+  if(S.who.role === "teacher" && S.viewing){
+    $("title").innerHTML = S.viewing.name + ' さんの画面' +
+      '<small>' + subject + '　' + S.className + '　' + S.year + '年度　（教師表示）</small>';
+  }else{
+    $("title").innerHTML = S.who.name +
+      '<small>' + subject + '　' + S.className + '　' + S.year + '年度</small>';
+  }
 }
+
+/* 教師だけに出す「見る児童」セレクト。選んだ児童へ apiReadAs で切り替える。
+   教科を切り替えても、見ている児童はそのままにする（確認したいのは1人分）。 */
+function renderViewSel(){
+  const sel = $("viewSel");
+  const show = !!(S.who && S.who.role === "teacher" && S.roster && S.roster.length);
+  sel.classList.toggle("hidden", !show);
+  if(!show) return;
+  sel.innerHTML = S.roster.map(s =>
+    '<option value="' + s.id + '"' +
+    (S.viewing && s.id === S.viewing.id ? ' selected' : '') + '>' +
+    s.no + '番 ' + s.name + '</option>').join("");
+}
+$("viewSel").addEventListener("change", function(){
+  load({view: $("viewSel").value});
+});
 
 /* 単元カードも、授業の表と同じ学期の開閉に従う。 */
 function renderUnits(){
@@ -740,11 +768,18 @@ function render(){
   }
 
   showOnly("sheet");
-  renderHead(); renderSoon(); renderGrid(); renderUnits(); drawTrend(); scrollToNow();
+  renderHead(); renderViewSel(); renderSoon(); renderGrid(); renderUnits(); drawTrend(); scrollToNow();
 }
 
 function load(next){
-  busy(true, next ? "きょうかを かえています…" : "よみこみ中…");
+  /* next は3通り: 未指定（最初の1回）・教科名（教科切替）・{view: 児童ID}（教師の見る児童切替）。 */
+  const viewSwitch = next && typeof next === "object";
+  busy(true, viewSwitch ? "児童を かえています…"
+           : next     ? "きょうかを かえています…" : "よみこみ中…");
+  const api = viewSwitch ? ["apiReadAs", subject, next.view]
+             : viewId    ? ["apiReadAs", next || subject, viewId]
+             : next      ? ["apiRead", next]
+                         : ["apiBoot"];
   google.script.run
     .withSuccessHandler(function(r){
       busy(false);
@@ -758,10 +793,12 @@ function load(next){
           if(r && r.why && !r.closed) showErr(r.why);
           return;
         }
-        /* 教科を切り替えたときは、前の教科の行が残らないように入れ替える。 */
+        /* 教科・児童を切り替えたときは、前の行が残らないように入れ替える。 */
         if(next){ S.rows = null; S.units = null; }
         S = Object.assign(S || {}, r);
-        subject = r.subject || next || subject;
+        subject = r.subject || (viewSwitch ? subject : next) || subject;
+        /* 教師が見ている児童を追跡する（apiBoot/apiRead でも名簿先頭が返る）。 */
+        if(S.who && S.who.role === "teacher" && r.viewing) viewId = r.viewing.id;
         scrolled = false;
         hideErr();
         render();
@@ -773,7 +810,7 @@ function load(next){
       busy(false);
       showErr("つうしんが できませんでした。もう一度 ひらいてください");
     })
-    [next ? "apiRead" : "apiBoot"](next || null);
+    [api[0]].apply(null, api.slice(1));
 }
 
 /* 時計が16:00をまたいだら閉室へ切り替える。判定はサーバに任せる。
