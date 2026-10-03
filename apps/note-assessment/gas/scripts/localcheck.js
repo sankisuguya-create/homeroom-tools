@@ -66,6 +66,14 @@ const SHEETS = {
   "確定": [["教科","児童ID","種別","対象","値","確定時刻"]]
 };
 
+/* 偽の LockService。保持状態を持つ（hasLock は GAS 本物にもある）。
+   同じ実行で2度目の tryLock は断る形にしてある。 */
+const LOCK_FAKE = () => {
+  let held = false;
+  return { tryLock: () => { if(held) return false; held = true; return true; },
+           hasLock: () => held, releaseLock(){ held = false; } };
+};
+
 let CURRENT_EMAIL = "sakura@example.ed.jp";
 const alerts = [];
 let sheetReads = 0;            // 記録シートを頭からなめた回数
@@ -152,13 +160,14 @@ const sandbox = {
     if(fmt === "HH:mm") return p(d.getHours()) + ":" + p(d.getMinutes());
     return d.toISOString();
   } },
-  LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock(){} }) },
+  LockService: { getScriptLock: LOCK_FAKE },
   HtmlService: {
     createHtmlOutputFromFile: n => ({
       getContent: () => readGas(n + ".html") })
   }
 };
 sandbox.SHEETS_LEN = () => SHEETS["記録"].length;
+sandbox.LOCK_FAKE  = LOCK_FAKE;
 sandbox.SH_HAS   = n => !!SHEETS[n];
 sandbox.SH_COUNT = n => (SHEETS[n] ? 1 : 0);
 sandbox.CURRENT_EMAIL_STUDENT = () => { CURRENT_EMAIL = "sakura@example.ed.jp"; };
@@ -908,9 +917,17 @@ ok("年度保存で記録キャッシュが捨てられる",
    + " && CacheService.getScriptCache().get('lsn|算数')===null");
 
 /* ロックが取れないときは年度保存を断る（複写のあいだに保存が割り込まない） */
-ev("LockService = {getScriptLock: () => ({tryLock: () => false, releaseLock(){}})};");
+ev("LockService = {getScriptLock: () => ({tryLock: () => false, hasLock: () => false, releaseLock(){}})};");
 ok("ロック中は年度保存を断る", "archiveYear().join('').indexOf('×')>=0");
-ev("LockService = {getScriptLock: () => ({tryLock: () => true, releaseLock(){}})};");
+ev("LockService = {getScriptLock: LOCK_FAKE};");
+
+/* ロックが取れない読み取りはキャッシュを作らない（保存中の前年値を残さない） */
+ev("CacheService.getScriptCache().remove('rec|算数|t01');");
+ev("LockService = {getScriptLock: () => ({tryLock: () => false, hasLock: () => false, releaseLock(){}})};");
+ev("apiReadAs('算数','t01');");
+ok("ロック中の読み取りはキャッシュを作らない",
+   "CacheService.getScriptCache().get('rec|算数|t01')===null");
+ev("LockService = {getScriptLock: LOCK_FAKE};");
 
 /* 作りかけで止まった空の写しは作り直す（中身の無い写しのまま元を消さない） */
 SHEETS["名簿_2028"] = [];

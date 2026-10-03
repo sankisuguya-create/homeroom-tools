@@ -554,7 +554,7 @@ const SYM_MIGRATION = {
 const $ = id => document.getElementById(id);
 /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。
    サーバが返す build と違ったら、Code.gs と html が別の版で混在している。 */
-const PAGE_BUILD = "BUILD_288ab73fc4a5";
+const PAGE_BUILD = "BUILD_bc083e5e4fdc";
 let S = null;                      // サーバから来たもの
 let subject = null;
 let viewId = null;                 // 教師が見ている児童（児童本人のときは null）
@@ -609,7 +609,10 @@ const unitOf = no => (S.units || []).filter(u => no >= u.from && no <= u.to)[0] 
    1タップごとに表を作り直すと Chromebook で 148ms かかる（実測）。 */
 function applyCellState(c, l){
   const u = unitOf(l.no);
-  const open = l.state !== "future" && !l.locked;
+  /* 確定済みのセルも教師は直せる（apiSaveAs がロックを貫通するので、
+     選択欄だけを塞ぐと児童画面の閲覧から直せない）。 */
+  const open = l.state !== "future"
+    && (!l.locked || (S.who && S.who.role === "teacher"));
   c.className = "cell " + l.state
     + (open ? " open" : "") + (open && !l.sym ? " empty" : "")
     + (l.locked ? " locked" : "") + (l.edited ? " edited" : "")
@@ -791,7 +794,13 @@ function onPick(c, l, sel){
   google.script.run
     .withSuccessHandler(function(r){
       c.classList.remove("saving");
-      if(r && r.ok){ applyCellState(c, l); return; }
+      if(r && r.ok){
+        /* サーバが保存時刻をいまにしたのでロックは外れている。
+           教師の貫通保存は「先生が直した」印（edited）を立てる。 */
+        l.locked = false;
+        l.edited = api[0] === "apiSaveAs" && next !== null;
+        applyCellState(c, l); return;
+      }
       l.sym = before;                       // 断られたので戻す
       l.state = before ? "done" : "todo";
       applyCellState(c, l); renderHead(); renderTermCounts(); drawTrend();
