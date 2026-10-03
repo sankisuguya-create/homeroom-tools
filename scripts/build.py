@@ -37,11 +37,32 @@ DESK_SRC = DESK / "src"
 DESK_DIST = DESK / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
+# PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
+# 外部参照（フォント・fetch・画像など）が見つかった時点で生成を止める。
+# 個人情報を扱う collection-check のみが対象。dance-count は Google Fonts を
+# 意図的に遅延読み込みする設計（src/Index.html のフォント節を見よ）なので対象外。
+# desk-layout は名簿などの個人情報を持たない設計（docs/spec.md）なので対象外。
 PAGES = [
-    (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI]),
-    (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI]),
-    (DESK_SRC / "Index.html", DESK_DIST / "Index.html", [DESK_SRC, SHARED_UI]),
+    (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
+    (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
+    (DESK_SRC / "Index.html", DESK_DIST / "Index.html", [DESK_SRC, SHARED_UI], False),
 ]
+
+# 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。
+OFFLINE_PATTERNS = [
+    r"https?://", r"url\(", r"fetch\(", r"XMLHttpRequest",
+    r"<script src", r"<link", r"@import", r"sendBeacon",
+    r"new Image\(", r"<img src", r"<iframe",
+]
+OFFLINE_RE = re.compile("|".join(OFFLINE_PATTERNS))
+
+def external_refs(text: str):
+    hits = []
+    for m in OFFLINE_RE.finditer(text):
+        line = text.count("\n", 0, m.start()) + 1
+        hits.append("%d行目の %s" % (line, m.group(0)))
+    return hits
+
 GAS_ORDER = ["Scale.gs", "Config.gs", "Roster.gs", "Master.gs", "Lock.gs", "Hours.gs",
              "Store.gs", "Aggregate.gs", "Api.gs", "Export.gs", "Code.gs", "Setup.gs",
              "Year.gs"]
@@ -176,8 +197,15 @@ def main():
     bad = []
     print("生成物を確認" if check else "生成")
 
-    for src, dest, search_dirs in PAGES:
-        write_or_check(dest, html_doc(render(src, search_dirs)), check, bad)
+    for src, dest, search_dirs, offline in PAGES:
+        body = html_doc(render(src, search_dirs))
+        if offline:
+            hits = external_refs(body)
+            if hits:
+                print("  × %-18s 外部参照があります: %s" % (dest.name, "、".join(hits)))
+                bad.append(str(dest.relative_to(ROOT)) + "（外部通信禁止なのに外部参照あり）")
+                continue
+        write_or_check(dest, body, check, bad)
 
     for dest, built in gas_targets():
         write_or_check(dest, built, check, bad)
@@ -190,11 +218,12 @@ def main():
         if not check:
             print("  %-18s ← gas/src + generated（%s）" % (("dist/" + dest.name), build))
 
-    if check:
-        if bad:
-            print("\n正本と一致しない生成物:\n  " + "\n  ".join(bad))
+    if bad:
+        print("\n" + ("正本と一致しない生成物" if check else "作れなかった生成物") + ":\n  " + "\n  ".join(bad))
+        if check:
             print("python3 scripts/build.py で作り直す")
-            return 1
+        return 1
+    if check:
         print("\n一致している")
     return 0
 
