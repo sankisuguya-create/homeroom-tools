@@ -73,6 +73,18 @@ def include_file(name: str, search_dirs) -> pathlib.Path:
             return candidate
     raise SystemExit("include元が見つからない: " + name)
 
+HTML_HEAD = ("<!doctype html>\n<html lang=\"ja\">\n<head>\n"
+             "<meta charset=\"utf-8\">\n"
+             "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n")
+HTML_TAIL = "\n</body>\n</html>\n"
+
+def html_doc(body: str) -> str:
+    """静的ページを完全な HTML 文書に包む。src は <title> 始まりの
+    フラグメントなので、head の後ろにそのまま置く。最初の非 head 要素で
+    ブラウザが自動的に body を開く（<title> は head に入ったまま動く）。
+    lang=\"ja\" が無いと漢字を中国語系字形で出す端末があるので必ず付ける。"""
+    return HTML_HEAD + body.rstrip("\n") + HTML_TAIL
+
 def render(src: pathlib.Path, search_dirs) -> str:
     body = src.read_text(encoding="utf-8")
     seen = []
@@ -164,7 +176,7 @@ def main():
     print("生成物を確認" if check else "生成")
 
     for src, dest, search_dirs in PAGES:
-        write_or_check(dest, render(src, search_dirs), check, bad)
+        write_or_check(dest, html_doc(render(src, search_dirs)), check, bad)
 
     for dest, built in gas_targets():
         write_or_check(dest, built, check, bad)
