@@ -194,7 +194,7 @@ const Config = (function(){
      「含める」系は既定が true なので、明示の false だけを偽にする。 */
   const notFalse = v => v !== false && String(v).toUpperCase() !== "FALSE";
 
-  /* 集計の式。teacher-view.html の R にあたる。 */
+  /* 集計の式。旧プロトタイプ（現 archive/teacher-view.html）の R にあたる。 */
   function rule(){
     return {
       aFrom:  valueOfSym(String(get("A下限", "A+"))),
@@ -839,7 +839,7 @@ const Store = (function(){
 /* ==================== Aggregate.gs ==================== */
 /* ==================================================================
    Aggregate.gs — 単元評価と期末評定の計算。
-   apps/note-assessment/web/dist/teacher-view.html の集計をそのまま移したもの。
+   旧プロトタイプ（現 archive/teacher-view.html）の集計をそのまま移したもの。
 
    平均は取らない。順序尺度なので D→C の幅と A+→Z− の幅が等しい保証がない。
    休 と / は分母からも外し、理由が違うので別々に数える。

@@ -641,14 +641,13 @@ shared/ui/
   tokens.css                         複数ツール共通の色トークン
 
 apps/note-assessment/
-  web/src/                           児童・教師画面、スケール、単元例、材質CSSの正本
-  web/dist/                          単体で開ける画面の生成物
-  gas/src/                           GASの手書きコードとHTML
+  web/src/                           スケール（scale.js）・材質CSSの正本
+  gas/src/                           GASの手書きコードと、児童・教師画面の正本
   gas/generated/                     web/src・sharedから作る中間生成物
   gas/dist/                          Apps Scriptへ貼る完成物
   gas/scripts/                       ローカル検査・プレビュー
   docs/                              仕様・実装手順・判断履歴
-  archive/                           不採用案
+  archive/                           不採用案・凍結した旧画面
 ```
 
 ```bash

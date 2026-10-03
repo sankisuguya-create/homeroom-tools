@@ -1,6 +1,6 @@
 # GAS 実装手順
 
-`web/dist/` の画面を Google Apps Script + スプレッドシートへ載せる手順。仕様の正本は [`spec.md`](spec.md)。
+旧プロトタイプ（`web/dist/` にあった画面。現在は `../archive/` へ凍結移動済み）を Google Apps Script + スプレッドシートへ載せた手順。仕様の正本は [`spec.md`](spec.md)、画面の正本は `gas/src/`。
 
 ## 0. 先に読むところ
 
@@ -118,7 +118,7 @@ teacher.html   教師画面
 
 **`scale.html` はサーバとクライアントの両方から使う。** 記号と内部値の変換はクライアントの表示にもサーバの集計にも要る。二重に書くと必ずずれるので、1ファイルにして両方から読む。中身は `apps/note-assessment/web/src/scale.js` がそのまま入る。
 
-同じ理由で、単元マスタ（`apps/note-assessment/web/src/units.js` にあたる）もサーバが持つ1つのシートから両画面へ配る。**プロトタイプでは以前ここが割れていて、教師が設定した単元の色が児童画面に届いていなかった。**
+同じ理由で、単元マスタ（旧プロトタイプの `apps/note-assessment/web/src/units.js`、現 `archive/units.js` にあたる）もサーバが持つ1つのシートから両画面へ配る。**プロトタイプでは以前ここが割れていて、教師が設定した単元の色が児童画面に届いていなかった。**
 
 **当初は `eval` で読む書き方を載せていたが、やめた。** トップレベルの `const` が `eval` の外へ出ないことがあり、読んだつもりで `undefined` を掴む。代わりに `build.py` が実ファイルを2つ生成する。
 
@@ -182,7 +182,7 @@ function testScale(){
 **`/` は教師だけが設定できる。** 児童の選択肢に出さないだけでなく、サーバ側でも児童からの `/` を弾く。画面を隠すのは操作の誘導であって、権限の実装ではない。
 
 ### Step 6 — 教師画面 ✅ 実装済み（`teacher.html`・3タブ）
-一覧・集計・確定。設定タブの「単元の評価をする」は単元マスタの `評価公開` を書き換えるだけ。`Aggregate.gs` の計算は `apps/note-assessment/web/dist/teacher-view.html` の関数をそのまま移せる。
+一覧・集計・確定。設定タブの「単元の評価をする」は単元マスタの `評価公開` を書き換えるだけ。`Aggregate.gs` の計算は旧プロトタイプ（当時 `apps/note-assessment/web/dist/teacher-view.html`、現 `archive/teacher-view.html`）の関数をそのまま移せる。
 
 児童画面から教師画面へのリンクは**教師のときだけ出す**。`doGet` の `?p=teacher` で振り分け、
 リンクを踏んだ先でも役割をメールから判定し直す。リンクを出さないのは誘導であって権限ではない。
@@ -192,7 +192,7 @@ function testScale(){
 プロトタイプと同じく、既定は空欄のみ・ボタンに実人数・実行後に上書き件数を報告。サーバ側でも「上書きする」フラグがない限り既存値を書き換えない。
 
 ### Step 8 — 学期 ✅ 実装済み
-プロトタイプに実装済み（`apps/note-assessment/web/dist/teacher-view.html`）。移植すればよい。
+プロトタイプに実装済み（当時 `apps/note-assessment/web/dist/teacher-view.html`、現 `archive/teacher-view.html`）。移植すればよい。
 
 - 単元マスタの `学期` 列を読み書きする
 - 期末評定は選んだ学期の単元だけで計算する。採用値は `教科|学期` ごとに分けて持つ

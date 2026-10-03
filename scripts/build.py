@@ -3,16 +3,17 @@
 
 編集する正本:
   shared/ui/tokens.css
-  apps/note-assessment/web/src/
+  apps/note-assessment/web/src/   （scale.js・material.css のみ。画面の正本は gas/src）
   apps/note-assessment/gas/src/
   apps/dance-count/src/
+  apps/collection-check/src/
   apps/desk-layout/src/
 
 生成物:
-  apps/note-assessment/web/dist/
   apps/note-assessment/gas/generated/
   apps/note-assessment/gas/dist/
   apps/dance-count/dist/
+  apps/collection-check/dist/
 
   python3 scripts/build.py
   python3 scripts/build.py --check
@@ -22,7 +23,6 @@ import sys, pathlib, re
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 NOTE = ROOT / "apps" / "note-assessment"
 NOTE_WEB_SRC = NOTE / "web" / "src"
-NOTE_WEB_DIST = NOTE / "web" / "dist"
 GAS_SRC = NOTE / "gas" / "src"
 GAS_GENERATED = NOTE / "gas" / "generated"
 GAS_DIST = NOTE / "gas" / "dist"
@@ -38,8 +38,6 @@ DESK_DIST = DESK / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 PAGES = [
-    (NOTE_WEB_SRC / "grid-sheet.html", NOTE_WEB_DIST / "grid-sheet.html", [NOTE_WEB_SRC, SHARED_UI]),
-    (NOTE_WEB_SRC / "teacher-view.html", NOTE_WEB_DIST / "teacher-view.html", [NOTE_WEB_SRC, SHARED_UI]),
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI]),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI]),
     (DESK_SRC / "Index.html", DESK_DIST / "Index.html", [DESK_SRC, SHARED_UI]),
