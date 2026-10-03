@@ -3,7 +3,7 @@ import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
 const root=new URL('../',import.meta.url);
-const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicense]=await Promise.all([
+const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicense,lucideLicense]=await Promise.all([
   readFile(new URL('src/JavaScript.html',root),'utf8'),
   readFile(new URL('src/assets/LucideTags.html',root),'utf8'),
   readFile(new URL('src/assets/LucideSprite.html',root),'utf8'),
@@ -11,7 +11,8 @@ const [app,tagsText,sprite,peopleTagsText,peopleSprite,dist,notices,tablerLicens
   readFile(new URL('src/assets/TablerPeople.html',root),'utf8'),
   readFile(new URL('dist/Index.html',root),'utf8'),
   readFile(new URL('THIRD_PARTY_NOTICES.md',root),'utf8'),
-  readFile(new URL('licenses/Tabler-Icons-MIT.txt',root),'utf8')
+  readFile(new URL('licenses/Tabler-Icons-MIT.txt',root),'utf8'),
+  readFile(new URL('licenses/Lucide-ISC.txt',root),'utf8')
 ]);
 new Function(app);
 const tags=JSON.parse(tagsText);
@@ -26,6 +27,11 @@ assert.ok(!sprite.includes('<?xml'));
 assert.ok(!peopleSprite.includes('<?xml'));
 assert.ok(notices.includes('v3.47.0')&&notices.includes('9fd36e0ce5ad0ec8ed0aecc60d4bb2278364e71c'));
 assert.ok(tablerLicense.includes('MIT License')&&tablerLicense.includes('Copyright (c) 2020-2026 Paweł Kuna'));
+assert.ok(sprite.includes('<!-- @license lucide-static v1.47.0 - ISC -->'));
+assert.ok(lucideLicense.includes('ISC License')&&lucideLicense.includes('Lucide'));
+assert.ok(notices.includes('## Lucide')&&notices.includes('lucide-static')&&notices.includes('v1.47.0')
+  &&notices.includes('Lucide-ISC.txt')&&notices.includes('7865288e9632f4be2f2fe0efcacfa17f4603b976175bc57224f31ecdf736cd62'));
+assert.ok(tagsText.trimStart().startsWith('{'));
 assert.ok(!dist.includes('<?!='));
 assert.ok(dist.includes('<title>アイコンメーカー</title>'));
 assert.ok(dist.includes('<span>アイコンメーカー</span>'));
