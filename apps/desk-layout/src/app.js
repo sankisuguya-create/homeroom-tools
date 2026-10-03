@@ -44,7 +44,8 @@ function save() {
 
 var S = load();
 var cur = null;          // 表示・編集中の配置
-var flip = false;        // 左右反転はその場かぎり（保存しない）
+var flip = false;
+var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
 var sel = -1;            // 編集で選んでいる机の上の物
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
@@ -129,7 +130,7 @@ function openShow(id) {
 }
 function renderShow() {
   var o = { ruby: S.prefs.ruby, chair: S.prefs.chair, flip: flip && cur.flip };
-  o.topOnly = S.prefs.topOnly;
+  o.topOnly = S.prefs.topOnly || big;
   var c = S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
   var svg = $('stageSvg');
   svg.setAttribute('viewBox', c.viewBox); svg.innerHTML = c.svg;
@@ -155,17 +156,26 @@ function renderAway() {
   });
   $('away').innerHTML = html;
 }
-$('sBack').onclick = renderHome;
+$('sBack').onclick = function () { if (big) setBig(false); renderHome(); };
 $('sOne').onclick = function () { S.prefs.group = false; save(); renderShow(); };
 $('sFour').onclick = function () { S.prefs.group = true; save(); renderShow(); };
 $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
-$('sFull').onclick = function () {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
-};
+/* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
+function setBig(on) {
+  big = on;
+  $('vShow').classList.toggle('big', on);
+  $('bigMsg').hidden = !on; $('bigExit').hidden = !on;
+  if (on && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
+  if (!on && document.fullscreenElement) document.exitFullscreen().catch(function () {});
+  renderShow();
+}
+$('sBig').onclick = function () { setBig(true); };
+$('bigExit').onclick = function () { setBig(false); };
+document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && big) setBig(false); });
+document.addEventListener('keydown', function (e) { if (big && e.key === 'Escape') setBig(false); });
 document.addEventListener('keydown', function (e) {   // ← → で活動を切り替える
   if ($('vShow').hidden || e.target.closest('input')) return;
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;

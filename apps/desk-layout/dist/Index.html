@@ -140,6 +140,15 @@ ruby rt{font-size:.45em;font-weight:400;color:var(--ink-soft)}
 .away figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:clamp(14px,1.8vh,22px);font-weight:700;text-align:center}
 .away figure svg{width:clamp(56px,7vh,96px);height:clamp(56px,7vh,96px)}
 
+/* 大きく映す */
+.bigmsg{display:none;margin:0;padding:2.4vh 16px 0;text-align:center;font-size:clamp(32px,7vh,96px);font-weight:700;line-height:1.5;letter-spacing:.04em}
+.bigmsg rt{font-size:.38em}
+.show.big .bigmsg{display:block}
+.show.big .tools,.show.big .away{display:none}
+.show.big .stage{padding:1vh 2vw 3vh}
+.bigexit{position:fixed;top:10px;right:10px;min-height:44px;width:44px;padding:0;font-size:22px;color:var(--ink-faint);background:transparent;border-color:transparent}
+.bigexit:hover{border-color:var(--rule)}
+
 /* SVG の文字・線 */
 svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans JP","Meiryo",sans-serif}
 .lb{fill:var(--ink);font-weight:700}
@@ -240,8 +249,10 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
     <button type="button" id="sSides" class="tb" aria-pressed="true">横から見た図</button>
     <button type="button" id="sChair" class="tb" aria-pressed="false">いす</button>
     <button type="button" id="sRuby" class="tb" aria-pressed="true">ふりがな</button>
-    <button type="button" id="sFull" class="tb" aria-label="全画面">⛶</button>
+    <button type="button" id="sBig" class="primary">大きく映す</button>
   </div>
+  <p id="bigMsg" class="bigmsg" hidden><ruby>机<rt>つくえ</rt></ruby>の<ruby>上<rt>うえ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね</p>
+  <button type="button" id="bigExit" class="bigexit" hidden aria-label="大きく映すのをやめる">×</button>
   <div class="stage">
     <svg id="stageSvg" preserveAspectRatio="xMidYMid meet" role="img"></svg>
     <aside id="away" class="away"></aside>
@@ -1033,7 +1044,8 @@ function save() {
 
 var S = load();
 var cur = null;          // 表示・編集中の配置
-var flip = false;        // 左右反転はその場かぎり（保存しない）
+var flip = false;
+var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
 var sel = -1;            // 編集で選んでいる机の上の物
 var tab = 'top', dest = { hang: 'left', away: 'tray' };
 
@@ -1118,7 +1130,7 @@ function openShow(id) {
 }
 function renderShow() {
   var o = { ruby: S.prefs.ruby, chair: S.prefs.chair, flip: flip && cur.flip };
-  o.topOnly = S.prefs.topOnly;
+  o.topOnly = S.prefs.topOnly || big;
   var c = S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
   var svg = $('stageSvg');
   svg.setAttribute('viewBox', c.viewBox); svg.innerHTML = c.svg;
@@ -1144,17 +1156,26 @@ function renderAway() {
   });
   $('away').innerHTML = html;
 }
-$('sBack').onclick = renderHome;
+$('sBack').onclick = function () { if (big) setBig(false); renderHome(); };
 $('sOne').onclick = function () { S.prefs.group = false; save(); renderShow(); };
 $('sFour').onclick = function () { S.prefs.group = true; save(); renderShow(); };
 $('sFlip').onclick = function () { flip = !flip; renderShow(); };
 $('sSides').onclick = function () { S.prefs.topOnly = !S.prefs.topOnly; save(); renderShow(); };
 $('sChair').onclick = function () { S.prefs.chair = !S.prefs.chair; save(); renderShow(); };
 $('sRuby').onclick = function () { S.prefs.ruby = !S.prefs.ruby; save(); renderShow(); };
-$('sFull').onclick = function () {
-  if (document.fullscreenElement) document.exitFullscreen();
-  else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
-};
+/* 大きく映す：操作ボタンと「しまう物」を隠し、上に「机の上をこの形にしてね」、残りを真上からの図に使う */
+function setBig(on) {
+  big = on;
+  $('vShow').classList.toggle('big', on);
+  $('bigMsg').hidden = !on; $('bigExit').hidden = !on;
+  if (on && !document.fullscreenElement && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(function () {});
+  if (!on && document.fullscreenElement) document.exitFullscreen().catch(function () {});
+  renderShow();
+}
+$('sBig').onclick = function () { setBig(true); };
+$('bigExit').onclick = function () { setBig(false); };
+document.addEventListener('fullscreenchange', function () { if (!document.fullscreenElement && big) setBig(false); });
+document.addEventListener('keydown', function (e) { if (big && e.key === 'Escape') setBig(false); });
 document.addEventListener('keydown', function (e) {   // ← → で活動を切り替える
   if ($('vShow').hidden || e.target.closest('input')) return;
   if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
