@@ -89,7 +89,9 @@ svg text{font-family:"BIZ UDPGothic","Hiragino Sans","Yu Gothic UI","Noto Sans J
 #editSvg .it{cursor:grab}
 .selbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--a-line);background:var(--a-bg);border-radius:10px}
 .selbar strong{margin-right:4px}
-.sw{display:inline-block;width:18px;height:18px;border-radius:4px;border:1px solid var(--ink);vertical-align:-4px}
+.swatches{display:inline-flex;align-items:center;gap:6px;font-size:14px}
+.swatches .sw{width:40px;min-height:40px;padding:0;border:2px solid var(--rule);border-radius:8px}
+.swatches .sw.on{border:3px solid var(--ink);box-shadow:0 0 0 2px var(--sheet) inset}
 .lists{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .lists .wide{grid-column:1/-1}
 .lists h3{margin:0 0 4px;font-size:14px;color:var(--ink-soft)}

@@ -58,9 +58,13 @@ function sizeOf(p) {           // 判型を選べる物の判型の id
   var sz = ITEMS[p.item].sizes;
   return sz ? (sz[p.size] ? p.size : Object.keys(sz)[0]) : null;
 }
+function colorIndex(p) {
+  var it = ITEMS[p.item];
+  return p.color == null ? (it.color0 || 0) : (p.color | 0) % it.colors.length;
+}
 function colorOf(p) {
   var c = ITEMS[p.item].colors;
-  return c ? c[(p.color | 0) % c.length] : null;
+  return c ? c[colorIndex(p)] : null;
 }
 /* 描く大きさ。判型を選べる物は判型から（開くと幅2倍）、ほかは状態ごとの寸法 */
 function itemSize(p) {
@@ -75,8 +79,11 @@ function rotBox(w, d, r) {
 }
 function drawTopItem(p, i, cls) {
   var st = ITEMS[p.item].states[stateOf(p)], wd = itemSize(p), w = wd[0], d = wd[1];
+  MIRROR = p.m ? -1 : 1;
+  var body = st.draw(w, d, colorOf(p));
+  MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
-         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + st.draw(w, d, colorOf(p)) +
+         (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
          (cls === 'sel' ? '<rect class="selbox" x="-10" y="-10" width="' + (w + 20) + '" height="' + (d + 20) + '" rx="10"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
@@ -183,7 +190,15 @@ function topView(lay, o) {
    u: 横方向（その面に立って見たときの左→右）、v: 天板の上面から下へ */
 function hangFace(it) {
   var w = it.side[0], h = it.side[1], c = it.color, s;
-  if (it.style === 'handle') {
+  if (it.style === 'box') {
+    // 箱型の画材バッグ：2本の持ち手を束ねて掛ける。ふたのベルトと金具
+    s = ['-0.18', '0.18'].map(function (k) {
+      return '<path d="M' + (w * k - 50) + ' 74 Q' + (w * k) + ' -20 ' + (w * k + 50) + ' 74" fill="none" stroke="#1A1A1A" stroke-width="10" stroke-linecap="round"/>';
+    }).join('') +
+        R(-w / 2, 70, w, h, c, 14) + R(-w / 2, 70, w, 22, 'rgba(255,255,255,.18)', 14, 0) +
+        R(-22, 70, 44, h * 0.55, '#1A1A1A', 6, 2) + C(0, 70 + h * 0.55 - 16, 9, '#C9A65B', 2) +
+        R(-w / 2, 70 + h - 26, w, 26, 'rgba(255,255,255,.25)', 14, 0);
+  } else if (it.style === 'handle') {
     s = '<path d="M' + (-w * 0.28) + ' 74 Q0 -36 ' + (w * 0.28) + ' 74" fill="none" stroke="' + INK + '" stroke-width="12" stroke-linecap="round"/>' +
         '<path d="M' + (-w * 0.28) + ' 74 Q0 -36 ' + (w * 0.28) + ' 74" fill="none" stroke="' + c + '" stroke-width="6" stroke-linecap="round"/>' +
         R(-w / 2, 70, w, h, c, 14) + L(-w / 2 + 16, 104, w / 2 - 16, 104, 'rgba(0,0,0,.25)', 3);

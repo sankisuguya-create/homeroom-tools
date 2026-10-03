@@ -25,7 +25,7 @@ function sanitize(s) {
       id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false,
       top: l.top.filter(function (p) { return ITEMS[p.item] && ITEMS[p.item].kind === 'top'; }).map(function (p) {
         return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : 'closed', x: +p.x || DESK.w / 2, y: +p.y || DESK.d / 2, r: +p.r || 0, label: !!p.label,
-                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors ? (p.color | 0) : undefined };
+                 size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined };
       }),
       hooks: {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
@@ -195,8 +195,10 @@ function renderEdit() {
     $('selLabel').setAttribute('aria-pressed', String(!!p.label));
     $('selSize').hidden = !it.sizes;
     if (it.sizes) $('selSize').textContent = Object.keys(it.sizes).map(function (k) { return (k === sizeOf(p) ? '●' : '○') + it.sizes[k].name; }).join(' ');
-    $('selColor').hidden = !it.colors;
-    if (it.colors) $('selColor').innerHTML = '色 <span class="sw" style="background:' + colorOf(p) + '"></span>';
+    $('selColors').hidden = !it.colors;
+    if (it.colors) $('selColors').innerHTML = '色' + it.colors.map(function (c, k) {
+      return '<button type="button" class="sw' + (k === colorIndex(p) ? ' on' : '') + '" data-col="' + k + '" style="background:' + c + '" aria-label="色' + (k + 1) + '"></button>';
+    }).join('');
   }
   renderChips();
   $('eGrid').innerHTML = GRID_LEVELS.map(function (g) {
@@ -283,7 +285,10 @@ $('selSize').onclick = function () {
   var p = cur.top[sel], ks = Object.keys(ITEMS[p.item].sizes);
   p.size = ks[(ks.indexOf(sizeOf(p)) + 1) % ks.length]; save(); renderEdit();
 };
-$('selColor').onclick = function () { var p = cur.top[sel]; p.color = ((p.color | 0) + 1) % ITEMS[p.item].colors.length; save(); renderEdit(); };
+$('selColors').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-col]'); if (!b) return;
+  cur.top[sel].color = +b.getAttribute('data-col'); save(); renderEdit();
+});
 $('selRot').onclick = function () { var p = cur.top[sel]; p.r = ((p.r || 0) + 90) % 360; clampP(p); save(); renderEdit(); };
 $('selLabel').onclick = function () { var p = cur.top[sel]; p.label = !p.label; save(); renderEdit(); };
 $('selFront').onclick = function () { toFront(); save(); renderEdit(); };

@@ -61,11 +61,20 @@ var RAINBOW = ['#E5484D', '#F2994A', '#F2C94C', '#6FCF97', '#2F9E6E', '#56CCF2',
                colors があれば表紙の色を選べる。draw(w, h, 色)
    kind:'hang' フックに掛ける。side=[幅,高さ]（横から見た大きさ）, t=厚み */
 var NOTE_COLORS = ['#3FA7D6', '#E8738A', '#9BC53D', '#F2C230', '#8E7CC3'];   // 青・桃・黄緑・黄・紫（参考：方眼ノートの表紙）
-function cover(w, h, col) {
-  // 方眼ノートの表紙：色の地＋左下の方眼の面＋下の名前欄
-  var gw = w * 0.62, gh = h * 0.55, gy = h * 0.22;
-  return R(0, 0, w, h, col, 4) + R(10, gy, gw, gh, '#FFFFFF', 3, 0) + grid(10, gy, gw, gh, 16, '#C9DDF0') +
-         R(0, h * 0.84, w, h * 0.16, col, 0, 0) + R(12, h * 0.86, w - 24, h * 0.1, '#FFFFFF', 8, 2);
+var ENOGU_COLORS = ['#2B2F36', '#2E4A7A', '#B9A3D6', '#5E6670', '#3D7EBF'];   // 黒・紺・ラベンダー・灰・青（参考：画材セットのバッグ）
+
+/* 表紙の文字。左右反転で描くときも文字は裏返さない（drawTopItem が MIRROR を立てる） */
+var MIRROR = 1;
+function T(cx, cy, text, fs, fill) {
+  return '<g transform="translate(' + cx + ' ' + cy + ') scale(' + MIRROR + ' 1)"><text x="0" y="' + (fs * 0.36) + '" font-size="' + fs +
+    '" font-weight="700" text-anchor="middle" fill="' + (fill || INK) + '">' + text + '</text></g>';
+}
+function cover(w, h, col, title, ruled) {
+  // 学習帳の表紙：色の地＋上に題名＋左下の白い面（方眼か罫線）＋下の名前欄
+  var gw = w * 0.62, gh = h * 0.52, gy = h * 0.26, fs = Math.min(w * 0.2, 42);
+  return R(0, 0, w, h, col, 4) + T(w * 0.5, h * 0.13, title, fs) +
+         R(10, gy, gw, gh, '#FFFFFF', 3, 0) + (ruled ? rules(10, gy, gw, gh, 16, '#C9DDF0') : grid(10, gy, gw, gh, 16, '#C9DDF0')) +
+         R(12, h * 0.85, w - 24, h * 0.1, '#FFFFFF', 8, 2);
 }
 var ITEMS = {
   textbook: { name: '{教科書|きょうかしょ}', kind: 'top',
@@ -77,14 +86,22 @@ var ITEMS = {
     sizes: { b5: { name: 'B5', w: 179, d: 252 }, a4: { name: 'A4', w: 210, d: 297 } },
     colors: NOTE_COLORS,
     states: {
-      closed: { draw: function (w, h, col) { return cover(w, h, col); } },
+      closed: { draw: function (w, h, col) { return cover(w, h, col, 'ノート'); } },
       open: { draw: function (w, h) { return book(w, h, function (x, pw, ph) { return grid(x + 8, 8, pw - 16, ph - 16, 10, '#D3E3F1'); }); } } } },
   drill: { name: 'ドリル', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#F0A07E') + R(w * 0.15, h * 0.12, w * 0.7, h * 0.2, '#FFFFFF', 4, 2); } },
     open: { w: 364, d: 257, draw: function (w, h) { return book(w, h, function () { return ''; }); } } } },
-  renraku: { name: '{連絡帳|れんらくちょう}', kind: 'top', states: {
-    closed: { w: 128, d: 182, draw: function (w, h) { return R(0, 0, w, h, '#9FCB8E') + R(w * 0.15, h * 0.12, w * 0.7, h * 0.2, '#FFFFFF', 4, 2); } },
+  renraku: { name: '{連絡帳|れんらくちょう}', kind: 'top', colors: NOTE_COLORS, color0: 2, states: {
+    closed: { w: 128, d: 182, draw: function (w, h, col) { return cover(w, h, col, 'れんらく', true); } },
     open: { w: 256, d: 182, draw: function (w, h) { return book(w, h, function () { return ''; }); } } } },
+  file: { name: 'ファイル', kind: 'top', colors: NOTE_COLORS, color0: 4, states: {
+    closed: { w: 236, d: 310, draw: function (w, h, col) {
+      return R(0, 0, w, h, col, 6) + R(0, 0, 18, h, 'rgba(0,0,0,.18)', 0, 0) + R(w * 0.18, h * 0.08, w * 0.7, h * 0.16, '#FFFFFF', 6, 2) +
+             T(w * 0.53, h * 0.16, 'ファイル', Math.min(w * 0.13, 36));
+    } },
+    open: { w: 472, d: 310, draw: function (w, h, col) {
+      return R(0, 0, w, h, col, 6) + R(12, 12, w / 2 - 24, h - 24, 'rgba(255,255,255,.55)', 4, 0) + R(w / 2 + 12, 12, w / 2 - 24, h - 24, '#FFFFFF', 2, 2) + L(w / 2, 0, w / 2, h, INK, 3);
+    } } } },
   pencase: { name: '{筆箱|ふでばこ}', kind: 'top', states: {
     closed: { w: 222, d: 89, draw: function (w, h) { return R(0, 0, w, h, '#5E86BD', 14); } },
     open: { w: 222, d: 178, draw: function (w, h) { return R(0, 0, w, h / 2, '#89A9D3', 14) + R(0, h / 2, w, h / 2, '#5E86BD', 14) + R(14, h / 2 + 12, w - 28, h / 2 - 24, '#DDE6F2', 8, 0); } } } },
@@ -142,11 +159,21 @@ var ITEMS = {
     } } } },
   fudearai: { name: '{筆洗|ひっせん}', kind: 'top', states: {
     closed: { w: 200, d: 110, draw: function (w, h) { return R(0, 0, w, h, '#A9D3E8', 14) + L(w / 3, 8, w / 3, h - 8, INK, 3) + L(w * 2 / 3, 8, w * 2 / 3, h - 8, INK, 3); } } } },
-  enogubox: { name: '{絵|え}の{具|ぐ}セット', kind: 'top', states: {
-    closed: { w: 270, d: 180, draw: function (w, h) { return R(0, 0, w, h, '#E8A33D', 10); } },
-    open: { w: 270, d: 360, draw: function (w, h) {
-      var s = R(0, 0, w, h / 2, '#F6CF8F', 10) + R(0, h / 2, w, h / 2, '#FFF4E0', 10);
-      for (var i = 0; i < 8; i++) s += R(16 + i * 31, h / 2 + 16, 24, 90, RAINBOW[i], 4, 0);
+  /* 画材セット（箱型バッグ 幅325×奥行140×高さ140）：上から見ると、2本の持ち手と手前のベルト */
+  enogubox: { name: '{絵|え}の{具|ぐ}セット', kind: 'top', colors: ENOGU_COLORS, states: {
+    closed: { w: 325, d: 140, draw: function (w, h, col) {
+      var s = R(0, 0, w, h, col, 12) + R(8, 8, w - 16, h - 16, 'rgba(255,255,255,.12)', 8, 0);
+      [0.3, 0.7].forEach(function (k) {
+        s += R(w * k - 8, -6, 16, h + 12, '#1A1A1A', 6, 0);   // 持ち手：ふたの上を前後にわたる帯
+      });
+      return s + R(w / 2 - 22, h - 46, 44, 46, '#1A1A1A', 6, 2) + C(w / 2, h - 22, 9, '#C9A65B', 2);
+    } },
+    open: { w: 325, d: 280, draw: function (w, h, col) {
+      // ふたを奥へ倒した形：奥がふたの裏、手前が中身（パレット・筆洗・絵の具）
+      var m = h / 2, s = R(0, 0, w, m, col, 12) + R(10, 10, w - 20, m - 20, 'rgba(255,255,255,.2)', 8, 0) +
+          R(0, m, w, m, col, 12) + R(10, m + 10, w - 20, m - 20, '#F4F1EA', 8, 0) +
+          R(18, m + 18, 110, m - 36, '#FFFFFF', 6, 1.5, '#B5B0A6') + R(138, m + 18, 76, m - 36, '#A9D3E8', 8, 1.5);
+      for (var i = 0; i < 6; i++) s += R(224 + (i % 3) * 30, m + 18 + Math.floor(i / 3) * 52, 24, 46, RAINBOW[i], 4, 1.5);
       return s;
     } } } },
   zoukin: { name: 'ぞうきん', kind: 'top', states: {
@@ -157,7 +184,7 @@ var ITEMS = {
   uwabaki:  { name: '{上|うわ}ばき', kind: 'hang', side: [220, 320], t: 60, color: '#B9A6D9', style: 'string' },
   tesage:   { name: '{手|て}さげ', kind: 'hang', side: [320, 300], t: 50, color: '#D8C49A', style: 'handle' },
   shodobag: { name: '{習字|しゅうじ}バッグ', kind: 'hang', side: [350, 240], t: 60, color: '#3E4F7A', style: 'handle' },
-  enogubag: { name: '{絵|え}の{具|ぐ}バッグ', kind: 'hang', side: [325, 140], t: 140, color: '#E8A33D', style: 'handle' }
+  enogubag: { name: '{絵|え}の{具|ぐ}セット', kind: 'hang', side: [325, 140], t: 140, color: '#2B2F36', style: 'box' }
 };
 
 /* ---- 置き場所のグリッド ----
