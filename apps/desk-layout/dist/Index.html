@@ -484,7 +484,8 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
 }
 /* 状態の呼び名（編集画面のボタン） */
 var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた',
-                    go: 'まっすぐ', turn: 'まがる', zag: 'つづら', flow: 'ながれる' };
+                    go: 'まっすぐ', turn: 'まがる', zag: 'つづら', flow: 'ながれる',
+                    normal: 'ふつう', hat: 'ぼうし', bib: 'ゼッケン', r1: '1列', r2: '2列', r4: '4列' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）
@@ -833,15 +834,28 @@ var ITEMS = {
     closed: { w: 200, d: 200, draw: function (w, h, col) { return C(w / 2, h / 2, w / 2 - 6, col, 6) + C(w / 2, h / 2, w * 0.14, 'rgba(255,255,255,.35)', 0); } } } },
   /* 人と列：子どもがどこに立つ・どう並ぶかを示す。列はドット（点）とライン（棒）の2種類、それぞれ1列・2列・4列 */
   person: { name: '{人|ひと}', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
-    closed: { w: 400, d: 500, draw: function (w, h, col) {   // あたま＋肩の広がる体のシルエット
+    normal: { w: 400, d: 500, draw: function (w, h, col) {   // あたま＋肩の広がる体のシルエット
       return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
              C(w / 2, h * 0.18, w * 0.24, col, 8) +
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+    } },
+    hat: { w: 400, d: 560, draw: function (w, h, col) {   // ぼうしの形：あたまの上に丸い天板とひさし
+      return ELL(w / 2, h * 0.95, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
+             C(w / 2, h * 0.16, w * 0.26, col, 8) +                                    // ぼうしの丸い部分
+             ELL(w / 2, h * 0.3, w * 0.36, h * 0.08, col) +                            // ひさし
+             '<ellipse cx="' + w / 2 + '" cy="' + h * 0.3 + '" rx="' + w * 0.36 + '" ry="' + h * 0.08 + '" fill="none" stroke="' + INK + '" stroke-width="8"/>' +
+             '<path d="' + roundPoly([[w * 0.28, h * 0.42], [w * 0.72, h * 0.42], [w * 0.88, h * 0.96], [w * 0.12, h * 0.96]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+    } },
+    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン：体の白い四角
+      return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
+             C(w / 2, h * 0.18, w * 0.24, col, 8) +
+             '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +
+             R(w * 0.3, h * 0.48, w * 0.4, h * 0.34, '#F7F4EA', 8, 6);
     } } } },
-  rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
-    r1: { name: '1{列|れつ}', w: 500, d: 2000 }, r2: { name: '2{列|れつ}', w: 1000, d: 2000 }, r4: { name: '4{列|れつ}', w: 2000, d: 2000 } } },
-  rowline: { name: '{列|れつ}（ライン）', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
-    r1: { name: '1{列|れつ}', w: 500, d: 2000 }, r2: { name: '2{列|れつ}', w: 1000, d: 2000 }, r4: { name: '4{列|れつ}', w: 2000, d: 2000 } } },
+  rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
+    r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
+  rowline: { name: '{列|れつ}（ライン）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
+    r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
   /* 矢印：形で選ぶ（向きは「回す」）。ながれる矢印は中の破線が進行方向に動く */
   arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
     go: { w: 800, d: 3000, draw: function (w, h) {
@@ -875,12 +889,12 @@ var ITEMS = {
   ['rowdot', 'rowline'].forEach(function (id) {
     Object.keys(ITEMS[id].states).forEach(function (k) {
       var n = COLS[k];
-      ITEMS[id].states[k].draw = function (w, h) {
+      ITEMS[id].states[k].draw = function (w, h, col) {
         var s = '', i, j;
         for (i = 0; i < n; i++) {
           var cx = w * (i + 0.5) / n;
-          if (id === 'rowline') s += L(cx, h * 0.08, cx, h * 0.92, '#3A3F45', 140);
-          else for (j = 0; j < 4; j++) s += C(cx, h * (j + 0.5) / 4, 100, '#3A3F45', 10);
+          if (id === 'rowline') s += L(cx, h * 0.08, cx, h * 0.92, col, 140);
+          else for (j = 0; j < 4; j++) s += C(cx, h * (j + 0.5) / 4, 100, col, 10);
         }
         return s;
       };
@@ -1005,7 +1019,7 @@ var DEFAULT_LAYOUTS = [
       { item: 'gmat',   state: 'closed', x: 13750, y: 8750,  r: 90 },
       { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
       { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true },
-      { item: 'person', state: 'closed', x: 11250, y: 17500, r: 0 }
+      { item: 'person', state: 'normal', x: 11250, y: 17500, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
