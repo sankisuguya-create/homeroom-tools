@@ -35,7 +35,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 14, ny: 18 },   // 500mm
       { id: 'fine',   name: 'こまかい', nx: 28, ny: 36 }    // 250mm
     ],
-    items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'arrow'],
+    items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>教室<rt>きょうしつ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   gym: {     // 体育館 20m×30m（利用者指定）
@@ -45,7 +45,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 8,  ny: 12 },   // 2500mm
       { id: 'fine',   name: 'こまかい', nx: 16, ny: 24 }    // 1250mm
     ],
-    items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'arrow'],
+    items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>体育館<rt>たいいくかん</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   field: {   // 運動場 40m×60m（利用者指定）
@@ -55,7 +55,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 16, ny: 24 },   // 2500mm
       { id: 'fine',   name: 'こまかい', nx: 32, ny: 48 }    // 1250mm
     ],
-    items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'arrow'],
+    items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'rowseno', 'arrow'],
     msg: '<ruby>運動場<rt>うんどうじょう</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   }
 };
@@ -523,6 +523,13 @@ var ITEMS = {
     r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
   rowline: { name: '{列|れつ}（ライン）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
     r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
+  rowseno: { name: '{背|せ}の{順|じゅん}ライン', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
+    closed: { w: 600, d: 2000, draw: function (w, h, col) {   // 太い棒＋上の端に「低」、下の端に「高」の漢字入り丸
+      var r = w * 0.4;
+      return L(w / 2, h * 0.16, w / 2, h * 0.84, col, 120) +
+             C(w / 2, h * 0.13, r, col, 0) + C(w / 2, h * 0.13, r - 16, '#F7F4EA', 0) + T(w / 2, h * 0.11, '低', r * 0.9) +
+             C(w / 2, h * 0.87, r, col, 0) + C(w / 2, h * 0.87, r - 16, '#F7F4EA', 0) + T(w / 2, h * 0.85, '高', r * 0.9);
+    } } } },
   /* 矢印：形で選ぶ（向きは「回す」）。ながれる矢印は中の破線が進行方向に動く */
   arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
     go: { w: 800, d: 3000, draw: function (w, h) {
