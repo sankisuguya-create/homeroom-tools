@@ -72,8 +72,8 @@ assert.equal(g.itemSize({item:'notebook',state:'open',size:'a4'}).join(),'420,29
 assert.equal(g.itemSize({item:'textbook',state:'open',size:'a4'}).join(),'420,297');
 assert.equal(g.itemSize({item:'notebook',state:'closed',size:'xx'}).join(),'179,252','知らない判型は既定へ');
 for(const id of ['textbook','notebook']){
-  assert.deepEqual(Object.keys(ITEMS[id].states),['closed','open','open360'],id);
-  assert.equal(g.itemSize({item:id,state:'open360'}).join(),g.itemSize({item:id,state:'closed'}).join(),id+' の360°は閉じた形と同じ大きさ');
+  assert.deepEqual(Object.keys(ITEMS[id].states),['closed','open','open360','open360r'],id);
+  for(const st of ['open360','open360r']) assert.equal(g.itemSize({item:id,state:st}).join(),g.itemSize({item:id,state:'closed'}).join(),id+' の'+st+'は閉じた形と同じ大きさ');
 }
 assert.ok(g.colorOf({item:'notebook',color:6}).startsWith('#'));
 for(const id of Object.keys(ITEMS))if(ITEMS[id].kind==='top')for(const st of Object.keys(ITEMS[id].states)){
