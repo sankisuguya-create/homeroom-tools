@@ -839,20 +839,19 @@ var ITEMS = {
              C(w / 2, h * 0.18, w * 0.24, col, 8) +
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
     } },
-    hat: { w: 400, d: 560, draw: function (w, h, col) {   // 赤白帽：あたまの上に丸いドーム、前だけにひさしが出る
+    hat: { w: 400, d: 560, draw: function (w, h, col) {   // 赤白帽：丸いドーム＋前の端にのぞく三日月のひさし（利用者の写真どおり）
       return ELL(w / 2, h * 0.95, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
              '<path d="' + roundPoly([[w * 0.28, h * 0.42], [w * 0.72, h * 0.42], [w * 0.88, h * 0.96], [w * 0.12, h * 0.96]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +
-             C(w / 2, h * 0.22, w * 0.22, col, 8) +                                     // あたま
-             ELL(w / 2, h * 0.32, w * 0.36, h * 0.08, col) +                            // 前に出るひさし（下に描く）
-             '<ellipse cx="' + w / 2 + '" cy="' + h * 0.32 + '" rx="' + w * 0.36 + '" ry="' + h * 0.08 + '" fill="none" stroke="' + INK + '" stroke-width="8"/>' +
-             C(w / 2, h * 0.17, w * 0.27, col, 8);                                      // ぼうしのドーム（ひさしの上に乗る大きめの半円）
+             C(w / 2, h * 0.25, w * 0.27, col, 8) +                                     // ひさし（ドームより少し下＝前に出る円）
+             C(w / 2, h * 0.16, w * 0.27, col, 8);                                      // ぼうしのドーム（下の円の上に乗り、手前が三日月に残る）
     } },
-    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン：肩ひも2本で下げた大きめの白い四角
+    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン（ビブス）：黒いパイピングの色つきベスト＋大きな番号（利用者の写真どおり）
       return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
-             C(w / 2, h * 0.18, w * 0.24, col, 8) +
-             '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +
-             R(w * 0.24, h * 0.46, w * 0.52, h * 0.44, '#F7F4EA', 10, 8) +              // 四角い布
-             L(w * 0.3, h * 0.46, w * 0.36, h * 0.36, INK, 12) + L(w * 0.7, h * 0.46, w * 0.64, h * 0.36, INK, 12);   // 肩ひも
+             C(w / 2, h * 0.18, w * 0.24, '#3A3F45', 8) +                               // あたま
+             '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="#3A3F45" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +   // 体
+             R(w * 0.16, h * 0.38, w * 0.68, h * 0.54, col, 20, 12) +                   // ベスト本体（色つき・黒パイピング）
+             ELL(w / 2, h * 0.4, w * 0.22, h * 0.1, '#3A3F45') +                        // 首すじ（大きく開いた丸首）
+             T(w / 2, h * 0.56, '1', h * 0.34, '#3A3F45');                              // 大きな番号
     } } } },
   rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
     r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
