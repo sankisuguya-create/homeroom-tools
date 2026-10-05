@@ -162,11 +162,11 @@ ruby rt{font-size:.45em;font-weight:400;color:var(--ink-soft)}
 .away figure svg{width:clamp(56px,7vh,96px);height:clamp(56px,7vh,96px)}
 
 /* 大きく映す */
-.bigmsg{display:none;margin:0;padding:2.4vh 16px 0;text-align:center;font-size:clamp(32px,7vh,96px);font-weight:700;line-height:1.5;letter-spacing:.04em}
+.bigmsg{display:none;flex:none;position:relative;z-index:2;margin:0;padding:2vh 64px 1.4vh;background:var(--paper);text-align:center;font-size:clamp(32px,7vh,96px);font-weight:700;line-height:1.5;letter-spacing:.04em}
 .bigmsg rt{font-size:.38em}
 .show.big .bigmsg{display:block}
 .show.big .tools,.show.big .away{display:none}
-.show.big .stage{padding:1vh 2vw 3vh}
+.show.big .stage{padding:2.5vh 2vw 3vh}
 .bigexit{position:fixed;top:10px;right:10px;min-height:44px;width:44px;padding:0;font-size:22px;color:var(--ink-faint);background:transparent;border-color:transparent}
 .bigexit:hover{border-color:var(--rule)}
 
@@ -638,7 +638,8 @@ var ITEMS = {
 };
 
 /* ---- 置き場所のグリッド ----
-   物の中心は、天板を等分した線の交点にだけ置ける。細かい段は粗い段の交点をすべて含む
+   物の中心は、天板を等分した線の交点、および机の外に「あらい」1目分広げた交点にだけ置ける
+   （本が半分だけ机に乗る配置のため）。細かい段は粗い段の交点をすべて含む
    （分割数が2倍ずつ）ので、段を切り替えても置いた物はずれない。 */
 var GRID_LEVELS = [
   { id: 'coarse', name: 'あらい',   nx: 6,  ny: 4 },    // 約108×113mm
@@ -916,11 +917,17 @@ function topView(lay, o) {
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = deskTopSvg() + (o.chair ? chairTopSvg() : '');
-  lay.top.forEach(function (p, i) { s += drawTopItem(p, i, o.sel === i ? 'sel' : ''); });
+  var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が机からはみ出す分も描画範囲に含める
+  lay.top.forEach(function (p, i) {
+    s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
+    var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
+    ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
+    ib.y0 = Math.min(ib.y0, p.y - bb[1] / 2); ib.y1 = Math.max(ib.y1, p.y + bb[1] / 2);
+  });
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin;
-  return { svg: s, labels: lab.labels, box: { x0: -Math.max(m.L, 20), y0: -Math.max(m.T, 20), x1: DESK.w + Math.max(m.R, 20), y1: bottom + Math.max(m.B, 20) } };
+  return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, 20), ib.x0), y0: Math.min(-Math.max(m.T, 20), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, 20), ib.x1), y1: Math.max(bottom + Math.max(m.B, 20), ib.y1) } };
 }
 
 /* ---- 横から見た図 ----
@@ -1085,8 +1092,8 @@ function composeGroup(lay, o) {
     var svg = hangTopSvg(L0, g.outer) + v.svg;
     var tr = g.rot ? 'translate(' + g.dx + ' ' + g.dy + ') rotate(180)' : 'translate(' + g.dx + ' ' + g.dy + ')';
     var hangW = 220, b = v.box;
-    var box = g.rot
-      ? { x0: g.dx - DESK.w - (g.outer === 'right' ? hangW : 0), y0: g.dy - b.y1, x1: g.dx + (g.outer === 'left' ? hangW : 0), y1: g.dy }
+    var box = g.rot   // 180°回す台はローカルの box が左右にめくれる（机の外にはみ出した物も含む）
+      ? { x0: g.dx - b.x1 - (g.outer === 'right' ? hangW : 0), y0: g.dy - b.y1, x1: g.dx - b.x0 + (g.outer === 'left' ? hangW : 0), y1: g.dy }
       : { x0: g.dx + Math.min(b.x0, g.outer === 'left' ? -hangW : 0), y0: g.dy, x1: g.dx + Math.max(b.x1, g.outer === 'right' ? DESK.w + hangW : DESK.w), y1: g.dy + b.y1 };
     parts.push({ svg: '<g transform="' + tr + '">' + svg + '</g>', box: box });
   });
@@ -1102,20 +1109,25 @@ function finish(parts) {
 
 /* ---- 編集用：グリッドの交点 ---- */
 function gridLevel(id) { return GRID_LEVELS.filter(function (g) { return g.id === id; })[0] || GRID_LEVELS[1]; }
+/* グリッドの交点は机の外に「あらい」1目分だけ広げる（本が半分だけ机に乗る配置のため）。
+   各段の目の大きさは「あらい」の整数倍なので、広げても細かい段は粗い段の交点をすべて含む。 */
+function gridMargin() { return { x: DESK.w / GRID_LEVELS[0].nx, y: DESK.d / GRID_LEVELS[0].ny }; }
 function gridPoints(level) {
-  var pts = [];
-  for (var j = 1; j < level.ny; j++) for (var i = 1; i < level.nx; i++) pts.push({ x: i * DESK.w / level.nx, y: j * DESK.d / level.ny, i: i, j: j });
+  var pts = [], ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
+  for (var j = -kj; j <= level.ny + kj; j++) for (var i = -ki; i <= level.nx + ki; i++) pts.push({ x: i * DESK.w / level.nx, y: j * DESK.d / level.ny, i: i, j: j });
   return pts;
 }
 function snap(x, y, level) {
   var sx = DESK.w / level.nx, sy = DESK.d / level.ny;
-  var i = Math.min(level.nx - 1, Math.max(1, Math.round(x / sx))), j = Math.min(level.ny - 1, Math.max(1, Math.round(y / sy)));
+  var ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
+  var i = Math.min(level.nx + ki, Math.max(-ki, Math.round(x / sx))), j = Math.min(level.ny + kj, Math.max(-kj, Math.round(y / sy)));
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
   var s = '<g class="grid">';
-  for (var i = 1; i < level.nx; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="0" x2="' + i * DESK.w / level.nx + '" y2="' + DESK.d + '"/>';
-  for (var j = 1; j < level.ny; j++) s += '<line x1="0" y1="' + j * DESK.d / level.ny + '" x2="' + DESK.w + '" y2="' + j * DESK.d / level.ny + '"/>';
+  for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '"/>';
+  for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '"/>';
   gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) + '"/>'; });
   return s + '</g>';
 }
@@ -1444,8 +1456,8 @@ $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
 $('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
 function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
 
-/* 物の中心をいちばん近いグリッドの交点に合わせる。
-   物が机からはみ出すのは許す（教科書にノートを重ねるなど、実際の机でも起きる） */
+/* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
+   （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
 function clampP(p) {
   var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
   p.x = q.x; p.y = q.y;
@@ -1462,7 +1474,8 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   if (!g) {
     // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
     var q = svgPoint(this, e);
-    if (sel >= 0 && q.x >= 0 && q.x <= DESK.w && q.y >= 0 && q.y <= DESK.d) {
+    var gm = gridMargin();
+    if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
       var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
     } else if (sel >= 0) { sel = -1; renderEdit(); }
     return;

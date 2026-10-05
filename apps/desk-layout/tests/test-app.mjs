@@ -97,7 +97,8 @@ for(const l of DEFAULT_LAYOUTS)for(const p of l.top){
   const q=g.snap(p.x,p.y,fineLv); assert.ok(near(q.x,p.x)&&near(q.y,p.y),l.id+':'+p.item+' がグリッドの交点にない');
 }
 for(const lv of g.GRID_LEVELS)for(const p of g.gridPoints(lv)){const q=g.snap(p.x,p.y,lv);assert.ok(near(q.x,p.x)&&near(q.y,p.y));}
-const c0=g.snap(-50,9999,g.gridLevel('normal')); assert.ok(c0.x>0&&c0.y<DESK.d,'机の外は端の交点へ');
+const c0=g.snap(-9999,9999,g.gridLevel('normal')); assert.equal(c0.x,-2*DESK.w/12); assert.equal(c0.y,10*DESK.d/8);   // 机の外も「あらい」1目分の端の交点へ
+assert.ok(g.gridPoints(g.gridLevel('normal')).some(p=>p.x<0&&p.y>0&&p.y<DESK.d),'机の外に交点がある');
 
 // 配布物
 const dist=await readFile(new URL('../dist/Index.html',import.meta.url),'utf8');

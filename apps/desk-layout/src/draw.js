@@ -176,11 +176,17 @@ function topView(lay, o) {
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
   var s = deskTopSvg() + (o.chair ? chairTopSvg() : '');
-  lay.top.forEach(function (p, i) { s += drawTopItem(p, i, o.sel === i ? 'sel' : ''); });
+  var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が机からはみ出す分も描画範囲に含める
+  lay.top.forEach(function (p, i) {
+    s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
+    var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
+    ib.x0 = Math.min(ib.x0, p.x - bb[0] / 2); ib.x1 = Math.max(ib.x1, p.x + bb[0] / 2);
+    ib.y0 = Math.min(ib.y0, p.y - bb[1] / 2); ib.y1 = Math.max(ib.y1, p.y + bb[1] / 2);
+  });
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
   var m = lab.margin;
-  return { svg: s, labels: lab.labels, box: { x0: -Math.max(m.L, 20), y0: -Math.max(m.T, 20), x1: DESK.w + Math.max(m.R, 20), y1: bottom + Math.max(m.B, 20) } };
+  return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, 20), ib.x0), y0: Math.min(-Math.max(m.T, 20), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, 20), ib.x1), y1: Math.max(bottom + Math.max(m.B, 20), ib.y1) } };
 }
 
 /* ---- 横から見た図 ----
@@ -345,8 +351,8 @@ function composeGroup(lay, o) {
     var svg = hangTopSvg(L0, g.outer) + v.svg;
     var tr = g.rot ? 'translate(' + g.dx + ' ' + g.dy + ') rotate(180)' : 'translate(' + g.dx + ' ' + g.dy + ')';
     var hangW = 220, b = v.box;
-    var box = g.rot
-      ? { x0: g.dx - DESK.w - (g.outer === 'right' ? hangW : 0), y0: g.dy - b.y1, x1: g.dx + (g.outer === 'left' ? hangW : 0), y1: g.dy }
+    var box = g.rot   // 180°回す台はローカルの box が左右にめくれる（机の外にはみ出した物も含む）
+      ? { x0: g.dx - b.x1 - (g.outer === 'right' ? hangW : 0), y0: g.dy - b.y1, x1: g.dx - b.x0 + (g.outer === 'left' ? hangW : 0), y1: g.dy }
       : { x0: g.dx + Math.min(b.x0, g.outer === 'left' ? -hangW : 0), y0: g.dy, x1: g.dx + Math.max(b.x1, g.outer === 'right' ? DESK.w + hangW : DESK.w), y1: g.dy + b.y1 };
     parts.push({ svg: '<g transform="' + tr + '">' + svg + '</g>', box: box });
   });
@@ -362,20 +368,25 @@ function finish(parts) {
 
 /* ---- 編集用：グリッドの交点 ---- */
 function gridLevel(id) { return GRID_LEVELS.filter(function (g) { return g.id === id; })[0] || GRID_LEVELS[1]; }
+/* グリッドの交点は机の外に「あらい」1目分だけ広げる（本が半分だけ机に乗る配置のため）。
+   各段の目の大きさは「あらい」の整数倍なので、広げても細かい段は粗い段の交点をすべて含む。 */
+function gridMargin() { return { x: DESK.w / GRID_LEVELS[0].nx, y: DESK.d / GRID_LEVELS[0].ny }; }
 function gridPoints(level) {
-  var pts = [];
-  for (var j = 1; j < level.ny; j++) for (var i = 1; i < level.nx; i++) pts.push({ x: i * DESK.w / level.nx, y: j * DESK.d / level.ny, i: i, j: j });
+  var pts = [], ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
+  for (var j = -kj; j <= level.ny + kj; j++) for (var i = -ki; i <= level.nx + ki; i++) pts.push({ x: i * DESK.w / level.nx, y: j * DESK.d / level.ny, i: i, j: j });
   return pts;
 }
 function snap(x, y, level) {
   var sx = DESK.w / level.nx, sy = DESK.d / level.ny;
-  var i = Math.min(level.nx - 1, Math.max(1, Math.round(x / sx))), j = Math.min(level.ny - 1, Math.max(1, Math.round(y / sy)));
+  var ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
+  var i = Math.min(level.nx + ki, Math.max(-ki, Math.round(x / sx))), j = Math.min(level.ny + kj, Math.max(-kj, Math.round(y / sy)));
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
   var s = '<g class="grid">';
-  for (var i = 1; i < level.nx; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="0" x2="' + i * DESK.w / level.nx + '" y2="' + DESK.d + '"/>';
-  for (var j = 1; j < level.ny; j++) s += '<line x1="0" y1="' + j * DESK.d / level.ny + '" x2="' + DESK.w + '" y2="' + j * DESK.d / level.ny + '"/>';
+  for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '"/>';
+  for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '"/>';
   gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) + '"/>'; });
   return s + '</g>';
 }
