@@ -512,12 +512,12 @@ var ITEMS = {
              C(w / 2, h * 0.25, w * 0.27, col, 8) +                                     // ひさし（ドームより少し下＝前に出る円）
              C(w / 2, h * 0.16, w * 0.27, col, 8);                                      // ぼうしのドーム（下の円の上に乗り、手前が三日月に残る）
     } },
-    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン（ビブス）：首元と両肩を開けた色つきベストを体に重ねる（利用者の写真どおり）
+    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン（ビブス）：首元を開けた色つきベストを体に重ねる（両肩は覆う。利用者の写真どおり）
       return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
              C(w / 2, h * 0.18, w * 0.24, '#3A3F45', 8) +                               // あたま
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="#3A3F45" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +   // 体
-             '<path d="' + roundPoly([[w * 0.3, h * 0.44], [w * 0.7, h * 0.44], [w * 0.9, h * 0.97], [w * 0.1, h * 0.97]], 30) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="10" stroke-linejoin="round"/>' +   // ベスト本体（首元・両肩は覆わない＝体がのぞく）
-             ELL(w / 2, h * 0.44, w * 0.14, h * 0.045, '#3A3F45') +                     // 首元のすくい（浅い丸首）
+             '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.9, h * 0.97], [w * 0.1, h * 0.97]], 30) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="10" stroke-linejoin="round"/>' +   // ベスト本体（両肩の頂点まで覆う）
+             ELL(w / 2, h * 0.4, w * 0.15, h * 0.05, '#3A3F45') +                       // 首元のすくい（浅い丸首）
              T(w / 2, h * 0.6, '1', h * 0.3, '#3A3F45');                                // 大きな番号
     } } } },
   rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
