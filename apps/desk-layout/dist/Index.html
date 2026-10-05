@@ -368,7 +368,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 14, ny: 18 },   // 500mm
       { id: 'fine',   name: 'こまかい', nx: 28, ny: 36 }    // 250mm
     ],
-    items: ['cdesk', 'ctable', 'cshelf', 'arrow'],
+    items: ['cdesk', 'ctable', 'cshelf', 'person', 'rowdot', 'rowline', 'arrow'],
     msg: '<ruby>教室<rt>きょうしつ</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   gym: {     // 体育館 20m×30m（利用者指定）
@@ -378,7 +378,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 8,  ny: 12 },   // 2500mm
       { id: 'fine',   name: 'こまかい', nx: 16, ny: 24 }    // 1250mm
     ],
-    items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'arrow'],
+    items: ['gbox', 'gboard', 'gmat', 'gbeam', 'gbar', 'gtora', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'arrow'],
     msg: '<ruby>体育館<rt>たいいくかん</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   },
   field: {   // 運動場 40m×60m（利用者指定）
@@ -388,7 +388,7 @@ var SCENES = {
       { id: 'normal', name: 'ふつう',   nx: 16, ny: 24 },   // 2500mm
       { id: 'fine',   name: 'こまかい', nx: 32, ny: 48 }    // 1250mm
     ],
-    items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'arrow'],
+    items: ['gbar', 'funten', 'fsand', 'ftire', 'fgoal', 'fcone', 'fmark', 'gball', 'gline', 'person', 'rowdot', 'rowline', 'arrow'],
     msg: '<ruby>運動場<rt>うんどうじょう</rt></ruby>をこの<ruby>形<rt>かたち</rt></ruby>にしてね'
   }
 };
@@ -748,11 +748,12 @@ var ITEMS = {
     } } } },
   /* 体育館 */
   gbox: { name: '{跳|と}び{箱|ばこ}', kind: 'top', scenes: ['gym'], states: {
-    closed: { w: 900, d: 1100, draw: function (w, h) {   // 白い天面＋木の前の面（段の境目）
-      return R(0, 0, w, h, '#C9A676', 30, 26) + R(0, h * 0.5, w, h * 0.5, '#B98A55', 0, 0) +
-             R(w * 0.05, h * 0.04, w * 0.9, h * 0.44, '#F7F4EA', 20, 12, '#DDD8C8') +
-             L(0, h * 0.5, w, h * 0.5, 'rgba(0,0,0,.18)', 14) +
-             L(w * 0.05, h * 0.66, w * 0.95, h * 0.66, 'rgba(0,0,0,.2)', 12) + L(w * 0.05, h * 0.81, w * 0.95, h * 0.81, 'rgba(0,0,0,.2)', 12);
+    closed: { w: 900, d: 1100, draw: function (w, h) {   // 台形の立体：白い天面＋下に広がる木の面（段の境目）
+      return '<path d="' + roundPoly([[w * 0.15, 0], [w * 0.85, 0], [w * 0.97, h], [w * 0.03, h]], 25) + '" fill="#C9A676" stroke="' + INK + '" stroke-width="26" stroke-linejoin="round"/>' +
+             '<path d="' + roundPoly([[w * 0.09, h * 0.5], [w * 0.91, h * 0.5], [w * 0.965, h * 0.985], [w * 0.035, h * 0.985]], 18) + '" fill="#B98A55"/>' +
+             '<path d="' + roundPoly([[w * 0.2, h * 0.05], [w * 0.8, h * 0.05], [w * 0.88, h * 0.46], [w * 0.12, h * 0.46]], 16) + '" fill="#F7F4EA" stroke="#DDD8C8" stroke-width="12"/>' +
+             L(w * 0.09, h * 0.5, w * 0.91, h * 0.5, 'rgba(0,0,0,.18)', 14) +
+             L(w * 0.08, h * 0.67, w * 0.92, h * 0.67, 'rgba(0,0,0,.2)', 12) + L(w * 0.07, h * 0.83, w * 0.93, h * 0.83, 'rgba(0,0,0,.2)', 12);
     } } } },
   gboard: { name: '{踏|ふ}み{込|こ}み{台|だい}', kind: 'top', scenes: ['gym'], states: {
     closed: { w: 600, d: 1200, draw: function (w, h) {   // ロイター板：緑の面＋奥（上）は黒いバネ帯、手前に厚み
@@ -830,6 +831,17 @@ var ITEMS = {
     } } } },
   fmark: { name: 'マーカー', kind: 'top', scenes: ['field'], colors: ['#F2C94C', '#FFFFFF', '#E5484D', '#2F80ED'], states: {
     closed: { w: 200, d: 200, draw: function (w, h, col) { return C(w / 2, h / 2, w / 2 - 6, col, 6) + C(w / 2, h / 2, w * 0.14, 'rgba(255,255,255,.35)', 0); } } } },
+  /* 人と列：子どもがどこに立つ・どう並ぶかを示す。列はドット（点）とライン（棒）の2種類、それぞれ1列・2列・4列 */
+  person: { name: '{人|ひと}', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
+    closed: { w: 400, d: 500, draw: function (w, h, col) {   // あたま＋肩の広がる体のシルエット
+      return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
+             C(w / 2, h * 0.18, w * 0.24, col, 8) +
+             '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+    } } } },
+  rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
+    r1: { name: '1{列|れつ}', w: 500, d: 2000 }, r2: { name: '2{列|れつ}', w: 1000, d: 2000 }, r4: { name: '4{列|れつ}', w: 2000, d: 2000 } } },
+  rowline: { name: '{列|れつ}（ライン）', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
+    r1: { name: '1{列|れつ}', w: 500, d: 2000 }, r2: { name: '2{列|れつ}', w: 1000, d: 2000 }, r4: { name: '4{列|れつ}', w: 2000, d: 2000 } } },
   /* 矢印：形で選ぶ（向きは「回す」）。ながれる矢印は中の破線が進行方向に動く */
   arrow: { name: '{矢印|やじるし}', kind: 'top', scenes: ['class', 'gym', 'field'], states: {
     go: { w: 800, d: 3000, draw: function (w, h) {
@@ -856,6 +868,25 @@ var ITEMS = {
   shodobag: { name: '{習字|しゅうじ}バッグ', kind: 'hang', side: [350, 240], t: 60, color: '#3E4F7A', style: 'handle' },
   enogubag: { name: '{絵|え}の{具|ぐ}セット', kind: 'hang', side: [325, 140], t: 140, color: '#2B2F36', style: 'box' }
 };
+
+/* 列（ドット・ライン）の絵は、列の数だけ点や棒を等間隔に並べて作る（1列・2列・4列共通） */
+(function () {
+  var COLS = { r1: 1, r2: 2, r4: 4 };
+  ['rowdot', 'rowline'].forEach(function (id) {
+    Object.keys(ITEMS[id].states).forEach(function (k) {
+      var n = COLS[k];
+      ITEMS[id].states[k].draw = function (w, h) {
+        var s = '', i, j;
+        for (i = 0; i < n; i++) {
+          var cx = w * (i + 0.5) / n;
+          if (id === 'rowline') s += L(cx, h * 0.08, cx, h * 0.92, '#3A3F45', 140);
+          else for (j = 0; j < 4; j++) s += C(cx, h * (j + 0.5) / 4, 100, '#3A3F45', 10);
+        }
+        return s;
+      };
+    });
+  });
+})();
 
 /* ---- 置き場所のグリッド ----
    物の中心は、床を等分した線の交点、および床の外に「あらい」1目分広げた交点にだけ置ける
@@ -973,7 +1004,8 @@ var DEFAULT_LAYOUTS = [
       { item: 'gmat',   state: 'closed', x: 6250,  y: 8750,  r: 90 },
       { item: 'gmat',   state: 'closed', x: 13750, y: 8750,  r: 90 },
       { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
-      { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true }
+      { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true },
+      { item: 'person', state: 'closed', x: 11250, y: 17500, r: 0 }
     ],
     hooks: { left: [], right: [] }, away: [] },
   { id: 'f_undoukai', scene: 'field', name: 'うんどうかい', yomi: 'うんどうかい', flip: true,
