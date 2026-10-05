@@ -851,7 +851,9 @@ var ITEMS = {
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="#3A3F45" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +   // 体
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.9, h * 0.97], [w * 0.1, h * 0.97]], 30) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="10" stroke-linejoin="round"/>' +   // ベスト本体（両肩の頂点まで覆う）
              ELL(w / 2, h * 0.4, w * 0.15, h * 0.05, '#3A3F45') +                       // 首元のすくい（浅い丸首）
-             T(w / 2, h * 0.6, '1', h * 0.3, '#3A3F45');                                // 大きな番号
+             ELL(w * 0.3, h * 0.52, w * 0.06, h * 0.1, '#3A3F45') +                     // 左わきの開き（腕の付け根）
+             ELL(w * 0.7, h * 0.52, w * 0.06, h * 0.1, '#3A3F45') +                     // 右わきの開き
+             T(w / 2, h * 0.62, '1', h * 0.3, '#3A3F45');                               // 大きな番号
     } } } },
   rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
     r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
