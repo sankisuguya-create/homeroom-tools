@@ -97,13 +97,24 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
          (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
 }
 /* 状態の呼び名（編集画面のボタン） */
-var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', tablet: 'タブレット', tent: '山がた' };
+var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', open360r: '360°右', tablet: 'タブレット', tent: '山がた' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）
   var s = '';
   for (var y = y0, k = 0; y <= y1 + 0.1; y += 10, k++) s += L(x, y, x + (k % 5 ? 8 : 15), y, INK, 1.5);
   return s;
+}
+/* 360°（表紙をうしろへまげた形）：綴じがわの長辺は、まげられた紙と表紙が筒に丸まる。
+   筒は長辺のはしまで寄せてある（表紙色の縁は隠れる）＋上はしだけ巻き口（輪）、下はしはそのまま半円。
+   ページは筒の下にもぐる。筒の両はしは長辺の両端にかぶる。right=true なら右の長辺側（鏡像）。 */
+function roll360(w, h, right) {
+  var cx = 10;   // 筒の中心（机の上では約20mm ぶん）
+  var s = R(0, -2, 20, h + 4, '#F6F3EA', 10) +                            // 紙の筒（長辺いっぱい・両端にかぶる）
+          L(8, 2, 8, h - 2, '#DCD5C2', 2) +                               // 紙の端の縫い目
+          C(cx, 4, 7, '#F6F3EA') + C(cx, 4, 2.8, '#D6CFBA', 1.6) +        // 上の巻き口だけ
+          R(20, 0, 5, h, 'rgba(0,0,0,.10)', 3, 0);                        // ページに落ちるかげ
+  return right ? '<g transform="translate(' + w + ' 0) scale(-1 1)">' + s + '</g>' : s;
 }
 var ITEMS = {
   /* 教科書・ノートは「ひらく」（180°）のほか「360°」（表紙をうしろへまげた形）を持つ。
@@ -114,8 +125,10 @@ var ITEMS = {
       closed: { draw: function (w, h) { return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0, 0) + R(w * 0.2, h * 0.15, w * 0.65, h * 0.2, '#FFFFFF', 4, 2); } },
       open: { draw: function (w, h) { return book(w, h, function () { return ''; }) + R(w * 0.06, h * 0.1, w * 0.36, h * 0.25, '#DCEBF5', 4, 0); } },
       open360: { draw: function (w, h) {
-        return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0, 0) +
-               R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) + R(w * 0.16, h * 0.14, w * 0.5, h * 0.24, '#DCEBF5', 4, 0);
+        return R(0, 0, w, h, '#FFFFFF', 4) + R(w * 0.26, h * 0.14, w * 0.55, h * 0.24, '#DCEBF5', 4, 0) + roll360(w, h);
+      } },
+      open360r: { draw: function (w, h) {
+        return R(0, 0, w, h, '#FFFFFF', 4) + R(w * 0.19, h * 0.14, w * 0.55, h * 0.24, '#DCEBF5', 4, 0) + roll360(w, h, true);
       } } } },
   notebook: { name: 'ノート', kind: 'top',
     sizes: { b5: { name: 'B5', w: 179, d: 252 }, a4: { name: 'A4', w: 210, d: 297 } },
@@ -124,7 +137,10 @@ var ITEMS = {
       closed: { draw: function (w, h, col) { return cover(w, h, col, 'ノート'); } },
       open: { draw: function (w, h) { return book(w, h, function (x, pw, ph) { return grid(x + 8, 8, pw - 16, ph - 16, 10, '#D3E3F1'); }); } },
       open360: { draw: function (w, h, col) {
-        return R(0, 0, w, h, col, 4) + R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) + grid(16, 16, w - 32, h - 32, 10, '#D3E3F1');
+        return R(0, 0, w, h, '#FFFFFF', 4) + grid(30, 14, w - 42, h - 28, 10, '#D3E3F1') + roll360(w, h);
+      } },
+      open360r: { draw: function (w, h, col) {
+        return R(0, 0, w, h, '#FFFFFF', 4) + grid(10, 14, w - 42, h - 28, 10, '#D3E3F1') + roll360(w, h, true);
       } } } },
   drill: { name: 'ドリル', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#F0A07E') + R(w * 0.15, h * 0.12, w * 0.7, h * 0.2, '#FFFFFF', 4, 2); } },
