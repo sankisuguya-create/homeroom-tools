@@ -839,18 +839,20 @@ var ITEMS = {
              C(w / 2, h * 0.18, w * 0.24, col, 8) +
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
     } },
-    hat: { w: 400, d: 560, draw: function (w, h, col) {   // ぼうしの形：あたまの上に丸い天板とひさし
+    hat: { w: 400, d: 560, draw: function (w, h, col) {   // 赤白帽：あたまの上に丸いドーム、前だけにひさしが出る
       return ELL(w / 2, h * 0.95, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
-             C(w / 2, h * 0.16, w * 0.26, col, 8) +                                    // ぼうしの丸い部分
-             ELL(w / 2, h * 0.3, w * 0.36, h * 0.08, col) +                            // ひさし
-             '<ellipse cx="' + w / 2 + '" cy="' + h * 0.3 + '" rx="' + w * 0.36 + '" ry="' + h * 0.08 + '" fill="none" stroke="' + INK + '" stroke-width="8"/>' +
-             '<path d="' + roundPoly([[w * 0.28, h * 0.42], [w * 0.72, h * 0.42], [w * 0.88, h * 0.96], [w * 0.12, h * 0.96]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>';
+             '<path d="' + roundPoly([[w * 0.28, h * 0.42], [w * 0.72, h * 0.42], [w * 0.88, h * 0.96], [w * 0.12, h * 0.96]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +
+             C(w / 2, h * 0.22, w * 0.22, col, 8) +                                     // あたま
+             ELL(w / 2, h * 0.32, w * 0.36, h * 0.08, col) +                            // 前に出るひさし（下に描く）
+             '<ellipse cx="' + w / 2 + '" cy="' + h * 0.32 + '" rx="' + w * 0.36 + '" ry="' + h * 0.08 + '" fill="none" stroke="' + INK + '" stroke-width="8"/>' +
+             C(w / 2, h * 0.17, w * 0.27, col, 8);                                      // ぼうしのドーム（ひさしの上に乗る大きめの半円）
     } },
-    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン：体の白い四角
+    bib: { w: 400, d: 500, draw: function (w, h, col) {   // ゼッケン：肩ひも2本で下げた大きめの白い四角
       return ELL(w / 2, h * 0.94, w * 0.42, h * 0.05, 'rgba(0,0,0,.16)') +
              C(w / 2, h * 0.18, w * 0.24, col, 8) +
              '<path d="' + roundPoly([[w * 0.28, h * 0.4], [w * 0.72, h * 0.4], [w * 0.88, h * 0.95], [w * 0.12, h * 0.95]], 40) + '" fill="' + col + '" stroke="' + INK + '" stroke-width="8" stroke-linejoin="round"/>' +
-             R(w * 0.3, h * 0.48, w * 0.4, h * 0.34, '#F7F4EA', 8, 6);
+             R(w * 0.24, h * 0.46, w * 0.52, h * 0.44, '#F7F4EA', 10, 8) +              // 四角い布
+             L(w * 0.3, h * 0.46, w * 0.36, h * 0.36, INK, 12) + L(w * 0.7, h * 0.46, w * 0.64, h * 0.36, INK, 12);   // 肩ひも
     } } } },
   rowdot: { name: '{列|れつ}（ドット）', kind: 'top', scenes: ['class', 'gym', 'field'], colors: ['#3A3F45', '#E5484D', '#2F80ED', '#F2C94C'], states: {
     r1: { w: 500, d: 2000 }, r2: { w: 1000, d: 2000 }, r4: { w: 2000, d: 2000 } } },
