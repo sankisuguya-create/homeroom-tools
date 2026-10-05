@@ -24,8 +24,9 @@ ruby rt{font-size:.45em;font-weight:400;color:var(--ink-soft)}
 
 /* ---- ① えらぶ ---- */
 .home{max-width:1200px;margin:0 auto;padding:16px 16px 60px}
-.hbar{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.hbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:14px}
 .hbar h1{font-size:20px;margin:0}
+.hscenes>button{font-size:14px;padding:6px 12px}
 .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
 .card{position:relative;display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:14px;background:var(--sheet);overflow:hidden}
 .card .go{display:flex;flex-direction:column;align-items:stretch;gap:6px;border:0;border-radius:0;padding:12px 12px 14px;background:none;min-height:0;text-align:center}

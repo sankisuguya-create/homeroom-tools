@@ -14,7 +14,8 @@
 <!-- ① えらぶ：活動カード -->
 <main id="vHome" class="home">
   <header class="hbar">
-    <h1>机の配置図</h1>
+    <h1 id="hTitle">机の配置図</h1>
+    <div id="hScenes" class="seg hscenes" role="group" aria-label="場所"></div>
     <span class="sp"></span>
     <button type="button" id="hNew" class="ghost">＋ 新しい配置</button>
   </header>
@@ -36,7 +37,7 @@
     <button type="button" id="sBack" class="tb" aria-label="もどる">←</button>
     <h2 id="sTitle" class="stitle"></h2>
     <span class="sp"></span>
-    <div class="seg" role="group" aria-label="机の数">
+    <div class="seg" id="sGroup" role="group" aria-label="机の数">
       <button type="button" id="sOne" class="tb">1人</button><button type="button" id="sFour" class="tb">4人</button>
     </div>
     <button type="button" id="sFlip" class="tb" aria-pressed="false">左右反転</button>
@@ -80,7 +81,7 @@
         <button type="button" id="selDel" class="danger">けす</button>
       </div>
       <svg id="editSvg" preserveAspectRatio="xMidYMid meet"></svg>
-      <div class="lists">
+      <div class="lists" id="eLists">
         <div><h3>左のフック</h3><div id="lHookL" class="chips"></div></div>
         <div><h3>右のフック</h3><div id="lHookR" class="chips"></div></div>
         <div class="wide"><h3>しまう物</h3><div id="lAway" class="chips"></div></div>

@@ -6,19 +6,33 @@ import vm from 'node:vm';
 const src=f=>readFile(new URL('../src/'+f,import.meta.url),'utf8');
 const ctx=vm.createContext({});
 vm.runInContext((await src('data.js'))+'\n'+(await src('draw.js')),ctx);
-const g=vm.runInContext('({itemSize,colorOf,GRID_LEVELS,gridLevel,gridPoints,snap,DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg})',ctx);
-const {DESK,ITEMS,DEFAULT_LAYOUTS}=g;
+const g=vm.runInContext('({itemSize,colorOf,GRID_LEVELS,gridLevel,gridPoints,snap,DESK,ITEMS,DEFAULT_LAYOUTS,flipLayout,composeSingle,composeGroup,topView,layoutLabels,parseName,plainName,iconSvg,useScene,SCENES,SCENE_ORDER})',ctx);
+const {ITEMS,DEFAULT_LAYOUTS,SCENES}=g;
+const DESK=SCENES.desk;
 
-// 標準の配置：知らない用具・知らない状態・机の外の中心を持たない
+// 標準の配置：知らない用具・知らない状態・床の外の中心を持たない
 for(const l of DEFAULT_LAYOUTS){
+  const sc=l.scene||'desk', F=SCENES[sc];
   for(const p of l.top){
     assert.equal(ITEMS[p.item]?.kind,'top',l.id+':'+p.item);
+    assert.ok(F.items?(ITEMS[p.item].scenes||[]).includes(sc):!(ITEMS[p.item].scenes||[]).length,l.id+':'+p.item+' は'+sc+'に置けない');
     assert.ok(ITEMS[p.item].states[p.state],l.id+':'+p.item+':'+p.state);
-    assert.ok(p.x>=0&&p.x<=DESK.w&&p.y>=0&&p.y<=DESK.d,l.id+':'+p.item+' 中心が机の外');
+    assert.ok(p.x>=0&&p.x<=F.w&&p.y>=0&&p.y<=F.d,l.id+':'+p.item+' 中心が床の外');
   }
   for(const s of ['left','right'])for(const h of l.hooks[s])assert.equal(ITEMS[h.item]?.kind,'hang');
   for(const a of l.away)assert.ok(ITEMS[a.item]);
 }
+// 場所の品ぞろえ：SCENES.items と物の scenes が一致（机の物は scenes を持たない）
+for(const sc of g.SCENE_ORDER){
+  const F=SCENES[sc];
+  if(F.items)for(const id of F.items){assert.ok(ITEMS[id],sc+':'+id);assert.ok(ITEMS[id].scenes?.includes(sc),sc+':'+id);
+  }else for(const id of Object.keys(ITEMS))assert.ok(!(ITEMS[id].scenes||[]).includes(sc),sc+'に'+id+'が混入');
+}
+for(const id of Object.keys(ITEMS))for(const sc of ITEMS[id].scenes||[])assert.ok(SCENES[sc].items.includes(id),id+'が'+sc+'の品ぞろえにない');
+// 矢印：4形、ながれるは動く印を持つ。closed を持たない物もアイコンを描ける
+assert.deepEqual(Object.keys(ITEMS.arrow.states),['go','turn','zag','flow']);
+assert.ok(vm.runInContext("ITEMS.arrow.states.flow.draw(900,3200)",ctx).includes('<animate'));
+assert.ok(g.iconSvg('arrow',40).includes('path'));
 // 開く物は閉じた形と開いた形の両方を持つ
 for(const id of ['textbook','notebook','drill','renraku','pencase','colorpencil','pc','shodobox','palette','enogubox'])
   assert.ok(ITEMS[id].states.closed&&ITEMS[id].states.open,id);
@@ -28,10 +42,12 @@ assert.equal(g.plainName('{絵|え}の{具|ぐ}バッグ'),'絵の具バッグ')
 
 // 左右反転：2回で元に戻る・フックが入れ替わる
 for(const l of DEFAULT_LAYOUTS){
+  g.useScene(l.scene||'desk');
   const f=g.flipLayout(l), ff=g.flipLayout(f);
   assert.equal(JSON.stringify(f.hooks.left),JSON.stringify(l.hooks.right));
   ff.top.forEach((p,i)=>{assert.ok(Math.abs(p.x-l.top[i].x)<1e-9);assert.equal(!!p.m,false);assert.equal(p.r||0,l.top[i].r||0);});
 }
+g.useScene('desk');
 
 // 名前の吹き出し：初期状態では出さない／出すと同じ辺で重ならない
 const math=DEFAULT_LAYOUTS[0];
@@ -50,13 +66,19 @@ for(const a of labs){   // 机の上には置かない
   assert.ok(!(inX&&inY),'吹き出しが机に重なる: '+a.name);
 }
 
-// 合成：数値が壊れていない
-for(const l of DEFAULT_LAYOUTS)for(const flip of [false,true])for(const chair of [false,true]){
-  for(const c of [g.composeSingle(l,{ruby:true,chair,flip}),g.composeGroup(l,{ruby:true,chair,flip})]){
-    assert.ok(!/NaN|undefined|Infinity/.test(c.viewBox+c.svg),l.id);
-    const [,,w,h]=c.viewBox.split(' ').map(Number); assert.ok(w>0&&h>0);
+// 合成：数値が壊れていない（4人は机だけの仕組み）
+for(const l of DEFAULT_LAYOUTS){
+  g.useScene(l.scene||'desk');
+  for(const flip of [false,true])for(const chair of [false,true]){
+    const parts=[g.composeSingle(l,{ruby:true,chair,flip})];
+    if((l.scene||'desk')==='desk')parts.push(g.composeGroup(l,{ruby:true,chair,flip}));
+    for(const c of parts){
+      assert.ok(!/NaN|undefined|Infinity/.test(c.viewBox+c.svg),l.id);
+      const [,,w,h]=c.viewBox.split(' ').map(Number); assert.ok(w>0&&h>0);
+    }
   }
 }
+g.useScene('desk');
 // 掛ける物がない配置では横から見た図を出さない
 const bare=JSON.parse(JSON.stringify(math)); bare.hooks={left:[],right:[]};
 assert.ok(!g.composeSingle(bare,{}).svg.includes('class="cap"'));
@@ -88,15 +110,21 @@ assert.ok(ptxt.includes('&lt;b&gt;漢字')&&!ptxt.includes('<b>'));
 
 // グリッド：細かい段は粗い段の交点をすべて含む／標準の配置は「こまかい」の交点上／snap は動かない点を動かさない
 const near=(a,b)=>Math.abs(a-b)<1e-6;
-for(let k=1;k<g.GRID_LEVELS.length;k++){
-  const fine=g.gridPoints(g.GRID_LEVELS[k]);
-  for(const p of g.gridPoints(g.GRID_LEVELS[k-1]))assert.ok(fine.some(q=>near(q.x,p.x)&&near(q.y,p.y)),'段の包含');
+for(const sc of g.SCENE_ORDER){
+  g.useScene(sc);
+  const LV=vm.runInContext('GRID_LEVELS',ctx);
+  for(let k=1;k<LV.length;k++){
+    const fine=g.gridPoints(LV[k]);
+    for(const p of g.gridPoints(LV[k-1]))assert.ok(fine.some(q=>near(q.x,p.x)&&near(q.y,p.y)),sc+' 段の包含');
+  }
+  for(const lv of LV)for(const p of g.gridPoints(lv)){const q=g.snap(p.x,p.y,lv);assert.ok(near(q.x,p.x)&&near(q.y,p.y),sc);}
 }
-const fineLv=g.gridLevel('fine');
-for(const l of DEFAULT_LAYOUTS)for(const p of l.top){
-  const q=g.snap(p.x,p.y,fineLv); assert.ok(near(q.x,p.x)&&near(q.y,p.y),l.id+':'+p.item+' がグリッドの交点にない');
+for(const l of DEFAULT_LAYOUTS){
+  g.useScene(l.scene||'desk');
+  const fineLv=vm.runInContext("gridLevel('fine')",ctx);
+  for(const p of l.top){const q=g.snap(p.x,p.y,fineLv);assert.ok(near(q.x,p.x)&&near(q.y,p.y),l.id+':'+p.item+' がグリッドの交点にない');}
 }
-for(const lv of g.GRID_LEVELS)for(const p of g.gridPoints(lv)){const q=g.snap(p.x,p.y,lv);assert.ok(near(q.x,p.x)&&near(q.y,p.y));}
+g.useScene('desk');
 const c0=g.snap(-9999,9999,g.gridLevel('normal')); assert.equal(c0.x,-2*DESK.w/12); assert.equal(c0.y,10*DESK.d/8);   // 机の外も「あらい」1目分の端の交点へ
 assert.ok(g.gridPoints(g.gridLevel('normal')).some(p=>p.x<0&&p.y>0&&p.y<DESK.d),'机の外に交点がある');
 
