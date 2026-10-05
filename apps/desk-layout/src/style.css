@@ -64,7 +64,7 @@ ruby rt{font-size:.45em;font-weight:400;color:var(--ink-soft)}
 .show.big .bigmsg{display:block}
 .show.big .tools,.show.big .away{display:none}
 .show.big .stage{padding:2.5vh 2vw 3vh}
-.bigexit{position:fixed;top:10px;right:10px;min-height:44px;width:44px;padding:0;font-size:22px;color:var(--ink-faint);background:transparent;border-color:transparent}
+.bigexit{position:fixed;z-index:3;top:10px;right:10px;min-height:44px;width:44px;padding:0;font-size:22px;color:var(--ink-faint);background:transparent;border-color:transparent}
 .bigexit:hover{border-color:var(--rule)}
 
 /* SVG の文字・線 */
