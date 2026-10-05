@@ -39,20 +39,21 @@ function nameSvg(name, x, y, fs, ruby) {
   return s;
 }
 /* 吹き出しの箱。(cx,cy) が箱の中心 */
+/* 吹き出し・引き出し線・見出しは場所の広さに合わせて K 倍（SCENES 節参照） */
 function labelBoxSize(name, ruby) {
-  var m = nameMetrics(name, LABEL_FS, ruby);
-  return { w: m.w + LABEL_PAD * 2, h: m.h + LABEL_PAD * 2 };
+  var m = nameMetrics(name, LABEL_FS * K, ruby);
+  return { w: m.w + LABEL_PAD * K * 2, h: m.h + LABEL_PAD * K * 2 };
 }
 function labelBox(name, cx, cy, ruby) {
   var b = labelBoxSize(name, ruby), x = cx - b.w / 2, y = cy - b.h / 2;
-  return '<rect x="' + x + '" y="' + y + '" width="' + b.w + '" height="' + b.h + '" rx="12" class="lbox"/>' +
-         nameSvg(name, x + LABEL_PAD, y + LABEL_PAD, LABEL_FS, ruby);
+  return '<rect x="' + x + '" y="' + y + '" width="' + b.w + '" height="' + b.h + '" rx="' + 12 * K + '" class="lbox" style="stroke-width:' + 3 * K + '"/>' +
+         nameSvg(name, x + LABEL_PAD * K, y + LABEL_PAD * K, LABEL_FS * K, ruby);
 }
 
 /* ---- 用具の形 ---- */
 function stateOf(p) {
   var st = ITEMS[p.item].states;
-  return st[p.state] ? p.state : 'closed';
+  return st[p.state] ? p.state : Object.keys(st)[0];   // 既定は先頭の状態（多くの物は closed）
 }
 function sizeOf(p) {           // 判型を選べる物の判型の id
   var sz = ITEMS[p.item].sizes;
@@ -84,12 +85,12 @@ function drawTopItem(p, i, cls) {
   MIRROR = 1;
   return '<g class="it' + (cls ? ' ' + cls : '') + '" data-i="' + i + '" transform="translate(' + p.x + ' ' + p.y + ') rotate(' + (p.r || 0) + ')' +
          (p.m ? ' scale(-1 1)' : '') + '"><g transform="translate(' + (-w / 2) + ' ' + (-d / 2) + ')">' + body +
-         (cls === 'sel' ? '<rect class="selbox" x="-10" y="-10" width="' + (w + 20) + '" height="' + (d + 20) + '" rx="10"/>' : '') + '</g></g>';
+         (cls === 'sel' ? '<rect class="selbox" x="' + (-10 * K) + '" y="' + (-10 * K) + '" width="' + (w + 20 * K) + '" height="' + (d + 20 * K) + '" rx="' + 10 * K + '" style="stroke-width:' + 6 * K + ';stroke-dasharray:' + 18 * K + ' ' + 10 * K + '"/>' : '') + '</g></g>';
 }
 function iconSvg(itemId, size) {   // しまう物・編集のパレット用の小さな絵
   var it = ITEMS[itemId], w, d, body;
   if (it.kind === 'hang') { w = it.side[0]; d = it.side[1] + 80; body = '<g transform="translate(' + w / 2 + ' 4)">' + hangFace(it) + '</g>'; }
-  else { var p = { item: itemId, state: 'closed' }, wd = itemSize(p); w = wd[0]; d = wd[1]; body = it.states.closed.draw(w, d, colorOf(p)); }
+  else { var sk = Object.keys(it.states)[0], p = { item: itemId, state: sk }, wd = itemSize(p); w = wd[0]; d = wd[1]; body = it.states[sk].draw(w, d, colorOf(p)); }
   var pad = 8;
   return '<svg viewBox="' + (-pad) + ' ' + (-pad) + ' ' + (w + pad * 2) + ' ' + (d + pad * 2) + '" width="' + size + '" height="' + size + '" aria-hidden="true">' + body + '</svg>';
 }
@@ -139,19 +140,19 @@ function layoutLabels(top, sides, ruby, bottomStart) {
     var vert = best === 'L' || best === 'R';
     groups[best].push({ i: i, p: p, name: name, box: box, pref: vert ? p.y : p.x, size: vert ? box.h : box.w });
   });
-  var out = [], m = { L: 0, R: 0, T: 0, B: 0 };
+  var out = [], m = { L: 0, R: 0, T: 0, B: 0 }, GAP = LABEL_GAP * K;
   Object.keys(groups).forEach(function (s) {
     var g = groups[s];
     if (!g.length) return;
     var vert = s === 'L' || s === 'R';
     var span = vert ? DESK.d : DESK.w;
-    spread(g, vert ? -40 : -200, vert ? span + 40 : span + 200, 12);
+    spread(g, vert ? -40 * K : -200 * K, vert ? span + 40 * K : span + 200 * K, 12 * K);
     g.forEach(function (a) {
       var cx, cy;
-      if (s === 'L') { cx = -LABEL_GAP - a.box.w / 2; cy = a.pos; m.L = Math.max(m.L, a.box.w + LABEL_GAP); }
-      if (s === 'R') { cx = DESK.w + LABEL_GAP + a.box.w / 2; cy = a.pos; m.R = Math.max(m.R, a.box.w + LABEL_GAP); }
-      if (s === 'T') { cx = a.pos; cy = -LABEL_GAP - a.box.h / 2; m.T = Math.max(m.T, a.box.h + LABEL_GAP); }
-      if (s === 'B') { cx = a.pos; cy = bottomStart + LABEL_GAP + a.box.h / 2; m.B = Math.max(m.B, a.box.h + LABEL_GAP); }
+      if (s === 'L') { cx = -GAP - a.box.w / 2; cy = a.pos; m.L = Math.max(m.L, a.box.w + GAP); }
+      if (s === 'R') { cx = DESK.w + GAP + a.box.w / 2; cy = a.pos; m.R = Math.max(m.R, a.box.w + GAP); }
+      if (s === 'T') { cx = a.pos; cy = -GAP - a.box.h / 2; m.T = Math.max(m.T, a.box.h + GAP); }
+      if (s === 'B') { cx = a.pos; cy = bottomStart + GAP + a.box.h / 2; m.B = Math.max(m.B, a.box.h + GAP); }
       var ax = s === 'L' ? cx + a.box.w / 2 : s === 'R' ? cx - a.box.w / 2 : cx;
       var ay = s === 'T' ? cy + a.box.h / 2 : s === 'B' ? cy - a.box.h / 2 : cy;
       out.push({ i: a.i, side: s, name: a.name, cx: cx, cy: cy, ax: ax, ay: ay, tx: a.p.x, ty: a.p.y, box: a.box });
@@ -162,21 +163,47 @@ function layoutLabels(top, sides, ruby, bottomStart) {
 function labelsSvg(labels, ruby) {
   var lines = '', boxes = '';
   labels.forEach(function (l) {
-    lines += '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead-halo"/>' +
-             '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead"/>' +
-             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="9" class="lead-dot"/>';
+    lines += '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead-halo" style="stroke-width:' + 10 * K + '"/>' +
+             '<line x1="' + l.ax + '" y1="' + l.ay + '" x2="' + l.tx + '" y2="' + l.ty + '" class="lead" style="stroke-width:' + 4 * K + '"/>' +
+             '<circle cx="' + l.tx + '" cy="' + l.ty + '" r="' + 9 * K + '" class="lead-dot" style="stroke-width:' + 3 * K + '"/>';
     boxes += labelBox(l.name, l.cx, l.cy, ruby);
   });
   return '<g class="labels">' + lines + boxes + '</g>';
 }
 
-/* 上から見た机1台。返す box は描いた範囲（ラベル込み） */
+/* 場所の床。机以外は平らな床に、その場所の目印の線を入れる */
+function floorTopSvg() {
+  var w = DESK.w, d = DESK.d;
+  if (SCENE.id === 'class') {
+    // 木の床＋前の壁と黒板（上）＋後ろの壁の帯（下）
+    return R(0, 0, w, d, '#EBDDBE', 0, 30 * K, '#B99F72') +
+      R(0, 0, w, 60, 'rgba(0,0,0,.15)', 0, 0) +
+      R(1700, 80, 3600, 160, '#3E5B4D', 20, 30) +              // 黒板
+      R(1700, 240, 3600, 50, '#D8C9A8', 8, 0) +                // チョーク受け
+      R(0, d - 40, w, 40, 'rgba(0,0,0,.1)', 0, 0);
+  }
+  if (SCENE.id === 'gym') {
+    // 木の床＋白いコート線（外周・中央線・センターサークル）
+    return R(0, 0, w, d, '#EFD9A8', 0, 30 * K, '#C4A671') +
+      R(400, 400, w - 800, d - 800, 'none', 0, 90, '#F6F2E8') +
+      L(400, d / 2, w - 400, d / 2, '#F6F2E8', 90) +
+      '<circle cx="' + w / 2 + '" cy="' + d / 2 + '" r="1800" fill="none" stroke="#F6F2E8" stroke-width="90"/>';
+  }
+  if (SCENE.id === 'field') {
+    // 土のグラウンド＋白い外周線
+    return R(0, 0, w, d, '#DCC9A2', 0, 30 * K, '#B49A6E') +
+      R(500, 500, w - 1000, d - 1000, 'none', 0, 150, '#F5F2E8');
+  }
+  return deskTopSvg();
+}
+
+/* 上から見た机1台（場所では床一面）。返す box は描いた範囲（ラベル込み） */
 function topView(lay, o) {
   var sides = o.sides || ['L', 'R', 'T'].concat(o.chair ? [] : ['B']);
   var bottom = DESK.d + (o.chair ? chairExtent() : 0);
   var lab = o.noLabels ? { labels: [], margin: { L: 0, R: 0, T: 0, B: 0 } } : layoutLabels(lay.top, sides, o.ruby, bottom);
-  var s = deskTopSvg() + (o.chair ? chairTopSvg() : '');
-  var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が机からはみ出す分も描画範囲に含める
+  var s = floorTopSvg() + (o.chair ? chairTopSvg() : '');
+  var ib = { x0: 0, y0: 0, x1: DESK.w, y1: DESK.d };   // 物が床からはみ出す分も描画範囲に含める
   lay.top.forEach(function (p, i) {
     s += drawTopItem(p, i, o.sel === i ? 'sel' : '');
     var wd = itemSize(p), bb = rotBox(wd[0], wd[1], p.r || 0);
@@ -185,8 +212,8 @@ function topView(lay, o) {
   });
   if (o.grid) s += gridSvg(o.grid);
   s += labelsSvg(lab.labels, o.ruby);
-  var m = lab.margin;
-  return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, 20), ib.x0), y0: Math.min(-Math.max(m.T, 20), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, 20), ib.x1), y1: Math.max(bottom + Math.max(m.B, 20), ib.y1) } };
+  var m = lab.margin, E = 20 * K;
+  return { svg: s, labels: lab.labels, box: { x0: Math.min(-Math.max(m.L, E), ib.x0), y0: Math.min(-Math.max(m.T, E), ib.y0), x1: Math.max(DESK.w + Math.max(m.R, E), ib.x1), y1: Math.max(bottom + Math.max(m.B, E), ib.y1) } };
 }
 
 /* ---- 横から見た図 ----
@@ -314,13 +341,13 @@ function composeSingle(lay, o) {
   var L0 = o.flip ? flipLayout(lay) : lay;
   var top = topView(L0, o), parts = [place(top, 0, 0)], tb = top.box;
   var cy = DESK.d / 2;
-  var k = SIDE_SCALE, mid = DESK.w / 2 * (1 - k);
+  var k = SIDE_SCALE, mid = DESK.w / 2 * (1 - k), VG = VIEW_GAP * K;
   if (o.topOnly) return finish(parts);   // 真上からの図だけ
-  if (hasHang(L0, 'left')) { var e = elevation('left', L0, o); parts.push(place(e, tb.x0 - VIEW_GAP - e.box.x1 * k, cy - (e.box.y0 + e.box.y1) * k / 2, k)); }
-  if (hasHang(L0, 'right')) { var f = elevation('right', L0, o); parts.push(place(f, tb.x1 + VIEW_GAP - f.box.x0 * k, cy - (f.box.y0 + f.box.y1) * k / 2, k)); }
+  if (hasHang(L0, 'left')) { var e = elevation('left', L0, o); parts.push(place(e, tb.x0 - VG - e.box.x1 * k, cy - (e.box.y0 + e.box.y1) * k / 2, k)); }
+  if (hasHang(L0, 'right')) { var f = elevation('right', L0, o); parts.push(place(f, tb.x1 + VG - f.box.x0 * k, cy - (f.box.y0 + f.box.y1) * k / 2, k)); }
   if (hasHang(L0, 'left') || hasHang(L0, 'right')) {
-    var fr = elevation('front', L0, o); parts.push(place(fr, mid, tb.y0 - VIEW_GAP - fr.box.y1 * k, k));
-    var bk = elevation('back', L0, o); parts.push(place(bk, mid, tb.y1 + VIEW_GAP - bk.box.y0 * k, k));
+    var fr = elevation('front', L0, o); parts.push(place(fr, mid, tb.y0 - VG - fr.box.y1 * k, k));
+    var bk = elevation('back', L0, o); parts.push(place(bk, mid, tb.y1 + VG - bk.box.y0 * k, k));
   }
   return finish(parts);
 }
@@ -359,7 +386,7 @@ function composeGroup(lay, o) {
   return finish(parts);
 }
 function finish(parts) {
-  var b = bounds(parts), pad = 30;
+  var b = bounds(parts), pad = 30 * K;
   return {
     viewBox: (b.x0 - pad) + ' ' + (b.y0 - pad) + ' ' + (b.x1 - b.x0 + pad * 2) + ' ' + (b.y1 - b.y0 + pad * 2),
     svg: parts.map(function (p) { return p.svg; }).join('')
@@ -383,10 +410,10 @@ function snap(x, y, level) {
   return { x: i * sx, y: j * sy };
 }
 function gridSvg(level) {
-  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny;
+  var m = gridMargin(), ki = level.nx / GRID_LEVELS[0].nx, kj = level.ny / GRID_LEVELS[0].ny, sw = 2 * K;
   var s = '<g class="grid">';
-  for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '"/>';
-  for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '"/>';
-  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) + '"/>'; });
+  for (var i = -ki; i <= level.nx + ki; i++) s += '<line x1="' + i * DESK.w / level.nx + '" y1="' + (-m.y) + '" x2="' + i * DESK.w / level.nx + '" y2="' + (DESK.d + m.y) + '" style="stroke-width:' + sw + '"/>';
+  for (var j = -kj; j <= level.ny + kj; j++) s += '<line x1="' + (-m.x) + '" y1="' + j * DESK.d / level.ny + '" x2="' + (DESK.w + m.x) + '" y2="' + j * DESK.d / level.ny + '" style="stroke-width:' + sw + '"/>';
+  gridPoints(level).forEach(function (p) { s += '<circle cx="' + p.x + '" cy="' + p.y + '" r="' + (level.nx > 12 ? 4 : 6) * K + '" style="stroke-width:' + sw + '"/>'; });
   return s + '</g>';
 }

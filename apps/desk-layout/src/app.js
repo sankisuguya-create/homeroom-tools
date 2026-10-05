@@ -5,7 +5,7 @@ var $ = function (id) { return document.getElementById(id); };
 /* ---- 保存：この端末のブラウザだけ。読めない環境では標準の配置で動く ---- */
 function clone(x) { return JSON.parse(JSON.stringify(x)); }
 function freshState() {
-  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false } };
+  return { layouts: clone(DEFAULT_LAYOUTS), recent: [], prefs: { group: false, chair: false, ruby: true, grid: 'normal', topOnly: false, scene: 'desk' } };
 }
 function load() {
   try {
@@ -17,23 +17,29 @@ function load() {
   } catch (e) { /* 読めなければ標準へ */ }
   return freshState();
 }
-/* 知らない用具・壊れた値を落とす（読み込んだファイルにも使う） */
+/* 知らない用具・壊れた値を落とす（読み込んだファイルにも使う）
+   場所（scene）がなければ机扱い。置ける物は場所ごとの品ぞろえ（scenes がある物はその場所だけ）で絞る */
 function sanitize(s) {
   var base = freshState();
   var layouts = (s.layouts || []).filter(function (l) { return l && l.id && Array.isArray(l.top); }).map(function (l) {
+    var sc = SCENES[l.scene] ? l.scene : 'desk';
+    var ok = function (id) {
+      var it = ITEMS[id];
+      return it && it.kind === 'top' && (SCENES[sc].items ? (it.scenes || []).indexOf(sc) >= 0 : !(it.scenes || []).length);
+    };
     return {
-      id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false,
-      top: l.top.filter(function (p) { return ITEMS[p.item] && ITEMS[p.item].kind === 'top'; }).map(function (p) {
-        return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : 'closed', x: +p.x || DESK.w / 2, y: +p.y || DESK.d / 2, r: +p.r || 0, label: !!p.label,
+      id: String(l.id), name: String(l.name || '無題'), yomi: String(l.yomi || ''), flip: l.flip !== false, scene: sc,
+      top: l.top.filter(function (p) { return ok(p.item); }).map(function (p) {
+        return { item: p.item, state: ITEMS[p.item].states[p.state] ? p.state : Object.keys(ITEMS[p.item].states)[0], x: +p.x || SCENES[sc].w / 2, y: +p.y || SCENES[sc].d / 2, r: +p.r || 0, label: !!p.label,
                  size: ITEMS[p.item].sizes && ITEMS[p.item].sizes[p.size] ? p.size : undefined, color: ITEMS[p.item].colors && p.color != null ? (p.color | 0) : undefined,
                  text: ITEMS[p.item].text && p.text ? String(p.text).slice(0, 16) : undefined };
       }),
-      hooks: {
+      hooks: sc === 'desk' ? {
         left: ((l.hooks || {}).left || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; }),
         right: ((l.hooks || {}).right || []).filter(isHang).map(function (h) { return { item: h.item, label: !!h.label }; })
-      },
-      away: (l.away || []).filter(function (a) { return ITEMS[a.item] && PLACES.some(function (p) { return p.id === a.place; }); })
-        .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; })
+      } : { left: [], right: [] },
+      away: sc === 'desk' ? (l.away || []).filter(function (a) { return ITEMS[a.item] && PLACES.some(function (p) { return p.id === a.place; }); })
+        .map(function (a) { return { item: a.item, place: a.place, label: !!a.label }; }) : []
     };
   });
   return { layouts: layouts, recent: Array.isArray(s.recent) ? s.recent.map(String) : [], prefs: Object.assign(base.prefs, s.prefs || {}) };
@@ -44,6 +50,9 @@ function save() {
 }
 
 var S = load();
+function scOf(l) { return SCENES[(l && l.scene) || ''] ? l.scene : 'desk'; }   // 配置の場所
+var scene = SCENES[S.prefs.scene] ? S.prefs.scene : 'desk';   // メニューで選んでいる場所
+useScene(scene);
 var cur = null;          // 表示・編集中の配置
 var flip = false;
 var big = false;         // 大きく映す（全画面・真上からの図だけ・見出し）。その場かぎり        // 左右反転はその場かぎり（保存しない）
@@ -75,8 +84,15 @@ function orderedLayouts() {
   return S.layouts.slice().sort(function (a, b) { return rank(a) - rank(b); });
 }
 function renderHome() {
+  useScene(scene);
+  $('hTitle').textContent = SCENE.title;
+  $('hScenes').innerHTML = SCENE_ORDER.map(function (id) {
+    return '<button type="button" data-scene="' + id + '" class="' + (id === scene ? 'on' : '') + '">' + SCENES[id].name + '</button>';
+  }).join('');
   var html = '';
   orderedLayouts().forEach(function (l) {
+    if (scOf(l) !== scene) return;
+    useScene(scOf(l));
     var t = topView(l, { noLabels: true });
     var b = t.box;
     html += '<div class="card"><button type="button" class="go" data-id="' + esc(l.id) + '">' +
@@ -84,16 +100,21 @@ function renderHome() {
       '<span class="nm">' + rubyHtml(l.name, l.yomi) + '</span></button>' +
       '<button type="button" class="fix" data-fix="' + esc(l.id) + '">なおす</button></div>';
   });
-  $('cards').innerHTML = html;
+  useScene(scene);
+  $('cards').innerHTML = html || '<p class="hint">この場所の配置はまだありません。「＋ 新しい配置」で作れます。</p>';
   go('vHome');
 }
+$('hScenes').addEventListener('click', function (e) {
+  var b = e.target.closest('[data-scene]'); if (!b) return;
+  scene = b.getAttribute('data-scene'); S.prefs.scene = scene; save(); renderHome();
+});
 $('cards').addEventListener('click', function (e) {
   var g = e.target.closest('[data-id]'), f = e.target.closest('[data-fix]');
   if (f) openEdit(f.getAttribute('data-fix'));
   else if (g) openShow(g.getAttribute('data-id'));
 });
 $('hNew').onclick = function () {
-  var l = { id: 'l' + Date.now().toString(36), name: '新しい配置', yomi: '', flip: true, top: [], hooks: { left: [], right: [] }, away: [] };
+  var l = { id: 'l' + Date.now().toString(36), name: '新しい配置', yomi: '', flip: true, scene: scene, top: [], hooks: { left: [], right: [] }, away: [] };
   S.layouts.push(l); save(); openEdit(l.id);
 };
 $('dExport').onclick = function () {
@@ -125,17 +146,22 @@ $('dReset').onclick = function () {
 /* ---- ② 見せる ---- */
 function openShow(id) {
   cur = byId(id); if (!cur) return renderHome();
+  useScene(scOf(cur));
   flip = false;
+  $('bigMsg').innerHTML = SCENE.msg;
+  var deskMode = !!SCENE.desk;   // 机だけの機能：4人・いす・横から見た図・しまう物
+  $('sGroup').hidden = !deskMode; $('sSides').hidden = !deskMode; $('sChair').hidden = !deskMode;
   S.recent = [id].concat(S.recent.filter(function (x) { return x !== id; })).slice(0, 30); save();
   go('vShow'); renderShow();
 }
 function renderShow() {
-  var o = { ruby: S.prefs.ruby, chair: S.prefs.chair, flip: flip && cur.flip };
+  var deskMode = !!SCENE.desk;
+  var o = { ruby: S.prefs.ruby, chair: deskMode && S.prefs.chair, flip: flip && cur.flip };
   o.topOnly = S.prefs.topOnly || big;
-  var c = S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
+  var c = deskMode && S.prefs.group ? composeGroup(cur, o) : composeSingle(cur, o);
   var svg = $('stageSvg');
   svg.setAttribute('viewBox', c.viewBox); svg.innerHTML = c.svg;
-  svg.setAttribute('aria-label', cur.name + 'の机の配置');
+  svg.setAttribute('aria-label', cur.name + 'の配置図');
   $('sTitle').innerHTML = rubyHtml(cur.name, cur.yomi);
   $('sOne').classList.toggle('on', !S.prefs.group); $('sFour').classList.toggle('on', S.prefs.group);
   $('sFlip').disabled = !cur.flip; $('sFlip').setAttribute('aria-pressed', String(flip && cur.flip));
@@ -188,16 +214,17 @@ document.addEventListener('keydown', function (e) {   // ← → で活動を切
 /* ---- ③ つくる・なおす ---- */
 function openEdit(id) {
   cur = byId(id); if (!cur) return renderHome();
+  useScene(scOf(cur));
   sel = -1;
   $('eName').value = cur.name; $('eYomi').value = cur.yomi; $('eFlip').checked = cur.flip;
   go('vEdit'); renderEdit(); renderPalette();
 }
 function renderEdit() {
   var t = topView(cur, { ruby: S.prefs.ruby, sel: sel, grid: gridLevel(S.prefs.grid) });
-  var b = t.box, pad = 60;
+  var b = t.box, pad = 60 * K;
   var svg = $('editSvg');
-  // 余白は広めに固定して、吹き出しが増えても机が跳ねないようにする
-  var x0 = Math.min(b.x0, -300) - pad, y0 = Math.min(b.y0, -130) - pad, x1 = Math.max(b.x1, DESK.w + 300) + pad, y1 = Math.max(b.y1, DESK.d + 130) + pad;
+  // 余白は広めに固定して、吹き出しが増えても床が跳ねないようにする（場所の広さに合わせて K 倍）
+  var x0 = Math.min(b.x0, -300 * K) - pad, y0 = Math.min(b.y0, -130 * K) - pad, x1 = Math.max(b.x1, DESK.w + 300 * K) + pad, y1 = Math.max(b.y1, DESK.d + 130 * K) + pad;
   svg.setAttribute('viewBox', x0 + ' ' + y0 + ' ' + (x1 - x0) + ' ' + (y1 - y0));
   svg.innerHTML = t.svg;
   var p = cur.top[sel];
@@ -234,6 +261,7 @@ function chipHtml(entry, where, k, extra) {
     '<button type="button" data-rm="' + where + ':' + k + '" aria-label="けす">×</button></span>';
 }
 function renderChips() {
+  $('eLists').hidden = !SCENE.desk;   // フック・しまう物は机だけの仕組み
   $('lHookL').innerHTML = cur.hooks.left.map(function (h, k) { return chipHtml(h, 'left', k); }).join('');
   $('lHookR').innerHTML = cur.hooks.right.map(function (h, k) { return chipHtml(h, 'right', k); }).join('');
   $('lAway').innerHTML = cur.away.map(function (a, k) {
@@ -251,6 +279,9 @@ document.querySelector('.lists').addEventListener('click', function (e) {
 });
 
 function renderPalette() {
+  var deskMode = !!SCENE.desk;
+  document.querySelector('.tabs').hidden = !deskMode;   // 机以外はタブなし：置ける物をそのまま並べる
+  if (!deskMode) tab = 'top';
   document.querySelectorAll('.tabs [data-tab]').forEach(function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === tab)); });
   var d = '';
   if (tab === 'hang') d = [['left', '左のフック'], ['right', '右のフック']].map(function (x) {
@@ -261,7 +292,9 @@ function renderPalette() {
   }).join('');
   $('pDest').innerHTML = d;
   var kind = tab === 'hang' ? 'hang' : 'top';
-  $('pItems').innerHTML = Object.keys(ITEMS).filter(function (id) { return tab === 'away' || ITEMS[id].kind === kind; }).map(function (id) {
+  var ids = deskMode ? Object.keys(ITEMS).filter(function (id) { return (tab === 'away' || ITEMS[id].kind === kind) && !(ITEMS[id].scenes || []).length; })
+                     : SCENE.items.slice();
+  $('pItems').innerHTML = ids.map(function (id) {
     return '<button type="button" data-add="' + id + '">' + iconSvg(id, 54) + '<span>' + plainName(ITEMS[id].name) + '</span></button>';
   }).join('');
 }
@@ -277,7 +310,7 @@ $('pItems').addEventListener('click', function (e) {
   var b = e.target.closest('[data-add]'); if (!b) return;
   var id = b.getAttribute('data-add');
   if (tab === 'top') {
-    cur.top.push({ item: id, state: 'closed', x: DESK.w / 2, y: DESK.d / 2, r: 0, label: false });
+    cur.top.push({ item: id, state: Object.keys(ITEMS[id].states)[0], x: DESK.w / 2, y: DESK.d / 2, r: 0, label: false });
     sel = cur.top.length - 1;
   } else if (tab === 'hang') cur.hooks[dest.hang].push({ item: id, label: false });
   else cur.away.push({ item: id, place: dest.away, label: false });
