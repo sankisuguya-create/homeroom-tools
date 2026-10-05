@@ -125,8 +125,7 @@ var ITEMS = {
       closed: { draw: function (w, h) { return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0, 0) + R(w * 0.2, h * 0.15, w * 0.65, h * 0.2, '#FFFFFF', 4, 2); } },
       open: { draw: function (w, h) { return book(w, h, function () { return ''; }) + R(w * 0.06, h * 0.1, w * 0.36, h * 0.25, '#DCEBF5', 4, 0); } },
       open360: { draw: function (w, h) {
-        return R(0, 0, w, h, '#7FB0D6') + R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) +
-               R(w * 0.24, h * 0.14, w * 0.55, h * 0.24, '#DCEBF5', 4, 0) + roll360(w, h, '#5B8DB8');
+        return R(0, 0, w, h, '#FFFFFF', 4) + R(w * 0.26, h * 0.14, w * 0.55, h * 0.24, '#DCEBF5', 4, 0) + roll360(w, h, '#5B8DB8');
       } } } },
   notebook: { name: 'ノート', kind: 'top',
     sizes: { b5: { name: 'B5', w: 179, d: 252 }, a4: { name: 'A4', w: 210, d: 297 } },
@@ -135,7 +134,7 @@ var ITEMS = {
       closed: { draw: function (w, h, col) { return cover(w, h, col, 'ノート'); } },
       open: { draw: function (w, h) { return book(w, h, function (x, pw, ph) { return grid(x + 8, 8, pw - 16, ph - 16, 10, '#D3E3F1'); }); } },
       open360: { draw: function (w, h, col) {
-        return R(0, 0, w, h, col, 4) + R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) + grid(32, 14, w - 44, h - 28, 10, '#D3E3F1') + roll360(w, h, col);
+        return R(0, 0, w, h, '#FFFFFF', 4) + grid(32, 14, w - 44, h - 28, 10, '#D3E3F1') + roll360(w, h, col);
       } } } },
   drill: { name: 'ドリル', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#F0A07E') + R(w * 0.15, h * 0.12, w * 0.7, h * 0.2, '#FFFFFF', 4, 2); } },
