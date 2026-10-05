@@ -428,7 +428,7 @@ function roundTrap(x0, y0, x1, y1, insetTop, insetBot, r, fill, stroke) {   // �
          (stroke ? ' stroke="' + INK + '" stroke-width="3" stroke-linejoin="round"' : '') + '/>';
 }
 /* 状態の呼び名（編集画面のボタン） */
-var STATE_NAMES = { closed: 'とじる', open: 'ひらく', tablet: 'タブレット', tent: '山がた' };
+var STATE_NAMES = { closed: 'とじる', open: 'ひらく', open360: '360°', tablet: 'タブレット', tent: '山がた' };
 
 var CLEAR = 'rgba(214,236,247,.85)', CLEAR_LINE = 'rgba(58,53,46,.35)';   // 透明なプラスチック
 function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ごとに長く）
@@ -437,17 +437,26 @@ function ticks(y0, y1, x) {   // 縦の目盛り（1cm＝10mm ごと、5cm ご�
   return s;
 }
 var ITEMS = {
+  /* 教科書・ノートは「ひらく」（180°）のほか「360°」（表紙をうしろへまげた形）を持つ。
+     360°は見えるのが1枚のページだけで、机での大きさは閉じた形と同じ（itemSize は open だけ幅2倍）。 */
   textbook: { name: '{教科書|きょうかしょ}', kind: 'top',
-    sizes: { b5: { name: 'B5', w: 182, d: 257 }, ab: { name: 'AB', w: 210, d: 257 } },
+    sizes: { b5: { name: 'B5', w: 182, d: 257 }, a4: { name: 'A4', w: 210, d: 297 } },
     states: {
       closed: { draw: function (w, h) { return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0, 0) + R(w * 0.2, h * 0.15, w * 0.65, h * 0.2, '#FFFFFF', 4, 2); } },
-      open: { draw: function (w, h) { return book(w, h, function () { return ''; }) + R(w * 0.06, h * 0.1, w * 0.36, h * 0.25, '#DCEBF5', 4, 0); } } } },
+      open: { draw: function (w, h) { return book(w, h, function () { return ''; }) + R(w * 0.06, h * 0.1, w * 0.36, h * 0.25, '#DCEBF5', 4, 0); } },
+      open360: { draw: function (w, h) {
+        return R(0, 0, w, h, '#7FB0D6') + R(0, 0, 16, h, '#5B8DB8', 0, 0) +
+               R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) + R(w * 0.16, h * 0.14, w * 0.5, h * 0.24, '#DCEBF5', 4, 0);
+      } } } },
   notebook: { name: 'ノート', kind: 'top',
     sizes: { b5: { name: 'B5', w: 179, d: 252 }, a4: { name: 'A4', w: 210, d: 297 } },
     colors: NOTE_COLORS,
     states: {
       closed: { draw: function (w, h, col) { return cover(w, h, col, 'ノート'); } },
-      open: { draw: function (w, h) { return book(w, h, function (x, pw, ph) { return grid(x + 8, 8, pw - 16, ph - 16, 10, '#D3E3F1'); }); } } } },
+      open: { draw: function (w, h) { return book(w, h, function (x, pw, ph) { return grid(x + 8, 8, pw - 16, ph - 16, 10, '#D3E3F1'); }); } },
+      open360: { draw: function (w, h, col) {
+        return R(0, 0, w, h, col, 4) + R(10, 10, w - 20, h - 20, '#FFFFFF', 3, 2) + grid(16, 16, w - 32, h - 32, 10, '#D3E3F1');
+      } } } },
   drill: { name: 'ドリル', kind: 'top', states: {
     closed: { w: 182, d: 257, draw: function (w, h) { return R(0, 0, w, h, '#F0A07E') + R(w * 0.15, h * 0.12, w * 0.7, h * 0.2, '#FFFFFF', 4, 2); } },
     open: { w: 364, d: 257, draw: function (w, h) { return book(w, h, function () { return ''; }); } } } },

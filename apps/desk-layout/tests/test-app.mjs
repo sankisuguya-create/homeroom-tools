@@ -65,12 +65,16 @@ assert.ok(!g.composeSingle(math,{topOnly:true}).svg.includes('class="cap"'),'真
 assert.equal(Object.keys(ITEMS.pc.states).join(),'closed,open,tablet,tent');
 for(const id of Object.keys(ITEMS))assert.ok(g.iconSvg(id,40).startsWith('<svg'));
 
-// 判型：ノートは B5／A4、開くと幅2倍。色は表紙だけ
+// 判型：教科書・ノートは B5／A4、「ひらく」だけ幅2倍（360°は閉じた形と同じ大きさ）。色は表紙だけ
 assert.equal(g.itemSize({item:'notebook',state:'closed'}).join(),'179,252');
 assert.equal(g.itemSize({item:'notebook',state:'closed',size:'a4'}).join(),'210,297');
 assert.equal(g.itemSize({item:'notebook',state:'open',size:'a4'}).join(),'420,297');
-assert.equal(g.itemSize({item:'textbook',state:'open',size:'ab'}).join(),'420,257');
+assert.equal(g.itemSize({item:'textbook',state:'open',size:'a4'}).join(),'420,297');
 assert.equal(g.itemSize({item:'notebook',state:'closed',size:'xx'}).join(),'179,252','知らない判型は既定へ');
+for(const id of ['textbook','notebook']){
+  assert.deepEqual(Object.keys(ITEMS[id].states),['closed','open','open360'],id);
+  assert.equal(g.itemSize({item:id,state:'open360'}).join(),g.itemSize({item:id,state:'closed'}).join(),id+' の360°は閉じた形と同じ大きさ');
+}
 assert.ok(g.colorOf({item:'notebook',color:6}).startsWith('#'));
 for(const id of Object.keys(ITEMS))if(ITEMS[id].kind==='top')for(const st of Object.keys(ITEMS[id].states)){
   const wd=g.itemSize({item:id,state:st}); assert.ok(wd[0]>0&&wd[1]>0,id+':'+st);
