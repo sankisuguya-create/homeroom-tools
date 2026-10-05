@@ -321,8 +321,8 @@ $('selFront').onclick = function () { toFront(); save(); renderEdit(); };
 $('selDel').onclick = function () { cur.top.splice(sel, 1); sel = -1; save(); renderEdit(); };
 function toFront() { var p = cur.top.splice(sel, 1)[0]; cur.top.push(p); sel = cur.top.length - 1; }
 
-/* 物の中心をいちばん近いグリッドの交点に合わせる。
-   物が机からはみ出すのは許す（教科書にノートを重ねるなど、実際の机でも起きる） */
+/* 物の中心をいちばん近いグリッドの交点に合わせる。交点は机の外にも「あらい」1目分広がる
+   （本が半分だけ机に乗る配置）。それ以上はみ出すのは物の形まかせで許す（重ね置きなど実際の机でも起きる） */
 function clampP(p) {
   var q = snap(p.x, p.y, gridLevel(S.prefs.grid));
   p.x = q.x; p.y = q.y;
@@ -339,7 +339,8 @@ $('editSvg').addEventListener('pointerdown', function (e) {
   if (!g) {
     // 物を選んでいるときに机の上の空いた所を押すと、そこへ移す（指で引きずらなくてよい）
     var q = svgPoint(this, e);
-    if (sel >= 0 && q.x >= 0 && q.x <= DESK.w && q.y >= 0 && q.y <= DESK.d) {
+    var gm = gridMargin();
+    if (sel >= 0 && q.x >= -gm.x && q.x <= DESK.w + gm.x && q.y >= -gm.y && q.y <= DESK.d + gm.y) {
       var sp = cur.top[sel]; sp.x = q.x; sp.y = q.y; clampP(sp); save(); renderEdit();
     } else if (sel >= 0) { sel = -1; renderEdit(); }
     return;
