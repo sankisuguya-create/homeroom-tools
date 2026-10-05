@@ -387,53 +387,60 @@ var ITEMS = {
   /* ---- 場所モードの物 ----
      scenes がある物は、その場所（モード）でだけ置ける。机には出さない。
      線の太さは物のサイズに合わせた絶対値（床の広さによらず同じ割合で見える）。 */
-  /* 教室 */
+  /* 教室（絵は実物の模型として一目で分かるよう、構造を真似る） */
   cdesk: { name: '{児童|じどう}の{机|つくえ}といす', kind: 'top', scenes: ['class'], states: {
-    closed: { w: 650, d: 890, draw: function (w, h) {   // 机650×450＋いす360×360（間70）を一体に
-      return R(0, 0, 650, 450, WOOD, 14, 4) + R(145, 520, 360, 360, '#D9874A', 40, 4);
+    closed: { w: 650, d: 890, draw: function (w, h) {   // 机650×450＋いす360×360を一体に
+      return R(0, 0, 650, 450, WOOD, 14, 4) + L(14, 428, 636, 428, 'rgba(0,0,0,.16)', 10) +
+             R(145, 500, 360, 320, '#D9874A', 40, 4) + R(165, 810, 320, 52, '#C9763A', 18, 3);
     } } } },
   ctable: { name: '{教卓|きょうたく}', kind: 'top', scenes: ['class'], states: {
-    closed: { w: 1200, d: 600, draw: function (w, h) {
-      return R(0, 0, w, h, '#9A6B3F', 20, 12) + L(70, h * 0.5, w - 70, h * 0.5, 'rgba(0,0,0,.25)', 12) + R(50, 50, 260, 150, 'rgba(0,0,0,.15)', 10, 0);
+    closed: { w: 1200, d: 600, draw: function (w, h) {   // 天板＋片側の引き出し柱＋手前の幕板の影
+      return R(0, 0, w, h, '#B8895A', 20, 12) + R(w * 0.6, h * 0.1, w * 0.36, h * 0.52, 'rgba(0,0,0,.14)', 8, 8) +
+             L(w * 0.78, h * 0.14, w * 0.78, h * 0.58, 'rgba(0,0,0,.22)', 10) + R(w * 0.04, h * 0.8, w * 0.92, h * 0.12, 'rgba(0,0,0,.18)', 8, 0);
     } } } },
   cshelf: { name: '{棚|たな}', kind: 'top', scenes: ['class'], states: {
-    closed: { w: 900, d: 460, draw: function (w, h) {   // 教室の棚（奥行は標準の収納幅46cm）
-      return R(0, 0, w, h, '#C9B08A', 10, 10) + L(w / 3, 14, w / 3, h - 14, 'rgba(0,0,0,.3)', 8) + L(w * 2 / 3, 14, w * 2 / 3, h - 14, 'rgba(0,0,0,.3)', 8) + L(14, h / 2, w - 14, h / 2, 'rgba(0,0,0,.3)', 8);
+    closed: { w: 900, d: 460, draw: function (w, h) {   // 枠＋内側の明るい面＋中仕切り2本
+      return R(0, 0, w, h, '#B98A55', 10, 16) + R(w * 0.05, h * 0.1, w * 0.9, h * 0.8, '#EBDDBE', 6, 8) +
+             L(w * 0.37, h * 0.14, w * 0.37, h * 0.86, 'rgba(0,0,0,.28)', 14) + L(w * 0.68, h * 0.14, w * 0.68, h * 0.86, 'rgba(0,0,0,.28)', 14);
     } } } },
   /* 体育館 */
   gbox: { name: '{跳|と}び{箱|ばこ}', kind: 'top', scenes: ['gym'], states: {
-    closed: { w: 900, d: 1100, draw: function (w, h) {   // 上から見た跳び箱：箱の輪郭＋段の境＋白い天面
-      return R(0, 0, w, h, '#E7CD93', 40, 10) + L(0, h * 0.36, w, h * 0.36, 'rgba(0,0,0,.22)', 8) + L(0, h * 0.7, w, h * 0.7, 'rgba(0,0,0,.22)', 8) + R(w * 0.2, h * 0.05, w * 0.6, h * 0.14, '#F5EFE2', 10, 5);
+    closed: { w: 900, d: 1100, draw: function (w, h) {   // 木のわく＋面いっぱいの白い張り地（実物どおり）
+      return R(0, 0, w, h, '#C9A676', 30, 26) + R(w * 0.06, h * 0.04, w * 0.88, h * 0.87, '#F7F4EA', 22, 12, '#DDD8C8') +
+             L(w * 0.14, h * 0.5, w * 0.86, h * 0.5, '#E0DACA', 14) + R(w * 0.06, h * 0.925, w * 0.88, h * 0.03, 'rgba(0,0,0,.12)', 6, 0);
     } } } },
   gboard: { name: '{踏|ふ}み{込|こ}み{台|だい}', kind: 'top', scenes: ['gym'], states: {
-    closed: { w: 1200, d: 600, draw: function (w, h) {   // 跳び箱の助走に使う板。板目＋はしの白い踏切線
-      var s = R(0, 0, w, h, '#C98F4F', 30, 12);
-      for (var x = w / 6; x < w; x += w / 6) s += L(x, 14, x, h - 14, 'rgba(0,0,0,.15)', 6);
-      return s + R(w - 150, 24, 90, h - 48, '#F5EFE2', 12, 5);
+    closed: { w: 600, d: 1200, draw: function (w, h) {   // ロイター板：緑の板＋手前（上）は黒いバネ帯に金具の点
+      return R(0, 0, w, h, '#4F9B4F', 20, 20) + R(0, 0, w, h * 0.14, '#33383E', 10, 0) +
+             C(w * 0.2, h * 0.07, 16, '#C9CDD2', 0) + C(w * 0.5, h * 0.07, 16, '#C9CDD2', 0) + C(w * 0.8, h * 0.07, 16, '#C9CDD2', 0) +
+             L(w * 0.08, h * 0.94, w * 0.92, h * 0.94, 'rgba(0,0,0,.15)', 10);
     } } } },
   gmat: { name: 'マット', kind: 'top', scenes: ['gym'],
     sizes: { s: { name: '小', w: 1800, d: 900 }, l: { name: '大', w: 2000, d: 2000 } },
     states: {
-      closed: { draw: function (w, h) {
-        return R(0, 0, w, h, '#6B9DC7', 60, 20) + R(60, 60, w - 120, h - 120, 'rgba(255,255,255,.18)', 40, 10);
+      closed: { draw: function (w, h) {   // ビニール面＋縁の縫い目（破線）
+        return R(0, 0, w, h, '#6B9DC7', 60, 20) + '<rect x="' + w * 0.06 + '" y="' + h * 0.06 + '" width="' + w * 0.88 + '" height="' + h * 0.88 + '" rx="40" fill="none" stroke="#4E7FAF" stroke-width="12" stroke-dasharray="70 45"/>';
       } } } },
   gbeam: { name: '{平均台|へいきんだい}', kind: 'top', scenes: ['gym'], states: {
-    closed: { w: 5000, d: 100, draw: function (w, h) {   // 台は幅10cm長さ5mの細い板＋両側の脚
-      return R(0, 0, w, h, '#B8895A', 30, 8) + R(w * 0.14, -70, 70, h + 140, '#8A8F96', 10, 0) + R(w * 0.84, -70, 70, h + 140, '#8A8F96', 10, 0);
+    closed: { w: 5000, d: 100, draw: function (w, h) {   // 幅10cm長さ5mの台＋白い端＋2か所のA脚
+      return R(w * 0.125, -70, 110, h + 140, '#8A8F96', 14, 0) + R(w * 0.845, -70, 110, h + 140, '#8A8F96', 14, 0) +
+             R(0, 0, w, h, '#C9A676', 16, 10) + R(0, 0, 60, h, '#F5F2E8', 10, 0) + R(w - 60, 0, 60, h, '#F5F2E8', 10, 0);
     } } } },
   gbar: { name: '{鉄棒|てつぼう}', kind: 'top', scenes: ['gym', 'field'], states: {
-    closed: { w: 2400, d: 900, draw: function (w, h) {   // バー1本＋両はしの支柱（手前と奥に2本ずつ）
-      return C(60, h / 2 - 280, 55, '#5E6670', 10) + C(60, h / 2 + 280, 55, '#5E6670', 10) +
-             C(w - 60, h / 2 - 280, 55, '#5E6670', 10) + C(w - 60, h / 2 + 280, 55, '#5E6670', 10) +
-             L(0, h / 2, w, h / 2, '#9AA0A6', 60);
+    closed: { w: 2400, d: 900, draw: function (w, h) {   // 両はしの土台・支柱＋バー1本
+      return R(w * 0.06 - 130, h * 0.02, 260, h * 0.96, '#7A7F86', 16, 14) + R(w * 0.94 - 130, h * 0.02, 260, h * 0.96, '#7A7F86', 16, 14) +
+             R(w * 0.06 - 60, h * 0.1, 120, h * 0.8, '#A9AEB6', 10, 10) + R(w * 0.94 - 60, h * 0.1, 120, h * 0.8, '#A9AEB6', 10, 10) +
+             R(w * 0.06 + 60, h / 2 - 40, w * 0.88 - 120, 80, '#C9CDD2', 40, 12, '#5F646B');
     } } } },
   gtora: { name: 'トランポリン', kind: 'top', scenes: ['gym'], states: {
-    closed: { w: 1200, d: 1200, draw: function (w, h) {
-      return R(0, 0, w, h, '#8A8F96', 110, 16) + R(90, 90, w - 180, h - 180, '#33507A', 80, 10) + C(w / 2, h / 2, 80, 'rgba(255,255,255,.35)', 10);
+    closed: { w: 1200, d: 1200, draw: function (w, h) {   // 橙のパッド枠＋黒い跳ね面＋内側の縫い目
+      return R(0, 0, w, h, '#E8956A', 90, 16) + R(w * 0.14, h * 0.14, w * 0.72, h * 0.72, '#3A3F45', 40, 10, '#2A2E33') +
+             R(w * 0.19, h * 0.19, w * 0.62, h * 0.62, 'none', 30, 6, 'rgba(255,255,255,.18)');
     } } } },
   gball: { name: 'ボール', kind: 'top', scenes: ['gym', 'field'], colors: ['#E08A3C', '#F2C94C', '#F5F5F5'], states: {
-    closed: { w: 250, d: 250, draw: function (w, h, col) {
-      return C(w / 2, h / 2, w / 2 - 8, col, 8) + '<path d="M' + (w * 0.2) + ' ' + (h * 0.55) + ' Q' + (w * 0.5) + ' ' + (h * 0.3) + ' ' + (w * 0.8) + ' ' + (h * 0.55) + '" fill="none" stroke="' + INK + '" stroke-width="8"/>';
+    closed: { w: 250, d: 250, draw: function (w, h, col) {   // ボールの継ぎ目（上下に弧）
+      return C(w / 2, h / 2, w / 2 - 8, col, 8) + '<path d="M' + (w * 0.2) + ' ' + (h * 0.55) + ' Q' + (w * 0.5) + ' ' + (h * 0.3) + ' ' + (w * 0.8) + ' ' + (h * 0.55) + '" fill="none" stroke="' + INK + '" stroke-width="8"/>' +
+             '<path d="M' + (w * 0.2) + ' ' + (h * 0.45) + ' Q' + (w * 0.5) + ' ' + (h * 0.7) + ' ' + (w * 0.8) + ' ' + (h * 0.45) + '" fill="none" stroke="' + INK + '" stroke-width="8"/>';
     } } } },
   gline: { name: 'ライン', kind: 'top', scenes: ['gym', 'field'], states: {
     closed: { w: 3000, d: 80, draw: function (w, h) { return R(0, 0, w, h, '#F5F2E8', 12, 8); } } } },
@@ -604,7 +611,7 @@ var DEFAULT_LAYOUTS = [
       { item: 'gmat',   state: 'closed', x: 10000, y: 6250,  r: 0, size: 'l' },
       { item: 'gmat',   state: 'closed', x: 6250,  y: 8750,  r: 90 },
       { item: 'gmat',   state: 'closed', x: 13750, y: 8750,  r: 90 },
-      { item: 'gboard', state: 'closed', x: 10000, y: 11250, r: 0 },
+      { item: 'gboard', state: 'closed', x: 10000, y: 10000, r: 0 },
       { item: 'arrow',  state: 'go',     x: 10000, y: 16250, r: 0, label: true }
     ],
     hooks: { left: [], right: [] }, away: [] },
