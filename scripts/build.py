@@ -7,7 +7,6 @@
   apps/note-assessment/gas/src/
   apps/dance-count/src/
   apps/collection-check/src/
-  apps/desk-layout/src/
 
 生成物:
   apps/note-assessment/gas/generated/
@@ -32,20 +31,15 @@ DANCE_DIST = DANCE / "dist"
 COLLECT = ROOT / "apps" / "collection-check"
 COLLECT_SRC = COLLECT / "src"
 COLLECT_DIST = COLLECT / "dist"
-DESK = ROOT / "apps" / "desk-layout"
-DESK_SRC = DESK / "src"
-DESK_DIST = DESK / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 # PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
 # 外部参照（フォント・fetch・画像など）が見つかった時点で生成を止める。
 # 個人情報を扱う collection-check のみが対象。dance-count は Google Fonts を
 # 意図的に遅延読み込みする設計（src/Index.html のフォント節を見よ）なので対象外。
-# desk-layout は名簿などの個人情報を持たない設計（docs/spec.md）なので対象外。
 PAGES = [
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
-    (DESK_SRC / "Index.html", DESK_DIST / "Index.html", [DESK_SRC, SHARED_UI], False),
 ]
 
 # 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。
@@ -105,7 +99,7 @@ def html_doc(body: str) -> str:
     フラグメントなので、head の後ろにそのまま置く。最初の非 head 要素で
     ブラウザが自動的に body を開く（<title> は head に入ったまま動く）。
     lang=\"ja\" が無いと漢字を中国語系字形で出す端末があるので必ず付ける。
-    desk-layout のように src 自身が完全文書のものは包まずそのまま返す。"""
+    src 自身が完全文書（<!doctype 始まり）のものは包まずそのまま返す。"""
     if body.lstrip().lower().startswith("<!doctype"):
         return body
     return HTML_HEAD + body.rstrip("\n") + HTML_TAIL
