@@ -36,7 +36,7 @@
   // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
   App.saveState = function (s, msg) {
     if (s !== undefined) { App.sv = s; App.svMsg = msg; }
-    var txt = App.sv === 'saving' ? '保存中…' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') + '（再試行します）' : App.sv === 'ok' ? '保存済み' : '';
+    var txt = App.sv === 'saving' ? '保存中…' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
     ['save', 'save2'].forEach(function (id) {
       var el = App.$(id);
       if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
@@ -47,6 +47,8 @@
     App.saveState('saving');
     return fn().then(function (r) { App.saveState('ok'); return r; }, function (e) {
       App.saveState('err', e && e.message);
+      // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
+      if (e && e.noRetry) { App.toast(e.message); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
       return new Promise(function (res) { setTimeout(res, 5000); }).then(function () { return App.save(fn); });
     });
   };
