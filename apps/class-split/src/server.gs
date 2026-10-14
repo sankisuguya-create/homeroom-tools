@@ -89,6 +89,14 @@ function read_(name) {
   }
   return { sh: sh, head: head, rows: rows };
 }
+// 項目を足した時、既存のシートの見出しに無い列を右端に足す（古いシートでも書けるように）
+function ensureCols_(name, head) {
+  var sh = sheet_(db_(), name, head);
+  var w = Math.max(1, sh.getLastColumn()), cur = sh.getRange(1, 1, 1, w).getValues()[0].map(String);
+  var miss = head.filter(function (h) { return cur.indexOf(h) < 0; });
+  if (miss.length) sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]);
+  return sh;
+}
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
 function append_(name, head, objs) {
   if (!objs.length) return;
@@ -237,7 +245,7 @@ var apiImportRoster = api_(function (fy, grade, rows) {
   return withLock_(function () {
     var name = 'roster_' + fy;
     sheet_(db_(), name, ROSTER_HEAD);
-    sheet_(db_(), 'attrs_' + fy, attrsHead_());
+    ensureCols_('attrs_' + fy, attrsHead_());
     var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
     t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
     rows.forEach(function (x) {
@@ -279,7 +287,7 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
   return withLock_(function () {
     var name = 'attrs_' + fy;
-    sheet_(db_(), name, attrsHead_());
+    ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
     if (row) writeCell_(t, row, k, v);
@@ -364,6 +372,7 @@ var apiDecide = api_(function (grade, plan) {
       var s = info[r.id];
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
+    ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));

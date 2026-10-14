@@ -38,6 +38,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(b.ok, b.err); assert.match(b.build, /^BUILD_/);
     assert.equal(b.v.years.length, 1); assert.equal(b.v.years[0].rows.length, 8);
 
+    // 項目を足す前に作ったシート（通の列が無い）でも、足した項目を書ける
+    const asd = db().getSheetByName('attrs_' + FY).data, ki = asd[0].indexOf('k10');
+    assert.ok(ki > 0); asd.forEach(r => r.splice(ki, 1));
+    assert.ok(call('apiSetAttr', FY, 4, '40000012', 'k10', 2).ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000012').a.k10, 2);
+
     // 配慮項目：今年度は直せる
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;

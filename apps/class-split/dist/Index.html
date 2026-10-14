@@ -88,6 +88,11 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .pentagon>em{top:.1em}
 .b.pill{width:2em}.pill>i{clip-path:inset(12% 0 round 999px)}
 .b.para{width:1.9em}.para>i{clip-path:polygon(25% 6%,100% 6%,75% 94%,0 94%)}
+.b.shell{width:1.95em}
+.bs>.b.shell{width:1.5em}
+/* 通：貝殻の形（上下がふくらみ、左右の端が小さく尖る。利用者のスケッチ） */
+.shell>i{clip-path:polygon(0.0% 47.0%,7.0% 46.0%,11.3% 36.7%,15.6% 31.1%,19.9% 26.4%,24.2% 22.6%,28.5% 19.3%,32.8% 16.7%,37.1% 14.6%,41.4% 13.2%,45.7% 12.3%,50.0% 12.0%,54.3% 12.3%,58.6% 13.2%,62.9% 14.6%,67.2% 16.7%,71.5% 19.3%,75.8% 22.6%,80.1% 26.4%,84.4% 31.1%,88.7% 36.7%,93.0% 46.0%,100.0% 40.0%,94.0% 54.0%,89.6% 63.0%,85.2% 68.9%,80.8% 73.9%,76.4% 78.2%,72.0% 81.8%,67.6% 84.7%,63.2% 87.0%,58.8% 88.7%,54.4% 89.7%,50.0% 90.0%,45.6% 89.7%,41.2% 88.7%,36.8% 87.0%,32.4% 84.7%,28.0% 81.8%,23.6% 78.2%,19.2% 73.9%,14.8% 68.9%,10.4% 63.0%,6.0% 54.0%)}
+.shell>em{top:.02em;font-size:.74em}
 .octagon>i{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
 .shield>i{clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%)}
 .shield>em{top:-.1em}
@@ -281,6 +286,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
       { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
       { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
@@ -763,7 +769,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   var GM = [['陽翔','はると'],['蓮','れん'],['湊','みなと'],['大和','やまと'],['悠真','ゆうま'],['朝陽','あさひ'],['樹','いつき'],['颯真','そうま'],['蒼','あおい'],['律','りつ'],['結翔','ゆいと'],['陸','りく'],['悠人','ゆうと'],['大翔','ひろと'],['奏太','そうた'],['碧','あお'],['新','あらた'],['晴','はる'],['航','わたる'],['瑛太','えいた']];
   var GF = [['陽葵','ひまり'],['凛','りん'],['芽依','めい'],['結菜','ゆいな'],['澪','みお'],['紬','つむぎ'],['咲良','さくら'],['心春','こはる'],['杏','あん'],['莉子','りこ'],['葵','あおい'],['美月','みつき'],['結衣','ゆい'],['彩花','あやか'],['花','はな'],['楓','かえで'],['栞','しおり'],['詩','うた'],['美羽','みう'],['柚希','ゆずき']];
   var PLACES = ['休み時間', '給食', '登校', '体育', '清掃'];
-  var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18 };
+  var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18, k10: .06 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
   var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
@@ -1495,7 +1501,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
-    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / (7 * 1.5 + .1));
+    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / ((C.ATTRS.filter(function (a) { return !a.good; }).length + 1) * 1.5 + .1));
     root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
   }
 
@@ -1882,7 +1888,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 /* ▲ src/ui-split.js ここまで ▲ */
 /* ▼ src/ui-settings.js から。直すのは src のほう ▼ */
 // 設定：年に1回だけ触るもの（配慮項目・担任と学級・事案の種別・年度替わり）。
-// 項目の色と形は位置（k1〜k9）ごとに固定。変えられるのは名前・頭文字・既定の重みだけ（識別の検証を崩さないため）。
+// 項目の色と形は位置（k1〜k10）ごとに固定。変えられるのは名前・頭文字・既定の重みだけ（識別の検証を崩さないため）。
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;

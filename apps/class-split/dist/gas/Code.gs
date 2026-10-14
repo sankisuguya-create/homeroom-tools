@@ -19,6 +19,7 @@
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
       { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
       { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
@@ -401,7 +402,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_aca830dd3787';
+var SERVER_BUILD = 'BUILD_47262d37647e';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -487,6 +488,14 @@ function read_(name) {
     rows.push(o);
   }
   return { sh: sh, head: head, rows: rows };
+}
+// 項目を足した時、既存のシートの見出しに無い列を右端に足す（古いシートでも書けるように）
+function ensureCols_(name, head) {
+  var sh = sheet_(db_(), name, head);
+  var w = Math.max(1, sh.getLastColumn()), cur = sh.getRange(1, 1, 1, w).getValues()[0].map(String);
+  var miss = head.filter(function (h) { return cur.indexOf(h) < 0; });
+  if (miss.length) sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]);
+  return sh;
 }
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
 function append_(name, head, objs) {
@@ -636,7 +645,7 @@ var apiImportRoster = api_(function (fy, grade, rows) {
   return withLock_(function () {
     var name = 'roster_' + fy;
     sheet_(db_(), name, ROSTER_HEAD);
-    sheet_(db_(), 'attrs_' + fy, attrsHead_());
+    ensureCols_('attrs_' + fy, attrsHead_());
     var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
     t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
     rows.forEach(function (x) {
@@ -678,7 +687,7 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
   return withLock_(function () {
     var name = 'attrs_' + fy;
-    sheet_(db_(), name, attrsHead_());
+    ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
     if (row) writeCell_(t, row, k, v);
@@ -763,6 +772,7 @@ var apiDecide = api_(function (grade, plan) {
       var s = info[r.id];
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
+    ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));

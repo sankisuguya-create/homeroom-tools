@@ -15,6 +15,7 @@
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
       { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
       { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
