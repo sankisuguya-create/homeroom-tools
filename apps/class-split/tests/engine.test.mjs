@@ -79,7 +79,7 @@ test('離す：抵触を見つけ、続けて入れ替える相手は動かな�
   const P = problem();
   const ctx = E.prepare(P);
   const asg = E.optimize(ctx, new Map(), 11);
-  const c = [...asg.keys()].find(i => asg[i] === asg[4] && i !== 4 && E.nearGroup(ctx, asg, i).length === 1 && E.nearGroup(ctx, asg, 0).length === 1);
+  const c = [...asg.keys()].find(i => asg[i] === asg[4] && i !== 4 && !ctx.relOf[i].length && E.nearGroup(ctx, asg, i).length === 1 && E.nearGroup(ctx, asg, 0).length === 1);
   const d = E.buildSwap(ctx, asg, new Set(), 0, c);
   const ch = E.swapChanges(d).ch;
   const br = E.farBreaks(ctx, asg, ch);
@@ -170,4 +170,19 @@ test('Platform（見本）：名簿の取り込み・つける離すの保存・
   assert.equal(b.carry.length, 3);
   await PF.savePairs(2, [{ t: b.carry[0].t, a: b.carry[0].a, b: b.carry[0].b }]);
   assert.equal((await PF.boot(2)).carry.length, 2, '採用した候補は出ない');
+});
+
+test('＋＋は＋2つ分ではない：＋＋の児童は各組の上限（均等割の切り上げ）を超えない', () => {
+  const P = problem();
+  // ＋＋を旧1組に寄せて置く（何もしなければ偏る）
+  P.kids.forEach((s, i) => { ['k1', 'k2', 'k3', 'k4'].forEach(k => { s.a[k] = Math.min(s.a[k], 1); }); if (i % 4 === 0 && i < 40) s.a.k3 = 2; });
+  const ctx = E.prepare(P);
+  const asg = E.optimize(ctx, new Map(), 5);
+  const a = E.analyze(ctx, asg);
+  assert.equal(a.bad.filter(b => b.t === 'heavy').length, 0);
+  const hm = ctx.MET.findIndex(m => m.k === 'heavy');
+  assert.ok(a.c.every(r => r[hm] <= 3)); // 10人÷4組→各組3人まで
+  // 1人で1組に4人入れると違反として出る
+  const bad = new Int8Array(asg); P.kids.forEach((s, i) => { if (s.a.k3 === 2) bad[i] = 0; });
+  assert.ok(E.analyze(ctx, bad).bad.some(b => b.t === 'heavy'));
 });
