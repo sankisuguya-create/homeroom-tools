@@ -72,6 +72,13 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .square>i{clip-path:inset(4% round 2px)}
 .circle>i{clip-path:circle(50%)}
 .diamond>i{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+/* 問：ちくちくした形（とげ14本）。保：家の形。リ：王冠の形（利用者のスケッチから） */
+.burst>i{clip-path:polygon(50.0% 0.0%,58.7% 12.0%,71.7% 5.0%,74.3% 19.5%,89.1% 18.8%,85.1% 33.1%,98.7% 38.9%,89.0% 50.0%,98.7% 61.1%,85.1% 66.9%,89.1% 81.2%,74.3% 80.5%,71.7% 95.0%,58.7% 88.0%,50.0% 100.0%,41.3% 88.0%,28.3% 95.0%,25.7% 80.5%,10.9% 81.2%,14.9% 66.9%,1.3% 61.1%,11.0% 50.0%,1.3% 38.9%,14.9% 33.1%,10.9% 18.8%,25.7% 19.5%,28.3% 5.0%,41.3% 12.0%)}
+.burst>em{font-size:.8em}
+.house>i{clip-path:polygon(50% 0,100% 44%,100% 100%,0 100%,0 44%)}
+.house>em{top:.14em;font-size:.88em}
+.crown>i{clip-path:polygon(0 100%,0 12%,25% 46%,50% 4%,75% 46%,100% 12%,100% 100%)}
+.crown>em{top:.16em;font-size:.86em}
 .diamond>em{font-size:.82em}
 .hexagon>i{clip-path:polygon(25% 2%,75% 2%,100% 50%,75% 98%,25% 98%,0 50%)}
 .pentagon>i{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
@@ -267,12 +274,12 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     ATTRS: [
       { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2 },
       { k: 'k2', label: '長欠',         s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'diamond',  w: 3 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'hexagon',  w: 2 },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3 },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
       { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'pill',     w: 2, good: 1 },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
@@ -964,7 +971,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_18d2fb28e2b4';
+  var PAGE_BUILD = 'BUILD_ba250dea1006';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
