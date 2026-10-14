@@ -14,6 +14,7 @@ export function makeGas(src) {
   }
   class Sheet {
     constructor(name) { this.name = name; this.data = []; }
+    getName() { return this.name; }
     width() { return Math.max(0, ...this.data.map(r => r.length)); }
     getDataRange() { return new Range(this, 1, 1, this.data.length, this.width()); }
     getRange(r, c, nr = 1, nc = 1) { return new Range(this, r, c, nr, nc); }
@@ -26,6 +27,7 @@ export function makeGas(src) {
     getId() { return this.id; } getUrl() { return 'mock://' + this.id; }
     getSheetByName(n) { return this.sheets[n] || null; }
     insertSheet(n) { return (this.sheets[n] = new Sheet(n)); }
+    getSheets() { return Object.values(this.sheets); }
   }
   const props = {};
   const env = {
