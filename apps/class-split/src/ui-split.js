@@ -2,7 +2,7 @@
 // 計算はすべて Engine。ここは状態と描画と操作だけを持つ。
 (function (g) {
   'use strict';
-  var App = g.App, C = g.CONFIG, E = g.Engine, PF = g.Platform;
+  var App = g.App, C = g.CONFIG, E = g.Engine;
   var LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var S = null; // { P, ctx, plans, active, view, sel, follow, lastGen, nc, readOnly }
 
@@ -56,7 +56,7 @@
   function persist() {
     clearTimeout(saveT);
     App.saveState('saving');
-    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return PF.savePlans(grade, data); }); }, 1200);
+    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return App.pf().savePlans(grade, data); }); }, 1200);
   }
 
   function addGenerated(gen, locked, from) {
@@ -88,7 +88,7 @@
   }
 
   function renderBar() {
-    var h = '<button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
+    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
       h += '<span class="tab" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="ダブルクリックで名前を変える">' +
@@ -103,6 +103,7 @@
       h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
         '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>' +
         '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
+        '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
     h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
@@ -113,7 +114,7 @@
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   function render() {
     App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
-    App.saveState();
+    App.saveState(); App.paintTrial();
     if (S.view === 'cmp') { renderCmp(); return; }
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc;
     var vb = App.$('vbtn');
@@ -324,14 +325,82 @@
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
     confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
-      App.save(function () { return PF.savePlans(grade, serialize()).then(function () { return PF.decide(grade, { name: planName(p), assign: assign }); }); })
+      App.save(function () { return App.pf().savePlans(grade, serialize()).then(function () { return App.pf().decide(grade, { name: planName(p), assign: assign }); }); })
         .then(function () { return App.reload(); }).then(function () { App.toast('決定しました'); });
     });
   }
   function undoDecideDialog() {
     var grade = App.st.grade;
     confirmDialog('決定を取り消す', '<p>来年度の名簿と、写した配慮項目の値を消します。来年度の側で直した値も消えます。</p>', grade + '年の決定を取り消す', '取り消す', function () {
-      App.save(function () { return PF.undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
+      App.save(function () { return App.pf().undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
+    });
+  }
+
+  // ===== つける・離す・組に固定 =====
+  // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
+  var PT = { far: '離す', near: 'つける', fix: '組に固定' };
+  function pairsDialog() {
+    var d = App.st.data, esc = App.esc, kids = S.P.kids;
+    var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
+    var carry = (d.carry || []).slice();
+    var F = { t: 'far', a: null, b: null, k: 0, memo: '' };
+    var nm = function (id) { var i = S.idx[id]; return i == null ? id : kids[i].name + '（旧' + (kids[i].old + 1) + '組）'; };
+    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + (p.k + 1) + '組' : nm(p.a) + ' と ' + nm(p.b); };
+    var sugg = function (q, slot) {
+      q = (q || '').trim();
+      if (!q) return '';
+      var hit = kids.filter(function (s) { return s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || s.id.indexOf(q) === 0; }).slice(0, 8);
+      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">旧' + (s.old + 1) + '組' + s.no + '番 ' + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+    };
+    var pick = function (slot) {
+      var id = F[slot];
+      return id ? '<span class="picked"><span>' + esc(nm(id)) + '<button type="button" data-unpk="' + slot + '" aria-label="外す">×</button></span></span>' :
+        '<input id="q' + slot + '" placeholder="名前・よみ・児童IDで探す" autocomplete="off" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><div id="s' + slot + '"></div>';
+    };
+    var canAdd = function () { return F.a && (F.t === 'fix' ? true : F.b && F.b !== F.a); };
+    App.openDlg({
+      focus: 'qa',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す"><h2>つける・離す・組に固定</h2>' +
+          '<div class="form"><div class="toggles">' + ['far', 'near', 'fix'].map(function (t) { return '<button class="tg" data-pt="' + t + '" aria-pressed="' + (F.t === t) + '">' + PT[t] + '</button>'; }).join('') + '</div>' +
+          '<div class="row" style="align-items:flex-start"><div>' + pick('a') + '</div><div>' + (F.t === 'fix' ?
+            '<div class="lvs">' + Array.from({ length: S.P.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
+          '<div class="row"><input id="pmemo" placeholder="メモ（任意・氏名は書かない）" value="' + esc(F.memo) + '" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><button class="btn" id="padd"' + (canAdd() ? '' : ' disabled') + '>追加</button></div></div>' +
+          '<div class="tw" style="max-height:220px"><table class="r ro"><thead><tr><th>種類</th><th style="text-align:left">児童</th><th style="text-align:left">メモ</th><th></th></tr></thead><tbody>' +
+          (list.map(function (p, i) { return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td style="text-align:left">' + esc(p.memo || '') + '</td><td><button class="btn" data-pdel="' + i + '">削除</button></td></tr>'; }).join('') ||
+            '<tr><td colspan="4" class="empty">まだありません</td></tr>') + '</tbody></table></div>' +
+          (carry.length ? '<div><b>前年度からの候補</b>（採用すると上の表に入る）<div class="tw" style="max-height:140px"><table class="r ro"><tbody>' + carry.map(function (p, i) {
+            return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td><button class="btn" data-pcar="' + i + '">採用</button></td></tr>';
+          }).join('') + '</tbody></table></div></div>' : '') +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">保存する（' + list.length + '件）</button></div></div></div>';
+      },
+      input: function (t) {
+        if (t.id === 'qa' || t.id === 'qb') { var slot = t.id.slice(1); App.$('s' + slot).innerHTML = sugg(t.value, slot); }
+        else if (t.id === 'pmemo') F.memo = t.value;
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-pt]'))) { F.t = x.dataset.pt; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pk]'))) { var v = x.dataset.pk.split(':'); F[v[0]] = v[1]; App.refreshDlg(); var q = App.$(v[0] === 'a' ? 'qb' : 'qa'); if (q) q.focus(); return true; }
+        if ((x = t.closest('[data-unpk]'))) { F[x.dataset.unpk] = null; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pkc]'))) { F.k = +x.dataset.pkc; App.refreshDlg(); return true; }
+        if (t.closest('#padd')) {
+          if (!canAdd()) return true;
+          list.push(F.t === 'fix' ? { t: 'fix', a: F.a, k: F.k, memo: F.memo } : { t: F.t, a: F.a, b: F.b, memo: F.memo });
+          F = { t: F.t, a: null, b: null, k: F.k, memo: '' }; App.refreshDlg(); return true;
+        }
+        if ((x = t.closest('[data-pdel]'))) { list.splice(+x.dataset.pdel, 1); App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pcar]'))) { var c = carry.splice(+x.dataset.pcar, 1)[0]; list.push({ t: c.t, a: c.a, b: c.b, memo: '' }); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () {
+        var grade = App.st.grade, data = serialize(), n = list.length;
+        App.closeDlg();
+        // 案を先に保存してから読み込み直す（案は残る）
+        clearTimeout(saveT);
+        App.save(function () { return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); })
+          .then(function () { return App.reload(); }).then(function () { App.toast('つける・離すを保存しました（' + n + '件）'); });
+      }
     });
   }
 
@@ -361,7 +430,7 @@
   }
   function helpDialog() {
     var keys = [['クリック → クリック', '入れ替え（確認の枠が出る）'], ['Enter', '確認の枠で実行'], ['Esc', '選択の解除・枠を閉じる'], ['Ctrl+Z', '元に戻す'], ['Ctrl+Y／Ctrl+Shift+Z', 'やり直す'],
-      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
+      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['P', 'つける・離す・組に固定'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
     App.openDlg({
       focus: 'okbtn',
       html: function () {
@@ -429,7 +498,15 @@
   function selectPlan(pi) { S.active = pi; S.view = 'plan'; S.sel = -1; S.follow = null; render(); }
 
   App.screens.split = {
-    enter: function () { build(); document.body.classList.add('fit'); render(); },
+    enter: function () {
+      var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+      if (!cur || !cur.rows.length) { // 名簿が無いと組めない
+        App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
+          '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
+        return;
+      }
+      build(); document.body.classList.add('fit'); render();
+    },
     leave: function () { document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
@@ -453,6 +530,7 @@
       if (t.closest('#gen')) { genDialog(); return true; }
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
+      if (t.closest('#pairs')) { pairsDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
@@ -473,6 +551,7 @@
       var K = k.toLowerCase();
       if (K === 'g' && !S.decision) { genDialog(); return true; }
       if (K === 'd') { dup(); return true; }
+      if (K === 'p' && !S.decision) { pairsDialog(); return true; }
       if (K === 'l' && S.view === 'plan') { toggleLock(); return true; }
       if (K === 'f') { fullscreen(); return true; }
       if (K === 'v' && S.view === 'plan') { showViol(); return true; }

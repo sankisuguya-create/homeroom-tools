@@ -13,10 +13,14 @@
   var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
-  var S = { kids: {}, years: {}, inc: [], pairs: {}, plans: {}, decisions: {}, nextInc: 1 };
+  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
   function yearRows(fy, grade) { S.years[fy] = S.years[fy] || {}; return (S.years[fy][grade] = S.years[fy][grade] || []); }
 
-  (function gen() {
+  // ダミーデータは初めて使う時に作る（本番の画面では「試行」を押すまで作らない）
+  var made = false;
+  function gen() {
+    if (made) return;
+    made = true;
     for (var grade = 1; grade <= 6; grade++) {
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
@@ -63,9 +67,11 @@
       for (var nr = 0; nr < 2; nr++) { var cd = two(); pairs.push({ t: 'near', a: cd[0], b: cd[1] }); }
       var fx = pick(cur); if (!used[fx]) pairs.push({ t: 'fix', a: fx, k: 0, memo: '教室が1階' });
       S.pairs[grade] = pairs;
+      // 前年度から持ち越した「つける・離す」の候補（見本）
+      S.carry[grade] = grade >= 2 ? [0, 1, 2].map(function () { var ab = two(); return { t: R() < .7 ? 'far' : 'near', a: ab[0], b: ab[1] }; }) : [];
       S.plans[grade] = [];
     }
-  })();
+  }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
@@ -80,10 +86,18 @@
     return out;
   }
 
-  g.Platform = {
+  // 持ち越しの候補のうち、まだ採用していない組だけ
+  function carryOf(grade) {
+    var key = function (p) { return p.t + ':' + [p.a, p.b].sort().join('-'); }, have = {};
+    (S.pairs[grade] || []).forEach(function (p) { have[key(p)] = 1; });
+    return (S.carry[grade] || []).filter(function (p) { return !have[key(p)]; });
+  }
+
+  g.Platforms = g.Platforms || {};
+  g.Platforms.demo = {
     name: 'demo',
     fiscalYear: FY,
-    listGrades: function () {
+    listGrades: function () { gen();
       var out = [];
       for (var grade = 1; grade <= 6; grade++) {
         var rows = yearRows(FY, grade), nc = 0;
@@ -92,7 +106,7 @@
       }
       return later(out);
     },
-    boot: function (grade) {
+    boot: function (grade) { gen();
       var years = cohortYears(grade), idset = {};
       years.forEach(function (y) { y.rows.forEach(function (r) { idset[r.id] = 1; }); });
       var kids = {};
@@ -100,26 +114,26 @@
       return later({
         fy: FY, grade: grade, years: years, kids: kids,
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
-        pairs: S.pairs[grade] || [], plans: S.plans[grade] || [], decision: S.decisions[grade] || null
+        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null
       });
     },
-    setAttr: function (fy, grade, id, k, v) {
+    setAttr: function (fy, grade, id, k, v) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       r.a[k] = v;
       return later({ ok: true });
     },
-    savePlans: function (grade, plans) { S.plans[grade] = clone(plans); return later({ ok: true }); },
-    addIncident: function (x) {
+    savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
+    addIncident: function (x) { gen();
       // 本番は所有者の権限で文書の名前を取る。取れない時は title を空で返し、画面が入力を求める
       var inc = { id: S.nextInc++, date: x.date, type: x.type, title: x.title || '', url: x.url, ids: x.ids.slice() };
       S.inc.push(inc);
       return later(inc);
     },
-    fetchTitle: function (url) {
+    fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
-    schoolIncidents: function () {
+    schoolIncidents: function () { gen();
       var out = {};
       for (var grade = 1; grade <= 6; grade++) yearRows(FY, grade).forEach(function (r) { out[r.id] = { grade: grade, cls: r.cls, no: r.no }; });
       var rows = [];
@@ -132,7 +146,7 @@
       return later(rows);
     },
     // 決定：次の年度の名簿（新しい組・番号）を作り、配慮項目の値を写し、つける・離すを持ち越しの候補にする
-    decide: function (grade, plan) {
+    decide: function (grade, plan) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです'));
       if (grade >= 6) return Promise.reject(new Error('6年は決定しません'));
       var cur = yearRows(FY, grade), kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
@@ -143,7 +157,23 @@
       S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
       return later(S.decisions[grade]);
     },
-    undoDecide: function (grade) {
+    // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
+    importRoster: function (fy, grade, rows) {
+      gen();
+      var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
+      cur.forEach(function (r) { byId[r.id] = r; });
+      rows.forEach(function (x) {
+        classes[x.cls] = 1;
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+      });
+      var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
+      var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });
+      return later({ added: added, updated: updated, missing: missing });
+    },
+    savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
+    undoDecide: function (grade) { gen();
       if (!S.decisions[grade]) return Promise.reject(new Error('決定されていません'));
       if (S.years[FY + 1]) delete S.years[FY + 1][grade + 1];
       delete S.decisions[grade];

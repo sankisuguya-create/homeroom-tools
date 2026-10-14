@@ -22,6 +22,11 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f);margin:0;font-si
   box-sizing:border-box;display:flex;flex-direction:column}
 body.fit{overflow:hidden}
 body.fit .top{display:none}
+/* 試行中：画面の上端に太い帯と、ボタンの色で、本番でないことを常に見せる */
+.btn.trial{font-weight:700}
+.btn.trial[aria-pressed="true"]{background:#A85800;color:#fff;border-color:#A85800}
+body.trying{box-shadow:inset 0 6px 0 #A85800;padding-top:12px}
+body.trying .demo{color:#A85800;font-weight:700;margin-left:0}
 button,input,select{font:inherit;color:inherit}
 a{color:var(--link)}
 kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
@@ -243,7 +248,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
 /* ▲ src/app.css ここまで ▲ */
 </style>
-<div class="top"><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
+<div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
 <div class="toast" id="toast" hidden></div>
@@ -643,6 +648,98 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/engine.js ここまで ▲ */
+/* ▼ src/paste.js から。直すのは src のほう ▼ */
+// 名簿の貼り付けを読む（画面に依存しない。tests/paste.test.mjs が直接読む）。
+// スプレッドシートからのコピーはタブ区切り。見出しの行があれば名前で列を決め、無ければ値の形から推定する。
+(function (g) {
+  'use strict';
+  // 見出しの言い換え（小文字・空白なしで比べる）
+  var NAMES = {
+    id: ['児童id', 'id', '児童番号', '学籍番号', 'アカウント', 'メール', 'メールアドレス', 'email'],
+    name: ['名前', '氏名', '児童名', 'なまえ'],
+    kana: ['よみ', '読み', 'ふりがな', 'フリガナ', 'かな', 'カナ', 'よみがな', 'ヨミ'],
+    sex: ['性別', '男女'],
+    cls: ['組', 'クラス', '学級'],
+    no: ['出席番号', '番号', '番', 'no']
+  };
+  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号' };
+  function norm(h) { return String(h).replace(/[\s　]/g, '').toLowerCase(); }
+  function roleOfHeader(h) {
+    var n = norm(h);
+    for (var r in NAMES) if (NAMES[r].some(function (x) { return norm(x) === n; })) return r;
+    return null;
+  }
+  function toHalf(s) { return String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); }
+  function idOf(v) { var m = toHalf(v).match(/^(\d{8})(@|$)/); return m ? m[1] : ''; }
+  function sexOf(v) { var s = String(v).trim(); return /^(男|男子|M|m)$/.test(s) ? '男' : /^(女|女子|F|f)$/.test(s) ? '女' : ''; }
+  function isKana(v) { return /^[ぁ-んァ-ヶー\s　・]+$/.test(String(v).trim()) && String(v).trim() !== ''; }
+  function isSmallInt(v) { var s = toHalf(v); return /^\d{1,2}$/.test(s) && +s >= 1 && +s <= 45; }
+  function clsOf(v) { var s = toHalf(v).replace(/組$/, ''); return /^[1-9]$/.test(s) ? +s : 0; }
+
+  function splitRows(text) {
+    return String(text).replace(/\r/g, '').split('\n').map(function (l) { return l.split('\t'); })
+      .filter(function (r) { return r.some(function (c) { return String(c).trim() !== ''; }); });
+  }
+
+  // 値の形から列の役割を推定する（見出しが無い時）
+  function guess(rows) {
+    var w = Math.max.apply(null, rows.map(function (r) { return r.length; })), roles = [], used = {};
+    var score = function (c, f) { var n = 0; rows.forEach(function (r) { if (f(r[c] || '')) n++; }); return n / rows.length; };
+    for (var c = 0; c < w; c++) {
+      var r = null;
+      if (!used.id && score(c, function (v) { return !!idOf(v); }) > .8) r = 'id';
+      else if (!used.sex && score(c, function (v) { return !!sexOf(v); }) > .8) r = 'sex';
+      else if (!used.kana && score(c, isKana) > .8) r = 'kana';
+      else if (score(c, isSmallInt) > .8) r = !used.no ? 'no' : null;
+      else if (!used.name && score(c, function (v) { return String(v).trim() !== ''; }) > .8) r = 'name';
+      if (r) used[r] = 1;
+      roles.push(r);
+    }
+    // 小さな数の列が2つあれば、1〜9だけの列を組、残りを番号とする
+    var small = [];
+    for (c = 0; c < w; c++) if (score(c, isSmallInt) > .8) small.push(c);
+    if (small.length >= 2) {
+      var ci = small.filter(function (c) { return score(c, function (v) { return clsOf(v) > 0; }) === 1; })[0];
+      if (ci != null) { roles[ci] = 'cls'; roles[small.filter(function (c) { return c !== ci; })[0]] = 'no'; }
+    }
+    return roles;
+  }
+
+  // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no}], errors: [文], counts: {男,女} }
+  // cls は 0始まり。組の列が無い時は defaultCls を使う
+  function parseRoster(text, defaultCls) {
+    var all = splitRows(text);
+    if (!all.length) return { roles: [], header: false, rows: [], errors: [], counts: { m: 0, f: 0 } };
+    var headRoles = all[0].map(roleOfHeader), header = headRoles.filter(Boolean).length >= 2;
+    var body = header ? all.slice(1) : all, roles = header ? headRoles : guess(body);
+    var col = {};
+    roles.forEach(function (r, c) { if (r && col[r] == null) col[r] = c; });
+    var errors = [], rows = [], seen = {}, m = 0, f = 0;
+    ['id', 'name'].forEach(function (r) { if (col[r] == null) errors.push(LABEL[r] + 'の列が見つかりません'); });
+    if (errors.length) return { roles: roles, header: header, rows: [], errors: errors, counts: { m: 0, f: 0 } };
+    body.forEach(function (r, i) {
+      var line = (header ? i + 2 : i + 1) + '行目：';
+      var id = idOf(r[col.id] || ''), name = String(r[col.name] || '').trim();
+      var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
+      var cls = col.cls != null ? clsOf(r[col.cls] || '') - 1 : defaultCls;
+      var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
+      if (!id) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
+      if (seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
+      if (!name) { errors.push(line + '名前が空です'); return; }
+      if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
+      if (!(cls >= 0)) { errors.push(line + '組が読めません'); return; }
+      seen[id] = 1;
+      if (sex === '男') m++; else if (sex === '女') f++;
+      rows.push({ id: id, name: name, kana: col.kana != null ? String(r[col.kana] || '').trim() : '', male: sex === '男', sex: sex, cls: cls, no: no || 0 });
+    });
+    // 番号が無ければ貼った順に振る
+    if (col.no == null) { var byCls = {}; rows.forEach(function (x) { x.no = (byCls[x.cls] = (byCls[x.cls] || 0) + 1); }); }
+    return { roles: roles, header: header, rows: rows, errors: errors, counts: { m: m, f: f } };
+  }
+
+  g.Paste = { parseRoster: parseRoster, LABEL: LABEL };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/paste.js ここまで ▲ */
 /* ▼ src/platform-demo.js から。直すのは src のほう ▼ */
 // Platform層（見本用）。本番の GAS と同じ形の非同期 API を、メモリ上の架空データで返す。
 // 画面はこの API だけを呼ぶ。PR② で同じ形の platform-gas.js（google.script.run）を足して差し替える。
@@ -659,10 +756,14 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
-  var S = { kids: {}, years: {}, inc: [], pairs: {}, plans: {}, decisions: {}, nextInc: 1 };
+  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
   function yearRows(fy, grade) { S.years[fy] = S.years[fy] || {}; return (S.years[fy][grade] = S.years[fy][grade] || []); }
 
-  (function gen() {
+  // ダミーデータは初めて使う時に作る（本番の画面では「試行」を押すまで作らない）
+  var made = false;
+  function gen() {
+    if (made) return;
+    made = true;
     for (var grade = 1; grade <= 6; grade++) {
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
@@ -709,9 +810,11 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       for (var nr = 0; nr < 2; nr++) { var cd = two(); pairs.push({ t: 'near', a: cd[0], b: cd[1] }); }
       var fx = pick(cur); if (!used[fx]) pairs.push({ t: 'fix', a: fx, k: 0, memo: '教室が1階' });
       S.pairs[grade] = pairs;
+      // 前年度から持ち越した「つける・離す」の候補（見本）
+      S.carry[grade] = grade >= 2 ? [0, 1, 2].map(function () { var ab = two(); return { t: R() < .7 ? 'far' : 'near', a: ab[0], b: ab[1] }; }) : [];
       S.plans[grade] = [];
     }
-  })();
+  }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
@@ -726,10 +829,18 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     return out;
   }
 
-  g.Platform = {
+  // 持ち越しの候補のうち、まだ採用していない組だけ
+  function carryOf(grade) {
+    var key = function (p) { return p.t + ':' + [p.a, p.b].sort().join('-'); }, have = {};
+    (S.pairs[grade] || []).forEach(function (p) { have[key(p)] = 1; });
+    return (S.carry[grade] || []).filter(function (p) { return !have[key(p)]; });
+  }
+
+  g.Platforms = g.Platforms || {};
+  g.Platforms.demo = {
     name: 'demo',
     fiscalYear: FY,
-    listGrades: function () {
+    listGrades: function () { gen();
       var out = [];
       for (var grade = 1; grade <= 6; grade++) {
         var rows = yearRows(FY, grade), nc = 0;
@@ -738,7 +849,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       }
       return later(out);
     },
-    boot: function (grade) {
+    boot: function (grade) { gen();
       var years = cohortYears(grade), idset = {};
       years.forEach(function (y) { y.rows.forEach(function (r) { idset[r.id] = 1; }); });
       var kids = {};
@@ -746,26 +857,26 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return later({
         fy: FY, grade: grade, years: years, kids: kids,
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
-        pairs: S.pairs[grade] || [], plans: S.plans[grade] || [], decision: S.decisions[grade] || null
+        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null
       });
     },
-    setAttr: function (fy, grade, id, k, v) {
+    setAttr: function (fy, grade, id, k, v) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       r.a[k] = v;
       return later({ ok: true });
     },
-    savePlans: function (grade, plans) { S.plans[grade] = clone(plans); return later({ ok: true }); },
-    addIncident: function (x) {
+    savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
+    addIncident: function (x) { gen();
       // 本番は所有者の権限で文書の名前を取る。取れない時は title を空で返し、画面が入力を求める
       var inc = { id: S.nextInc++, date: x.date, type: x.type, title: x.title || '', url: x.url, ids: x.ids.slice() };
       S.inc.push(inc);
       return later(inc);
     },
-    fetchTitle: function (url) {
+    fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
-    schoolIncidents: function () {
+    schoolIncidents: function () { gen();
       var out = {};
       for (var grade = 1; grade <= 6; grade++) yearRows(FY, grade).forEach(function (r) { out[r.id] = { grade: grade, cls: r.cls, no: r.no }; });
       var rows = [];
@@ -778,7 +889,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return later(rows);
     },
     // 決定：次の年度の名簿（新しい組・番号）を作り、配慮項目の値を写し、つける・離すを持ち越しの候補にする
-    decide: function (grade, plan) {
+    decide: function (grade, plan) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです'));
       if (grade >= 6) return Promise.reject(new Error('6年は決定しません'));
       var cur = yearRows(FY, grade), kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
@@ -789,7 +900,23 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
       return later(S.decisions[grade]);
     },
-    undoDecide: function (grade) {
+    // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
+    importRoster: function (fy, grade, rows) {
+      gen();
+      var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
+      cur.forEach(function (r) { byId[r.id] = r; });
+      rows.forEach(function (x) {
+        classes[x.cls] = 1;
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+      });
+      var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
+      var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });
+      return later({ added: added, updated: updated, missing: missing });
+    },
+    savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
+    undoDecide: function (grade) { gen();
       if (!S.decisions[grade]) return Promise.reject(new Error('決定されていません'));
       if (S.years[FY + 1]) delete S.years[FY + 1][grade + 1];
       delete S.decisions[grade];
@@ -811,6 +938,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   };
 
   // 配慮項目の印：頭文字＋色＋形。程度2以上は字の右上に「+」を（程度−1）個
+  // データの出し入れ先。本番（gas）と試行（demo：ダミーデータ・保存しない）を画面から切り替える
+  App.mode = g.Platforms.gas ? 'gas' : 'demo';
+  App.pf = function () { return g.Platforms[App.mode]; };
+
   App.mark = function (at, lv) {
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
       (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';
@@ -887,7 +1018,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 // （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。右に児童の経年の記録と事案。
 (function (g) {
   'use strict';
-  var App = g.App, C = g.CONFIG, PF = g.Platform;
+  var App = g.App, C = g.CONFIG;
   var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, byCount: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
@@ -904,6 +1035,12 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
     if (years.indexOf(R.fy) < 0) R.fy = editableFy();
     var Y = yearOf(R.fy), edit = R.fy === editableFy();
+    if (!Y) { // まだ名簿が無い学年
+      App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の名簿がまだありません</h2>' +
+        '<p>既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。</p>' +
+        '<button class="btn primary" id="paste">名簿を貼る…</button></section></div>';
+      return;
+    }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
     var h = '<div class="rbar"><span class="lab">年度</span>' + years.map(function (fy) {
       var y = yearOf(fy);
@@ -919,6 +1056,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       h += '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label>';
     }
     h += '<span class="sp"></span>';
+    if (edit && R.scope !== 'school') h += '<button class="btn" id="paste">名簿を貼る…</button>';
     if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→1→2→3→空（自動保存）</span>' :
       R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
       '<span class="note">過去の年度は見るだけです</span>';
@@ -950,7 +1088,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 
   function schoolTable() {
     if (!R.school) {
-      PF.schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
+      App.pf().schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
       return '<div class="tw"><div class="empty">読み込んでいます…</div></div>';
     }
     var esc = App.esc, rows = R.school.slice().sort(function (a, b) { return b.count - a.count || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
@@ -1015,6 +1153,51 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
   }
 
+  // ===== 名簿を貼る =====
+  // 既存の名簿の範囲をコピーして貼る。見出しで列を読み、読めた結果と誤りをその場で見せてから取り込む
+  function pasteDialog() {
+    var d = D(), fy = editableFy(), grade = fy === d.fy ? d.grade : d.grade + 1, esc = App.esc;
+    var P = { text: '', cls: R.scope === 'cls' ? R.cls : 0, res: null };
+    var summary = function () {
+      var r = P.res = g.Paste.parseRoster(P.text, P.cls);
+      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます</div>';
+      var hasCls = r.roles.indexOf('cls') >= 0;
+      var h = '<div class="rbar"><span class="lab">読み取った列</span>' + r.roles.map(function (x) { return '<span class="tab" style="cursor:default">' + (x ? g.Paste.LABEL[x] : '（使わない）') + '</span>'; }).join('') + '</div>';
+      if (!hasCls) h += '<div class="rbar"><span class="lab">組の列が無いので、この組に入れる</span>' + [0, 1, 2, 3].map(function (k) {
+        return '<button class="tab" data-pcls="' + k + '" aria-selected="' + (P.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>';
+      }).join('') + '</div>';
+      h += '<div><b>' + r.rows.length + '人</b>（男' + r.counts.m + '・女' + r.counts.f + '）を ' + fy + '年度 ' + grade + '年 に取り込みます。同じ児童IDの児童は上書きし、入力済みの配慮項目は消しません。</div>';
+      if (r.errors.length) h += '<div class="warnbox">✕ ' + r.errors.length + '件 取り込めない行があります<ul style="margin:4px 0 0;font-weight:400;color:var(--ink)">' +
+        r.errors.slice(0, 6).map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + (r.errors.length > 6 ? '<li>ほか' + (r.errors.length - 6) + '件</li>' : '') + '</ul></div>';
+      if (r.rows.length) h += '<div class="tw" style="max-height:180px"><table class="r ro"><thead><tr><th>組</th><th>番号</th><th>児童ID</th><th style="text-align:left">名前</th><th>よみ</th><th>性別</th></tr></thead><tbody>' +
+        r.rows.slice(0, 5).map(function (x) { return '<tr><td>' + (x.cls + 1) + '</td><td>' + x.no + '</td><td>' + x.id + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.kana) + '</td><td>' + (x.sex || '—') + '</td></tr>'; }).join('') +
+        (r.rows.length > 5 ? '<tr><td colspan="6" class="note">ほか' + (r.rows.length - 5) + '人</td></tr>' : '') + '</tbody></table></div>';
+      return h;
+    };
+    var refresh = function () { App.$('psum').innerHTML = summary(); var b = App.$('okbtn'); b.disabled = !P.res.rows.length; b.firstChild.textContent = '取り込む（' + P.res.rows.length + '人）'; };
+    App.openDlg({
+      focus: 'ptxt',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="名簿を貼る"><h2>名簿を貼る</h2>' +
+          '<textarea id="ptxt" rows="6" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="既存の名簿の範囲（見出しの行を含めて）をコピーして、ここに貼り付けます">' + esc(P.text) + '</textarea>' +
+          '<div id="psum">' + summary() + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn"' + (P.res && P.res.rows.length ? '' : ' disabled') + '>取り込む（' + (P.res ? P.res.rows.length : 0) + '人）<kbd>Ctrl+Enter</kbd></button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'ptxt') { P.text = t.value; refresh(); } },
+      click: function (t) { var x = t.closest('[data-pcls]'); if (x) { P.cls = +x.dataset.pcls; refresh(); return true; } return false; },
+      onOk: function () {
+        if (!P.res || !P.res.rows.length) return;
+        var rows = P.res.rows;
+        App.closeDlg();
+        App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
+          return App.reload().then(function () {
+            App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
+          });
+        });
+      }
+    });
+  }
+
   function refocus(id, pos) { var el = App.$(id); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
 
   App.screens.roster = {
@@ -1038,10 +1221,11 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
         var v = r.a[k], fy = R.fy, grade = Y.grade, at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
         x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
-        App.save(function () { return PF.setAttr(fy, grade, r.id, k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
         return true;
       }
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
+      if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#addInc')) { R.form = { ids: [R.kid] }; render(); refocus('fUrl'); return true; }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
       if ((x = t.closest('[data-pick]'))) { R.form.ids.push(x.dataset.pick); render(); refocus('fQ'); return true; }
@@ -1059,7 +1243,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
         var url = t.value;
         clearTimeout(R.form.timer);
         R.form.timer = setTimeout(function () {
-          PF.fetchTitle(url).then(function (r) {
+          App.pf().fetchTitle(url).then(function (r) {
             if (!R.form || R.form.url !== url) return;
             if (r.title) { R.form.title = r.title; R.form.titleMsg = '自動で取得しました'; }
             else R.form.titleMsg = '取得できませんでした。名前を入力してください';
@@ -1075,7 +1259,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       var x = R.form;
       if (!x.ids.length) { App.toast('関係する児童を1人以上選んでください'); return; }
       App.save(function () {
-        return PF.addIncident({ url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: x.ids });
+        return App.pf().addIncident({ url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: x.ids });
       }).then(function (inc) { D().incidents.push(inc); R.form = null; render(); App.toast('事案を登録しました'); });
     },
     key: function (e) {
@@ -1090,7 +1274,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 // 計算はすべて Engine。ここは状態と描画と操作だけを持つ。
 (function (g) {
   'use strict';
-  var App = g.App, C = g.CONFIG, E = g.Engine, PF = g.Platform;
+  var App = g.App, C = g.CONFIG, E = g.Engine;
   var LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   var S = null; // { P, ctx, plans, active, view, sel, follow, lastGen, nc, readOnly }
 
@@ -1144,7 +1328,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   function persist() {
     clearTimeout(saveT);
     App.saveState('saving');
-    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return PF.savePlans(grade, data); }); }, 1200);
+    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return App.pf().savePlans(grade, data); }); }, 1200);
   }
 
   function addGenerated(gen, locked, from) {
@@ -1176,7 +1360,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   }
 
   function renderBar() {
-    var h = '<button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
+    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
       h += '<span class="tab" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="ダブルクリックで名前を変える">' +
@@ -1191,6 +1375,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
         '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>' +
         '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
+        '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
     h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
@@ -1201,7 +1386,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   function render() {
     App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
-    App.saveState();
+    App.saveState(); App.paintTrial();
     if (S.view === 'cmp') { renderCmp(); return; }
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc;
     var vb = App.$('vbtn');
@@ -1412,14 +1597,82 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
     confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
-      App.save(function () { return PF.savePlans(grade, serialize()).then(function () { return PF.decide(grade, { name: planName(p), assign: assign }); }); })
+      App.save(function () { return App.pf().savePlans(grade, serialize()).then(function () { return App.pf().decide(grade, { name: planName(p), assign: assign }); }); })
         .then(function () { return App.reload(); }).then(function () { App.toast('決定しました'); });
     });
   }
   function undoDecideDialog() {
     var grade = App.st.grade;
     confirmDialog('決定を取り消す', '<p>来年度の名簿と、写した配慮項目の値を消します。来年度の側で直した値も消えます。</p>', grade + '年の決定を取り消す', '取り消す', function () {
-      App.save(function () { return PF.undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
+      App.save(function () { return App.pf().undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
+    });
+  }
+
+  // ===== つける・離す・組に固定 =====
+  // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
+  var PT = { far: '離す', near: 'つける', fix: '組に固定' };
+  function pairsDialog() {
+    var d = App.st.data, esc = App.esc, kids = S.P.kids;
+    var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
+    var carry = (d.carry || []).slice();
+    var F = { t: 'far', a: null, b: null, k: 0, memo: '' };
+    var nm = function (id) { var i = S.idx[id]; return i == null ? id : kids[i].name + '（旧' + (kids[i].old + 1) + '組）'; };
+    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + (p.k + 1) + '組' : nm(p.a) + ' と ' + nm(p.b); };
+    var sugg = function (q, slot) {
+      q = (q || '').trim();
+      if (!q) return '';
+      var hit = kids.filter(function (s) { return s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || s.id.indexOf(q) === 0; }).slice(0, 8);
+      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">旧' + (s.old + 1) + '組' + s.no + '番 ' + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+    };
+    var pick = function (slot) {
+      var id = F[slot];
+      return id ? '<span class="picked"><span>' + esc(nm(id)) + '<button type="button" data-unpk="' + slot + '" aria-label="外す">×</button></span></span>' :
+        '<input id="q' + slot + '" placeholder="名前・よみ・児童IDで探す" autocomplete="off" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><div id="s' + slot + '"></div>';
+    };
+    var canAdd = function () { return F.a && (F.t === 'fix' ? true : F.b && F.b !== F.a); };
+    App.openDlg({
+      focus: 'qa',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す"><h2>つける・離す・組に固定</h2>' +
+          '<div class="form"><div class="toggles">' + ['far', 'near', 'fix'].map(function (t) { return '<button class="tg" data-pt="' + t + '" aria-pressed="' + (F.t === t) + '">' + PT[t] + '</button>'; }).join('') + '</div>' +
+          '<div class="row" style="align-items:flex-start"><div>' + pick('a') + '</div><div>' + (F.t === 'fix' ?
+            '<div class="lvs">' + Array.from({ length: S.P.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
+          '<div class="row"><input id="pmemo" placeholder="メモ（任意・氏名は書かない）" value="' + esc(F.memo) + '" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><button class="btn" id="padd"' + (canAdd() ? '' : ' disabled') + '>追加</button></div></div>' +
+          '<div class="tw" style="max-height:220px"><table class="r ro"><thead><tr><th>種類</th><th style="text-align:left">児童</th><th style="text-align:left">メモ</th><th></th></tr></thead><tbody>' +
+          (list.map(function (p, i) { return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td style="text-align:left">' + esc(p.memo || '') + '</td><td><button class="btn" data-pdel="' + i + '">削除</button></td></tr>'; }).join('') ||
+            '<tr><td colspan="4" class="empty">まだありません</td></tr>') + '</tbody></table></div>' +
+          (carry.length ? '<div><b>前年度からの候補</b>（採用すると上の表に入る）<div class="tw" style="max-height:140px"><table class="r ro"><tbody>' + carry.map(function (p, i) {
+            return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td><button class="btn" data-pcar="' + i + '">採用</button></td></tr>';
+          }).join('') + '</tbody></table></div></div>' : '') +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">保存する（' + list.length + '件）</button></div></div></div>';
+      },
+      input: function (t) {
+        if (t.id === 'qa' || t.id === 'qb') { var slot = t.id.slice(1); App.$('s' + slot).innerHTML = sugg(t.value, slot); }
+        else if (t.id === 'pmemo') F.memo = t.value;
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-pt]'))) { F.t = x.dataset.pt; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pk]'))) { var v = x.dataset.pk.split(':'); F[v[0]] = v[1]; App.refreshDlg(); var q = App.$(v[0] === 'a' ? 'qb' : 'qa'); if (q) q.focus(); return true; }
+        if ((x = t.closest('[data-unpk]'))) { F[x.dataset.unpk] = null; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pkc]'))) { F.k = +x.dataset.pkc; App.refreshDlg(); return true; }
+        if (t.closest('#padd')) {
+          if (!canAdd()) return true;
+          list.push(F.t === 'fix' ? { t: 'fix', a: F.a, k: F.k, memo: F.memo } : { t: F.t, a: F.a, b: F.b, memo: F.memo });
+          F = { t: F.t, a: null, b: null, k: F.k, memo: '' }; App.refreshDlg(); return true;
+        }
+        if ((x = t.closest('[data-pdel]'))) { list.splice(+x.dataset.pdel, 1); App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pcar]'))) { var c = carry.splice(+x.dataset.pcar, 1)[0]; list.push({ t: c.t, a: c.a, b: c.b, memo: '' }); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () {
+        var grade = App.st.grade, data = serialize(), n = list.length;
+        App.closeDlg();
+        // 案を先に保存してから読み込み直す（案は残る）
+        clearTimeout(saveT);
+        App.save(function () { return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); })
+          .then(function () { return App.reload(); }).then(function () { App.toast('つける・離すを保存しました（' + n + '件）'); });
+      }
     });
   }
 
@@ -1449,7 +1702,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   }
   function helpDialog() {
     var keys = [['クリック → クリック', '入れ替え（確認の枠が出る）'], ['Enter', '確認の枠で実行'], ['Esc', '選択の解除・枠を閉じる'], ['Ctrl+Z', '元に戻す'], ['Ctrl+Y／Ctrl+Shift+Z', 'やり直す'],
-      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
+      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['P', 'つける・離す・組に固定'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
     App.openDlg({
       focus: 'okbtn',
       html: function () {
@@ -1517,7 +1770,15 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   function selectPlan(pi) { S.active = pi; S.view = 'plan'; S.sel = -1; S.follow = null; render(); }
 
   App.screens.split = {
-    enter: function () { build(); document.body.classList.add('fit'); render(); },
+    enter: function () {
+      var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+      if (!cur || !cur.rows.length) { // 名簿が無いと組めない
+        App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
+          '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
+        return;
+      }
+      build(); document.body.classList.add('fit'); render();
+    },
     leave: function () { document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
@@ -1541,6 +1802,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       if (t.closest('#gen')) { genDialog(); return true; }
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
+      if (t.closest('#pairs')) { pairsDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
@@ -1561,6 +1823,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       var K = k.toLowerCase();
       if (K === 'g' && !S.decision) { genDialog(); return true; }
       if (K === 'd') { dup(); return true; }
+      if (K === 'p' && !S.decision) { pairsDialog(); return true; }
       if (K === 'l' && S.view === 'plan') { toggleLock(); return true; }
       if (K === 'f') { fullscreen(); return true; }
       if (K === 'v' && S.view === 'plan') { showViol(); return true; }
@@ -1575,7 +1838,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 // 入口：画面の切り替えと、クリック・キー・入力の振り分け。
 (function (g) {
   'use strict';
-  var App = g.App, PF = g.Platform;
+  var App = g.App;
   // 漢字を中国語の字形で出さないため、どこに埋め込まれても日本語として扱わせる
   document.documentElement.lang = 'ja';
 
@@ -1594,15 +1857,16 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     st.screen = screen;
     crumb();
     if (screen === 'menu') {
-      return PF.listGrades().then(function (gs) { st.grades = gs; App.screens.menu.render(); });
+      return App.pf().listGrades().then(function (gs) { st.grades = gs; App.screens.menu.render(); });
     }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return PF.boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
+    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
   document.addEventListener('click', function (e) {
     var t = e.target, scr = App.screens[App.st.screen];
+    if (t.closest('.trial')) { App.toggleTrial(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
     if (App.dlg) {
       var act = t.closest('[data-act]');
@@ -1618,12 +1882,12 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     if (scr && scr.click) scr.click(t, e);
   });
   document.addEventListener('dblclick', function (e) { var scr = App.screens[App.st.screen]; if (!App.dlg && scr && scr.dblclick) scr.dblclick(e.target); });
-  document.addEventListener('input', function (e) { var scr = App.screens[App.st.screen]; if (scr && scr.input) scr.input(e.target, e); });
+  document.addEventListener('input', function (e) { if (App.dlg && App.dlg.input) { App.dlg.input(e.target, e); return; } var scr = App.screens[App.st.screen]; if (scr && scr.input) scr.input(e.target, e); });
   document.addEventListener('submit', function (e) { e.preventDefault(); var scr = App.screens[App.st.screen]; if (scr && scr.submit) scr.submit(e.target); });
   document.addEventListener('keydown', function (e) {
     if (App.dlg) {
       if (e.key === 'Escape') { e.preventDefault(); App.closeDlg(); }
-      else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing) { e.preventDefault(); App.dlg.onOk(); }
+      else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing && (!e.target.matches('textarea') || e.ctrlKey || e.metaKey)) { e.preventDefault(); App.dlg.onOk(); }
       else if (e.key === 'Tab' && App.dlg.onTab && App.dlg.onTab()) e.preventDefault();
       return;
     }
@@ -1637,7 +1901,27 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 
   // 開いた時は担当の学年を選んだ状態にする（本番は担任と学級の対応から。見本は6年）
   App.st.grade = 6;
-  App.$('demo').hidden = PF.name !== 'demo';
+  // 試行：本番の画面でダミーデータに切り替えて操作を試す（保存はサーバーに送らない）
+  App.canTry = !!(g.Platforms.gas && g.Platforms.demo);
+  App.paintTrial = function () {
+    var on = App.mode === 'demo';
+    document.body.classList.toggle('trying', on && App.canTry);
+    document.querySelectorAll('.trial').forEach(function (b) {
+      b.hidden = !App.canTry;
+      b.textContent = on ? '試行をやめる' : '試行';
+      b.setAttribute('aria-pressed', String(on));
+      b.title = on ? '本番のデータに戻る' : 'ダミーデータで操作を試す（保存されません）';
+    });
+    App.$('demo').hidden = !on;
+    App.$('demo').textContent = App.canTry ? '試行中：ダミーデータです。保存されません。' : '見本：架空の児童。保存は画面を閉じるまで。';
+  };
+  App.toggleTrial = function () {
+    App.mode = App.mode === 'demo' ? 'gas' : 'demo';
+    App.sv = undefined; App.saveState();
+    App.paintTrial();
+    App.go('menu');
+  };
+  App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/main.js ここまで ▲ */

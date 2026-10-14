@@ -10,6 +10,10 @@
   };
 
   // 配慮項目の印：頭文字＋色＋形。程度2以上は字の右上に「+」を（程度−1）個
+  // データの出し入れ先。本番（gas）と試行（demo：ダミーデータ・保存しない）を画面から切り替える
+  App.mode = g.Platforms.gas ? 'gas' : 'demo';
+  App.pf = function () { return g.Platforms[App.mode]; };
+
   App.mark = function (at, lv) {
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
       (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';

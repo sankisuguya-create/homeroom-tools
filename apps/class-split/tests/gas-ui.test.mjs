@@ -59,6 +59,44 @@ await p.keyboard.press('d');
 await p.waitForFunction(() => /先に保存/.test(document.getElementById('save2').textContent), null, { timeout: 5000 });
 ok(true, '同時保存を検知して止まる');
 
+// 試行：左上のボタンでダミーデータに切り替わり、操作してもサーバーに送らない。やめると本番に戻る
+await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
+const before = JSON.stringify(gas.db().sheets);
+await p.click('.top .trial');
+await p.waitForFunction(() => document.body.classList.contains('trying'));
+ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
+await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
+await p.locator('td.cell').first().click();
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+ok(await p.locator('.bar .trial[aria-pressed="true"]').count() === 1, '試行：クラス分けの帯にも試行中の表示');
+ok(JSON.stringify(gas.db().sheets) === before, '試行中の操作はサーバーに送らない');
+await p.click('.bar .trial');
+await p.waitForFunction(() => !document.body.classList.contains('trying'));
+await p.waitForSelector('.gbtn');
+ok(await p.locator('.gbtn small', { hasText: '90人' }).count() === 1, '試行をやめると本番のデータに戻る');
+
+// 名簿を貼る（本番）：見出しで読み、取り込むとシートに入る
+await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#paste');
+await p.click('#paste');
+await p.fill('#ptxt', '児童ID\t名前\tよみ\t性別\t組\t番号\n50000101\t児童1-1\tじどう101\t男\t1\t1\n50000401\t転入 さん\tてんにゅう\t女\t1\t31');
+await p.waitForSelector('#okbtn:not([disabled])');
+ok((await p.locator('#psum').textContent()).includes('2人'), '貼ると読み取った人数が出る');
+await p.keyboard.press('Control+Enter');
+await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+ok(gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), '名簿がシートに入った');
+ok(await p.locator('table.r tbody tr').count() === 31, '1組が31人に');
+
+// つける・離す（本番）：追加して保存すると、読み込み直して違反の判定に入る
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+await p.keyboard.press('p'); await p.waitForSelector('#qa');
+await p.fill('#qa', '児童1-1'); await p.click('[data-pk="a:50000101"]');
+await p.fill('#qb', '児童1-3'); await p.click('[data-pk="b:50000103"]');
+await p.click('#padd');
+await p.click('#okbtn');
+await p.waitForFunction(() => /保存しました/.test(document.getElementById('toast').textContent));
+ok(gas.call('apiBoot', 5).v.pairs.length === 1, 'つける・離すがシートに入った');
+ok(await p.locator('#pairs').count() === 1, '保存後もクラス分けの画面のまま');
+
 // 版ずれの警告
 const p2 = await browser.newPage();
 await p2.exposeFunction('gasCall', (name, args) => JSON.stringify({ ...JSON.parse(gas.ctx[name](...args)), build: 'BUILD_old' }));

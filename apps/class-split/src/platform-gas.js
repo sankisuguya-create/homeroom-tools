@@ -33,7 +33,8 @@
     });
   }
 
-  g.Platform = {
+  g.Platforms = g.Platforms || {};
+  g.Platforms.gas = {
     name: 'gas',
     fiscalYear: C.fiscalYear(),
     listGrades: function () { return call('apiListGrades'); },
@@ -60,6 +61,8 @@
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
+    importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
+    savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
     undoDecide: function (grade) { return call('apiUndoDecide', grade); }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

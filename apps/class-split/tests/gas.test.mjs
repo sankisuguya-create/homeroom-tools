@@ -84,7 +84,33 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok);
     assert.equal(db().getSheetByName('roster_' + (FY + 1)).getLastRow(), 1, '見出しだけ残る');
 
+    // 名簿の取り込み：同じIDは上書き（値は残す）、新しいIDは足す、貼った中にいない児童は知らせる（消さない）
+    const imp = call('apiImportRoster', FY, 4, [
+      { id: '40000011', name: '児童11改', kana: 'じどう11', male: true, cls: 0, no: 1 },
+      { id: '40000099', name: '転入生', kana: 'てんにゅう', male: false, cls: 0, no: 5 }
+    ]);
+    assert.ok(imp.ok, imp.err);
+    assert.equal(imp.v.added, 1); assert.equal(imp.v.updated, 1);
+    assert.equal(imp.v.missing.length, 3, '1組の残り3人');
+    b = call('apiBoot', 4).v;
+    assert.equal(b.kids['40000011'].name, '児童11改');
+    assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 3, '配慮項目の値は残る');
+    assert.equal(b.years[0].rows.length, 9);
+    assert.equal(call('apiImportRoster', FY - 1, 4, [{ id: '40000011', name: 'x', cls: 0, no: 1 }]).ok, false, '過去の年度は入れられない');
+
+    // つける・離す：学年ごとに置き換え。読み込みで返る
+    assert.ok(call('apiSavePairs', 4, [{ t: 'far', a: '40000011', b: '40000012', memo: '' }, { t: 'fix', a: '40000013', k: 1, memo: '1階' }]).ok);
+    b = call('apiBoot', 4).v;
+    assert.deepEqual(b.pairs.map(p => [p.t, p.a, p.b ?? p.k]), [['far', '40000011', '40000012'], ['fix', '40000013', 1]]);
+    assert.ok(call('apiSavePairs', 4, [{ t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
+    assert.equal(call('apiBoot', 4).v.pairs.length, 1, '置き換わる');
+
     // 6年は決定しない
     assert.equal(call('apiDecide', 6, { name: 'x', assign: {} }).ok, false);
+
+    // 持ち越しの候補：前年度に決定した時の組のうち、2人とも今この学年にいて、未採用のもの
+    db().getSheetByName('pairs_carry').data.push([FY - 1, 'far', '40000011', '40000021'], [FY - 1, 'near', '40000021', '40000022'], [FY - 2, 'far', '40000011', '40000022']);
+    const carry = call('apiBoot', 4).v.carry;
+    assert.deepEqual(carry.map(p => [p.t, p.a, p.b]), [['far', '40000011', '40000021']], '採用済みと古い年度は出ない');
   });
 }
