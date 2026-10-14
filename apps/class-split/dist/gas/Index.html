@@ -1004,7 +1004,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_22e7673d625c';
+  var PAGE_BUILD = 'BUILD_da065d8d5e1b';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1495,14 +1495,15 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
-    // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
+    // 2段目のアイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     var slot = function (good) {
-      var n = 0, out = '';
-      C.ATTRS.forEach(function (at) {
-        if (!!at.good !== !!good) return;
+      var n = 0, out = '', ats = C.ATTRS.filter(function (at) { return !!at.good === !!good; });
+      // 良い項目（1段目）は右詰め：ある分だけを枠の右端から並べる。2段目は項目ごとに決まった位置
+      if (good) n = ats.length - ats.filter(function (at) { return s.a[at.k] | 0; }).length;
+      ats.forEach(function (at) {
         var v = s.a[at.k] | 0;
         if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
-        n++;
+        if (v || !good) n++;
       });
       if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
