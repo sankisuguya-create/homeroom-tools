@@ -71,7 +71,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 /* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
 .b>u{position:absolute;left:calc(50% + .48em);top:-.34em;display:flex;line-height:0;text-decoration:none}
 .b>u>svg{width:.62em;height:.62em;display:block;margin-right:-.08em}
-.square>i{clip-path:inset(4% round 2px)}
+/* 学：角が欠けたボロボロの四角（利用者の選んだ案A） */
+.square>i{clip-path:polygon(14% 4%,62% 4%,70% 12%,96% 6%,92% 40%,97% 70%,84% 96%,40% 92%,24% 97%,4% 82%,8% 50%,3% 20%)}
 .circle>i{clip-path:circle(50%)}
 .diamond>i{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
 /* 問：ちくちくした形（とげ14本）。保：家の形。リ：旗の形（長方形の右端に「く」の字の切れ込み。利用者のスケッチの案B） */
