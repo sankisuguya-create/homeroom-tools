@@ -1,0 +1,52 @@
+// 画面の共通部品：状態、文字の無害化、印、トースト、浮く枠、保存状態の表示。
+(function (g) {
+  'use strict';
+  var C = g.CONFIG;
+  var App = {
+    st: { screen: 'menu', grade: 0, grades: [], data: null },
+    $: function (id) { return document.getElementById(id); },
+    esc: function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); },
+    screens: {}
+  };
+
+  // 配慮項目の印：頭文字＋色＋形。程度2以上は字の右上に「+」を（程度−1）個
+  App.mark = function (at, lv) {
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
+      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';
+  };
+  App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
+
+  var toastT = 0;
+  App.toast = function (msg, undoFn) {
+    var t = App.$('toast');
+    t.innerHTML = '<span>' + App.esc(msg) + '</span>' + (undoFn ? '<button id="tundo">戻す</button>' : '');
+    t.hidden = false;
+    App.toastUndo = undoFn || null;
+    clearTimeout(toastT);
+    toastT = setTimeout(function () { t.hidden = true; }, 3500);
+  };
+
+  // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
+  App.dlg = null;
+  App.openDlg = function (d) { App.dlg = d; App.$('layer').innerHTML = d.html(); if (d.focus) { var f = App.$(d.focus); if (f) f.focus(); } };
+  App.refreshDlg = function () { if (App.dlg) App.openDlg(App.dlg); };
+  App.closeDlg = function () { App.dlg = null; App.$('layer').innerHTML = ''; };
+
+  // 保存状態（自動保存の結果を必ず画面に返す）
+  App.saveState = function (s, msg) {
+    var el = App.$('save');
+    if (!el) return;
+    el.className = 'save' + (s === 'err' ? ' err' : '');
+    el.textContent = s === 'saving' ? '保存中…' : s === 'err' ? '保存できません：' + (msg || '') + '（再試行します）' : s === 'ok' ? '保存済み' : '';
+  };
+  // 失敗したら5秒後にもう一度。成功・失敗を表示する
+  App.save = function (fn) {
+    App.saveState('saving');
+    return fn().then(function (r) { App.saveState('ok'); return r; }, function (e) {
+      App.saveState('err', e && e.message);
+      return new Promise(function (res) { setTimeout(res, 5000); }).then(function () { return App.save(fn); });
+    });
+  };
+
+  g.App = App;
+})(typeof globalThis !== 'undefined' ? globalThis : this);

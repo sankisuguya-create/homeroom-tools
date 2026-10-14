@@ -7,12 +7,14 @@
   apps/note-assessment/gas/src/
   apps/dance-count/src/
   apps/collection-check/src/
+  apps/class-split/src/
 
 生成物:
   apps/note-assessment/gas/generated/
   apps/note-assessment/gas/dist/
   apps/dance-count/dist/
   apps/collection-check/dist/
+  apps/class-split/dist/
 
   python3 scripts/build.py
   python3 scripts/build.py --check
@@ -31,15 +33,19 @@ DANCE_DIST = DANCE / "dist"
 COLLECT = ROOT / "apps" / "collection-check"
 COLLECT_SRC = COLLECT / "src"
 COLLECT_DIST = COLLECT / "dist"
+CLASS = ROOT / "apps" / "class-split"
+CLASS_SRC = CLASS / "src"
+CLASS_DIST = CLASS / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 # PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
 # 外部参照（フォント・fetch・画像など）が見つかった時点で生成を止める。
-# 個人情報を扱う collection-check のみが対象。dance-count は Google Fonts を
+# 個人情報を扱う collection-check と class-split が対象。dance-count は Google Fonts を
 # 意図的に遅延読み込みする設計（src/Index.html のフォント節を見よ）なので対象外。
 PAGES = [
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
+    (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
 ]
 
 # 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。
