@@ -8,7 +8,7 @@
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + st.grade + '年 ＞ ' + (st.screen === 'roster' ? '名簿' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'settings' ? '設定' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
@@ -20,8 +20,15 @@
     st.screen = screen;
     crumb();
     if (screen === 'menu') {
-      return App.pf().listGrades().then(function (gs) { st.grades = gs; App.screens.menu.render(); });
+      // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
+      return Promise.all([App.pf().listGrades(), App.pf().settings()]).then(function (r) {
+        st.grades = r[0];
+        App.applySettings(r[1].settings); App.me = r[1].me;
+        if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
+        App.screens.menu.render();
+      });
     }
+    if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
     return App.pf().boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
   };

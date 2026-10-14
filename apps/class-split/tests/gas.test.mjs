@@ -38,6 +38,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(b.ok, b.err); assert.match(b.build, /^BUILD_/);
     assert.equal(b.v.years.length, 1); assert.equal(b.v.years[0].rows.length, 8);
 
+    // 項目を足す前に作ったシート（通の列が無い）でも、足した項目を書ける
+    const asd = db().getSheetByName('attrs_' + FY).data, ki = asd[0].indexOf('k10');
+    assert.ok(ki > 0); asd.forEach(r => r.splice(ki, 1));
+    assert.ok(call('apiSetAttr', FY, 4, '40000012', 'k10', 2).ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000012').a.k10, 2);
+
     // 配慮項目：今年度は直せる
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;
@@ -107,6 +113,29 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
 
     // 6年は決定しない
     assert.equal(call('apiDecide', 6, { name: 'x', assign: {} }).ok, false);
+
+    // 設定：保存の検査、担任の学年・学級
+    assert.equal(call('apiSaveSettings', { attrs: { k1: { label: '', s: '' } }, types: ['対人'] }).ok, false, '名前が空は不可');
+    const st = call('apiSaveSettings', { attrs: { k1: { label: '学習の支援', s: '援', w: 3 } }, types: ['対人', ' ', 'けが'], teachers: [{ email: 'Tanaka@edu.nishi.or.jp', grade: 4, cls: 2 }], keepYears: 9 });
+    assert.ok(st.ok, st.err);
+    assert.deepEqual(st.v.types, ['対人', 'けが']); assert.equal(st.v.keepYears, 6); assert.equal(st.v.attrs.k1.s, '援');
+    const me = call('apiSettings').v.me;
+    assert.deepEqual([me.grade, me.cls], [4, 1], 'メールの大文字小文字を無視して担任を見つける');
+    call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { keepYears: 0 }));
+
+    // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
+    ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);
+    const inc2 = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijXYZ/edit', title: '', date: '2026-05-01', type: '対人', ids: ['60000001'] });
+    const cand = call('apiLeaveCandidates').v;
+    assert.deepEqual(cand.map(x => [x.id, x.reason, x.incidents]), [['60000001', '卒業', 1]], '今年度にいる児童は出ない');
+    assert.equal(call('apiPurge', ['40000011']).ok, false, '今年度の名簿にいる児童は消せない');
+    const pg = call('apiPurge', ['60000001']);
+    assert.ok(pg.ok, pg.err);
+    assert.equal(call('apiLeaveCandidates').v.length, 0);
+    assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));
+    const incRow = db().getSheetByName('incidents').data.find(r => r[0] === inc2.v.id);
+    assert.equal(incRow[5], '', '結び付く児童がいない事案は名前を消す'); assert.ok(incRow[8], '削除済み');
+    assert.equal(call('apiBoot', 4).v.incidents.length, 1, '他の事案は残る');
 
     // 持ち越しの候補：前年度に決定した時の組のうち、2人とも今この学年にいて、未採用のもの
     db().getSheetByName('pairs_carry').data.push([FY - 1, 'far', '40000011', '40000021'], [FY - 1, 'near', '40000021', '40000022'], [FY - 2, 'far', '40000011', '40000022']);

@@ -15,12 +15,13 @@
     ATTRS: [
       { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2 },
       { k: 'k2', label: '長欠',         s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'diamond',  w: 3 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'hexagon',  w: 2 },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3 },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
       { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'pill',     w: 2, good: 1 },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
@@ -401,7 +402,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_7cbc51aaeada';
+var SERVER_BUILD = 'BUILD_88e28da26804';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -487,6 +488,14 @@ function read_(name) {
     rows.push(o);
   }
   return { sh: sh, head: head, rows: rows };
+}
+// 項目を足した時、既存のシートの見出しに無い列を右端に足す（古いシートでも書けるように）
+function ensureCols_(name, head) {
+  var sh = sheet_(db_(), name, head);
+  var w = Math.max(1, sh.getLastColumn()), cur = sh.getRange(1, 1, 1, w).getValues()[0].map(String);
+  var miss = head.filter(function (h) { return cur.indexOf(h) < 0; });
+  if (miss.length) sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]);
+  return sh;
 }
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
 function append_(name, head, objs) {
@@ -636,7 +645,7 @@ var apiImportRoster = api_(function (fy, grade, rows) {
   return withLock_(function () {
     var name = 'roster_' + fy;
     sheet_(db_(), name, ROSTER_HEAD);
-    sheet_(db_(), 'attrs_' + fy, attrsHead_());
+    ensureCols_('attrs_' + fy, attrsHead_());
     var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
     t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
     rows.forEach(function (x) {
@@ -678,7 +687,7 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
   return withLock_(function () {
     var name = 'attrs_' + fy;
-    sheet_(db_(), name, attrsHead_());
+    ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
     if (row) writeCell_(t, row, k, v);
@@ -763,6 +772,7 @@ var apiDecide = api_(function (grade, plan) {
       var s = info[r.id];
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
+    ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
@@ -798,6 +808,97 @@ function removeRows_(name, pred) {
   t.rows.slice().reverse().forEach(function (r) { if (pred(r)) { t.sh.deleteRow(r._r); n++; } });
   return n;
 }
+
+// ===== 設定 =====
+// 項目の名前・頭文字・既定の重み、事案の種別、担任と学級、卒業・転出後に残す年数。正本は settings シートの app
+function defaultSettings_() {
+  var attrs = {};
+  CONFIG.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
+  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: 0 };
+}
+function settings_() {
+  var d = defaultSettings_(), s = getSetting_('app', {});
+  return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
+    teachers: s.teachers || [], keepYears: +s.keepYears || 0 };
+}
+var apiSettings = api_(function () {
+  var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
+  s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
+  return { settings: s, me: me };
+});
+var apiSaveSettings = api_(function (s) {
+  var by = requireTeacher_();
+  if (!s || !s.attrs) throw userError_('設定が読めません');
+  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)) };
+  CONFIG.ATTRS.forEach(function (at) {
+    var x = s.attrs[at.k] || {};
+    var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
+    if (!label || !ini) throw userError_('項目の名前と頭文字は空にできません');
+    clean.attrs[at.k] = { label: label, s: ini, w: Math.max(0, Math.min(3, +x.w || 0)) };
+  });
+  clean.types = (s.types || []).map(function (t) { return String(t).trim(); }).filter(Boolean).slice(0, 20);
+  if (!clean.types.length) throw userError_('事案の種別を1つ以上入れてください');
+  clean.teachers = (s.teachers || []).filter(function (t) { return t && t.email; }).map(function (t) {
+    return { email: String(t.email).trim().toLowerCase(), grade: +t.grade || 0, cls: +t.cls || 0 };
+  });
+  withLock_(function () { setSetting_('app', clean); log_(by, 'saveSettings', 0); });
+  return clean;
+});
+
+// ===== 年度替わり：卒業・転出した児童の記録を消す =====
+function rosterSheets_() {
+  return db_().getSheets().map(function (sh) { return sh.getName(); }).filter(function (n) { return /^roster_\d{4}$/.test(n); })
+    .map(function (n) { return +n.slice(7); }).sort();
+}
+// 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
+var apiLeaveCandidates = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
+  [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
+  rosterSheets_().forEach(function (fy) {
+    if (fy >= FY) return;
+    rosterRows_(fy).forEach(function (r) { last[r.id] = { id: r.id, name: r.name, fy: fy, grade: r.grade, cls: r.cls, no: r.no }; });
+  });
+  var cnt = {};
+  incidents_().forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
+  return Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + keep; }).map(function (id) {
+    var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
+  }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
+});
+// 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
+// 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
+var apiPurge = api_(function (ids) {
+  var by = requireTeacher_();
+  if (!ids || !ids.length) throw userError_('消す児童を選んでください');
+  var FY = CONFIG.fiscalYear(), set = {}, now = {};
+  [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
+  ids.forEach(function (id) { if (now[id]) throw userError_('今年度の名簿にいる児童は消せません'); set[String(id)] = 1; });
+  return withLock_(function () {
+    var n = 0;
+    db_().getSheets().map(function (sh) { return sh.getName(); }).forEach(function (name) {
+      if (/^(roster|attrs)_\d{4}$/.test(name)) n += removeRows_(name, function (r) { return set[String(r.id8)]; });
+      else if (/^pairs_/.test(name)) removeRows_(name, function (r) { return set[String(r.a)] || set[String(r.b)]; });
+    });
+    removeRows_('incident_kids', function (r) { return set[String(r.id8)]; });
+    var left = {};
+    read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
+    var t = read_('incidents');
+    t.rows.forEach(function (r) {
+      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
+    });
+    read_('settings').rows.forEach(function (r) {
+      if (!/^plans_/.test(String(r.key))) return;
+      var v = JSON.parse(r.json), ch = false;
+      (v.plans || []).forEach(function (p) {
+        Object.keys(p.assign || {}).forEach(function (id) { if (set[id]) { delete p.assign[id]; ch = true; } });
+        p.locks = (p.locks || []).filter(function (id) { return !set[id]; });
+      });
+      if (ch) setSetting_(String(r.key), v);
+    });
+    log_(by, 'purge', ids.length);
+    return { kids: ids.length, rows: n };
+  });
+});
 
 // 名簿を入れる（PR③で画面を作るまでの間、所有者がスクリプトエディタから呼ぶ）
 // rows: [[id8, name, kana, 性別, 学年, 組, 番号], ...]

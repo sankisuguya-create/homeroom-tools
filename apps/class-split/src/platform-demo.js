@@ -10,7 +10,7 @@
   var GM = [['陽翔','はると'],['蓮','れん'],['湊','みなと'],['大和','やまと'],['悠真','ゆうま'],['朝陽','あさひ'],['樹','いつき'],['颯真','そうま'],['蒼','あおい'],['律','りつ'],['結翔','ゆいと'],['陸','りく'],['悠人','ゆうと'],['大翔','ひろと'],['奏太','そうた'],['碧','あお'],['新','あらた'],['晴','はる'],['航','わたる'],['瑛太','えいた']];
   var GF = [['陽葵','ひまり'],['凛','りん'],['芽依','めい'],['結菜','ゆいな'],['澪','みお'],['紬','つむぎ'],['咲良','さくら'],['心春','こはる'],['杏','あん'],['莉子','りこ'],['葵','あおい'],['美月','みつき'],['結衣','ゆい'],['彩花','あやか'],['花','はな'],['楓','かえで'],['栞','しおり'],['詩','うた'],['美羽','みう'],['柚希','ゆずき']];
   var PLACES = ['休み時間', '給食', '登校', '体育', '清掃'];
-  var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18 };
+  var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18, k10: .06 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
   var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
@@ -21,10 +21,11 @@
   function gen() {
     if (made) return;
     made = true;
-    for (var grade = 1; grade <= 6; grade++) {
+    // grade 7 は昨年度に卒業した学年（年度替わりの削除の候補の見本）
+    for (var grade = 1; grade <= 7; grade++) {
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
-      var nc = grade === 3 ? 3 : 4, n = nc === 3 ? 103 : grade === 5 ? 144 : 138, entry = FY - grade + 1, ids = [], base = {};
+      var nc = grade === 3 ? 3 : grade === 7 ? 2 : 4, n = nc === 3 ? 103 : grade === 7 ? 24 : grade === 5 ? 144 : 138, ny = Math.min(grade, 6), entry = FY - grade + 1, ids = [], base = {};
       for (var i = 0; i < n; i++) {
         var male = R() < .5, sn = pick(SUR), gn = male ? pick(GM) : pick(GF);
         var id = String(20000000 + entry * 1000 + i + 1);
@@ -34,7 +35,7 @@
         C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? 1 + Math.floor(R() * R() * 3) : 0; });
         base[id] = a;
       }
-      for (var y = 0; y < grade; y++) {
+      for (var y = 0; y < ny; y++) {
         var fy = entry + y, order = ids.slice().sort(function () { return R() - .5; }), rows = yearRows(fy, y + 1);
         order.forEach(function (id, ix) {
           var a = {};
@@ -50,8 +51,8 @@
           .forEach(function (r, no) { r.no = no + 1; });
       }
       // 事案（1件に1〜3人）
-      for (var t = 0; t < grade * 14; t++) {
-        var fyI = entry + Math.floor(R() * grade), mo = 1 + Math.floor(R() * 12), day = 1 + Math.floor(R() * 28);
+      for (var t = 0; t < ny * 14; t++) {
+        var fyI = entry + Math.floor(R() * ny), mo = 1 + Math.floor(R() * 12), day = 1 + Math.floor(R() * 28);
         var yr = mo >= 4 ? fyI : fyI + 1, now = new Date();
         if (yr * 100 + mo > now.getFullYear() * 100 + now.getMonth() + 1) continue;
         var kids = [pick(ids)];
@@ -71,6 +72,13 @@
       S.carry[grade] = grade >= 2 ? [0, 1, 2].map(function () { var ab = two(); return { t: R() < .7 ? 'far' : 'near', a: ab[0], b: ab[1] }; }) : [];
       S.plans[grade] = [];
     }
+    // 4年の1人は今年度に転出した（今年度の名簿にいない）
+    var g4 = yearRows(FY, 4); g4.splice(0, 1);
+    S.settings = (function () {
+      var attrs = {};
+      C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 1 }], keepYears: 0 };
+    })();
   }
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -173,6 +181,30 @@
       return later({ added: added, updated: updated, missing: missing });
     },
     savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
+    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 0 } }); },
+    saveSettings: function (x) { gen(); S.settings = clone(x); return later(S.settings); },
+    leaveCandidates: function () {
+      gen();
+      var now = {}, last = {}, cnt = {};
+      [FY, FY + 1].forEach(function (fy) { Object.keys(S.years[fy] || {}).forEach(function (gr) { S.years[fy][gr].forEach(function (r) { now[r.id] = 1; }); }); });
+      Object.keys(S.years).map(Number).sort().forEach(function (fy) {
+        if (fy >= FY) return;
+        Object.keys(S.years[fy]).forEach(function (gr) { S.years[fy][gr].forEach(function (r) { last[r.id] = { id: r.id, name: S.kids[r.id].name, fy: fy, grade: +gr, cls: r.cls, no: r.no }; }); });
+      });
+      S.inc.forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
+      return later(Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + (S.settings.keepYears | 0); }).map(function (id) {
+        var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
+      }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; }));
+    },
+    purge: function (ids) {
+      gen();
+      var set = {}; ids.forEach(function (id) { set[id] = 1; });
+      Object.keys(S.years).forEach(function (fy) { Object.keys(S.years[fy]).forEach(function (gr) { S.years[fy][gr] = S.years[fy][gr].filter(function (r) { return !set[r.id]; }); }); });
+      S.inc.forEach(function (x) { x.ids = x.ids.filter(function (id) { return !set[id]; }); });
+      S.inc = S.inc.filter(function (x) { return x.ids.length; });
+      ids.forEach(function (id) { delete S.kids[id]; });
+      return later({ kids: ids.length });
+    },
     undoDecide: function (grade) { gen();
       if (!S.decisions[grade]) return Promise.reject(new Error('決定されていません'));
       if (S.years[FY + 1]) delete S.years[FY + 1][grade + 1];

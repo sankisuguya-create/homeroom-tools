@@ -63,6 +63,10 @@
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
     savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
-    undoDecide: function (grade) { return call('apiUndoDecide', grade); }
+    undoDecide: function (grade) { return call('apiUndoDecide', grade); },
+    settings: function () { return call('apiSettings'); },
+    saveSettings: function (s) { return call('apiSaveSettings', s); },
+    leaveCandidates: function () { return call('apiLeaveCandidates'); },
+    purge: function (ids) { return call('apiPurge', ids); }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

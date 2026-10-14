@@ -177,7 +177,7 @@
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
-    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .42 - rhc * .38 - 10) / (7 * 1.5 + .1));
+    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / ((C.ATTRS.filter(function (a) { return !a.good; }).length + 1) * 1.5 + .1));
     root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
   }
 
