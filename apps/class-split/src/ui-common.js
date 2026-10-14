@@ -30,7 +30,7 @@
     t.hidden = false;
     App.toastUndo = undoFn || null;
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.hidden = true; }, 3500);
+    toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す
   };
 
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
