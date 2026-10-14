@@ -195,7 +195,7 @@ table.h tr.cur td{font-weight:700}
 .chip.locked .nm::before{content:"固 ";color:var(--sub);font-weight:400}
 .chip.rel-far .nm::after{content:" 離";color:var(--alert)}
 .chip.rel-near .nm::after{content:" つ";color:var(--link)}
-.chip.rel-far{outline:2px dashed var(--alert);outline-offset:-1px}
+.chip.rel-far{outline:4px solid var(--alert);outline-offset:-4px}
 .chip.rel-near{outline:2px dashed var(--link);outline-offset:-1px}
 .chip.flash{animation:fl 1.1s ease-out 2}
 @keyframes fl{0%{box-shadow:0 0 0 4px var(--fill-b)}100%{box-shadow:0 0 0 0 transparent}}
@@ -990,7 +990,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_2084011bd62a';
+  var PAGE_BUILD = 'BUILD_0090171e0e90';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
