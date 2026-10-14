@@ -89,6 +89,14 @@ function read_(name) {
   }
   return { sh: sh, head: head, rows: rows };
 }
+// 項目を足した時、既存のシートの見出しに無い列を右端に足す（古いシートでも書けるように）
+function ensureCols_(name, head) {
+  var sh = sheet_(db_(), name, head);
+  var w = Math.max(1, sh.getLastColumn()), cur = sh.getRange(1, 1, 1, w).getValues()[0].map(String);
+  var miss = head.filter(function (h) { return cur.indexOf(h) < 0; });
+  if (miss.length) sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]);
+  return sh;
+}
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
 function append_(name, head, objs) {
   if (!objs.length) return;
@@ -187,6 +195,7 @@ var apiBoot = api_(function (grade) {
   return {
     fy: FY, grade: grade, years: years, kids: kids, incidents: incs,
     pairs: pairs_(FY, grade),
+    carry: carry_(FY, grade, idset),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
     decision: dec ? { plan: String(dec.plan), at: String(dec.at) } : null
   };
@@ -194,12 +203,67 @@ var apiBoot = api_(function (grade) {
 function emptyAttrs_() { var a = {}; CONFIG.ATTRS.forEach(function (at) { a[at.k] = 0; }); return a; }
 
 function pairs_(fy, grade) {
-  return read_('pairs_' + fy + '_' + grade).rows.map(function (r) {
-    var p = { t: String(r.type), a: String(r.a) };
+  return read_('pairs_' + fy + '_' + grade).rows.filter(function (r) { return String(r.type); }).map(function (r) {
+    var p = { t: String(r.type), a: String(r.a), memo: String(r.memo || '') };
     if (p.t === 'fix') p.k = (+r.k) - 1; else p.b = String(r.b);
     return p;
   });
 }
+var PAIR_HEAD = ['type', 'a', 'b', 'k', 'memo', 'by', 'at'];
+// 前年度に決定した時に持ち越した組のうち、2人とも今この学年にいて、まだ採用していないもの
+function carry_(FY, grade, idset) {
+  var key = function (p) { return p.t + ':' + [p.a, p.b].sort().join('-'); }, have = {};
+  pairs_(FY, grade).forEach(function (p) { have[key(p)] = 1; });
+  return read_('pairs_carry').rows.filter(function (r) { return +r.fy === FY - 1 && idset[String(r.a)] && idset[String(r.b)]; })
+    .map(function (r) { return { t: String(r.type), a: String(r.a), b: String(r.b) }; })
+    .filter(function (p) { return !have[key(p)]; });
+}
+
+// つける・離す・組に固定を、学年ごとにまとめて置き換える
+var apiSavePairs = api_(function (grade, pairs) {
+  var by = requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade;
+  if (decisionOf_(FY, grade)) throw userError_('クラス替えを決定したので直せません');
+  return withLock_(function () {
+    sheet_(db_(), name, PAIR_HEAD);
+    removeRows_(name, function (r) { return r._r > 1; });
+    append_(name, PAIR_HEAD, (pairs || []).map(function (p) {
+      return { type: p.t, a: String(p.a), b: p.t === 'fix' ? '' : String(p.b), k: p.t === 'fix' ? (+p.k) + 1 : '', memo: String(p.memo || ''), by: by, at: new Date().toISOString() };
+    }));
+    return { n: (pairs || []).length };
+  });
+});
+
+// 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ（消さない）
+var apiImportRoster = api_(function (fy, grade, rows) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  if (fy !== FY && fy !== FY + 1) throw userError_('今年度か来年度の名簿だけ入れられます');
+  if (!rows || !rows.length) throw userError_('児童がいません');
+  return withLock_(function () {
+    var name = 'roster_' + fy;
+    sheet_(db_(), name, ROSTER_HEAD);
+    ensureCols_('attrs_' + fy, attrsHead_());
+    var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
+    t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
+    rows.forEach(function (x) {
+      var id = String(x.id);
+      if (!/^\d{8}$/.test(id)) throw userError_('児童IDが8桁でない行があります');
+      classes[+x.cls] = 1; ids[id] = 1;
+      var o = { id8: id, name: String(x.name), kana: String(x.kana || ''), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
+      var r = byId[id];
+      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
+      else added.push(o);
+    });
+    append_(name, ROSTER_HEAD, added);
+    var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
+    log_(by, 'importRoster', rows.length);
+    return { added: added.length, updated: updated, missing: missing };
+  });
+});
+
 function incidents_() {
   var kids = {};
   read_('incident_kids').rows.forEach(function (r) { (kids[r.inc_id] = kids[r.inc_id] || []).push(String(r.id8)); });
@@ -223,7 +287,7 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
   return withLock_(function () {
     var name = 'attrs_' + fy;
-    sheet_(db_(), name, attrsHead_());
+    ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
     if (row) writeCell_(t, row, k, v);
@@ -308,6 +372,7 @@ var apiDecide = api_(function (grade, plan) {
       var s = info[r.id];
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
+    ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
@@ -343,6 +408,97 @@ function removeRows_(name, pred) {
   t.rows.slice().reverse().forEach(function (r) { if (pred(r)) { t.sh.deleteRow(r._r); n++; } });
   return n;
 }
+
+// ===== 設定 =====
+// 項目の名前・頭文字・既定の重み、事案の種別、担任と学級、卒業・転出後に残す年数。正本は settings シートの app
+function defaultSettings_() {
+  var attrs = {};
+  CONFIG.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
+  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: 0 };
+}
+function settings_() {
+  var d = defaultSettings_(), s = getSetting_('app', {});
+  return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
+    teachers: s.teachers || [], keepYears: +s.keepYears || 0 };
+}
+var apiSettings = api_(function () {
+  var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
+  s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
+  return { settings: s, me: me };
+});
+var apiSaveSettings = api_(function (s) {
+  var by = requireTeacher_();
+  if (!s || !s.attrs) throw userError_('設定が読めません');
+  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)) };
+  CONFIG.ATTRS.forEach(function (at) {
+    var x = s.attrs[at.k] || {};
+    var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
+    if (!label || !ini) throw userError_('項目の名前と頭文字は空にできません');
+    clean.attrs[at.k] = { label: label, s: ini, w: Math.max(0, Math.min(3, +x.w || 0)) };
+  });
+  clean.types = (s.types || []).map(function (t) { return String(t).trim(); }).filter(Boolean).slice(0, 20);
+  if (!clean.types.length) throw userError_('事案の種別を1つ以上入れてください');
+  clean.teachers = (s.teachers || []).filter(function (t) { return t && t.email; }).map(function (t) {
+    return { email: String(t.email).trim().toLowerCase(), grade: +t.grade || 0, cls: +t.cls || 0 };
+  });
+  withLock_(function () { setSetting_('app', clean); log_(by, 'saveSettings', 0); });
+  return clean;
+});
+
+// ===== 年度替わり：卒業・転出した児童の記録を消す =====
+function rosterSheets_() {
+  return db_().getSheets().map(function (sh) { return sh.getName(); }).filter(function (n) { return /^roster_\d{4}$/.test(n); })
+    .map(function (n) { return +n.slice(7); }).sort();
+}
+// 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
+var apiLeaveCandidates = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
+  [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
+  rosterSheets_().forEach(function (fy) {
+    if (fy >= FY) return;
+    rosterRows_(fy).forEach(function (r) { last[r.id] = { id: r.id, name: r.name, fy: fy, grade: r.grade, cls: r.cls, no: r.no }; });
+  });
+  var cnt = {};
+  incidents_().forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
+  return Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + keep; }).map(function (id) {
+    var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
+  }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
+});
+// 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
+// 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
+var apiPurge = api_(function (ids) {
+  var by = requireTeacher_();
+  if (!ids || !ids.length) throw userError_('消す児童を選んでください');
+  var FY = CONFIG.fiscalYear(), set = {}, now = {};
+  [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
+  ids.forEach(function (id) { if (now[id]) throw userError_('今年度の名簿にいる児童は消せません'); set[String(id)] = 1; });
+  return withLock_(function () {
+    var n = 0;
+    db_().getSheets().map(function (sh) { return sh.getName(); }).forEach(function (name) {
+      if (/^(roster|attrs)_\d{4}$/.test(name)) n += removeRows_(name, function (r) { return set[String(r.id8)]; });
+      else if (/^pairs_/.test(name)) removeRows_(name, function (r) { return set[String(r.a)] || set[String(r.b)]; });
+    });
+    removeRows_('incident_kids', function (r) { return set[String(r.id8)]; });
+    var left = {};
+    read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
+    var t = read_('incidents');
+    t.rows.forEach(function (r) {
+      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
+    });
+    read_('settings').rows.forEach(function (r) {
+      if (!/^plans_/.test(String(r.key))) return;
+      var v = JSON.parse(r.json), ch = false;
+      (v.plans || []).forEach(function (p) {
+        Object.keys(p.assign || {}).forEach(function (id) { if (set[id]) { delete p.assign[id]; ch = true; } });
+        p.locks = (p.locks || []).filter(function (id) { return !set[id]; });
+      });
+      if (ch) setSetting_(String(r.key), v);
+    });
+    log_(by, 'purge', ids.length);
+    return { kids: ids.length, rows: n };
+  });
+});
 
 // 名簿を入れる（PR③で画面を作るまでの間、所有者がスクリプトエディタから呼ぶ）
 // rows: [[id8, name, kana, 性別, 学年, 組, 番号], ...]

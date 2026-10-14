@@ -2,7 +2,7 @@
 // （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。右に児童の経年の記録と事案。
 (function (g) {
   'use strict';
-  var App = g.App, C = g.CONFIG, PF = g.Platform;
+  var App = g.App, C = g.CONFIG;
   var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, byCount: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
@@ -12,13 +12,19 @@
     return D().incidents.filter(function (x) { return x.ids.indexOf(id) >= 0 && (fy == null || C.fiscalYearOfIso(x.date) === fy); });
   }
 
-  function reset() { R.fy = editableFy(); R.cls = 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
+  function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
 
   function render() {
     var d = D(), esc = App.esc;
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
     if (years.indexOf(R.fy) < 0) R.fy = editableFy();
     var Y = yearOf(R.fy), edit = R.fy === editableFy();
+    if (!Y) { // まだ名簿が無い学年
+      App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の名簿がまだありません</h2>' +
+        '<p>既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。</p>' +
+        '<button class="btn primary" id="paste">名簿を貼る…</button></section></div>';
+      return;
+    }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
     var h = '<div class="rbar"><span class="lab">年度</span>' + years.map(function (fy) {
       var y = yearOf(fy);
@@ -34,6 +40,7 @@
       h += '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label>';
     }
     h += '<span class="sp"></span>';
+    if (edit && R.scope !== 'school') h += '<button class="btn" id="paste">名簿を貼る…</button>';
     if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→1→2→3→空（自動保存）</span>' :
       R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
       '<span class="note">過去の年度は見るだけです</span>';
@@ -65,7 +72,7 @@
 
   function schoolTable() {
     if (!R.school) {
-      PF.schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
+      App.pf().schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
       return '<div class="tw"><div class="empty">読み込んでいます…</div></div>';
     }
     var esc = App.esc, rows = R.school.slice().sort(function (a, b) { return b.count - a.count || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
@@ -130,6 +137,51 @@
     return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
   }
 
+  // ===== 名簿を貼る =====
+  // 既存の名簿の範囲をコピーして貼る。見出しで列を読み、読めた結果と誤りをその場で見せてから取り込む
+  function pasteDialog() {
+    var d = D(), fy = editableFy(), grade = fy === d.fy ? d.grade : d.grade + 1, esc = App.esc;
+    var P = { text: '', cls: R.scope === 'cls' ? R.cls : 0, res: null };
+    var summary = function () {
+      var r = P.res = g.Paste.parseRoster(P.text, P.cls);
+      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます</div>';
+      var hasCls = r.roles.indexOf('cls') >= 0;
+      var h = '<div class="rbar"><span class="lab">読み取った列</span>' + r.roles.map(function (x) { return '<span class="tab" style="cursor:default">' + (x ? g.Paste.LABEL[x] : '（使わない）') + '</span>'; }).join('') + '</div>';
+      if (!hasCls) h += '<div class="rbar"><span class="lab">組の列が無いので、この組に入れる</span>' + [0, 1, 2, 3].map(function (k) {
+        return '<button class="tab" data-pcls="' + k + '" aria-selected="' + (P.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>';
+      }).join('') + '</div>';
+      h += '<div><b>' + r.rows.length + '人</b>（男' + r.counts.m + '・女' + r.counts.f + '）を ' + fy + '年度 ' + grade + '年 に取り込みます。同じ児童IDの児童は上書きし、入力済みの配慮項目は消しません。</div>';
+      if (r.errors.length) h += '<div class="warnbox">✕ ' + r.errors.length + '件 取り込めない行があります<ul style="margin:4px 0 0;font-weight:400;color:var(--ink)">' +
+        r.errors.slice(0, 6).map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + (r.errors.length > 6 ? '<li>ほか' + (r.errors.length - 6) + '件</li>' : '') + '</ul></div>';
+      if (r.rows.length) h += '<div class="tw" style="max-height:180px"><table class="r ro"><thead><tr><th>組</th><th>番号</th><th>児童ID</th><th style="text-align:left">名前</th><th>よみ</th><th>性別</th></tr></thead><tbody>' +
+        r.rows.slice(0, 5).map(function (x) { return '<tr><td>' + (x.cls + 1) + '</td><td>' + x.no + '</td><td>' + x.id + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.kana) + '</td><td>' + (x.sex || '—') + '</td></tr>'; }).join('') +
+        (r.rows.length > 5 ? '<tr><td colspan="6" class="note">ほか' + (r.rows.length - 5) + '人</td></tr>' : '') + '</tbody></table></div>';
+      return h;
+    };
+    var refresh = function () { App.$('psum').innerHTML = summary(); var b = App.$('okbtn'); b.disabled = !P.res.rows.length; b.firstChild.textContent = '取り込む（' + P.res.rows.length + '人）'; };
+    App.openDlg({
+      focus: 'ptxt',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="名簿を貼る"><h2>名簿を貼る</h2>' +
+          '<textarea id="ptxt" rows="6" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="既存の名簿の範囲（見出しの行を含めて）をコピーして、ここに貼り付けます">' + esc(P.text) + '</textarea>' +
+          '<div id="psum">' + summary() + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn"' + (P.res && P.res.rows.length ? '' : ' disabled') + '>取り込む（' + (P.res ? P.res.rows.length : 0) + '人）<kbd>Ctrl+Enter</kbd></button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'ptxt') { P.text = t.value; refresh(); } },
+      click: function (t) { var x = t.closest('[data-pcls]'); if (x) { P.cls = +x.dataset.pcls; refresh(); return true; } return false; },
+      onOk: function () {
+        if (!P.res || !P.res.rows.length) return;
+        var rows = P.res.rows;
+        App.closeDlg();
+        App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
+          return App.reload().then(function () {
+            App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
+          });
+        });
+      }
+    });
+  }
+
   function refocus(id, pos) { var el = App.$(id); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
 
   App.screens.roster = {
@@ -153,10 +205,11 @@
         var v = r.a[k], fy = R.fy, grade = Y.grade, at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
         x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
-        App.save(function () { return PF.setAttr(fy, grade, r.id, k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
         return true;
       }
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
+      if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#addInc')) { R.form = { ids: [R.kid] }; render(); refocus('fUrl'); return true; }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
       if ((x = t.closest('[data-pick]'))) { R.form.ids.push(x.dataset.pick); render(); refocus('fQ'); return true; }
@@ -174,7 +227,7 @@
         var url = t.value;
         clearTimeout(R.form.timer);
         R.form.timer = setTimeout(function () {
-          PF.fetchTitle(url).then(function (r) {
+          App.pf().fetchTitle(url).then(function (r) {
             if (!R.form || R.form.url !== url) return;
             if (r.title) { R.form.title = r.title; R.form.titleMsg = '自動で取得しました'; }
             else R.form.titleMsg = '取得できませんでした。名前を入力してください';
@@ -190,7 +243,7 @@
       var x = R.form;
       if (!x.ids.length) { App.toast('関係する児童を1人以上選んでください'); return; }
       App.save(function () {
-        return PF.addIncident({ url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: x.ids });
+        return App.pf().addIncident({ url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: x.ids });
       }).then(function (inc) { D().incidents.push(inc); R.form = null; render(); App.toast('事案を登録しました'); });
     },
     key: function (e) {

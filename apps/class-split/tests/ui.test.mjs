@@ -27,6 +27,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.goto('file://' + DIST);
   await p.waitForSelector('.gbtn');
   ok(await p.locator('.gbtn').count() === 6, `${w}x${h} メニューに6学年`);
+  await p.click('[data-g="6"]');
+  ok(await p.locator('[data-go="split"]').count() === 0, `${w}x${h} 6年を選ぶと「クラス分けをする」が出ない`);
+  await p.click('[data-g="4"]');
 
   // クラス分け：全員が1画面に収まる
   await p.click('[data-go="split"]');
@@ -98,7 +101,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
-  await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
+  await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('.rbar .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿`);
   await p.locator('td.nm').first().click();
   ok(await p.locator('table.h tbody tr').count() === 6, `${w}x${h} 経年の記録が6行`);
@@ -121,6 +124,30 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const r = await p.evaluate(() => { const ch = [...document.querySelectorAll('.board .chip')]; return [ch.length, ch.filter(c => c.getBoundingClientRect().bottom <= innerHeight + .5).length]; });
   ok(r[0] === 144 && r[1] === 144, `144人がすべて1画面に収まる（${r[1]}/${r[0]}）`);
   if (process.env.SHOT_DIR) await p.screenshot({ path: process.env.SHOT_DIR + '/split144.png' });
+  await p.close();
+}
+
+// 設定：項目の名前と頭文字を変えると画面に反映。年度替わりで卒業生を消す
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="settings"]'); await p.waitForSelector('[data-al="k1"]');
+  await p.fill('[data-al="k1"]', '学習の支援'); await p.fill('[data-as="k1"]', '援');
+  await p.click('#ssave');
+  await p.waitForFunction(() => /設定を保存/.test(document.getElementById('toast').textContent));
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.legend');
+  ok((await p.locator('.legend').textContent()).includes('学習の支援'), '設定した項目の名前が凡例に出る');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="year"]');
+  await p.click('[data-stab="year"]'); await p.waitForSelector('#purge');
+  const n = await p.locator('[data-pp]').count();
+  ok(n === 25, `卒業・転出の候補（卒業24人＋転出1人）：${n}人`);
+  ok(await p.locator('#purge[disabled]').count() === 1, '初めは誰も選ばれていない');
+  await p.check('#pall');
+  await p.click('#purge'); await p.fill('#cword', n + '人の記録を消す'); await p.click('[data-act="ok"]');
+  await p.waitForSelector('.empty:has-text("候補はありません")');
+  ok(true, '消すと候補が無くなる');
+  ok(errs.length === 0, '設定の画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
 

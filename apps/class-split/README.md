@@ -15,15 +15,21 @@
    - `Index.html` → HTML ファイル `Index` を作って全文
    - `appsscript.json` → プロジェクトの設定で「appsscript.json をエディタで表示」をオンにして全文
 3. エディタで `setup` を実行する。データ用のスプレッドシート「クラス替え（データ）」が所有者のドライブに作られる。**教員には共有しない**（アプリを通してだけ読み書きする）。
-4. 名簿を入れる（名簿の貼り付け画面は PR③。それまではエディタで `importRoster(年度, [[児童ID, 氏名, よみ, 性別, 学年, 組, 番号], ...])` を実行するか、`roster_<年度>` シートに直接書く）。
-5. デプロイ → 新しいデプロイ → 種類「ウェブアプリ」。実行するユーザー「自分」、アクセスできるユーザー「（学校のドメイン）内の全員」。
-6. 直したら、3つを貼り直してから、デプロイの管理 → 編集 → バージョン「新バージョン」で更新する（保存だけでは反映されない）。
+4. デプロイ → 新しいデプロイ → 種類「ウェブアプリ」。実行するユーザー「自分」、アクセスできるユーザー「（学校のドメイン）内の全員」。
+5. 直したら、3つを貼り直してから、デプロイの管理 → 編集 → バージョン「新バージョン」で更新する（保存だけでは反映されない）。
+
+## 使い始め
+
+- 開いたら、学年を選び「名簿を見る」→「名簿を貼る…」で、既存の名簿の範囲（見出しの行ごと）をコピーして貼る。
+- 担任と学級、配慮項目の名前などはメニューの「⚙ 設定」で決める。年度が替わったら「年度替わり」で卒業・転出した児童の記録を消す。
+- 操作を試したい時は、左上の「試行」を押す。ダミーデータに切り替わり、保存はされない。
 
 ## 生成・検査
 
 ```bash
 python3 scripts/build.py                               # src → dist/Index.html（見本）と dist/gas/（本番）
-node --test apps/class-split/tests/engine.test.mjs     # 計算
+node --test apps/class-split/tests/engine.test.mjs     # 計算・見本のデータ
+node --test apps/class-split/tests/paste.test.mjs      # 名簿の貼り付けの読み取り
 node --test apps/class-split/tests/gas.test.mjs        # サーバー（模擬の GAS 上。コメントを消した形でも）
 node apps/class-split/tests/ui.test.mjs                # 見本の画面（Playwright。無ければ飛ばす）
 node apps/class-split/tests/gas-ui.test.mjs            # 本番の画面＋模擬の GAS（Playwright）

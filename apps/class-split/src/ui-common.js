@@ -10,9 +10,16 @@
   };
 
   // 配慮項目の印：頭文字＋色＋形。程度2以上は字の右上に「+」を（程度−1）個
+  // データの出し入れ先。本番（gas）と試行（demo：ダミーデータ・保存しない）を画面から切り替える
+  App.mode = g.Platforms.gas ? 'gas' : 'demo';
+  App.pf = function () { return g.Platforms[App.mode]; };
+
+  // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
+  // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
+  var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
   App.mark = function (at, lv) {
-    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
-      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
+      (lv > 1 ? '<u>' + PLUS.repeat(lv - 1) + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
