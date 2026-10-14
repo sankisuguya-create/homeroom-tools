@@ -34,7 +34,7 @@
         S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: pick(C.AREAS) };
         ids.push(id);
         var a = {};
-        C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? 1 + Math.floor(R() * R() * 3) : 0; });
+        C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? Math.min(at.max, 1 + Math.floor(R() * R() * 3)) : 0; });
         base[id] = a;
       }
       for (var y = 0; y < ny; y++) {
@@ -43,7 +43,7 @@
           var a = {};
           C.ATTRS.forEach(function (at) {
             var v = base[id][at.k];
-            if (R() < .2) v = Math.max(0, Math.min(C.MAX_LEVEL, v + (R() < .5 ? -1 : 1)));
+            if (R() < .2) v = Math.max(0, Math.min(at.max, v + (R() < .5 ? -1 : 1)));
             a[at.k] = v;
           });
           rows.push({ id: id, cls: ix % nc, no: 0, a: a });

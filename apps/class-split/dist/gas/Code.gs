@@ -9,20 +9,20 @@
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
-    MAX_LEVEL: 3,     // 配慮項目の程度（0＝なし、1〜3）
+    MAX_LEVEL: 2,     // 配慮項目の程度の上限（0＝なし）。項目ごとの上限は max（heavy の項目は＋＋まで、他は＋まで）
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1 },
-      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1 },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
-      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
-      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2 },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2 },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2 },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2 },
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1 },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1 },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1 },
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1 },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1 },
+      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1 }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
@@ -108,7 +108,7 @@
     MET.push({ k: 'sex', label: '男', w: C.LEVEL_W[gen.w.sex | 0], tol: 1, v: function (s) { return s.male ? 1 : 0; } });
     C.ATTRS.forEach(function (at) {
       // heavy の項目は程度を足さず「いるか」で数える（＋＋は下の別枠で数える）
-      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: at.heavy ? function (s) { return (s.a[at.k] | 0) ? 1 : 0; } : function (s) { return s.a[at.k] | 0; } });
+      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } }); // 程度は足さない。＋の上限が1の項目もこれで古い値（＋＋以上）を＋として扱う
     });
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
@@ -416,7 +416,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_bccf1ba4de2a';
+var SERVER_BUILD = 'BUILD_22e7673d625c';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -694,8 +694,9 @@ function isoDate_(v) {
 var apiSetAttr = api_(function (fy, grade, id, k, v) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
-  if (!CONFIG.ATTRS.some(function (at) { return at.k === k; })) throw userError_('項目が違います');
-  if (!(v >= 0 && v <= CONFIG.MAX_LEVEL)) throw userError_('値が違います');
+  var at = CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  if (!at) throw userError_('項目が違います');
+  if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY), dec = decisionOf_(FY, cohortGrade);
   var editable = dec ? FY + 1 : FY;
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');

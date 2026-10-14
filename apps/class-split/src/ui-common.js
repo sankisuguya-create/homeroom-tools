@@ -18,6 +18,7 @@
   // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
   var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
   App.mark = function (at, lv) {
+    lv = Math.min(lv, at.max || lv); // 上限を下げる前の値（＋＋＋など）は上限の程度で出す
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS.repeat(lv - 1) + '</u>' : '') + '</span>';
   };

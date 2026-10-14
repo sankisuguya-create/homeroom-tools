@@ -280,8 +280,9 @@ function isoDate_(v) {
 var apiSetAttr = api_(function (fy, grade, id, k, v) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
-  if (!CONFIG.ATTRS.some(function (at) { return at.k === k; })) throw userError_('項目が違います');
-  if (!(v >= 0 && v <= CONFIG.MAX_LEVEL)) throw userError_('値が違います');
+  var at = CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  if (!at) throw userError_('項目が違います');
+  if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY), dec = decisionOf_(FY, cohortGrade);
   var editable = dec ? FY + 1 : FY;
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');

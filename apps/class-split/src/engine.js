@@ -36,7 +36,7 @@
     MET.push({ k: 'sex', label: '男', w: C.LEVEL_W[gen.w.sex | 0], tol: 1, v: function (s) { return s.male ? 1 : 0; } });
     C.ATTRS.forEach(function (at) {
       // heavy の項目は程度を足さず「いるか」で数える（＋＋は下の別枠で数える）
-      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: at.heavy ? function (s) { return (s.a[at.k] | 0) ? 1 : 0; } : function (s) { return s.a[at.k] | 0; } });
+      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } }); // 程度は足さない。＋の上限が1の項目もこれで古い値（＋＋以上）を＋として扱う
     });
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
