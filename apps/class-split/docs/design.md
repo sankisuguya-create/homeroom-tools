@@ -45,7 +45,7 @@
 | `attrs_<年度>` | id8, k1〜k9（値は0〜3） |
 | `pairs_<年度>_<学年>` | type（far/near/fix）, id_a, id_b, class, memo, by, at |
 | `pairs_carry` | id_a, id_b, type, 元の年度 |
-| `plans_<年度>_<学年>` | letter, name, auto, gen(JSON), assign(JSON: id8→組), locks, edits, from, ver, by, at |
+| `settings` の `plans_<年度>_<学年>` | 学年の案すべてを1つの JSON（ver・by・at・plans）。版が読み込んだ時と違えば保存を断る（同時保存の検知）。45,000字を超えたら保存を断る（セルの上限5万字） |
 | `decisions` | 年度, 学年, 案, by, at, 取り消し |
 | `incidents` | inc_id, date, type, url, file_id, title, by, at, deleted |
 | `incident_kids` | inc_id, id8（1件の事案に複数の児童） |
@@ -70,12 +70,21 @@
 - localStorage は使わない（校務PCは複数の教員が使うので、個人情報をブラウザに残さない）。
 - 個人情報の置き場の一覧は [pii-map.md](pii-map.md)。
 
-## 5. 実行の形（本番。PR② で作る）
+## 5. 実行の形（本番。PR② で作った）
 
 - GAS の Webアプリ1本。「自分（所有者）として実行」、ドメイン内に公開し、サーバー側で `@edu.nishi.or.jp` を確認する。データのシートを教員に共有しないで済むため。
 - 計算と描画はブラウザ。サーバーは読み込み（学年ごとに1回）と保存だけ。保存は操作を即座に画面に反映し、背後で送る（失敗したら再試行し、画面上部に表示）。
 - 事案の文書の名前は、登録の時に1回だけ所有者の権限で取る。所有者が開けない文書は取れないので、手で入力してもらう。
-- 版の照合（`ENGINE_VER` / `WANT_VER`）で貼り忘れを検知する（`principles/gas-javascript-notes.md` §4）。
+- 版の照合：`scripts/build.py` が `dist/gas/` 一式の内容のハッシュを `SERVER_BUILD`（Code.gs）と `PAGE_BUILD`（Index.html）に焼き込む。食い違えば画面の上に警告（`principles/gas-javascript-notes.md` §4。note-assessment と同じ方式）。
+- サーバーは画面と同じ `config.js`・`engine.js` を Code.gs の先頭につないで使う（決定の時の番号の振り方を1か所にするため）。
+- 画面から呼ぶ関数は `apiXxx`。戻り値は JSON の文字列 `{ok, build, v | err, user}`。`user` の誤り（権限・凍結・同時保存など）は画面が再試行せずに知らせる。
+- 書き込みはスクリプトロックの中で行い、書き戻しは変えたセルだけ（`writeCell_`）。
+
+### 実機で確かめること（PR② では未確認）
+1. 「自分として実行」で、同じドメインの教員のメールが `Session.getActiveUser()` で取れること（取れないと誰も開けない）。児童のアカウントで開くと拒否されること。
+2. `drive.readonly` の権限で `DriveApp.getFileById().getName()` が動くこと。所有者が開けない文書で空が返ること。
+3. 2人が同時に案を保存した時に、後の人に「先に保存しました」が出ること。
+4. 学年を開く時間（目安2秒以内）。
 - 配色は明るい1種に固定。色覚の検証と投影を白地で行ったため。
 
 ## 6. 軽さ（測った結果と決めたこと）
@@ -111,7 +120,6 @@ CPU を1/4に落とした Chromium（低性能端末の代わり）、144人の�
 
 ## 8. 未決定・後の PR
 
-- PR②：GAS（`Code.gs`、platform-gas.js、シートの作成、ドメイン確認、版の照合、同時保存の検知）
 - PR③：名簿の貼り付け（見出しで列を読む、読み仮名）、つける・離す・組に固定の入力、持ち越しの候補
 - PR④：設定画面（項目・担任と学級・事案の種別・保持期間）、年度替わり（削除の候補）
 - 5年の見本（4学級×36人、男女が21人に偏る）では1366×768でカードが小さい（行の高さ約26px、アイコン約9px）。投影で読めるかは実機で確かめる。

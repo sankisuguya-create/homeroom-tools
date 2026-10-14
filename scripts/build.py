@@ -15,6 +15,7 @@
   apps/dance-count/dist/
   apps/collection-check/dist/
   apps/class-split/dist/
+  apps/class-split/dist/gas/   （GAS に貼る3つ：Code.gs・Index.html・appsscript.json）
 
   python3 scripts/build.py
   python3 scripts/build.py --check
@@ -36,6 +37,7 @@ COLLECT_DIST = COLLECT / "dist"
 CLASS = ROOT / "apps" / "class-split"
 CLASS_SRC = CLASS / "src"
 CLASS_DIST = CLASS / "dist"
+CLASS_GAS_DIST = CLASS / "dist" / "gas"
 SHARED_UI = ROOT / "shared" / "ui"
 
 # PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
@@ -180,6 +182,23 @@ def merged_html(name: str) -> str:
         raise SystemExit("差し込みきれていない include() が %s に残っている" % name)
     return out
 
+def class_gas_targets():
+    """class-split の GAS 一式。Code.gs は config.js・engine.js・server.gs をこの順につなぐ
+    （サーバーも画面と同じ計算の正本を使う）。版の印は note-assessment と同じく内容のハッシュ。"""
+    parts = []
+    for name in ("config.js", "engine.js", "server.gs"):
+        body = (CLASS_SRC / name).read_text(encoding="utf-8").rstrip("\n")
+        parts.append("/* ==================== %s ==================== */\n" % name + body)
+    code = ("/* apps/class-split/src/ の config.js・engine.js・server.gs をつないで\n"
+            "   scripts/build.py が作る。正本を直すこと。 */\n\n" + "\n\n".join(parts) + "\n")
+    page = html_doc(render(CLASS_SRC / "Index-gas.html", [CLASS_SRC]))
+    hits = external_refs(page)
+    if hits:
+        raise SystemExit("class-split の GAS 画面に外部参照があります: " + "、".join(hits))
+    yield CLASS_GAS_DIST / "Code.gs", code
+    yield CLASS_GAS_DIST / "Index.html", page
+    yield CLASS_GAS_DIST / "appsscript.json", (CLASS_SRC / "appsscript.json").read_text(encoding="utf-8")
+
 def dist_targets():
     yield GAS_DIST / "Code.gs", merged_code()
     for name in ("student.html", "teacher.html", "hello.html"):
@@ -233,6 +252,12 @@ def main():
         write_or_check(dest, built, check, bad)
         if not check:
             print("  %-18s ← gas/src + generated（%s）" % (("dist/" + dest.name), build))
+
+    build, stamped = build_stamp(list(class_gas_targets()))
+    for dest, built in stamped:
+        write_or_check(dest, built, check, bad)
+        if not check:
+            print("  %-18s ← class-split/src（%s）" % (("gas/" + dest.name), build))
 
     if bad:
         print("\n" + ("正本と一致しない生成物" if check else "作れなかった生成物") + ":\n  " + "\n  ".join(bad))

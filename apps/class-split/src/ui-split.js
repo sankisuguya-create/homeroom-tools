@@ -40,7 +40,7 @@
       S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
     });
-    if (!S.plans.length) addGenerated(E.defaultGen(), new Map(), null);
+    if (!S.plans.length) { addGenerated(E.defaultGen(), new Map(), null); persist(); } // 最初の案もすぐ保存する
   }
 
   function ctxFor(gen) { return E.prepare(S.P, gen); }
