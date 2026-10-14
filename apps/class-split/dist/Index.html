@@ -69,7 +69,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .b>i{position:absolute;inset:0;background:var(--c)}
 .b>em{position:relative;font-style:normal;color:var(--t)}
 /* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
-.b>u{position:absolute;left:calc(50% + .5em);top:-.42em;text-decoration:none;font-size:1.05em;font-weight:900;color:#1A1A1A;letter-spacing:-.12em;text-shadow:0 0 2px #fff,0 0 2px #fff;white-space:nowrap;line-height:1}
+.b>u{position:absolute;left:calc(50% + .48em);top:-.34em;display:flex;line-height:0;text-decoration:none}
+.b>u>svg{width:.62em;height:.62em;display:block;margin-right:-.08em}
 .square>i{clip-path:inset(4% round 2px)}
 .circle>i{clip-path:circle(50%)}
 .diamond>i{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
@@ -982,9 +983,12 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   App.mode = g.Platforms.gas ? 'gas' : 'demo';
   App.pf = function () { return g.Platforms[App.mode]; };
 
+  // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
+  // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
+  var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
   App.mark = function (at, lv) {
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
-      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</span>';
+      (lv > 1 ? '<u>' + PLUS.repeat(lv - 1) + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
