@@ -88,7 +88,7 @@
   }
 
   function renderBar() {
-    var h = '<div class="tabs" role="tablist">';
+    var h = '<button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
       h += '<span class="tab" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="ダブルクリックで名前を変える">' +
@@ -97,7 +97,7 @@
     });
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
-    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="sp"></span>';
+    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
     if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　4/1まで取り消せます<button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
     else {
       h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
@@ -107,12 +107,13 @@
     }
     h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
     if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
-    return '<div class="bar">' + h + '</div><div class="hint" id="hint"></div>';
+    return '<div class="bar">' + h + '</div>';
   }
 
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   function render() {
     App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
+    App.saveState();
     if (S.view === 'cmp') { renderCmp(); return; }
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc;
     var vb = App.$('vbtn');
@@ -123,8 +124,8 @@
       var ids = [];
       for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k) ids.push(i);
       ids.sort(function (x, y) { return S.P.kids[x].old - S.P.kids[y].old || S.P.kids[x].no - S.P.kids[y].no; });
-      var m = ids.filter(function (i) { return S.P.kids[i].male; }), f = ids.filter(function (i) { return !S.P.kids[i].male; });
-      per.push([m, f]); rows = Math.max(rows, m.length, f.length);
+      var half = Math.ceil(ids.length / 2);
+      per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
     var M = S.ctx.M, h = '<div class="cols" style="--nc:' + nc + '">';
     for (k = 0; k < nc; k++) {
@@ -134,14 +135,11 @@
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1)); }).join('') + '</div>' +
-        '<div class="st sub">' + S.ctx.MET.map(function (mt, mi) { return mt.grp === 'old' ? cnt(mi, mt.label + ' ') : ''; }).join(' ') + '　' +
-        S.ctx.MET.map(function (mt, mi) { return mt.grp === 'area' ? cnt(mi, mt.label) : ''; }).join(' ') + '</div></div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
+        '</div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
     }
     App.$('board').innerHTML = h + '</div>';
     // 凡例は計測の前に入れる（後から折り返すと盤面が縮み、最後の児童がはみ出す）
-    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
-      C.CLASS_COLORS.slice(0, maxOld()).map(function (o, i) { return '<span class="c"><span style="background:' + o.c + ';color:' + o.t + ';padding:0 5px;border-radius:2px;font-weight:700">番号</span><span style="background:' + o.l + ';padding:0 4px">旧' + (i + 1) + '組</span></span>'; }).join('') +
-      '<span>＋＝程度2　＋＋＝程度3　点線の数字＝事案の件数　長方形＝男・丸＝女　固＝固定　△＝平均から外れている</span>';
+    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('');
     fit(rows);
     var gcols = App.$('board').querySelectorAll('.gcol');
     for (k = 0; k < nc; k++) for (var g2 = 0; g2 < 2; g2++)

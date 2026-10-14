@@ -33,11 +33,14 @@
   App.closeDlg = function () { App.dlg = null; App.$('layer').innerHTML = ''; };
 
   // 保存状態（自動保存の結果を必ず画面に返す）
+  // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
   App.saveState = function (s, msg) {
-    var el = App.$('save');
-    if (!el) return;
-    el.className = 'save' + (s === 'err' ? ' err' : '');
-    el.textContent = s === 'saving' ? '保存中…' : s === 'err' ? '保存できません：' + (msg || '') + '（再試行します）' : s === 'ok' ? '保存済み' : '';
+    if (s !== undefined) { App.sv = s; App.svMsg = msg; }
+    var txt = App.sv === 'saving' ? '保存中…' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') + '（再試行します）' : App.sv === 'ok' ? '保存済み' : '';
+    ['save', 'save2'].forEach(function (id) {
+      var el = App.$(id);
+      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
+    });
   };
   // 失敗したら5秒後にもう一度。成功・失敗を表示する
   App.save = function (fn) {

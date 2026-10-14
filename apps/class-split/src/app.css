@@ -13,6 +13,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--f);margin:0;font-si
   padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-block:6px;
   box-sizing:border-box;display:flex;flex-direction:column}
 body.fit{overflow:hidden}
+body.fit .top{display:none}
 button,input,select{font:inherit;color:inherit}
 a{color:var(--link)}
 kbd{font-family:ui-monospace,monospace;font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
@@ -126,14 +127,14 @@ table.h tr.cur td{font-weight:700}
 .tab.cmp{border-style:dashed}
 .vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .vio.has{border-color:var(--alert);color:var(--alert);background:var(--alert-soft);font-weight:700}
-.hint{font-size:.9rem;color:var(--sub);padding:0 0 6px;min-height:1.4em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint{flex:1;min-width:0;font-size:.9rem;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
 .board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
 .col{background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
-.head{padding:4px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+.head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .head.target{background:var(--fill)}
 .h1{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
 .h1 b{font-size:1.1rem}
@@ -186,7 +187,7 @@ table.cmp td.best{font-weight:700}
 table.cmp td.best::after{content:" ★";color:var(--link)}
 table.cmp td.bad{color:var(--alert);font-weight:700}
 table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:left}
-.legend{font-size:.78rem;color:var(--sub);padding-top:4px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.legend{font-size:.78rem;color:var(--sub);padding-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
 .legend .c{display:inline-flex;gap:3px;align-items:center}
 
 /* ===== 浮く枠 ===== */

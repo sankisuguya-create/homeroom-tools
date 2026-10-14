@@ -79,7 +79,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('table.cmp').count() === 1, `${w}x${h} 比較の表`);
 
   // 名簿：年度タブ・児童の経年の記録
-  await p.click('[data-go="menu"]'); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('.rbar .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿`);
   await p.locator('td.nm').first().click();
@@ -115,11 +115,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
-  await p.click('[data-go="menu"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('.tab[data-fy]', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');
   await p.locator('.tab[data-fy]', { hasText: '今年度' }).click();
   ok(await p.locator('table.r.ro').count() === 1, '決定後の今年度は凍結（見るだけ）');
-  await p.click('[data-go="menu"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.decided');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.decided');
   await p.click('#undoDecide'); await p.fill('#cword', '4年の決定を取り消す'); await p.click('[data-act="ok"]');
   await p.waitForSelector('#gen');
   ok(true, '決定を取り消せる');
