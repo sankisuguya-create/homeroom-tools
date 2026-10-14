@@ -13,7 +13,7 @@
   --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#616870; --line:#c9d1d9; --soft:#F1F3F5;
   --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
   /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
-  --f:"BIZ UDPGothic","Yu Gothic UI","Meiryo","Noto Sans CJK JP","Hiragino Sans","Noto Sans JP",sans-serif;
+  --f:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
   --rowh:30px; --ic:12px;
 }
 html,body{height:100%}
@@ -24,7 +24,7 @@ body.fit{overflow:hidden}
 body.fit .top{display:none}
 button,input,select{font:inherit;color:inherit}
 a{color:var(--link)}
-kbd{font-family:ui-monospace,monospace;font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
+kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
 #app{flex:1;min-height:0;display:flex;flex-direction:column}
 #main{flex:1;min-height:0;display:flex;flex-direction:column}
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:6px}
@@ -135,7 +135,7 @@ table.h tr.cur td{font-weight:700}
 .tab.cmp{border-style:dashed}
 .vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .vio.has{border-color:var(--alert);color:var(--alert);background:var(--alert-soft);font-weight:700}
-.hint{flex:1;min-width:0;font-size:.9rem;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint{flex:1;min-width:0;font-size:.95rem;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
@@ -244,7 +244,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
-<div id="app"><div id="main"></div></div>
+<div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -1251,10 +1251,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     board.querySelectorAll('.head').forEach(function (hd) { hd.classList.toggle('target', S.sel >= 0 && p.asg[S.sel] !== +hd.dataset.k); });
     var hint = App.$('hint');
     hint.className = 'hint' + (S.follow != null ? ' follow' : '');
-    hint.innerHTML = S.decision ? '決定した案です。入れ替えはできません。' :
-      S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え：入れ替える相手をタップ（やめる：Esc）' :
-      S.sel < 0 ? '児童をタップ → 入れ替える相手をタップ（組の見出しをタップで移動）。固定：L　元に戻す：Ctrl+Z' :
-      '<b>' + esc(S.P.kids[S.sel].name) + '</b> を選択中 → 入れ替える相手をタップ／移す組の見出しをタップ（解除：Esc）';
+    // 案内の文は出さない（操作は確認の枠と選択の印で分かる）。続けて入れ替える時だけ、誰の番かを出す
+    hint.innerHTML = S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え相手をタップ' : '';
   }
 
   // 行の高さとアイコンの大きさを、空の列の寸法から決める（全員を1画面に収める）。
@@ -1269,7 +1267,6 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   }
 
   function renderCmp() {
-    App.$('hint').textContent = '各指標は「学級の最大−最小」。小さいほど偏りが少ない。★＝最良。案の名前をクリックで開く（1〜9キーでも可）。';
     var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
       { lab: '違反（離す・つける・固定・上限）', f: function (p, a) { return a.bad.length; }, bad: true },
@@ -1577,6 +1574,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var App = g.App, PF = g.Platform;
+  // 漢字を中国語の字形で出さないため、どこに埋め込まれても日本語として扱わせる
+  document.documentElement.lang = 'ja';
 
   function crumb() {
     var st = App.st;

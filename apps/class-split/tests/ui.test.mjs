@@ -37,6 +37,24 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   });
   ok(fit.n > 0 && fit.vis === fit.n, `${w}x${h} 全員（${fit.n}人）が1画面に収まる（見えている ${fit.vis}人）`);
 
+  // 字形：中国語のフォントで描かれた文字が無いこと（端末に入っている日本語フォントが使われる）
+  {
+    const cdp = await p.context().newCDPSession(p);
+    await cdp.send('DOM.enable'); await cdp.send('CSS.enable');
+    const { root } = await cdp.send('DOM.getDocument', { depth: -1 });
+    const sel = ['.tab', '.head', '.board .chip .nm', '.legend', '.bar .btn', '.bs .b em'];
+    const used = new Set();
+    for (const q of sel) {
+      const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: q });
+      for (const id of nodeIds.slice(0, 20)) {
+        const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: id });
+        fonts.forEach(f => used.add(f.familyName));
+      }
+    }
+    const zh = [...used].filter(f => /WenQuanYi|Zen Hei|SimSun|SimHei|YaHei|PingFang|Heiti|CJK (SC|TC|HK|KR)|Sans (SC|TC)|Unifont|Droid Sans Fallback/i.test(f));
+    ok(zh.length === 0, `${w}x${h} 中国語のフォントを使っていない（使用：${[...used].join('、')}）`);
+  }
+
   // 軽さ：児童を選ぶ操作は盤面を作り直さない（選択の印だけ書き換える）
   const selMs = await p.evaluate(async () => {
     const before = document.querySelector('.board .chip'), t0 = performance.now();

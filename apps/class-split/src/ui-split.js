@@ -165,10 +165,8 @@
     board.querySelectorAll('.head').forEach(function (hd) { hd.classList.toggle('target', S.sel >= 0 && p.asg[S.sel] !== +hd.dataset.k); });
     var hint = App.$('hint');
     hint.className = 'hint' + (S.follow != null ? ' follow' : '');
-    hint.innerHTML = S.decision ? '決定した案です。入れ替えはできません。' :
-      S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え：入れ替える相手をタップ（やめる：Esc）' :
-      S.sel < 0 ? '児童をタップ → 入れ替える相手をタップ（組の見出しをタップで移動）。固定：L　元に戻す：Ctrl+Z' :
-      '<b>' + esc(S.P.kids[S.sel].name) + '</b> を選択中 → 入れ替える相手をタップ／移す組の見出しをタップ（解除：Esc）';
+    // 案内の文は出さない（操作は確認の枠と選択の印で分かる）。続けて入れ替える時だけ、誰の番かを出す
+    hint.innerHTML = S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え相手をタップ' : '';
   }
 
   // 行の高さとアイコンの大きさを、空の列の寸法から決める（全員を1画面に収める）。
@@ -183,7 +181,6 @@
   }
 
   function renderCmp() {
-    App.$('hint').textContent = '各指標は「学級の最大−最小」。小さいほど偏りが少ない。★＝最良。案の名前をクリックで開く（1〜9キーでも可）。';
     var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
       { lab: '違反（離す・つける・固定・上限）', f: function (p, a) { return a.bad.length; }, bad: true },

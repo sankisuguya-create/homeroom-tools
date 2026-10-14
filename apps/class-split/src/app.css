@@ -5,7 +5,7 @@
   --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#616870; --line:#c9d1d9; --soft:#F1F3F5;
   --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
   /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
-  --f:"BIZ UDPGothic","Yu Gothic UI","Meiryo","Noto Sans CJK JP","Hiragino Sans","Noto Sans JP",sans-serif;
+  --f:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
   --rowh:30px; --ic:12px;
 }
 html,body{height:100%}
@@ -16,7 +16,7 @@ body.fit{overflow:hidden}
 body.fit .top{display:none}
 button,input,select{font:inherit;color:inherit}
 a{color:var(--link)}
-kbd{font-family:ui-monospace,monospace;font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
+kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
 #app{flex:1;min-height:0;display:flex;flex-direction:column}
 #main{flex:1;min-height:0;display:flex;flex-direction:column}
 .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:6px}
@@ -127,7 +127,7 @@ table.h tr.cur td{font-weight:700}
 .tab.cmp{border-style:dashed}
 .vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .vio.has{border-color:var(--alert);color:var(--alert);background:var(--alert-soft);font-weight:700}
-.hint{flex:1;min-width:0;font-size:.9rem;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint{flex:1;min-width:0;font-size:.95rem;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}

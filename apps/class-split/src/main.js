@@ -2,6 +2,8 @@
 (function (g) {
   'use strict';
   var App = g.App, PF = g.Platform;
+  // 漢字を中国語の字形で出さないため、どこに埋め込まれても日本語として扱わせる
+  document.documentElement.lang = 'ja';
 
   function crumb() {
     var st = App.st;
