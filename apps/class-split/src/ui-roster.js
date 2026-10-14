@@ -150,8 +150,9 @@
         if (R.fy !== editableFy()) return true;
         var Y = yearOf(R.fy), r = Y.rows.filter(function (y) { return y.id === x.dataset.cell; })[0], k = x.dataset.k;
         r.a[k] = ((r.a[k] | 0) + 1) % (C.MAX_LEVEL + 1);
-        var v = r.a[k], fy = R.fy, grade = Y.grade;
-        render();
+        var v = r.a[k], fy = R.fy, grade = Y.grade, at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
+        x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
+        if (R.kid === r.id) render();
         App.save(function () { return PF.setAttr(fy, grade, r.id, k, v); });
         return true;
       }

@@ -4,7 +4,8 @@
   color-scheme:light;
   --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#616870; --line:#c9d1d9; --soft:#F1F3F5;
   --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
-  --f:"BIZ UDPGothic","Yu Gothic UI","Hiragino Sans","Noto Sans JP",sans-serif;
+  /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
+  --f:"BIZ UDPGothic","Yu Gothic UI","Meiryo","Noto Sans CJK JP","Hiragino Sans","Noto Sans JP",sans-serif;
   --rowh:30px; --ic:12px;
 }
 html,body{height:100%}
@@ -144,7 +145,8 @@ table.h tr.cur td{font-weight:700}
 .st.sub{color:var(--sub)}
 .st .c{display:inline-flex;gap:2px;align-items:center}
 .sub2{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px}
-.gcol{display:grid;grid-template-rows:repeat(var(--rows),minmax(0,1fr));gap:2px;min-height:0;min-width:0}
+.gcol{display:flex;flex-direction:column;gap:2px;min-height:0;min-width:0}
+.gcol>.chip{height:var(--rowh);flex:none;box-sizing:border-box}
 /* 児童カード：男＝長方形、女＝ピル型。左端は旧学級の色の帯（旧番号）、地は旧学級の薄い色 */
 .chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
   cursor:pointer;--bandw:calc(var(--rowh)*.31);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;overflow:hidden;position:relative;background:var(--ol,var(--panel))}
@@ -153,6 +155,9 @@ table.h tr.cur td{font-weight:700}
 .chip:hover{border-color:var(--sub)}
 .chip.sel{border:3px solid var(--link);box-shadow:inset 0 0 0 2px #fff}
 .chip.locked{background:repeating-linear-gradient(135deg,var(--ol) 0 5px,#0000001f 5px 6px)}
+.chip.locked .nm::before{content:"固 ";color:var(--sub);font-weight:400}
+.chip.rel-far .nm::after{content:" 離";color:var(--alert)}
+.chip.rel-near .nm::after{content:" つ";color:var(--link)}
 .chip.rel-far{outline:2px dashed var(--alert);outline-offset:-1px}
 .chip.rel-near{outline:2px dashed var(--link);outline-offset:-1px}
 .chip.flash{animation:fl 1.1s ease-out 2}
@@ -161,11 +166,13 @@ table.h tr.cur td{font-weight:700}
 .old{grid-row:1/3;background:var(--oc);color:var(--ot);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.5em;font-variant-numeric:tabular-nums}
 .chip.f .old{padding-left:.35em}
 .l1{display:flex;align-items:center;gap:3px;padding:0 4px 1px;min-width:0}
-.nm{font-weight:700;white-space:nowrap;font-size:.92em;letter-spacing:-.02em}
-.bs{display:grid;grid-template-columns:repeat(7,var(--slot));column-gap:1px;align-items:center;padding:0 4px;font-size:var(--ic);--slot:1.5em}
-.bs.gd{grid-template-columns:repeat(3,var(--slot));margin-left:auto;padding:0;align-self:center}
-.bs>span>.b{width:1.25em;height:1.25em}
-.bs>span>.b.pill,.bs>span>.b.para{width:1.3em}
+.nm{font-weight:700;white-space:nowrap;font-size:calc(var(--rowh)*.42);letter-spacing:-.02em}
+.side .chip .nm{font-size:20px}
+.bs{position:relative;font-size:var(--ic);--slot:1.5em;margin:0 4px}
+.bs>.b,.bs>.jn{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
+.bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
+.bs>.b{width:1.25em;height:1.25em}
+.bs>.b.pill,.bs>.b.para{width:1.3em}
 .chip.f .bs{padding-right:calc(var(--rowh)*.38)}
 .rt{font-size:.85em;font-weight:700;flex:none}
 .rt.far{color:var(--alert)} .rt.near{color:var(--link)}

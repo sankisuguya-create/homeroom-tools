@@ -37,6 +37,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   });
   ok(fit.n > 0 && fit.vis === fit.n, `${w}x${h} 全員（${fit.n}人）が1画面に収まる（見えている ${fit.vis}人）`);
 
+  // 軽さ：児童を選ぶ操作は盤面を作り直さない（選択の印だけ書き換える）
+  const selMs = await p.evaluate(async () => {
+    const before = document.querySelector('.board .chip'), t0 = performance.now();
+    before.click();
+    await new Promise(r => requestAnimationFrame(() => setTimeout(r)));
+    const same = document.querySelector('.board .chip') === before;
+    before.click();
+    return same ? performance.now() - t0 : -1;
+  });
+  ok(selMs >= 0 && selMs < 100, `${w}x${h} 選ぶ操作は盤面を作り直さず ${Math.round(selMs)}ms`);
+
   // 案を作る：G → Enter で前回の設定のまま作る。名前に方針が付く
   const before = await p.locator('.tab[data-p]').count();
   await p.keyboard.press('g'); await p.waitForSelector('.dlg.gen');

@@ -71,9 +71,17 @@
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
+    // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     var slot = function (good) {
-      return C.ATTRS.filter(function (at) { return !!at.good === !!good; }).map(function (at) { var v = s.a[at.k] | 0; return '<span>' + (v ? App.mark(at, v) : '') + '</span>'; }).join('') +
-        (good ? '' : '<span>' + (S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '') + '</span>');
+      var n = 0, out = '';
+      C.ATTRS.forEach(function (at) {
+        if (!!at.good !== !!good) return;
+        var v = s.a[at.k] | 0;
+        if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
+        n++;
+      });
+      if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
+      return out;
     };
     return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" title="' + esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）">' +
       '<span class="old">' + s.no + '</span><span class="l1"><span class="nm">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
@@ -102,21 +110,14 @@
     return '<div class="bar">' + h + '</div><div class="hint" id="hint"></div>';
   }
 
+  // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   function render() {
     App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
     if (S.view === 'cmp') { renderCmp(); return; }
-    var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc, esc = App.esc;
+    var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc;
     var vb = App.$('vbtn');
     vb.className = 'vio' + (a.bad.length ? ' has' : '');
     vb.innerHTML = (a.bad.length ? '✕ 違反 ' + a.bad.length : '違反なし') + '・△ ' + a.warn.length + ' ▾<kbd>V</kbd>';
-    var hint = App.$('hint');
-    hint.className = 'hint' + (S.follow != null ? ' follow' : '');
-    hint.innerHTML = S.decision ? '決定した案です。入れ替えはできません。' :
-      S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え：入れ替える相手をタップ（やめる：Esc）' :
-      S.sel < 0 ? '児童をタップ → 入れ替える相手をタップ（組の見出しをタップで移動）。固定：L　元に戻す：Ctrl+Z' :
-      '<b>' + esc(S.P.kids[S.sel].name) + '</b> を選択中 → 入れ替える相手をタップ／移す組の見出しをタップ（解除：Esc）';
-    var rel = {};
-    if (S.sel >= 0) S.ctx.relOf[S.sel].forEach(function (pi) { var pr = S.P.pairs[pi]; if (pr.t !== 'fix') rel[pr.i === S.sel ? pr.j : pr.i] = pr.t; });
     var rows = 1, per = [], k, i;
     for (k = 0; k < nc; k++) {
       var ids = [];
@@ -125,43 +126,62 @@
       var m = ids.filter(function (i) { return S.P.kids[i].male; }), f = ids.filter(function (i) { return !S.P.kids[i].male; });
       per.push([m, f]); rows = Math.max(rows, m.length, f.length);
     }
-    var M = S.ctx.M, h = '<div class="cols" style="--nc:' + nc + ';--rows:' + rows + '">';
+    var M = S.ctx.M, h = '<div class="cols" style="--nc:' + nc + '">';
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
-      h += '<section class="col"><div class="head ' + (S.sel >= 0 && p.asg[S.sel] !== k ? 'target' : '') + '" data-k="' + k + '" role="button" tabindex="0">' +
+      h += '<section class="col"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1)); }).join('') + '</div>' +
         '<div class="st sub">' + S.ctx.MET.map(function (mt, mi) { return mt.grp === 'old' ? cnt(mi, mt.label + ' ') : ''; }).join(' ') + '　' +
-        S.ctx.MET.map(function (mt, mi) { return mt.grp === 'area' ? cnt(mi, mt.label) : ''; }).join(' ') + '</div></div><div class="sub2">';
-      per[k].forEach(function (gcol) {
-        h += '<div class="gcol">';
-        gcol.forEach(function (i) {
-          var cls = (i === S.sel ? 'sel ' : '') + (p.locks.has(i) ? 'locked ' : ''), ex = p.locks.has(i) ? '<span class="lkm" title="固定">固</span>' : '';
-          if (rel[i]) { cls += 'rel-' + rel[i]; ex += '<span class="rt ' + rel[i] + '">' + (rel[i] === 'far' ? '離' : 'つ') + '</span>'; }
-          h += chipHTML(i, cls, ex);
-        });
-        h += '</div>';
-      });
-      h += '</div></section>';
+        S.ctx.MET.map(function (mt, mi) { return mt.grp === 'area' ? cnt(mi, mt.label) : ''; }).join(' ') + '</div></div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
     }
     App.$('board').innerHTML = h + '</div>';
-    fit(rows);
+    // 凡例は計測の前に入れる（後から折り返すと盤面が縮み、最後の児童がはみ出す）
     App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       C.CLASS_COLORS.slice(0, maxOld()).map(function (o, i) { return '<span class="c"><span style="background:' + o.c + ';color:' + o.t + ';padding:0 5px;border-radius:2px;font-weight:700">番号</span><span style="background:' + o.l + ';padding:0 4px">旧' + (i + 1) + '組</span></span>'; }).join('') +
       '<span>＋＝程度2　＋＋＝程度3　点線の数字＝事案の件数　長方形＝男・丸＝女　固＝固定　△＝平均から外れている</span>';
+    fit(rows);
+    var gcols = App.$('board').querySelectorAll('.gcol');
+    for (k = 0; k < nc; k++) for (var g2 = 0; g2 < 2; g2++)
+      gcols[k * 2 + g2].innerHTML = per[k][g2].map(function (i) { return chipHTML(i, p.locks.has(i) ? 'locked' : ''); }).join('');
+    updateSel();
+
   }
   function maxOld() { var n = 0; S.P.kids.forEach(function (s) { if (s.old + 1 > n) n = s.old + 1; }); return n; }
 
-  // 行の高さとアイコンの大きさを画面に合わせる（全員を1画面に収める）
+  // 選択・離す/つけるの印・移す先の見出し・案内の文だけを書き換える（盤面は作り直さない）
+  var marked = [];
+  function updateSel() {
+    var board = App.$('board'), esc = App.esc;
+    if (!board || S.view !== 'plan') return;
+    marked.forEach(function (el) { el.classList.remove('sel', 'rel-far', 'rel-near'); });
+    marked = [];
+    var p = S.plans[S.active];
+    var mark = function (i, cls) { var el = board.querySelector('.chip[data-i="' + i + '"]'); if (el) { el.classList.add(cls); marked.push(el); } };
+    if (S.sel >= 0) {
+      mark(S.sel, 'sel');
+      S.ctx.relOf[S.sel].forEach(function (pi) { var pr = S.P.pairs[pi]; if (pr.t !== 'fix') mark(pr.i === S.sel ? pr.j : pr.i, 'rel-' + pr.t); });
+    }
+    board.querySelectorAll('.head').forEach(function (hd) { hd.classList.toggle('target', S.sel >= 0 && p.asg[S.sel] !== +hd.dataset.k); });
+    var hint = App.$('hint');
+    hint.className = 'hint' + (S.follow != null ? ' follow' : '');
+    hint.innerHTML = S.decision ? '決定した案です。入れ替えはできません。' :
+      S.follow != null ? '続けて <b>' + esc(S.P.kids[S.follow].name) + '</b> の入れ替え：入れ替える相手をタップ（やめる：Esc）' :
+      S.sel < 0 ? '児童をタップ → 入れ替える相手をタップ（組の見出しをタップで移動）。固定：L　元に戻す：Ctrl+Z' :
+      '<b>' + esc(S.P.kids[S.sel].name) + '</b> を選択中 → 入れ替える相手をタップ／移す組の見出しをタップ（解除：Esc）';
+  }
+
+  // 行の高さとアイコンの大きさを、空の列の寸法から決める（全員を1画面に収める）。
+  // カードを入れた後に測ると、140人分の配置を2回計算することになり重い
   function fit(rows) {
     var gc = document.querySelector('.gcol');
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
-    root.setProperty('--rowh', rhc + 'px');
+    root.setProperty('--rowh', rhc.toFixed(2) + 'px');
     var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .42 - rhc * .38 - 10) / (7 * 1.5 + .1));
-    root.setProperty('--ic', Math.max(8, ic) + 'px');
+    root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
   }
 
   function renderCmp() {
@@ -230,7 +250,7 @@
           : d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' → ' + (d.kb + 1) + '組';
         App.closeDlg();
         doMove(d.ch, names);
-        if (d.next != null) { S.follow = d.next; S.sel = d.next; render(); flash([d.next]); }
+        if (d.next != null) { S.follow = d.next; S.sel = d.next; updateSel(); flash([d.next]); }
       },
       onTab: function () { if (d.extraSide && d.cands.length > d.cnt) { E.nextCandidate(d); App.refreshDlg(); return true; } return false; }
     });
@@ -364,15 +384,16 @@
     var p = S.plans[S.active], prev = changes.map(function (x) { return [x[0], p.asg[x[0]]]; });
     apply(p, changes); p.hist.push({ prev: prev, next: changes, msg: msg }); p.fut = []; p.edits++;
     S.sel = -1; S.follow = null; render(); persist(); App.toast(msg, undo);
+    flash(changes.map(function (x) { return x[0]; }));
   }
   function undo() { if (S.view !== 'plan' || S.decision) return; var p = S.plans[S.active], h = p.hist.pop(); if (!h) return; apply(p, h.prev); p.fut.push(h); p.edits--; S.sel = -1; S.follow = null; render(); persist(); App.toast('戻しました：' + h.msg); }
   function redo() { if (S.view !== 'plan' || S.decision) return; var p = S.plans[S.active], h = p.fut.pop(); if (!h) return; apply(p, h.next); p.hist.push(h); p.edits++; S.sel = -1; S.follow = null; render(); persist(); App.toast('やり直しました：' + h.msg); }
   function tapChip(i) {
     if (S.decision) return;
     var p = S.plans[S.active];
-    if (S.sel < 0) { S.sel = i; render(); return; }
-    if (S.sel === i) { S.sel = -1; S.follow = null; render(); return; }
-    if (p.asg[S.sel] === p.asg[i]) { if (S.follow != null) { App.toast('別の組の児童を選んでください'); return; } S.sel = i; render(); return; }
+    if (S.sel < 0) { S.sel = i; updateSel(); return; }
+    if (S.sel === i) { S.sel = -1; S.follow = null; updateSel(); return; }
+    if (p.asg[S.sel] === p.asg[i]) { if (S.follow != null) { App.toast('別の組の児童を選んでください'); return; } S.sel = i; updateSel(); return; }
     var d = E.buildSwap(ctxFor(p.gen), p.asg, p.locks, S.sel, i); // 補う児童は、その案を作った重みで選ぶ
     if (d.err) App.toast(d.err); else swapDialog(d);
   }
@@ -389,7 +410,9 @@
     if (S.sel < 0) { App.toast('先に児童を選んでください'); return; }
     var i = S.sel;
     if (p.locks.has(i)) p.locks.delete(i); else p.locks.add(i);
-    render(); persist(); App.toast(S.P.kids[i].name + '：' + (p.locks.has(i) ? '固定しました' : '固定を外しました'));
+    var el = App.$('board').querySelector('.chip[data-i="' + i + '"]');
+    if (el) el.classList.toggle('locked', p.locks.has(i));
+    persist(); App.toast(S.P.kids[i].name + '：' + (p.locks.has(i) ? '固定しました' : '固定を外しました'));
   }
   function flash(ids) {
     requestAnimationFrame(function () {
@@ -439,6 +462,7 @@
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
       if ((x = t.closest('.head'))) { tapHead(+x.dataset.k); return true; }
+      if (t.closest('#board') && S.sel >= 0 && S.follow == null) { S.sel = -1; updateSel(); return true; }
       return false;
     },
     dblclick: function (t) { var x = t.closest('.tab[data-p]'); if (x && !S.decision) { renameDialog(+x.dataset.p); return true; } return false; },
@@ -448,7 +472,7 @@
       if (ctrl && (k === 'y' || k === 'Y')) { e.preventDefault(); redo(); return true; }
       if (ctrl || e.altKey) return false;
       if ((k === 'Enter' || k === ' ') && e.target.matches('.chip,.head,.tab,th[data-p]')) { e.preventDefault(); e.target.click(); return true; }
-      if (k === 'Escape') { if (S.sel >= 0 || S.follow != null) { S.sel = -1; S.follow = null; render(); } return true; }
+      if (k === 'Escape') { if (S.sel >= 0 || S.follow != null) { S.sel = -1; S.follow = null; updateSel(); } return true; }
       if (/^[1-9]$/.test(k)) { if (+k - 1 < S.plans.length) selectPlan(+k - 1); return true; }
       if (k === '0') { S.view = 'cmp'; S.sel = -1; S.follow = null; render(); return true; }
       var K = k.toLowerCase();
