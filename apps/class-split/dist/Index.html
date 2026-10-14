@@ -266,7 +266,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .help table{border-collapse:collapse}
 .help td{padding:4px 10px;border-bottom:1px solid var(--line)}
 .dlg input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:1rem}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;max-width:calc(100% - 32px)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;cursor:pointer;max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 .toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
 /* ▲ src/app.css ここまで ▲ */
@@ -2067,6 +2067,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     var t = e.target, scr = App.screens[App.st.screen];
     if (t.closest('.trial')) { App.toggleTrial(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
+    if (t.closest('#toast')) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる
     if (App.dlg) {
       var act = t.closest('[data-act]');
       if (act && act.dataset.act === 'ok') { App.dlg.onOk(); return; }

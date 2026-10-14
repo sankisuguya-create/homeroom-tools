@@ -38,6 +38,7 @@
     var t = e.target, scr = App.screens[App.st.screen];
     if (t.closest('.trial')) { App.toggleTrial(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
+    if (t.closest('#toast')) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる
     if (App.dlg) {
       var act = t.closest('[data-act]');
       if (act && act.dataset.act === 'ok') { App.dlg.onOk(); return; }
