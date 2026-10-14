@@ -11,7 +11,7 @@ const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src')
 for (const f of ['config.js', 'engine.js', 'platform-demo.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(SRC, f), 'utf8'), { filename: f });
 }
-const { CONFIG: C, Engine: E, Platform: PF } = globalThis;
+const { CONFIG: C, Engine: E } = globalThis; const PF = globalThis.Platforms.demo;
 
 // 小さな問題：旧4学級×36人＝144人（上限の場合）
 function problem(extra = {}) {
@@ -159,4 +159,15 @@ test('年度の境目は4/1', () => {
   assert.equal(C.fiscalYear(new Date(2027, 3, 1)), 2027);
   assert.equal(C.fiscalYearOfIso('2027-03-31'), 2026);
   assert.equal(C.fiscalYearOfIso('2027-04-01'), 2027);
+});
+
+test('Platform（見本）：名簿の取り込み・つける離すの保存・持ち越しの候補', async () => {
+  const r = await PF.importRoster(PF.fiscalYear, 2, [{ id: '99999999', name: '転入', kana: 'てんにゅう', male: true, cls: 0, no: 40 }]);
+  assert.equal(r.added, 1);
+  assert.ok(r.missing.length > 0);
+  const b = await PF.boot(2);
+  assert.ok(b.years.find(y => y.fy === PF.fiscalYear).rows.some(x => x.id === '99999999'));
+  assert.equal(b.carry.length, 3);
+  await PF.savePairs(2, [{ t: b.carry[0].t, a: b.carry[0].a, b: b.carry[0].b }]);
+  assert.equal((await PF.boot(2)).carry.length, 2, '採用した候補は出ない');
 });

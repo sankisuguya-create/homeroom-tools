@@ -401,7 +401,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_417e9c62ed43';
+var SERVER_BUILD = 'BUILD_7cbc51aaeada';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -586,6 +586,7 @@ var apiBoot = api_(function (grade) {
   return {
     fy: FY, grade: grade, years: years, kids: kids, incidents: incs,
     pairs: pairs_(FY, grade),
+    carry: carry_(FY, grade, idset),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
     decision: dec ? { plan: String(dec.plan), at: String(dec.at) } : null
   };
@@ -593,12 +594,67 @@ var apiBoot = api_(function (grade) {
 function emptyAttrs_() { var a = {}; CONFIG.ATTRS.forEach(function (at) { a[at.k] = 0; }); return a; }
 
 function pairs_(fy, grade) {
-  return read_('pairs_' + fy + '_' + grade).rows.map(function (r) {
-    var p = { t: String(r.type), a: String(r.a) };
+  return read_('pairs_' + fy + '_' + grade).rows.filter(function (r) { return String(r.type); }).map(function (r) {
+    var p = { t: String(r.type), a: String(r.a), memo: String(r.memo || '') };
     if (p.t === 'fix') p.k = (+r.k) - 1; else p.b = String(r.b);
     return p;
   });
 }
+var PAIR_HEAD = ['type', 'a', 'b', 'k', 'memo', 'by', 'at'];
+// 前年度に決定した時に持ち越した組のうち、2人とも今この学年にいて、まだ採用していないもの
+function carry_(FY, grade, idset) {
+  var key = function (p) { return p.t + ':' + [p.a, p.b].sort().join('-'); }, have = {};
+  pairs_(FY, grade).forEach(function (p) { have[key(p)] = 1; });
+  return read_('pairs_carry').rows.filter(function (r) { return +r.fy === FY - 1 && idset[String(r.a)] && idset[String(r.b)]; })
+    .map(function (r) { return { t: String(r.type), a: String(r.a), b: String(r.b) }; })
+    .filter(function (p) { return !have[key(p)]; });
+}
+
+// つける・離す・組に固定を、学年ごとにまとめて置き換える
+var apiSavePairs = api_(function (grade, pairs) {
+  var by = requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade;
+  if (decisionOf_(FY, grade)) throw userError_('クラス替えを決定したので直せません');
+  return withLock_(function () {
+    sheet_(db_(), name, PAIR_HEAD);
+    removeRows_(name, function (r) { return r._r > 1; });
+    append_(name, PAIR_HEAD, (pairs || []).map(function (p) {
+      return { type: p.t, a: String(p.a), b: p.t === 'fix' ? '' : String(p.b), k: p.t === 'fix' ? (+p.k) + 1 : '', memo: String(p.memo || ''), by: by, at: new Date().toISOString() };
+    }));
+    return { n: (pairs || []).length };
+  });
+});
+
+// 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ（消さない）
+var apiImportRoster = api_(function (fy, grade, rows) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  if (fy !== FY && fy !== FY + 1) throw userError_('今年度か来年度の名簿だけ入れられます');
+  if (!rows || !rows.length) throw userError_('児童がいません');
+  return withLock_(function () {
+    var name = 'roster_' + fy;
+    sheet_(db_(), name, ROSTER_HEAD);
+    sheet_(db_(), 'attrs_' + fy, attrsHead_());
+    var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
+    t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
+    rows.forEach(function (x) {
+      var id = String(x.id);
+      if (!/^\d{8}$/.test(id)) throw userError_('児童IDが8桁でない行があります');
+      classes[+x.cls] = 1; ids[id] = 1;
+      var o = { id8: id, name: String(x.name), kana: String(x.kana || ''), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
+      var r = byId[id];
+      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
+      else added.push(o);
+    });
+    append_(name, ROSTER_HEAD, added);
+    var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
+    log_(by, 'importRoster', rows.length);
+    return { added: added.length, updated: updated, missing: missing };
+  });
+});
+
 function incidents_() {
   var kids = {};
   read_('incident_kids').rows.forEach(function (r) { (kids[r.inc_id] = kids[r.inc_id] || []).push(String(r.id8)); });

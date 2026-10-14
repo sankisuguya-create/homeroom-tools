@@ -1,7 +1,7 @@
 // 入口：画面の切り替えと、クリック・キー・入力の振り分け。
 (function (g) {
   'use strict';
-  var App = g.App, PF = g.Platform;
+  var App = g.App;
   // 漢字を中国語の字形で出さないため、どこに埋め込まれても日本語として扱わせる
   document.documentElement.lang = 'ja';
 
@@ -20,15 +20,16 @@
     st.screen = screen;
     crumb();
     if (screen === 'menu') {
-      return PF.listGrades().then(function (gs) { st.grades = gs; App.screens.menu.render(); });
+      return App.pf().listGrades().then(function (gs) { st.grades = gs; App.screens.menu.render(); });
     }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return PF.boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
+    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
   document.addEventListener('click', function (e) {
     var t = e.target, scr = App.screens[App.st.screen];
+    if (t.closest('.trial')) { App.toggleTrial(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
     if (App.dlg) {
       var act = t.closest('[data-act]');
@@ -44,12 +45,12 @@
     if (scr && scr.click) scr.click(t, e);
   });
   document.addEventListener('dblclick', function (e) { var scr = App.screens[App.st.screen]; if (!App.dlg && scr && scr.dblclick) scr.dblclick(e.target); });
-  document.addEventListener('input', function (e) { var scr = App.screens[App.st.screen]; if (scr && scr.input) scr.input(e.target, e); });
+  document.addEventListener('input', function (e) { if (App.dlg && App.dlg.input) { App.dlg.input(e.target, e); return; } var scr = App.screens[App.st.screen]; if (scr && scr.input) scr.input(e.target, e); });
   document.addEventListener('submit', function (e) { e.preventDefault(); var scr = App.screens[App.st.screen]; if (scr && scr.submit) scr.submit(e.target); });
   document.addEventListener('keydown', function (e) {
     if (App.dlg) {
       if (e.key === 'Escape') { e.preventDefault(); App.closeDlg(); }
-      else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing) { e.preventDefault(); App.dlg.onOk(); }
+      else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing && (!e.target.matches('textarea') || e.ctrlKey || e.metaKey)) { e.preventDefault(); App.dlg.onOk(); }
       else if (e.key === 'Tab' && App.dlg.onTab && App.dlg.onTab()) e.preventDefault();
       return;
     }
@@ -63,6 +64,26 @@
 
   // 開いた時は担当の学年を選んだ状態にする（本番は担任と学級の対応から。見本は6年）
   App.st.grade = 6;
-  App.$('demo').hidden = PF.name !== 'demo';
+  // 試行：本番の画面でダミーデータに切り替えて操作を試す（保存はサーバーに送らない）
+  App.canTry = !!(g.Platforms.gas && g.Platforms.demo);
+  App.paintTrial = function () {
+    var on = App.mode === 'demo';
+    document.body.classList.toggle('trying', on && App.canTry);
+    document.querySelectorAll('.trial').forEach(function (b) {
+      b.hidden = !App.canTry;
+      b.textContent = on ? '試行をやめる' : '試行';
+      b.setAttribute('aria-pressed', String(on));
+      b.title = on ? '本番のデータに戻る' : 'ダミーデータで操作を試す（保存されません）';
+    });
+    App.$('demo').hidden = !on;
+    App.$('demo').textContent = App.canTry ? '試行中：ダミーデータです。保存されません。' : '見本：架空の児童。保存は画面を閉じるまで。';
+  };
+  App.toggleTrial = function () {
+    App.mode = App.mode === 'demo' ? 'gas' : 'demo';
+    App.sv = undefined; App.saveState();
+    App.paintTrial();
+    App.go('menu');
+  };
+  App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);
