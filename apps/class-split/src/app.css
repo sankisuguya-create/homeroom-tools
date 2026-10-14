@@ -164,7 +164,7 @@ table.h tr.cur td{font-weight:700}
 .chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
   cursor:pointer;--bandw:calc(var(--rowh)*.31);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;overflow:hidden;position:relative;background:var(--ol,var(--panel))}
 .chip.m{border-radius:2px}
-.chip.f{border-radius:999px;--bandw:calc(var(--rowh)*.42)}
+.chip.f{border-radius:999px}
 .chip:hover{border-color:var(--sub)}
 .chip.sel{border:3px solid var(--link);box-shadow:inset 0 0 0 2px #fff}
 .chip.locked{background:repeating-linear-gradient(135deg,var(--ol) 0 5px,#0000001f 5px 6px)}
@@ -177,7 +177,6 @@ table.h tr.cur td{font-weight:700}
 @keyframes fl{0%{box-shadow:0 0 0 4px var(--fill-b)}100%{box-shadow:0 0 0 0 transparent}}
 @media (prefers-reduced-motion:reduce){.chip.flash{animation:none;box-shadow:0 0 0 4px var(--fill-b)}}
 .old{grid-row:1/3;background:var(--oc);color:var(--ot);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.5em;font-variant-numeric:tabular-nums}
-.chip.f .old{padding-left:.35em}
 .l1{display:flex;align-items:center;gap:3px;padding:0 4px 1px;min-width:0}
 .nm{font-weight:700;white-space:nowrap;font-size:calc(var(--rowh)*.42);letter-spacing:-.02em}
 .side .chip .nm{font-size:20px}
