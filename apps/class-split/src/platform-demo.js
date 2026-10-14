@@ -77,7 +77,7 @@
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 1 }], keepYears: 0 };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: 0 };
     })();
   }
 
@@ -181,7 +181,7 @@
       return later({ added: added, updated: updated, missing: missing });
     },
     savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
-    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 0 } }); },
+    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0 } }); },
     saveSettings: function (x) { gen(); S.settings = clone(x); return later(S.settings); },
     leaveCandidates: function () {
       gen();

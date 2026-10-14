@@ -11,7 +11,7 @@
         }).join('') + '</div></section>' +
         '<section><h2>' + st.grade + '年で何をしますか</h2><div class="bigs">' +
         '<button class="big" data-go="roster"><b>名簿を見る</b><span>今年度と過去の年度の学級名簿。配慮項目の入力、事案の登録と一覧、児童ごとの経年の記録。</span></button>' +
-        '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>' +
+        (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
         '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案の種別・年度替わり）</button></section></div>';
     },

@@ -500,6 +500,7 @@
   App.screens.split = {
     enter: function () {
       var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+      if (d.grade >= 6) { App.$('main').innerHTML = '<div class="menu"><section><h2>6年は卒業するので、クラス分けはありません</h2><button class="btn" data-go="menu">メニューに戻る</button></section></div>'; return; }
       if (!cur || !cur.rows.length) { // 名簿が無いと組めない
         App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
           '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';

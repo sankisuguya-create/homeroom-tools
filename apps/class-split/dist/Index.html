@@ -838,7 +838,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 1 }], keepYears: 0 };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: 0 };
     })();
   }
 
@@ -942,7 +942,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return later({ added: added, updated: updated, missing: missing });
     },
     savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
-    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 6, cls: 0 } }); },
+    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0 } }); },
     saveSettings: function (x) { gen(); S.settings = clone(x); return later(S.settings); },
     leaveCandidates: function () {
       gen();
@@ -1055,7 +1055,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
         }).join('') + '</div></section>' +
         '<section><h2>' + st.grade + '年で何をしますか</h2><div class="bigs">' +
         '<button class="big" data-go="roster"><b>名簿を見る</b><span>今年度と過去の年度の学級名簿。配慮項目の入力、事案の登録と一覧、児童ごとの経年の記録。</span></button>' +
-        '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>' +
+        (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
         '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案の種別・年度替わり）</button></section></div>';
     },
@@ -1826,6 +1826,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   App.screens.split = {
     enter: function () {
       var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+      if (d.grade >= 6) { App.$('main').innerHTML = '<div class="menu"><section><h2>6年は卒業するので、クラス分けはありません</h2><button class="btn" data-go="menu">メニューに戻る</button></section></div>'; return; }
       if (!cur || !cur.rows.length) { // 名簿が無いと組めない
         App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
           '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
@@ -2090,7 +2091,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   document.addEventListener('fullscreenchange', function () { setTimeout(function () { var s = App.screens[App.st.screen]; if (s && s.resize) s.resize(); }, 50); });
 
   // 開いた時は担当の学年を選んだ状態にする（本番は担任と学級の対応から。見本は6年）
-  App.st.grade = 6;
+  App.st.grade = 5;
   // 試行：本番の画面でダミーデータに切り替えて操作を試す（保存はサーバーに送らない）
   App.canTry = !!(g.Platforms.gas && g.Platforms.demo);
   App.paintTrial = function () {

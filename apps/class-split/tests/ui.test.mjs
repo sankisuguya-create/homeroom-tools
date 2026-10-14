@@ -27,6 +27,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.goto('file://' + DIST);
   await p.waitForSelector('.gbtn');
   ok(await p.locator('.gbtn').count() === 6, `${w}x${h} メニューに6学年`);
+  await p.click('[data-g="6"]');
+  ok(await p.locator('[data-go="split"]').count() === 0, `${w}x${h} 6年を選ぶと「クラス分けをする」が出ない`);
+  await p.click('[data-g="4"]');
 
   // クラス分け：全員が1画面に収まる
   await p.click('[data-go="split"]');
@@ -98,7 +101,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
-  await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
+  await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('.rbar .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿`);
   await p.locator('td.nm').first().click();
   ok(await p.locator('table.h tbody tr').count() === 6, `${w}x${h} 経年の記録が6行`);

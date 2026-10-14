@@ -67,7 +67,7 @@ await p.waitForFunction(() => document.body.classList.contains('trying'));
 ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
 await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
 await p.locator('td.cell').first().click();
-await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
 ok(await p.locator('.bar .trial[aria-pressed="true"]').count() === 1, '試行：クラス分けの帯にも試行中の表示');
 ok(JSON.stringify(gas.db().sheets) === before, '試行中の操作はサーバーに送らない');
 await p.click('.bar .trial');

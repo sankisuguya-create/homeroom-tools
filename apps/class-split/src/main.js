@@ -70,7 +70,7 @@
   document.addEventListener('fullscreenchange', function () { setTimeout(function () { var s = App.screens[App.st.screen]; if (s && s.resize) s.resize(); }, 50); });
 
   // 開いた時は担当の学年を選んだ状態にする（本番は担任と学級の対応から。見本は6年）
-  App.st.grade = 6;
+  App.st.grade = 5;
   // 試行：本番の画面でダミーデータに切り替えて操作を試す（保存はサーバーに送らない）
   App.canTry = !!(g.Platforms.gas && g.Platforms.demo);
   App.paintTrial = function () {
