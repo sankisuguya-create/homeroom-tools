@@ -267,6 +267,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .help td{padding:4px 10px;border-bottom:1px solid var(--line)}
 .dlg input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:1rem}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
 .toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -989,7 +990,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_403386da40b8';
+  var PAGE_BUILD = 'BUILD_2084011bd62a';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
