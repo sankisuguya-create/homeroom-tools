@@ -15,8 +15,8 @@
   App.pf = function () { return g.Platforms[App.mode]; };
 
   App.mark = function (at, lv) {
-    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
-      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
+      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 

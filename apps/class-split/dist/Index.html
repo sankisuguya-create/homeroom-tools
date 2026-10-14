@@ -68,7 +68,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .b{position:relative;display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;font-size:.78em;font-weight:700;line-height:1;flex:none;vertical-align:middle;filter:drop-shadow(0 0 .6px #1A1A1A)}
 .b>i{position:absolute;inset:0;background:var(--c)}
 .b>em{position:relative;font-style:normal;color:var(--t)}
-.b>em>u{position:absolute;left:calc(100% - .05em);top:-.5em;text-decoration:none;font-size:1.05em;font-weight:900;color:#1A1A1A;letter-spacing:-.12em;text-shadow:0 0 2px #fff,0 0 2px #fff;white-space:nowrap}
+/* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
+.b>u{position:absolute;left:calc(50% + .5em);top:-.42em;text-decoration:none;font-size:1.05em;font-weight:900;color:#1A1A1A;letter-spacing:-.12em;text-shadow:0 0 2px #fff,0 0 2px #fff;white-space:nowrap;line-height:1}
 .square>i{clip-path:inset(4% round 2px)}
 .circle>i{clip-path:circle(50%)}
 .diamond>i{clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
@@ -88,7 +89,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .octagon>i{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
 .shield>i{clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%)}
 .shield>em{top:-.1em}
-.jn{display:inline-flex;align-items:center;justify-content:center;min-width:1.2em;height:1.15em;border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 2px;font-size:.82em;line-height:1;box-sizing:border-box}
+/* 事案の数字：点線の枠の上下左右の中央に置く */
+.jn{display:inline-flex;align-items:center;justify-content:center;min-width:1.25em;height:1.25em;border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 .15em;font-size:.82em;line-height:1;box-sizing:border-box;font-variant-numeric:tabular-nums;text-align:center}
 .band{display:inline-block;width:5px;height:1.2em;vertical-align:middle;margin-right:6px;border-radius:1px}
 
 /* ===== 名簿 ===== */
@@ -981,8 +983,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   App.pf = function () { return g.Platforms[App.mode]; };
 
   App.mark = function (at, lv) {
-    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s +
-      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</em></span>';
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
+      (lv > 1 ? '<u>' + '+'.repeat(lv - 1) + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
