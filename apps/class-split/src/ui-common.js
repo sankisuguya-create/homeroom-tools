@@ -100,7 +100,11 @@
 
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
   App.dlg = null;
-  App.openDlg = function (d) { App.dlg = d; App.$('layer').innerHTML = d.html(); if (d.focus) { var f = App.$(d.focus); if (f) f.focus(); } };
+  // 窓を開いたら、入力欄にはすぐ書けるようにする（カーソルは書いてある文の最後）
+  App.openDlg = function (d) {
+    App.dlg = d; App.$('layer').innerHTML = d.html();
+    if (d.focus) { var f = App.$(d.focus); if (f) { f.focus(); if (f.setSelectionRange && /^(TEXTAREA|INPUT)$/.test(f.tagName) && f.type !== 'date') { var n = f.value.length; f.setSelectionRange(n, n); } } }
+  };
   App.refreshDlg = function () { if (App.dlg) App.openDlg(App.dlg); };
   App.closeDlg = function () { var d = App.dlg; App.dlg = null; App.$('layer').innerHTML = ''; if (d && d.onClose) d.onClose(); };
 

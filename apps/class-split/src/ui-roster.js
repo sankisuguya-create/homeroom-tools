@@ -25,19 +25,65 @@
   }
 
   // 備考：児童ごと・年度ごとの自由記述。決定で来年度に写る
+  // 右下の角か（指でも押せるよう、角の三角より少し広くとる）
+  function inCorner(td, e) { var q = td.getBoundingClientRect(), z = 18; return e.clientX >= q.right - z && e.clientY >= q.bottom - z; }
+  // 角を押した時の窓：欄の種類ごとに、文字の入力・相手の選択・事案などをここに集める
+  function cornerDialog(td) {
+    var d = D(), Y = yearOf(R.fy), id = td.dataset.cell || td.dataset.kid || td.dataset.rpair || td.dataset.memo;
+    var r = Y.rows.filter(function (y) { return y.id === id; })[0];
+    if (td.classList.contains('ji')) { R.kid = id; R.form = null; render(); return; }
+    if (td.classList.contains('pr')) { kidPairsDialog(id); return; }
+    if (R.fy !== editableFy() || !r) return;
+    if (td.classList.contains('memo')) { memoDialog(Y, r); return; }
+    var k = td.dataset.k;
+    if (k === 'sp') { levelDialog(Y, r, { k: 'sp', label: '特別支援学級', max: 1, help: ['特別支援学級', '在籍している。'] }, td); return; }
+    var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
+    if (at.side) noteDialog(Y, r, at, td); else levelDialog(Y, r, at, td);
+  }
+  // 程度を選ぶ窓（説明つき）
+  function levelDialog(Y, r, at, cell) {
+    var s = D().kids[r.id], cur = at.k === 'sp' ? (r.a.sp ? 1 : 0) : r.a[at.k] | 0, fy = R.fy, grade = Y.grade, esc = App.esc;
+    var opts = [[0, '無', '']].concat([[1, at.k === 'sp' ? 'あり' : App.mark(at, 1), (at.help || [])[1] || '']]).concat(at.max > 1 ? [[2, App.mark(at, 2), (at.help || [])[2] || '']] : []);
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(at.label) + '" style="max-width:520px"><h2>' + esc(s.name) + 'の' + esc(at.label) + '</h2>' +
+          '<div class="lvpick">' + opts.map(function (o) { return '<button type="button" class="lvopt" data-lvset="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '"><span class="ic">' + o[1] + '</span><span>' + esc(o[2]) + '</span></button>'; }).join('') + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-lvset]'); if (!x) return false;
+        var v = +x.dataset.lvset;
+        if (at.k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; cell.innerHTML = v ? '<span class="spb">支</span>' : ''; }
+        else { r.a[at.k] = v; cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : ''; }
+        App.closeDlg();
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); });
+        return true;
+      }
+    });
+  }
+
   function memoDialog(Y, r) {
     var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
     App.openDlg({
       focus: 'mtx',
       html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:520px">' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
           '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
-          '<textarea id="mtx" rows="4" maxlength="200" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（200字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
+          '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
           '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
+      input: function (t) {
+        if (!t.dataset.mpick || !t.value) return;
+        var ta = App.$('mtx'), w = t.value, a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
+        var before = v.slice(0, a), after = v.slice(b), sep = before && !/[、。\s]$/.test(before) ? '、' : '';
+        ta.value = (before + sep + w + after).slice(0, 400); t.value = '';
+        var pos = Math.min(400, (before + sep + w).length); ta.focus(); ta.setSelectionRange(pos, pos);
+      },
       onOk: function () {
-        var text = App.$('mtx').value.trim();
+        var text = App.$('mtx').value.trim().slice(0, 400);
         if (text) r.a.memo = text; else delete r.a.memo;
         App.closeDlg(); render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
@@ -172,11 +218,11 @@
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span>' + App.nameBox(s.name) + '</td>' +
-        '<td class="cell spc" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
-        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
-        '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td>' +
-        (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' ed' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
-        '<td class="memo' + (edit ? ' ed' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
+        '<td class="cell spc' + (edit ? ' cc' : '') + '" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
+        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
+        '<td class="ji cc" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td>' +
+        (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
+        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
@@ -427,8 +473,11 @@
     enter: function () { reset(); render(); },
     render: render,
     selectKid: function (id) { R.kid = id; render(); },
-    click: function (t) {
+    click: function (t, e) {
       var d = D(), x;
+      // 表の欄：右下の灰色の角を押すと設定の窓、欄の真ん中を押すと値を変える（0→1→2）
+      var td = t.closest('td.cc');
+      if (td && e && inCorner(td, e)) { cornerDialog(td); return true; }
       if ((x = t.closest('[data-fy]'))) { R.fy = +x.dataset.fy; render(); return true; }
       if ((x = t.closest('[data-cls]'))) { R.scope = 'cls'; R.cls = +x.dataset.cls; render(); return true; }
       if ((x = t.closest('[data-scope]'))) { R.scope = x.dataset.scope; if (R.scope === 'school') R.school = null; render(); return true; }
@@ -448,7 +497,6 @@
           return true;
         }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
-        if (at.side) { noteDialog(Y, r, at, x); return true; }
         r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
         var v = r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
@@ -456,6 +504,7 @@
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
         return true;
       }
+      if (t.closest('td.ji')) return true; // 事案の欄は角から開く
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rpairs')) { openPairs(null); return true; }
@@ -463,11 +512,7 @@
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
       if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
-      if ((x = t.closest('[data-rpair]'))) { kidPairsDialog(x.dataset.rpair); return true; }
-      if ((x = t.closest('[data-memo]'))) {
-        if (R.fy !== editableFy()) return true;
-        var MY = yearOf(R.fy); memoDialog(MY, MY.rows.filter(function (y) { return y.id === x.dataset.memo; })[0]); return true;
-      }
+      if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
       if (t.closest('#addInc')) { var st0 = App.Diagram.state(null); App.Diagram.add(st0, R.kid); R.form = { dg: st0 }; render(); refocus('fUrl'); return true; }
       if ((x = t.closest('[data-editinc]'))) {
         var inc = d.incidents.filter(function (y) { return y.id === +x.dataset.editinc; })[0];

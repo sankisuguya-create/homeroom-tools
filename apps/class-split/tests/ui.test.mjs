@@ -141,7 +141,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // 名簿からつける・離すを足す
   const first = await p.locator('td.nm').first().getAttribute('data-kid');
-  await p.locator('td.pr').first().click();
+  const corner = async loc => { const q = await loc.boundingBox(); await p.mouse.click(q.x + q.width - 4, q.y + q.height - 4); };
+  await corner(p.locator('td.pr').first());
   ok(await p.locator('.dlg[aria-label="つける・離す"] [data-padd="far"]').count() === 1, `${w}x${h} つける・離すの枠を押すと、その児童の窓が開く`);
   await p.click('[data-padd="far"]');
   await p.fill('#pq', await p.locator('td.nm').nth(1).evaluate(e => e.lastChild.textContent.slice(0, 2)));
@@ -160,6 +161,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // 備考
   await p.locator('td.memo').first().click();
+  ok(await p.locator('#mtx').count() === 0, `${w}x${h} 備考の欄の真ん中を押しても窓は開かない`);
+  await corner(p.locator('td.memo').first());
+  ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'mtx'), `${w}x${h} 開いたらすぐ書ける`);
+  await p.selectOption('[data-mpick="1"]', '優しい');
+  ok((await p.inputValue('#mtx')).indexOf('優しい') >= 0, `${w}x${h} 定型の言葉を選ぶと入る`);
+  await p.fill('#mtx', '');
   await p.fill('#mtx', '給食当番は前半'); await p.keyboard.press('Control+Enter');
   await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
   ok((await p.locator('td.memo').first().textContent()) === '給食当番は前半', `${w}x${h} 備考を書ける`);
