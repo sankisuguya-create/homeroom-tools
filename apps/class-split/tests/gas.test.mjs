@@ -186,11 +186,21 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
 
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
     ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);
-    const inc2 = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijXYZ/edit', title: '', date: '2026-05-01', type: '対人', ids: ['60000001'] });
-    const cand = call('apiLeaveCandidates').v;
-    assert.deepEqual(cand.map(x => [x.id, x.reason, x.incidents]), [['60000001', '卒業', 1]], '今年度にいる児童は出ない');
+    // 事案に関わった児童は、残す年数を0にしても卒業・転出から5年度は候補に出ず、消せない
+    ctx.importRoster(FY - 6, [['60000009', '昔の卒業生', 'むかし', '女', 6, 1, 1]]);
+    call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijOLD/edit', title: '', date: '2020-05-01', type: '対人', ids: ['60000009'] });
+    const inc1 = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijXY1/edit', title: '', date: '2026-05-01', type: '対人', ids: ['60000001'] });
+    assert.ok(inc1.ok, inc1.err);
+    let cand = call('apiLeaveCandidates').v;
+    assert.deepEqual(cand.map(x => [x.id, x.reason, x.incidents]), [['60000009', '卒業', 1]], '今年度にいる児童と、事案のある5年度以内の卒業生は出ない');
     assert.equal(call('apiPurge', ['40000011']).ok, false, '今年度の名簿にいる児童は消せない');
-    const pg = call('apiPurge', ['60000001']);
+    assert.equal(call('apiPurge', ['60000001']).ok, false, '事案のある5年度以内の卒業生は消せない');
+    // 事案の結び付きを外すと、残す年数（0）どおり候補に出る
+    db().getSheetByName('incident_kids').data = db().getSheetByName('incident_kids').data.filter(r => r[1] !== '60000001');
+    const inc2 = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijXYZ/edit', title: '', date: '2026-05-01', type: '対人', ids: ['60000009'] });
+    cand = call('apiLeaveCandidates').v;
+    assert.deepEqual(cand.map(x => x.id).sort(), ['60000001', '60000009']);
+    const pg = call('apiPurge', ['60000001', '60000009']);
     assert.ok(pg.ok, pg.err);
     assert.equal(call('apiLeaveCandidates').v.length, 0);
     assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));

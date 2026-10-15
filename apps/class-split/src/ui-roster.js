@@ -275,7 +275,8 @@
       '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
       '<label>関係する児童と関係図（矢印＝加害）</label>' +
       '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="事案の詳細を書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="見たこと・聞いたこと・したことを、日時とともに事実で書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<div class="note">保護者から開示を求められることがある記録です。事実を書き、推測や人柄の評価は書きません。卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は残ります。</div>' +
       '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
       '<div class="row"><label>種別<select id="fType">' +
       C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +

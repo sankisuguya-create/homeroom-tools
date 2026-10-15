@@ -71,6 +71,15 @@
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
+  // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
+  // （いじめ等の記録の保存の目安。正本は教育委員会の文書管理規程。docs/design.md §4）
+  CONFIG.KEEP_YEARS_DEFAULT = 5;
+  CONFIG.INCIDENT_KEEP_YEARS = 5;
+  // 最後に名簿にいた年度 lastFy の児童を、今年度 FY に消してよいか
+  CONFIG.purgeable = function (lastFy, FY, keep, hasIncident) {
+    return FY > lastFy + (hasIncident ? Math.max(keep, CONFIG.INCIDENT_KEEP_YEARS) : keep);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -480,7 +489,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_985b4738b205';
+var SERVER_BUILD = 'BUILD_51f7636cae07';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1033,12 +1042,12 @@ function removeRows_(name, pred) {
 function defaultSettings_() {
   var attrs = {};
   CONFIG.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: 0 };
+  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: CONFIG.KEEP_YEARS_DEFAULT };
 }
 function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
-    teachers: s.teachers || [], keepYears: +s.keepYears || 0 };
+    teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0 };
 }
 var apiSettings = api_(function () {
   var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
@@ -1082,7 +1091,7 @@ var apiLeaveCandidates = api_(function () {
   });
   var cnt = {};
   incidents_().forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
-  return Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + keep; }).map(function (id) {
+  return Object.keys(last).filter(function (id) { return !now[id] && CONFIG.purgeable(last[id].fy, FY, keep, !!cnt[id]); }).map(function (id) {
     var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
   }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
 });
@@ -1094,6 +1103,13 @@ var apiPurge = api_(function (ids) {
   var FY = CONFIG.fiscalYear(), set = {}, now = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
   ids.forEach(function (id) { if (now[id]) throw userError_('今年度の名簿にいる児童は消せません'); set[String(id)] = 1; });
+  // 画面の候補と同じ規則をサーバーでも確かめる（事案に関わった児童は5年度より前に消さない）
+  var keep = settings_().keepYears, lastFy = {}, inc = {};
+  rosterSheets_().forEach(function (fy) { if (fy < FY) rosterRows_(fy).forEach(function (r) { if (set[r.id]) lastFy[r.id] = fy; }); });
+  incidents_().forEach(function (x) { x.ids.forEach(function (id) { inc[id] = 1; }); });
+  ids.forEach(function (id) {
+    if (lastFy[id] != null && !CONFIG.purgeable(lastFy[id], FY, keep, !!inc[id])) throw userError_('残す年数を過ぎていない児童は消せません（事案に関わった児童は卒業・転出から' + CONFIG.INCIDENT_KEEP_YEARS + '年度）');
+  });
   return withLock_(function () {
     var n = 0;
     db_().getSheets().map(function (sh) { return sh.getName(); }).forEach(function (name) {
