@@ -300,3 +300,16 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
 .hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+
+/* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
+body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
+body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
+body[data-screen="split"] .hint{color:#ECECEC}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
+/* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
+.col{background:color-mix(in srgb,var(--cc,#fff) 40%,#fff)}
+/* 名簿の表：横線に加えて縦線も薄く引く */
+body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
+body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}
+/* 黒地の凡例では、黒いアイコン（欠）が沈まないよう白い縁を付ける */
+body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 .5px #fff)}

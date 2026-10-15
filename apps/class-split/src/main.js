@@ -18,6 +18,7 @@
     App.closeDlg();
     if (grade) st.grade = grade;
     st.screen = screen;
+    document.body.dataset.screen = screen; // 名簿とクラス分けは背景を黒にする（app.css）
     crumb();
     if (screen === 'menu') {
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
