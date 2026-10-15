@@ -52,7 +52,7 @@ var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no'];
 var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
-  { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b'] },
+  { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b', 'memo', 'tags', 'incs', 'since'] },
   // diagram：関係図（児童IDとグループの記号だけ。氏名は入れない）。role：関係図から決めた役割（harm・victim・mutual・related）
   { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram', 'date_end', 'detail'] },
   { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
@@ -253,18 +253,29 @@ function emptyAttrs_() { var a = {}; CONFIG.ATTRS.forEach(function (at) { a[at.k
 
 function pairs_(fy, grade) {
   return read_('pairs_' + fy + '_' + grade).rows.filter(function (r) { return String(r.type); }).map(function (r) {
-    var p = { t: String(r.type), a: String(r.a), memo: String(r.memo || '') };
+    var p = pairExtra_(r, { t: String(r.type), a: String(r.a) });
     if (p.t === 'fix') p.k = (+r.k) - 1; else p.b = String(r.b);
     return p;
   });
 }
-var PAIR_HEAD = ['type', 'a', 'b', 'k', 'memo', 'by', 'at'];
+var PAIR_HEAD = ['type', 'a', 'b', 'k', 'memo', 'by', 'at', 'tags', 'incs', 'since'];
+// つける・離すの添え物：memo＝経緯、tags＝定型の理由（「、」区切り）、incs＝添えた事案の番号（「,」区切り）、since＝何年生の時から
+function pairExtra_(r, p) {
+  p.memo = String(r.memo || '');
+  p.tags = String(r.tags || '').split('、').filter(Boolean);
+  p.incs = String(r.incs || '').split(',').filter(Boolean).map(Number);
+  if (+r.since) p.since = +r.since;
+  return p;
+}
+function pairCells_(p, grade) {
+  return { memo: plainText_(String(p.memo || ''), 1000), tags: (p.tags || []).map(String).join('、').slice(0, 200), incs: (p.incs || []).map(Number).filter(function (n) { return n > 0; }).join(','), since: +p.since || grade };
+}
 // 前年度に決定した時に持ち越した組のうち、2人とも今この学年にいて、まだ採用していないもの
 function carry_(FY, grade, idset) {
   var key = function (p) { return p.t + ':' + [p.a, p.b].sort().join('-'); }, have = {};
   pairs_(FY, grade).forEach(function (p) { have[key(p)] = 1; });
   return read_('pairs_carry').rows.filter(function (r) { return +r.fy === FY - 1 && idset[String(r.a)] && idset[String(r.b)]; })
-    .map(function (r) { return { t: String(r.type), a: String(r.a), b: String(r.b) }; })
+    .map(function (r) { return pairExtra_(r, { t: String(r.type), a: String(r.a), b: String(r.b) }); })
     .filter(function (p) { return !have[key(p)]; });
 }
 
@@ -275,10 +286,10 @@ var apiSavePairs = api_(function (grade, pairs) {
   var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade;
   if (decisionOf_(FY, grade)) throw userError_('クラス替えを決定したので直せません');
   return withLock_(function () {
-    sheet_(db_(), name, PAIR_HEAD);
+    sheet_(db_(), name, PAIR_HEAD); ensureCols_(name, PAIR_HEAD);
     removeRows_(name, function (r) { return r._r > 1; });
     append_(name, PAIR_HEAD, (pairs || []).map(function (p) {
-      return { type: p.t, a: String(p.a), b: p.t === 'fix' ? '' : String(p.b), k: p.t === 'fix' ? (+p.k) + 1 : '', memo: String(p.memo || ''), by: by, at: new Date().toISOString() };
+      return Object.assign({ type: p.t, a: String(p.a), b: p.t === 'fix' ? '' : String(p.b), k: p.t === 'fix' ? (+p.k) + 1 : '', by: by, at: new Date().toISOString() }, pairCells_(p, grade));
     }));
     return { n: (pairs || []).length };
   });
@@ -473,8 +484,9 @@ var apiDecide = api_(function (grade, plan) {
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if (at.side && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t']); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo); return o; }));
+    ensureCols_('pairs_carry', TABLES_[2].head);
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
-      .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
+      .map(function (p) { return Object.assign({ fy: FY, type: p.t, a: p.a, b: p.b }, pairCells_(p, grade)); })); // 経緯・理由・何年生からを次の年度へ持ち越す
     append_('decisions', TABLES_[1].head, [{ fy: FY, grade: grade, plan: String(plan.name), by: by, at: new Date().toISOString(), undone: '' }]);
     log_(by, 'decide', rows.length);
     return { plan: String(plan.name) };

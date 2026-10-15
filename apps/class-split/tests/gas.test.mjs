@@ -167,6 +167,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.deepEqual(b.pairs.map(p => [p.t, p.a, p.b ?? p.k]), [['far', '40000011', '40000012'], ['fix', '40000013', 1]]);
     assert.ok(call('apiSavePairs', 4, [{ t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
     assert.equal(call('apiBoot', 4).v.pairs.length, 1, '置き換わる');
+    // 経緯・定型の理由・添えた事案・何年生からを持つ（何年生からが無ければ今の学年）
+    assert.ok(call('apiSavePairs', 4, [{ t: 'far', a: '40000011', b: '40000012', memo: '=前から', tags: ['家庭希望', '担任判断'], incs: [3, 5], since: 2 }, { t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
+    const ps = call('apiBoot', 4).v.pairs;
+    assert.deepEqual([ps[0].memo, ps[0].tags, ps[0].incs, ps[0].since], ["'=前から", ['家庭希望', '担任判断'], [3, 5], 2]);
+    assert.equal(ps[1].since, 4);
+    assert.ok(call('apiSavePairs', 4, [{ t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
 
     // 6年は決定しない
     assert.equal(call('apiDecide', 6, { name: 'x', assign: {} }).ok, false);
