@@ -337,6 +337,9 @@ body[data-screen="roster"] table.r th .b{font-size:.8em}
 body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 /* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
 body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
+/* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
+table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
+table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -1331,7 +1334,7 @@ body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line
       var r = y.rows.filter(function (x) { return x.id === R.kid; })[0];
       if (!r) return;
       var n = incsOf(R.kid, y.fy).length;
-      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-' + r.no + '</td>' +
+      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n || '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。「準」は決定後の準備中の年度。</div></section>';

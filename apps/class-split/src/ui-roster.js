@@ -136,7 +136,7 @@
       var r = y.rows.filter(function (x) { return x.id === R.kid; })[0];
       if (!r) return;
       var n = incsOf(R.kid, y.fy).length;
-      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-' + r.no + '</td>' +
+      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n || '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。「準」は決定後の準備中の年度。</div></section>';

@@ -329,3 +329,6 @@ body[data-screen="roster"] table.r th .b{font-size:.8em}
 body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 /* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
 body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
+/* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
+table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
+table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
