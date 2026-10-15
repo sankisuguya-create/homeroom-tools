@@ -415,3 +415,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
 @keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
+
+/* 事案の詳細（関係図の下） */
+.form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
+.inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}

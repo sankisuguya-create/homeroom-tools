@@ -69,6 +69,12 @@
   App.ICON_SCALES = [{ v: .8, label: '小' }, { v: 1, label: '標準' }, { v: 1.2, label: '大' }, { v: 1.4, label: '特大' }, { v: 1.6, label: '最大' }];
   App.iconScale = function () { try { var v = +localStorage.getItem('classSplit.iconScale'); if (v >= .5 && v <= 2) return v; } catch (e) { /* 読めない時は標準 */ } return 1; };
   App.setIconScale = function (v) { try { localStorage.setItem('classSplit.iconScale', String(v)); } catch (e) { /* 覚えられない時は何もしない */ } };
+  // 事案の期間：始まり〜終わり（同じ年なら終わりの年を省く。終わりが無ければ始まりだけ）
+  App.span = function (x) {
+    var a = String(x.date || ''), b = String(x.dateEnd || '');
+    if (!b || b === a) return a;
+    return a + '〜' + (b.slice(0, 4) === a.slice(0, 4) ? b.slice(5) : b);
+  };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;

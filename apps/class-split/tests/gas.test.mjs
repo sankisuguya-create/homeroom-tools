@@ -84,11 +84,13 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(di.ok, di.err); assert.deepEqual(di.v.ids, ['40000011', '40000012']); assert.equal(di.v.roles['40000012'], 'harm');
     let got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
     assert.equal(got.roles['40000011'], 'victim'); assert.equal(got.diagram.edges.length, 1);
-    const up = call('apiUpdateIncident', di.v.id, { url: got.url, title: got.title, date: got.date, type: got.type, diagram: { nodes: dg.nodes.concat([{ id: '40000013', x: 200, y: 10 }]), edges: [{ f: 'k:40000011', t: 'k:40000012' }, { f: 'k:40000012', t: 'k:40000011' }] } });
+    assert.equal(call('apiAddIncident', { url: 'https://docs.google.com/document/d/DG2/edit', date: '2026-10-05', dateEnd: '2026-10-01', diagram: dg }).ok, false, '終わりが始まりより前は不可');
+    const up = call('apiUpdateIncident', di.v.id, { url: got.url, title: got.title, date: got.date, dateEnd: '2026-10-20', detail: '=経緯 '.repeat(300), type: got.type, diagram: { nodes: dg.nodes.concat([{ id: '40000013', x: 200, y: 10 }]), edges: [{ f: 'k:40000011', t: 'k:40000012' }, { f: 'k:40000012', t: 'k:40000011' }] } });
     assert.ok(up.ok, up.err);
     got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
     assert.deepEqual(got.ids.slice().sort(), ['40000011', '40000012', '40000013']);
     assert.equal(got.roles['40000011'], 'mutual'); assert.equal(got.roles['40000013'], 'related');
+    assert.equal(got.dateEnd, '2026-10-20', '期間の終わり'); assert.ok(got.detail.length > 1000 && got.detail.charAt(0) === "'", '詳細は長くても切らず、式にしない');
     assert.equal(call('apiUpdateIncident', 999, { url: got.url, diagram: dg }).ok, false);
 
     // 特別支援学級の印：有無だけ

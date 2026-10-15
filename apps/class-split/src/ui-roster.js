@@ -253,9 +253,9 @@
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];
-      var role = x.roles && x.roles[kid], pat = x.diagram ? E.diagramPattern(x.diagram) : '';
-      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + x.date + '・' + esc(x.type) +
-        (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (pat ? '・' + pat : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' +
+      var role = x.roles && x.roles[kid];
+      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + App.span(x) + '・' + esc(x.type) +
+        (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' + (x.detail ? '<div class="dt">' + esc(x.detail) + '</div>' : '') +
         (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">関係図・直す</button>' : '') + '</div>';
     }).join('') || '<div class="note">事案はありません</div>') + '</div></section></aside>';
     return h;
@@ -275,7 +275,9 @@
       '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
       '<label>関係する児童と関係図（矢印＝加害）</label>' +
       '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<div class="row"><label>日付<input id="fDate" type="date" value="' + f.date + '"></label><label>種別<select id="fType">' +
+      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="事案の詳細を書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
+      '<div class="row"><label>種別<select id="fType">' +
       C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
       '<div class="note">文書の名前に児童の氏名を入れないでください（一覧は全教員が見られます）</div>' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
@@ -391,7 +393,7 @@
         if (!inc) return true;
         var st1 = App.Diagram.state(inc.diagram);
         if (!inc.diagram) inc.ids.forEach(function (id) { App.Diagram.add(st1, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
-        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, type: inc.type, dg: st1 }; render(); return true;
+        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, dateEnd: inc.dateEnd || '', detail: inc.detail || '', type: inc.type, dg: st1 }; render(); return true;
       }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
       if ((x = t.closest('[data-pick]'))) { App.Diagram.add(R.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
@@ -402,7 +404,9 @@
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
-      else if (t.id === 'fDate') R.form.date = t.value;
+      else if (t.id === 'fDate') { R.form.date = t.value; var fe = App.$('fDateEnd'); if (fe) fe.min = t.value; }
+      else if (t.id === 'fDateEnd') R.form.dateEnd = t.value;
+      else if (t.id === 'fDetail') R.form.detail = t.value;
       else if (t.id === 'fType') R.form.type = t.value;
       else if (t.id === 'fUrl') {
         R.form.url = t.value;
@@ -422,7 +426,8 @@
       if (f.id !== 'incForm') return;
       var x = R.form, dg = x.dg.d;
       if (!dg.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
-      var body = { url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
+      if (x.dateEnd && x.dateEnd < x.date) { App.toast('終わりの日は始まりの日より後にしてください'); return; }
+      var body = { url: x.url, title: x.title || '', date: x.date, dateEnd: x.dateEnd || '', detail: x.detail || '', type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
       App.save(function () { return x.edit ? App.pf().updateIncident(x.edit, body) : App.pf().addIncident(body); }).then(function (inc) {
         var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
         if (i >= 0) list[i] = inc; else list.push(inc);

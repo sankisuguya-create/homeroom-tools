@@ -38,7 +38,7 @@
 
   function mount(el, st, onChange) {
     var esc = App.esc, d = st.d;
-    var roles = E.diagramRoles(d), pat = E.diagramPattern(d), by = { harm: [], victim: [], mutual: [], related: [] };
+    var roles = E.diagramRoles(d), by = { harm: [], victim: [], mutual: [], related: [] };
     d.nodes.forEach(function (n) { by[roles[n.id]].push(kidOf(n.id).name); });
     el.innerHTML = '<div class="dg-bar"><div class="lvs">' + MODES.map(function (m) {
         return '<button type="button" class="lv" data-dm="' + m[0] + '" aria-pressed="' + (st.mode === m[0]) + '">' + m[1] + '</button>';
@@ -48,7 +48,7 @@
       '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
       '<div class="dg-canvas"><svg class="dg-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"></svg>' +
       d.nodes.map(function (n) { return nodeHtml(st, n); }).join('') + '</div>' +
-      '<div class="dg-sum">' + (pat ? '<b>' + pat + '</b>' : '<span class="note">矢印を引くと、加害・被害と型が決まります。</span>') +
+      '<div class="dg-sum">' + (d.edges.length ? '' : '<span class="note">矢印を引くと、加害・被害が決まります。</span>') +
       ['harm', 'victim', 'mutual', 'related'].filter(function (k) { return by[k].length; }).map(function (k) { return '<span><em class="r-' + k + '">' + E.ROLE_NAMES[k] + '</em>' + by[k].map(esc).join('・') + '</span>'; }).join('') + '</div>';
     var cv = el.querySelector('.dg-canvas'), svg = el.querySelector('.dg-svg');
     draw(cv, svg, st);

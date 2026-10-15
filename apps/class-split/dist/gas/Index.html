@@ -423,6 +423,10 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
 @keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
+
+/* 事案の詳細（関係図の下） */
+.form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
+.inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1090,7 +1094,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
-    return { date: x.date, type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
   }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
@@ -1277,7 +1281,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_517646d5d478';
+  var PAGE_BUILD = 'BUILD_985b4738b205';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1420,6 +1424,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   App.ICON_SCALES = [{ v: .8, label: '小' }, { v: 1, label: '標準' }, { v: 1.2, label: '大' }, { v: 1.4, label: '特大' }, { v: 1.6, label: '最大' }];
   App.iconScale = function () { try { var v = +localStorage.getItem('classSplit.iconScale'); if (v >= .5 && v <= 2) return v; } catch (e) { /* 読めない時は標準 */ } return 1; };
   App.setIconScale = function (v) { try { localStorage.setItem('classSplit.iconScale', String(v)); } catch (e) { /* 覚えられない時は何もしない */ } };
+  // 事案の期間：始まり〜終わり（同じ年なら終わりの年を省く。終わりが無ければ始まりだけ）
+  App.span = function (x) {
+    var a = String(x.date || ''), b = String(x.dateEnd || '');
+    if (!b || b === a) return a;
+    return a + '〜' + (b.slice(0, 4) === a.slice(0, 4) ? b.slice(5) : b);
+  };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
@@ -1503,7 +1513,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 
   function mount(el, st, onChange) {
     var esc = App.esc, d = st.d;
-    var roles = E.diagramRoles(d), pat = E.diagramPattern(d), by = { harm: [], victim: [], mutual: [], related: [] };
+    var roles = E.diagramRoles(d), by = { harm: [], victim: [], mutual: [], related: [] };
     d.nodes.forEach(function (n) { by[roles[n.id]].push(kidOf(n.id).name); });
     el.innerHTML = '<div class="dg-bar"><div class="lvs">' + MODES.map(function (m) {
         return '<button type="button" class="lv" data-dm="' + m[0] + '" aria-pressed="' + (st.mode === m[0]) + '">' + m[1] + '</button>';
@@ -1513,7 +1523,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
       '<div class="dg-canvas"><svg class="dg-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"></svg>' +
       d.nodes.map(function (n) { return nodeHtml(st, n); }).join('') + '</div>' +
-      '<div class="dg-sum">' + (pat ? '<b>' + pat + '</b>' : '<span class="note">矢印を引くと、加害・被害と型が決まります。</span>') +
+      '<div class="dg-sum">' + (d.edges.length ? '' : '<span class="note">矢印を引くと、加害・被害が決まります。</span>') +
       ['harm', 'victim', 'mutual', 'related'].filter(function (k) { return by[k].length; }).map(function (k) { return '<span><em class="r-' + k + '">' + E.ROLE_NAMES[k] + '</em>' + by[k].map(esc).join('・') + '</span>'; }).join('') + '</div>';
     var cv = el.querySelector('.dg-canvas'), svg = el.querySelector('.dg-svg');
     draw(cv, svg, st);
@@ -1894,9 +1904,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];
-      var role = x.roles && x.roles[kid], pat = x.diagram ? E.diagramPattern(x.diagram) : '';
-      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + x.date + '・' + esc(x.type) +
-        (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (pat ? '・' + pat : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' +
+      var role = x.roles && x.roles[kid];
+      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + App.span(x) + '・' + esc(x.type) +
+        (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' + (x.detail ? '<div class="dt">' + esc(x.detail) + '</div>' : '') +
         (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">関係図・直す</button>' : '') + '</div>';
     }).join('') || '<div class="note">事案はありません</div>') + '</div></section></aside>';
     return h;
@@ -1916,7 +1926,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
       '<label>関係する児童と関係図（矢印＝加害）</label>' +
       '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<div class="row"><label>日付<input id="fDate" type="date" value="' + f.date + '"></label><label>種別<select id="fType">' +
+      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="事案の詳細を書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
+      '<div class="row"><label>種別<select id="fType">' +
       C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
       '<div class="note">文書の名前に児童の氏名を入れないでください（一覧は全教員が見られます）</div>' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
@@ -2032,7 +2044,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
         if (!inc) return true;
         var st1 = App.Diagram.state(inc.diagram);
         if (!inc.diagram) inc.ids.forEach(function (id) { App.Diagram.add(st1, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
-        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, type: inc.type, dg: st1 }; render(); return true;
+        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, dateEnd: inc.dateEnd || '', detail: inc.detail || '', type: inc.type, dg: st1 }; render(); return true;
       }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
       if ((x = t.closest('[data-pick]'))) { App.Diagram.add(R.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
@@ -2043,7 +2055,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
-      else if (t.id === 'fDate') R.form.date = t.value;
+      else if (t.id === 'fDate') { R.form.date = t.value; var fe = App.$('fDateEnd'); if (fe) fe.min = t.value; }
+      else if (t.id === 'fDateEnd') R.form.dateEnd = t.value;
+      else if (t.id === 'fDetail') R.form.detail = t.value;
       else if (t.id === 'fType') R.form.type = t.value;
       else if (t.id === 'fUrl') {
         R.form.url = t.value;
@@ -2063,7 +2077,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (f.id !== 'incForm') return;
       var x = R.form, dg = x.dg.d;
       if (!dg.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
-      var body = { url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
+      if (x.dateEnd && x.dateEnd < x.date) { App.toast('終わりの日は始まりの日より後にしてください'); return; }
+      var body = { url: x.url, title: x.title || '', date: x.date, dateEnd: x.dateEnd || '', detail: x.detail || '', type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
       App.save(function () { return x.edit ? App.pf().updateIncident(x.edit, body) : App.pf().addIncident(body); }).then(function (inc) {
         var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
         if (i >= 0) list[i] = inc; else list.push(inc);
