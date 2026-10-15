@@ -40,7 +40,7 @@
   App.dlg = null;
   App.openDlg = function (d) { App.dlg = d; App.$('layer').innerHTML = d.html(); if (d.focus) { var f = App.$(d.focus); if (f) f.focus(); } };
   App.refreshDlg = function () { if (App.dlg) App.openDlg(App.dlg); };
-  App.closeDlg = function () { App.dlg = null; App.$('layer').innerHTML = ''; };
+  App.closeDlg = function () { var d = App.dlg; App.dlg = null; App.$('layer').innerHTML = ''; if (d && d.onClose) d.onClose(); };
 
   // 保存状態（自動保存の結果を必ず画面に返す）
   // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
