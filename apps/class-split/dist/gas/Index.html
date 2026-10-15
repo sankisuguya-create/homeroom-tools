@@ -341,11 +341,12 @@ body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
 body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
 /* つける・離す：数だけ。相手はカーソルで出す */
 body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
-table.r td.pr{min-width:3.4em}
+table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
 table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
 table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
 .prm{display:inline-flex;gap:3px}
-.prm b{font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid}
+:is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
+.prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
 .prm .pf{color:var(--alert);border-color:var(--alert)}
 .prm .pn{color:var(--link);border-color:var(--link)}
 .prm .px{color:var(--sub);border-color:var(--sub)}
@@ -427,6 +428,21 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* 事案の詳細（関係図の下） */
 .form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
 .inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
+/* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
+.prm{display:inline-flex;flex-wrap:wrap;gap:1px 6px;align-items:center;font-size:.72em;line-height:1.3}
+.prm .pl{display:inline-flex;gap:2px;align-items:center;white-space:nowrap}
+.prm .pk{cursor:help}
+.prm .pk:hover{text-decoration:underline}
+.prm .pmore{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:0 4px;font-size:1em;cursor:pointer;color:var(--ink)}
+.prd{display:flex;flex-direction:column;gap:10px}
+.prd h3{margin:0 0 4px;font-size:.95rem}
+.kcards{display:flex;flex-wrap:wrap;gap:6px}
+/* 児童カード */
+.kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
+.kcard.f{border-radius:999px 14px 14px 999px}
+.kcard .nb{font-size:.7em;color:var(--sub)}
+.kcard .mk{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.tip .kcard{border-color:transparent;border-left-color:var(--oc)}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1281,7 +1297,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_985b4738b205';
+  var PAGE_BUILD = 'BUILD_094595da2750';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1430,6 +1446,17 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     if (!b || b === a) return a;
     return a + '〜' + (b.slice(0, 4) === a.slice(0, 4) ? b.slice(5) : b);
   };
+  // 児童カード（名前にカーソルを合わせた時・一覧の窓）：今年度の組-番・名前・配慮項目のアイコン
+  App.kidCard = function (id) {
+    var d = App.st.data, s = d && d.kids[id];
+    if (!s) return '';
+    var y = d.years.filter(function (x) { return x.fy === d.fy; })[0], r = y && y.rows.filter(function (x) { return x.id === id; })[0];
+    var oc = App.classColor(r ? r.cls : -1);
+    var marks = r ? C.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
+    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
+      (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
+  };
+  App.surname = function (name) { return String(name || '').split(/[ 　]/)[0]; };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
@@ -1833,18 +1860,39 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     return h + '</tbody></table></div>';
   }
 
-  // その児童の「離す」「つける」「固定」の数。相手の名前はカーソルで出す
+  // その児童の「離す」「つける」の相手（苗字を・区切りで3人まで。4人目からは＋に畳む）と「組に固定」。
+  // 名前にカーソルで児童カード、＋を押すと一覧の窓
+  var PAIR_MAX = 3;
+  function partners(id) {
+    var out = { far: [], near: [], fix: [] };
+    pairsOf(id).forEach(function (p) { if (p.t === 'fix') out.fix.push(p.k); else out[p.t].push(p.a === id ? p.b : p.a); });
+    return out;
+  }
   function pairMarks(id) {
-    var d = D(), ps = pairsOf(id), n = { far: 0, near: 0, fix: 0 }, tip = [];
-    var PT = { far: '離す', near: 'つける', fix: '組に固定' };
-    ps.forEach(function (p) {
-      n[p.t]++;
-      var o = p.a === id ? p.b : p.a;
-      tip.push(PT[p.t] + '：' + (p.t === 'fix' ? (p.k + 1) + '組' : d.kids[o] ? d.kids[o].name : o));
+    var d = D(), P = partners(id), esc = App.esc, total = P.far.length + P.near.length;
+    if (!total && !P.fix.length) return '';
+    var shown = 0, h = '';
+    [['far', '離', 'pf'], ['near', 'つ', 'pn']].forEach(function (t) {
+      var list = P[t[0]]; if (!list.length) return;
+      var vis = list.slice(0, Math.max(0, PAIR_MAX - shown)); shown += vis.length;
+      if (!vis.length) return; // 3人を出し切った後の種類は＋の中だけに出す
+      h += '<span class="pl"><b class="' + t[2] + '">' + t[1] + '</b>' + vis.map(function (o) { return '<span class="pk" data-kc="' + esc(o) + '">' + esc(App.surname(d.kids[o] ? d.kids[o].name : o)) + '</span>'; }).join('・') + '</span>';
     });
-    if (!ps.length) return '';
-    return '<span class="prm" title="' + App.esc(tip.join('\n')) + '">' + (n.far ? '<b class="pf">離' + (n.far > 1 ? n.far : '') + '</b>' : '') +
-      (n.near ? '<b class="pn">つ' + (n.near > 1 ? n.near : '') + '</b>' : '') + (n.fix ? '<b class="px">固</b>' : '') + '</span>';
+    if (total > shown) h += '<button type="button" class="pmore" data-prmore="' + esc(id) + '" title="ほか' + (total - shown) + '人">＋' + (total - shown) + '</button>';
+    if (P.fix.length) h += '<span class="pl"><b class="px">固</b>' + (P.fix[0] + 1) + '組</span>';
+    return '<span class="prm">' + h + '</span>';
+  }
+  // ＋を押した時：離す・つけるの相手を児童カードで全部並べる
+  function partnersDialog(id) {
+    var d = D(), P = partners(id);
+    App.openDlg({
+      html: function () {
+        var sec = function (k, lab, cls) { return P[k].length ? '<div><h3><b class="' + cls + '">' + lab + '</b>（' + P[k].length + '人）</h3><div class="kcards">' + P[k].map(App.kidCard).join('') + '</div></div>' : ''; };
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離すの相手" style="max-width:720px"><h2>' + App.esc(d.kids[id].name) + ' の、つける・離すの相手</h2>' +
+          '<div class="prd">' + sec('far', '離す', 'pf') + sec('near', 'つける', 'pn') + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      }
+    });
   }
 
   function schoolTable() {
@@ -2033,6 +2081,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
       if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
+      if ((x = t.closest('[data-prmore]'))) { partnersDialog(x.dataset.prmore); return true; }
       if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
       if ((x = t.closest('[data-memo]'))) {
         if (R.fy !== editableFy()) return true;
@@ -3075,11 +3124,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   var tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; document.body.appendChild(tip);
   var tipOn = null;
   document.addEventListener('mouseover', function (e) {
-    var b = e.target.closest && e.target.closest('.b[data-a]');
+    var b = e.target.closest && e.target.closest('.b[data-a],[data-kc]');
     if (b === tipOn) return;
     tipOn = b;
     if (!b) { tip.hidden = true; return; }
     var at = g.CONFIG.ATTRS.filter(function (x) { return x.k === b.dataset.a; })[0];
+    if (b.dataset.kc) { tip.innerHTML = App.kidCard(b.dataset.kc); tip.hidden = false; place(b); return; } // 名前にカーソル：児童カード
     if (!at || !at.help) { tip.hidden = true; return; }
     var lv = +b.dataset.lv, m1 = App.mark(at, 1), m2 = App.mark(at, 2);
     tip.innerHTML = '<h3>' + App.esc(at.help[0]) + '</h3><table>' +
@@ -3088,11 +3138,14 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       (b.dataset.t ? '<div class="tn">' + App.esc(b.dataset.t) + '</div>' : '') +
       (at.max > 1 ? '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>' : '');
     tip.hidden = false;
+    place(b);
+  });
+  function place(b) {
     var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
     var x = Math.max(8, Math.min(r.left, innerWidth - w - 8)), y = r.bottom + 6;
     if (y + h > innerHeight - 8) y = r.top - h - 6;
     tip.style.left = x + 'px'; tip.style.top = y + 'px';
-  });
+  }
   addEventListener('scroll', function () { tip.hidden = true; tipOn = null; }, true);
 
   var rz = 0;

@@ -71,11 +71,12 @@
   var tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; document.body.appendChild(tip);
   var tipOn = null;
   document.addEventListener('mouseover', function (e) {
-    var b = e.target.closest && e.target.closest('.b[data-a]');
+    var b = e.target.closest && e.target.closest('.b[data-a],[data-kc]');
     if (b === tipOn) return;
     tipOn = b;
     if (!b) { tip.hidden = true; return; }
     var at = g.CONFIG.ATTRS.filter(function (x) { return x.k === b.dataset.a; })[0];
+    if (b.dataset.kc) { tip.innerHTML = App.kidCard(b.dataset.kc); tip.hidden = false; place(b); return; } // 名前にカーソル：児童カード
     if (!at || !at.help) { tip.hidden = true; return; }
     var lv = +b.dataset.lv, m1 = App.mark(at, 1), m2 = App.mark(at, 2);
     tip.innerHTML = '<h3>' + App.esc(at.help[0]) + '</h3><table>' +
@@ -84,11 +85,14 @@
       (b.dataset.t ? '<div class="tn">' + App.esc(b.dataset.t) + '</div>' : '') +
       (at.max > 1 ? '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>' : '');
     tip.hidden = false;
+    place(b);
+  });
+  function place(b) {
     var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
     var x = Math.max(8, Math.min(r.left, innerWidth - w - 8)), y = r.bottom + 6;
     if (y + h > innerHeight - 8) y = r.top - h - 6;
     tip.style.left = x + 'px'; tip.style.top = y + 'px';
-  });
+  }
   addEventListener('scroll', function () { tip.hidden = true; tipOn = null; }, true);
 
   var rz = 0;

@@ -182,18 +182,39 @@
     return h + '</tbody></table></div>';
   }
 
-  // その児童の「離す」「つける」「固定」の数。相手の名前はカーソルで出す
+  // その児童の「離す」「つける」の相手（苗字を・区切りで3人まで。4人目からは＋に畳む）と「組に固定」。
+  // 名前にカーソルで児童カード、＋を押すと一覧の窓
+  var PAIR_MAX = 3;
+  function partners(id) {
+    var out = { far: [], near: [], fix: [] };
+    pairsOf(id).forEach(function (p) { if (p.t === 'fix') out.fix.push(p.k); else out[p.t].push(p.a === id ? p.b : p.a); });
+    return out;
+  }
   function pairMarks(id) {
-    var d = D(), ps = pairsOf(id), n = { far: 0, near: 0, fix: 0 }, tip = [];
-    var PT = { far: '離す', near: 'つける', fix: '組に固定' };
-    ps.forEach(function (p) {
-      n[p.t]++;
-      var o = p.a === id ? p.b : p.a;
-      tip.push(PT[p.t] + '：' + (p.t === 'fix' ? (p.k + 1) + '組' : d.kids[o] ? d.kids[o].name : o));
+    var d = D(), P = partners(id), esc = App.esc, total = P.far.length + P.near.length;
+    if (!total && !P.fix.length) return '';
+    var shown = 0, h = '';
+    [['far', '離', 'pf'], ['near', 'つ', 'pn']].forEach(function (t) {
+      var list = P[t[0]]; if (!list.length) return;
+      var vis = list.slice(0, Math.max(0, PAIR_MAX - shown)); shown += vis.length;
+      if (!vis.length) return; // 3人を出し切った後の種類は＋の中だけに出す
+      h += '<span class="pl"><b class="' + t[2] + '">' + t[1] + '</b>' + vis.map(function (o) { return '<span class="pk" data-kc="' + esc(o) + '">' + esc(App.surname(d.kids[o] ? d.kids[o].name : o)) + '</span>'; }).join('・') + '</span>';
     });
-    if (!ps.length) return '';
-    return '<span class="prm" title="' + App.esc(tip.join('\n')) + '">' + (n.far ? '<b class="pf">離' + (n.far > 1 ? n.far : '') + '</b>' : '') +
-      (n.near ? '<b class="pn">つ' + (n.near > 1 ? n.near : '') + '</b>' : '') + (n.fix ? '<b class="px">固</b>' : '') + '</span>';
+    if (total > shown) h += '<button type="button" class="pmore" data-prmore="' + esc(id) + '" title="ほか' + (total - shown) + '人">＋' + (total - shown) + '</button>';
+    if (P.fix.length) h += '<span class="pl"><b class="px">固</b>' + (P.fix[0] + 1) + '組</span>';
+    return '<span class="prm">' + h + '</span>';
+  }
+  // ＋を押した時：離す・つけるの相手を児童カードで全部並べる
+  function partnersDialog(id) {
+    var d = D(), P = partners(id);
+    App.openDlg({
+      html: function () {
+        var sec = function (k, lab, cls) { return P[k].length ? '<div><h3><b class="' + cls + '">' + lab + '</b>（' + P[k].length + '人）</h3><div class="kcards">' + P[k].map(App.kidCard).join('') + '</div></div>' : ''; };
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離すの相手" style="max-width:720px"><h2>' + App.esc(d.kids[id].name) + ' の、つける・離すの相手</h2>' +
+          '<div class="prd">' + sec('far', '離す', 'pf') + sec('near', 'つける', 'pn') + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      }
+    });
   }
 
   function schoolTable() {
@@ -382,6 +403,7 @@
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
       if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
+      if ((x = t.closest('[data-prmore]'))) { partnersDialog(x.dataset.prmore); return true; }
       if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
       if ((x = t.closest('[data-memo]'))) {
         if (R.fy !== editableFy()) return true;

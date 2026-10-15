@@ -333,11 +333,12 @@ body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
 body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
 /* つける・離す：数だけ。相手はカーソルで出す */
 body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
-table.r td.pr{min-width:3.4em}
+table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
 table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
 table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
 .prm{display:inline-flex;gap:3px}
-.prm b{font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid}
+:is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
+.prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
 .prm .pf{color:var(--alert);border-color:var(--alert)}
 .prm .pn{color:var(--link);border-color:var(--link)}
 .prm .px{color:var(--sub);border-color:var(--sub)}
@@ -419,3 +420,18 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* 事案の詳細（関係図の下） */
 .form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
 .inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
+/* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
+.prm{display:inline-flex;flex-wrap:wrap;gap:1px 6px;align-items:center;font-size:.72em;line-height:1.3}
+.prm .pl{display:inline-flex;gap:2px;align-items:center;white-space:nowrap}
+.prm .pk{cursor:help}
+.prm .pk:hover{text-decoration:underline}
+.prm .pmore{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:0 4px;font-size:1em;cursor:pointer;color:var(--ink)}
+.prd{display:flex;flex-direction:column;gap:10px}
+.prd h3{margin:0 0 4px;font-size:.95rem}
+.kcards{display:flex;flex-wrap:wrap;gap:6px}
+/* 児童カード */
+.kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
+.kcard.f{border-radius:999px 14px 14px 999px}
+.kcard .nb{font-size:.7em;color:var(--sub)}
+.kcard .mk{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.tip .kcard{border-color:transparent;border-left-color:var(--oc)}

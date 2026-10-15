@@ -75,6 +75,17 @@
     if (!b || b === a) return a;
     return a + '〜' + (b.slice(0, 4) === a.slice(0, 4) ? b.slice(5) : b);
   };
+  // 児童カード（名前にカーソルを合わせた時・一覧の窓）：今年度の組-番・名前・配慮項目のアイコン
+  App.kidCard = function (id) {
+    var d = App.st.data, s = d && d.kids[id];
+    if (!s) return '';
+    var y = d.years.filter(function (x) { return x.fy === d.fy; })[0], r = y && y.rows.filter(function (x) { return x.id === id; })[0];
+    var oc = App.classColor(r ? r.cls : -1);
+    var marks = r ? C.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
+    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
+      (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
+  };
+  App.surname = function (name) { return String(name || '').split(/[ 　]/)[0]; };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
