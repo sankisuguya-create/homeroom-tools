@@ -76,6 +76,17 @@
     return { p: p, ms: Math.round(performance.now() - t0) };
   }
 
+  // ===== 項目で絞って見る：組の見出しの項目を押すと、その項目の児童以外を暗くする（もう一度押すか Esc で戻す） =====
+  function applyHl() {
+    var board = App.$('board'); if (!board) return;
+    board.classList.toggle('hl', !!S.hl);
+    board.querySelectorAll('.chip').forEach(function (el) {
+      var s = S.P.kids[+el.dataset.i];
+      el.classList.toggle('hit', !!S.hl && (s.a[S.hl] | 0) > 0);
+    });
+    board.querySelectorAll('[data-hl]').forEach(function (el) { el.classList.toggle('on', el.dataset.hl === S.hl); });
+  }
+
   // ===== 並び順：組の中の児童の並べ方（第一〜第三優先）。この端末にだけ覚える =====
   var SORT_KEYS = [
     { k: 'old', label: '旧クラス', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
@@ -197,12 +208,12 @@
     var HM = S.ctx.MET.findIndex(function (m) { return m.k === 'heavy'; });
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
-      var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
+      var cnt = function (m, inner, hk) { return '<span class="c ' + (fl[m] ? 'w' : '') + (hk && S.hl === hk ? ' on' : '') + '"' + (hk ? ' data-hl="' + hk + '" role="button" title="押すと、この項目の児童だけを明るく出す"' : '') + '>' + inner + c[m] + '</span>'; };
       h += '<section class="col" style="--cc:' + App.classColor(k).l + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
-        '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1)); }).join('') + '</div>' +
+        '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1), at.k); }).join('') + '</div>' +
         '</div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
     }
     App.$('board').innerHTML = h + '</div>';
@@ -214,6 +225,7 @@
     for (k = 0; k < nc; k++) for (var g2 = 0; g2 < 2; g2++)
       gcols[k * 2 + g2].innerHTML = per[k][g2].map(function (i) { return chipHTML(i, p.locks.has(i) ? 'locked' : ''); }).join('');
     updateSel();
+    applyHl();
 
   }
   function maxOld() { var n = 0; S.P.kids.forEach(function (s) { if (s.old + 1 > n) n = s.old + 1; }); return n; }
@@ -686,6 +698,7 @@
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
+      if ((x = t.closest('[data-hl]'))) { S.hl = S.hl === x.dataset.hl ? null : x.dataset.hl; applyHl(); return true; }
       if ((x = t.closest('.head'))) { tapHead(+x.dataset.k); return true; }
       if (t.closest('#board') && S.sel >= 0 && S.follow == null) { S.sel = -1; updateSel(); return true; }
       return false;
@@ -697,7 +710,7 @@
       if (ctrl && (k === 'y' || k === 'Y')) { e.preventDefault(); redo(); return true; }
       if (ctrl || e.altKey) return false;
       if ((k === 'Enter' || k === ' ') && e.target.matches('.chip,.head,.tab,th[data-p]')) { e.preventDefault(); e.target.click(); return true; }
-      if (k === 'Escape') { if (S.sel >= 0 || S.follow != null) { S.sel = -1; S.follow = null; updateSel(); } return true; }
+      if (k === 'Escape') { if (S.sel >= 0 || S.follow != null) { S.sel = -1; S.follow = null; updateSel(); } else if (S.hl) { S.hl = null; applyHl(); } return true; }
       if (/^[1-9]$/.test(k)) { if (+k - 1 < S.plans.length) selectPlan(+k - 1); return true; }
       if (k === '0') { S.view = 'cmp'; S.sel = -1; S.follow = null; render(); return true; }
       var K = k.toLowerCase();

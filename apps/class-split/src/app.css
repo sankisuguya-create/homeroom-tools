@@ -336,3 +336,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .ordrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ordrow>b{min-width:5em}
 .ordrow .lv{white-space:nowrap}
+/* 項目で絞って見る：該当しない児童を暗くする。押した項目は見出しで枠を付ける */
+.st [data-hl]{cursor:pointer;border-radius:4px;padding:0 2px}
+.st [data-hl]:hover{background:#0000000f}
+.st [data-hl].on{outline:2px solid var(--ink);background:#fff}
+.board.hl .chip:not(.hit){opacity:.22;filter:grayscale(.6)}
