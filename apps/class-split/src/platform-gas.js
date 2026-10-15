@@ -58,6 +58,7 @@
       });
     },
     addIncident: function (x) { return call('apiAddIncident', x); },
+    updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },

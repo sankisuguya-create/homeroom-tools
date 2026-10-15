@@ -323,6 +323,62 @@
     });
   }
 
+  // ===== 事案の関係図 =====
+  // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
+  // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
+  var DG_W = 640, DG_H = 320;
+  function normDiagram(d) {
+    d = d || {};
+    var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
+    (d.nodes || []).forEach(function (n) {
+      var id = String(n && n.id || ''); if (!id || ids[id]) return;
+      ids[id] = 1;
+      nodes.push({ id: id, x: Math.max(0, Math.min(DG_W, +n.x || 0)), y: Math.max(0, Math.min(DG_H, +n.y || 0)) });
+    });
+    var inGroup = {};
+    (d.groups || []).forEach(function (gr) {
+      var g = String(gr && gr.g || '').slice(0, 4); if (!g || gs[g]) return;
+      var m = (gr.members || []).map(String).filter(function (id) { return ids[id] && !inGroup[id]; });
+      if (!m.length) return;
+      m.forEach(function (id) { inGroup[id] = g; });
+      gs[g] = 1; groups.push({ g: g, members: m });
+    });
+    var ok = function (e) { var p = String(e || '').split(':'); return p.length === 2 && (p[0] === 'k' ? !!ids[p[1]] : p[0] === 'g' && !!gs[p[1]]); };
+    (d.edges || []).forEach(function (e) {
+      if (!e || !ok(e.f) || !ok(e.t) || e.f === e.t) return;
+      var key = e.f + '>' + e.t; if (seen[key]) return;
+      seen[key] = 1; edges.push({ f: String(e.f), t: String(e.t) });
+    });
+    return { v: 1, nodes: nodes, groups: groups, edges: edges };
+  }
+  function dgMembers(d, end) {
+    var p = end.split(':');
+    if (p[0] === 'k') return [p[1]];
+    var gr = d.groups.filter(function (x) { return x.g === p[1]; })[0];
+    return gr ? gr.members.slice() : [];
+  }
+  // 児童ごとの役割：矢印を出す＝加害、受ける＝被害、両方＝相互、矢印に関わらない＝関係者。グループの矢印は中の全員に効く
+  function diagramRoles(d) {
+    d = normDiagram(d);
+    var out = {}, inn = {}, r = {};
+    d.edges.forEach(function (e) {
+      dgMembers(d, e.f).forEach(function (id) { out[id] = 1; });
+      dgMembers(d, e.t).forEach(function (id) { inn[id] = 1; });
+    });
+    d.nodes.forEach(function (n) { r[n.id] = out[n.id] && inn[n.id] ? 'mutual' : out[n.id] ? 'harm' : inn[n.id] ? 'victim' : 'related'; });
+    return r;
+  }
+  // 型：相互加害（どこかで向きが両方）か一方的加害か。一方的は、グループの矢印があるか・矢印が2本以上か（複線）で分ける
+  function diagramPattern(d) {
+    d = normDiagram(d);
+    if (!d.edges.length) return '';
+    var roles = diagramRoles(d), mutual = Object.keys(roles).some(function (id) { return roles[id] === 'mutual'; });
+    var grp = d.edges.some(function (e) { return e.f.charAt(0) === 'g' || e.t.charAt(0) === 'g'; }), multi = d.edges.length > 1;
+    if (mutual) return '相互加害' + (grp ? '（グループ）' : '');
+    return '一方的加害（' + (grp && multi ? 'グループ・複線' : grp ? 'グループ' : multi ? '複線' : '個人') + '）';
+  }
+  var ROLE_NAMES = { harm: '加害', victim: '被害', mutual: '相互', related: '関係者' };
+
   // ===== 不変条件 =====
   function checkInvariants(ctx, asg) {
     var errs = [];
@@ -337,6 +393,7 @@
     spread: spread, diffCount: diffCount, nearGroup: nearGroup, farBreaks: farBreaks, farTargets: farTargets,
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
-    nextYearRows: nextYearRows, checkInvariants: checkInvariants
+    nextYearRows: nextYearRows, checkInvariants: checkInvariants,
+    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

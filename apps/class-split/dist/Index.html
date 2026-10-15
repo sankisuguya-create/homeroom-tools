@@ -378,6 +378,40 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* カードの事案の数：押すと記録の窓 */
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
+/* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
+.bigs{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+.bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
+.bigs .big[data-go="roster"] b{font-size:2rem}
+.bigs .big[data-go="roster"] span{font-size:1rem}
+.bigs .big[data-go="split"]{padding:16px}
+.bigs .big[data-go="split"] b{font-size:1.1rem}
+.bigs .big[data-go="split"] span{font-size:.8rem}
+.bigs .big:only-child{grid-column:1/-1}
+/* ===== 事案の関係図 ===== */
+.dg{display:flex;flex-direction:column;gap:6px}
+.dg-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dg-hint{margin:0}
+.dg-canvas{position:relative;width:100%;aspect-ratio:2/1;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;user-select:none;overflow:hidden}
+.dg-svg{position:absolute;inset:0;width:100%;height:100%}
+.dg-g{fill:#0F5EA80d;stroke:#0F5EA8;stroke-width:2}
+.dg-g.from{stroke:#C0330A;stroke-width:3}
+.dg-e{stroke:#C0330A;stroke-width:2.5;fill:none}
+.dg-ah{fill:#C0330A}
+.dg-eh{stroke:transparent;stroke-width:14;fill:none}
+.dg-n{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:3px 8px;font-weight:700;white-space:nowrap;cursor:grab;font-size:15px;z-index:2}
+.dg-n.from{outline:3px solid #C0330A}
+.dg-n.pick{outline:3px solid var(--link);background:var(--fill)}
+.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px}
+.dg-n.card.f{border-radius:999px 14px 14px 999px}
+.dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
+.dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
+.dg-gl.from{background:#C0330A}
+.dg-sum{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.9rem;align-items:baseline}
+.dg-sum em,.meta em{font-style:normal;font-weight:700;margin-right:3px}
+.r-harm{color:#C0330A}.r-victim{color:#0F5EA8}.r-mutual{color:#7B3FA0}.r-related{color:var(--sub)}
+.inc .it .ie{align-self:flex-start;font-size:.8rem;padding:2px 8px}
+.form .dg-bar label.chk{display:inline-flex;flex-direction:row;gap:4px;align-items:center;margin:0}
 /* 名簿の上の帯：いまの状態（既定と違う時だけ）。戻す・解除のボタンを添える */
 .rbar .state{display:inline-flex;gap:6px;align-items:center;font-size:.85rem;background:var(--fill-b);color:var(--ink);border-radius:6px;padding:2px 4px 2px 10px}
 .rbar .state .btn{padding:2px 8px}
@@ -389,6 +423,10 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
 @keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
 @media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
+
+/* 事案の詳細（関係図の下） */
+.form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
+.inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -795,6 +833,62 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     });
   }
 
+  // ===== 事案の関係図 =====
+  // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
+  // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
+  var DG_W = 640, DG_H = 320;
+  function normDiagram(d) {
+    d = d || {};
+    var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
+    (d.nodes || []).forEach(function (n) {
+      var id = String(n && n.id || ''); if (!id || ids[id]) return;
+      ids[id] = 1;
+      nodes.push({ id: id, x: Math.max(0, Math.min(DG_W, +n.x || 0)), y: Math.max(0, Math.min(DG_H, +n.y || 0)) });
+    });
+    var inGroup = {};
+    (d.groups || []).forEach(function (gr) {
+      var g = String(gr && gr.g || '').slice(0, 4); if (!g || gs[g]) return;
+      var m = (gr.members || []).map(String).filter(function (id) { return ids[id] && !inGroup[id]; });
+      if (!m.length) return;
+      m.forEach(function (id) { inGroup[id] = g; });
+      gs[g] = 1; groups.push({ g: g, members: m });
+    });
+    var ok = function (e) { var p = String(e || '').split(':'); return p.length === 2 && (p[0] === 'k' ? !!ids[p[1]] : p[0] === 'g' && !!gs[p[1]]); };
+    (d.edges || []).forEach(function (e) {
+      if (!e || !ok(e.f) || !ok(e.t) || e.f === e.t) return;
+      var key = e.f + '>' + e.t; if (seen[key]) return;
+      seen[key] = 1; edges.push({ f: String(e.f), t: String(e.t) });
+    });
+    return { v: 1, nodes: nodes, groups: groups, edges: edges };
+  }
+  function dgMembers(d, end) {
+    var p = end.split(':');
+    if (p[0] === 'k') return [p[1]];
+    var gr = d.groups.filter(function (x) { return x.g === p[1]; })[0];
+    return gr ? gr.members.slice() : [];
+  }
+  // 児童ごとの役割：矢印を出す＝加害、受ける＝被害、両方＝相互、矢印に関わらない＝関係者。グループの矢印は中の全員に効く
+  function diagramRoles(d) {
+    d = normDiagram(d);
+    var out = {}, inn = {}, r = {};
+    d.edges.forEach(function (e) {
+      dgMembers(d, e.f).forEach(function (id) { out[id] = 1; });
+      dgMembers(d, e.t).forEach(function (id) { inn[id] = 1; });
+    });
+    d.nodes.forEach(function (n) { r[n.id] = out[n.id] && inn[n.id] ? 'mutual' : out[n.id] ? 'harm' : inn[n.id] ? 'victim' : 'related'; });
+    return r;
+  }
+  // 型：相互加害（どこかで向きが両方）か一方的加害か。一方的は、グループの矢印があるか・矢印が2本以上か（複線）で分ける
+  function diagramPattern(d) {
+    d = normDiagram(d);
+    if (!d.edges.length) return '';
+    var roles = diagramRoles(d), mutual = Object.keys(roles).some(function (id) { return roles[id] === 'mutual'; });
+    var grp = d.edges.some(function (e) { return e.f.charAt(0) === 'g' || e.t.charAt(0) === 'g'; }), multi = d.edges.length > 1;
+    if (mutual) return '相互加害' + (grp ? '（グループ）' : '');
+    return '一方的加害（' + (grp && multi ? 'グループ・複線' : grp ? 'グループ' : multi ? '複線' : '個人') + '）';
+  }
+  var ROLE_NAMES = { harm: '加害', victim: '被害', mutual: '相互', related: '関係者' };
+
   // ===== 不変条件 =====
   function checkInvariants(ctx, asg) {
     var errs = [];
@@ -809,7 +903,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     spread: spread, diffCount: diffCount, nearGroup: nearGroup, farBreaks: farBreaks, farTargets: farTargets,
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
-    nextYearRows: nextYearRows, checkInvariants: checkInvariants
+    nextYearRows: nextYearRows, checkInvariants: checkInvariants,
+    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/engine.js ここまで ▲ */
@@ -995,6 +1090,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     })();
   }
 
+  // 本番の incidentInput_ と同じ：関係図があれば、関係する児童と役割は関係図から決める
+  function demoIncident(x) {
+    var dg = x.diagram ? E.normDiagram(x.diagram) : null;
+    if (dg && !dg.nodes.length) dg = null;
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+  }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
 
@@ -1072,9 +1173,18 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
     addIncident: function (x) { gen();
       // 本番は所有者の権限で文書の名前を取る。取れない時は title を空で返し、画面が入力を求める
-      var inc = { id: S.nextInc++, date: x.date, type: x.type, title: x.title || '', url: x.url, ids: x.ids.slice() };
+      var inc = Object.assign({ id: S.nextInc++ }, demoIncident(x));
+      if (!inc.ids.length) return Promise.reject(new Error('関係する児童を選んでください'));
       S.inc.push(inc);
-      return later(inc);
+      return later(clone(inc));
+    },
+    updateIncident: function (id, x) { gen();
+      var cur = S.inc.filter(function (y) { return y.id === +id; })[0];
+      if (!cur) return Promise.reject(new Error('事案が見つかりません'));
+      var v = demoIncident(x);
+      if (!v.ids.length) return Promise.reject(new Error('関係する児童を選んでください'));
+      Object.assign(cur, v);
+      return later(clone(cur));
     },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
@@ -1236,6 +1346,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   App.ICON_SCALES = [{ v: .8, label: '小' }, { v: 1, label: '標準' }, { v: 1.2, label: '大' }, { v: 1.4, label: '特大' }, { v: 1.6, label: '最大' }];
   App.iconScale = function () { try { var v = +localStorage.getItem('classSplit.iconScale'); if (v >= .5 && v <= 2) return v; } catch (e) { /* 読めない時は標準 */ } return 1; };
   App.setIconScale = function (v) { try { localStorage.setItem('classSplit.iconScale', String(v)); } catch (e) { /* 覚えられない時は何もしない */ } };
+  // 事案の期間：始まり〜終わり（同じ年なら終わりの年を省く。終わりが無ければ始まりだけ）
+  App.span = function (x) {
+    var a = String(x.date || ''), b = String(x.dateEnd || '');
+    if (!b || b === a) return a;
+    return a + '〜' + (b.slice(0, 4) === a.slice(0, 4) ? b.slice(5) : b);
+  };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
@@ -1278,6 +1394,156 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   g.App = App;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-common.js ここまで ▲ */
+/* ▼ src/ui-diagram.js から。直すのは src のほう ▼ */
+// 事案の関係図：児童を置く・グループで囲む・矢印（加害）を引く。役割と型は Engine が矢印から決める。
+// 座標は Engine.DG_W×DG_H の論理座標で持ち、画面の幅に合わせて伸び縮みさせる。
+(function (g) {
+  'use strict';
+  var App = g.App, E = g.Engine;
+  var W = E.DG_W, H = E.DG_H, LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  var MODES = [['move', '動かす'], ['arrow', '矢印（加害）'], ['group', 'グループ'], ['del', '消す']];
+
+  function data() { return App.st.data; }
+  function kidOf(id) { return data().kids[id] || { name: id }; }
+  function rowOf(id) {
+    var d = data(), y = d.years.filter(function (x) { return x.fy === d.fy; })[0];
+    return y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
+  }
+
+  // st = { d: 関係図, mode, from: 矢印の元, pick: グループにする児童, card: カードで出すか }
+  App.Diagram = {
+    state: function (d) { return { d: E.normDiagram(d), mode: 'move', from: null, pick: [], card: loadCard() }; },
+    // 児童を足す：空いている場所に置く
+    add: function (st, id) {
+      if (st.d.nodes.some(function (n) { return n.id === id; })) return;
+      var i = st.d.nodes.length, cols = 4;
+      st.d.nodes.push({ id: id, x: 90 + (i % cols) * 150, y: 50 + Math.floor(i / cols) % 4 * 75 });
+    },
+    mount: mount
+  };
+  function loadCard() { try { return localStorage.getItem('classSplit.dgCard') === '1'; } catch (e) { return false; } }
+  function saveCard(v) { try { localStorage.setItem('classSplit.dgCard', v ? '1' : '0'); } catch (e) { /* 覚えられなくても今は効く */ } }
+
+  function nodeHtml(st, n) {
+    var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
+    var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
+    if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
+    var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
+    return '<div class="' + cls + ' card ' + (s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
+      '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + (marks ? '<span class="nm2">' + marks + '</span>' : '') + '</div>';
+  }
+
+  function mount(el, st, onChange) {
+    var esc = App.esc, d = st.d;
+    var roles = E.diagramRoles(d), by = { harm: [], victim: [], mutual: [], related: [] };
+    d.nodes.forEach(function (n) { by[roles[n.id]].push(kidOf(n.id).name); });
+    el.innerHTML = '<div class="dg-bar"><div class="lvs">' + MODES.map(function (m) {
+        return '<button type="button" class="lv" data-dm="' + m[0] + '" aria-pressed="' + (st.mode === m[0]) + '">' + m[1] + '</button>';
+      }).join('') + '</div>' +
+      (st.mode === 'group' ? '<button type="button" class="btn primary" data-dgroup="1"' + (st.pick.length ? '' : ' disabled') + '>選んだ' + st.pick.length + '人を囲む</button>' : '') +
+      '<label class="chk"><input type="checkbox" data-dcard="1"' + (st.card ? ' checked' : '') + '>カードで表示</label></div>' +
+      '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
+      '<div class="dg-canvas"><svg class="dg-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"></svg>' +
+      d.nodes.map(function (n) { return nodeHtml(st, n); }).join('') + '</div>' +
+      '<div class="dg-sum">' + (d.edges.length ? '' : '<span class="note">矢印を引くと、加害・被害が決まります。</span>') +
+      ['harm', 'victim', 'mutual', 'related'].filter(function (k) { return by[k].length; }).map(function (k) { return '<span><em class="r-' + k + '">' + E.ROLE_NAMES[k] + '</em>' + by[k].map(esc).join('・') + '</span>'; }).join('') + '</div>';
+    var cv = el.querySelector('.dg-canvas'), svg = el.querySelector('.dg-svg');
+    draw(cv, svg, st);
+
+    // 押す・ドラッグする（タッチとペンも同じ）
+    var drag = null;
+    cv.onpointerdown = function (e) {
+      var t = e.target, nd = t.closest('[data-dn]'), gl = t.closest('[data-dg]'), eg = t.closest('[data-de]');
+      var key = nd ? 'k:' + nd.dataset.dn : gl ? 'g:' + gl.dataset.dg : null;
+      if (st.mode === 'move' && key) {
+        var ids = nd ? [nd.dataset.dn] : (d.groups.filter(function (x) { return x.g === gl.dataset.dg; })[0] || { members: [] }).members;
+        var r = cv.getBoundingClientRect();
+        drag = { ids: ids, sx: e.clientX, sy: e.clientY, kx: W / r.width, ky: H / r.height, start: ids.map(function (id) { var n = nodeOf(id); return [n.x, n.y]; }) };
+        cv.setPointerCapture(e.pointerId); e.preventDefault(); return;
+      }
+      if (st.mode === 'arrow' && key) {
+        if (!st.from) st.from = key;
+        else { if (st.from !== key) d.edges.push({ f: st.from, t: key }); st.from = null; st.d = d = E.normDiagram(d); }
+        return redo();
+      }
+      if (st.mode === 'group' && nd) { var id = nd.dataset.dn, i = st.pick.indexOf(id); if (i >= 0) st.pick.splice(i, 1); else st.pick.push(id); return redo(); }
+      if (st.mode === 'del') {
+        if (nd) d.nodes = d.nodes.filter(function (n) { return n.id !== nd.dataset.dn; });
+        else if (gl) d.groups = d.groups.filter(function (x) { return x.g !== gl.dataset.dg; });
+        else if (eg) d.edges.splice(+eg.dataset.de, 1);
+        else return;
+        st.d = d = E.normDiagram(d); return redo();
+      }
+    };
+    cv.onpointermove = function (e) {
+      if (!drag) return;
+      var dx = (e.clientX - drag.sx) * drag.kx, dy = (e.clientY - drag.sy) * drag.ky;
+      drag.ids.forEach(function (id, i) {
+        var n = nodeOf(id); n.x = Math.max(20, Math.min(W - 20, drag.start[i][0] + dx)); n.y = Math.max(14, Math.min(H - 14, drag.start[i][1] + dy));
+        var div = cv.querySelector('[data-dn="' + CSS.escape(id) + '"]'); if (div) { div.style.left = (n.x / W * 100) + '%'; div.style.top = (n.y / H * 100) + '%'; }
+      });
+      draw(cv, svg, st);
+    };
+    cv.onpointerup = cv.onpointercancel = function () { if (drag) { drag = null; onChange(st); } };
+    el.onclick = function (e) {
+      var t = e.target, x;
+      if ((x = t.closest('[data-dm]'))) { st.mode = x.dataset.dm; st.from = null; st.pick = []; redo(); }
+      else if (t.closest('[data-dgroup]') && st.pick.length) {
+        var used = d.groups.map(function (gr) { return gr.g; }), gname = LET.split('').filter(function (c) { return used.indexOf(c) < 0; })[0];
+        d.groups.forEach(function (gr) { gr.members = gr.members.filter(function (id) { return st.pick.indexOf(id) < 0; }); }); // 児童は1つのグループにだけ入る
+        d.groups.push({ g: gname, members: st.pick.slice() }); st.pick = [];
+        st.d = d = E.normDiagram(d); redo();
+      }
+      e.stopPropagation();
+    };
+    el.onchange = function (e) { if (e.target.dataset.dcard) { st.card = e.target.checked; saveCard(st.card); redo(); } };
+    function nodeOf(id) { return d.nodes.filter(function (n) { return n.id === id; })[0]; }
+    function redo() { mount(el, st, onChange); onChange(st); }
+  }
+
+  // グループの枠と矢印を描く。児童の大きさは画面の実寸から測る
+  function draw(cv, svg, st) {
+    var d = st.d, r = cv.getBoundingClientRect(), kx = W / (r.width || 1), ky = H / (r.height || 1), box = {};
+    cv.querySelectorAll('[data-dn]').forEach(function (div) {
+      var q = div.getBoundingClientRect();
+      box['k:' + div.dataset.dn] = { x1: (q.left - r.left) * kx, y1: (q.top - r.top) * ky, x2: (q.right - r.left) * kx, y2: (q.bottom - r.top) * ky };
+    });
+    var h = '', labels = '';
+    d.groups.forEach(function (gr) {
+      var b = null;
+      gr.members.forEach(function (id) { var q = box['k:' + id]; if (!q) return; b = b ? { x1: Math.min(b.x1, q.x1), y1: Math.min(b.y1, q.y1), x2: Math.max(b.x2, q.x2), y2: Math.max(b.y2, q.y2) } : Object.assign({}, q); });
+      if (!b) return;
+      b = { x1: b.x1 - 12, y1: b.y1 - 16, x2: b.x2 + 12, y2: b.y2 + 10 };
+      box['g:' + gr.g] = b;
+      h += '<rect class="dg-g' + (st.from === 'g:' + gr.g ? ' from' : '') + '" x="' + b.x1 + '" y="' + b.y1 + '" width="' + (b.x2 - b.x1) + '" height="' + (b.y2 - b.y1) + '" rx="18"/>';
+      labels += '<div class="dg-gl' + (st.from === 'g:' + gr.g ? ' from' : '') + '" data-dg="' + gr.g + '" style="left:' + (b.x1 / W * 100) + '%;top:' + (b.y1 / H * 100) + '%">' + gr.g + '</div>';
+    });
+    d.edges.forEach(function (e, i) {
+      var a = box[e.f], b = box[e.t]; if (!a || !b) return;
+      var ca = [(a.x1 + a.x2) / 2, (a.y1 + a.y2) / 2], cb = [(b.x1 + b.x2) / 2, (b.y1 + b.y2) / 2];
+      var p = edgePt(a, ca, cb), q = edgePt(b, cb, ca);
+      // 両向きの矢印は少しずらして2本に見せる
+      var rev = d.edges.some(function (o) { return o.f === e.t && o.t === e.f; }), nx = 0, ny = 0;
+      if (rev) { var L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1; nx = -(q[1] - p[1]) / L * 6; ny = (q[0] - p[0]) / L * 6; }
+      var x1 = p[0] + nx, y1 = p[1] + ny, x2 = q[0] + nx, y2 = q[1] + ny, dpath = 'M' + x1 + ' ' + y1 + 'L' + x2 + ' ' + y2;
+      // 矢じりは三角を描く（SVG の marker は参照の書き方が配布の検査に掛かるので使わない）
+      var L2 = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / L2, uy = (y2 - y1) / L2, hl = 13, hw = 6;
+      var head = 'M' + x2 + ' ' + y2 + 'L' + (x2 - ux * hl - uy * hw) + ' ' + (y2 - uy * hl + ux * hw) + 'L' + (x2 - ux * hl + uy * hw) + ' ' + (y2 - uy * hl - ux * hw) + 'Z';
+      h += '<path class="dg-e" d="M' + x1 + ' ' + y1 + 'L' + (x2 - ux * hl * .8) + ' ' + (y2 - uy * hl * .8) + '"/><path class="dg-ah" d="' + head + '"/><path class="dg-eh" data-de="' + i + '" d="' + dpath + '"/>';
+    });
+    svg.innerHTML = h;
+    cv.querySelectorAll('.dg-gl').forEach(function (x) { x.remove(); });
+    cv.insertAdjacentHTML('beforeend', labels);
+  }
+  // 中心から相手の中心へ向かう線が、枠の縁と交わる点
+  function edgePt(b, c, to) {
+    var dx = to[0] - c[0], dy = to[1] - c[1], hw = (b.x2 - b.x1) / 2 + 3, hh = (b.y2 - b.y1) / 2 + 3;
+    if (!dx && !dy) return c;
+    var s = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
+    return [c[0] + dx * s, c[1] + dy * s];
+  }
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/ui-diagram.js ここまで ▲ */
 /* ▼ src/ui-menu.js から。直すのは src のほう ▼ */
 // メニュー：学年を選び、「名簿を見る」か「クラス分けをする」を選ぶ。
 (function (g) {
@@ -1309,7 +1575,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 // （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。児童の名前を押すと、経年の記録と事案を窓で出す。
 (function (g) {
   'use strict';
-  var App = g.App, C = g.CONFIG;
+  var App = g.App, C = g.CONFIG, E = g.Engine;
   var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
@@ -1520,7 +1786,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   function kidPop() {
     var d = D();
     if (!R.kid || !d.kids[R.kid]) { if (App.dlg && App.dlg.kid) App.closeDlg(); return; }
-    if (App.dlg && App.dlg.kid) { App.refreshDlg(); return; }
+    if (App.dlg && App.dlg.kid) { App.refreshDlg(); mountDg(); return; }
     if (App.dlg) return; // ほかの枠が開いている間は出さない
     App.openDlg({
       kid: true,
@@ -1529,6 +1795,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       input: function (t) { App.screens.roster.input(t); },
       onClose: function () { R.kid = null; R.form = null; render(); }
     });
+    mountDg();
+  }
+  // 関係図は自分の枠だけ描き直す（窓全体を描き直すと入力中の文字が切れるため）
+  function mountDg() {
+    var el = App.$('fDg');
+    if (el && R.form) App.Diagram.mount(el, R.form.dg, function (st) { R.form.dg = st; });
   }
 
   function pane() { return recordHtml(R.kid, R.fy, true); }
@@ -1554,8 +1826,10 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];
-      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + x.date + '・' + esc(x.type) +
-        (y ? '・' + y.grade + '年の時' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span></div>';
+      var role = x.roles && x.roles[kid];
+      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + App.span(x) + '・' + esc(x.type) +
+        (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' + (x.detail ? '<div class="dt">' + esc(x.detail) + '</div>' : '') +
+        (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">関係図・直す</button>' : '') + '</div>';
     }).join('') || '<div class="note">事案はありません</div>') + '</div></section></aside>';
     return h;
   }
@@ -1572,12 +1846,14 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     return '<form class="form" id="incForm">' +
       '<label>文書のURL<input id="fUrl" value="' + esc(f.url || '') + '" placeholder="docs.google.com/… を貼る" required></label>' +
       '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
-      '<label>関係する児童</label><div class="picked">' + f.ids.map(function (id) { return '<span>' + esc(d.kids[id].name) + '<button type="button" data-unpick="' + id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>' +
-      '<input id="fQ" value="" placeholder="名前・よみ・番号で追加" autocomplete="off"><div id="fSugg"></div>' +
-      '<div class="row"><label>日付<input id="fDate" type="date" value="' + f.date + '"></label><label>種別<select id="fType">' +
+      '<label>関係する児童と関係図（矢印＝加害）</label>' +
+      '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
+      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="事案の詳細を書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
+      '<div class="row"><label>種別<select id="fType">' +
       C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
       '<div class="note">文書の名前に児童の氏名を入れないでください（一覧は全教員が見られます）</div>' +
-      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">登録する</button></div></form>';
+      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
   }
 
   // 候補だけを描き直す（入力欄を作り直すと日本語入力の変換が切れるため）
@@ -1587,7 +1863,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     if (!q) return '';
     var items = yearOf(d.fy).rows.filter(function (r) {
       var s = d.kids[r.id];
-      return f.ids.indexOf(r.id) < 0 && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
+      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
     }).slice(0, 8);
     return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
   }
@@ -1684,10 +1960,16 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
         if (R.fy !== editableFy()) return true;
         var MY = yearOf(R.fy); memoDialog(MY, MY.rows.filter(function (y) { return y.id === x.dataset.memo; })[0]); return true;
       }
-      if (t.closest('#addInc')) { R.form = { ids: [R.kid] }; render(); refocus('fUrl'); return true; }
+      if (t.closest('#addInc')) { var st0 = App.Diagram.state(null); App.Diagram.add(st0, R.kid); R.form = { dg: st0 }; render(); refocus('fUrl'); return true; }
+      if ((x = t.closest('[data-editinc]'))) {
+        var inc = d.incidents.filter(function (y) { return y.id === +x.dataset.editinc; })[0];
+        if (!inc) return true;
+        var st1 = App.Diagram.state(inc.diagram);
+        if (!inc.diagram) inc.ids.forEach(function (id) { App.Diagram.add(st1, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
+        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, dateEnd: inc.dateEnd || '', detail: inc.detail || '', type: inc.type, dg: st1 }; render(); return true;
+      }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
-      if ((x = t.closest('[data-pick]'))) { R.form.ids.push(x.dataset.pick); render(); refocus('fQ'); return true; }
-      if ((x = t.closest('[data-unpick]'))) { R.form.ids = R.form.ids.filter(function (id) { return id !== x.dataset.unpick; }); render(); return true; }
+      if ((x = t.closest('[data-pick]'))) { App.Diagram.add(R.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
       return false;
     },
     input: function (t) {
@@ -1695,7 +1977,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
-      else if (t.id === 'fDate') R.form.date = t.value;
+      else if (t.id === 'fDate') { R.form.date = t.value; var fe = App.$('fDateEnd'); if (fe) fe.min = t.value; }
+      else if (t.id === 'fDateEnd') R.form.dateEnd = t.value;
+      else if (t.id === 'fDetail') R.form.detail = t.value;
       else if (t.id === 'fType') R.form.type = t.value;
       else if (t.id === 'fUrl') {
         R.form.url = t.value;
@@ -1713,11 +1997,15 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     },
     submit: function (f) {
       if (f.id !== 'incForm') return;
-      var x = R.form;
-      if (!x.ids.length) { App.toast('関係する児童を1人以上選んでください'); return; }
-      App.save(function () {
-        return App.pf().addIncident({ url: x.url, title: x.title || '', date: x.date, type: x.type || C.INCIDENT_TYPES[0], ids: x.ids });
-      }).then(function (inc) { D().incidents.push(inc); R.form = null; render(); App.toast('事案を登録しました'); });
+      var x = R.form, dg = x.dg.d;
+      if (!dg.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
+      if (x.dateEnd && x.dateEnd < x.date) { App.toast('終わりの日は始まりの日より後にしてください'); return; }
+      var body = { url: x.url, title: x.title || '', date: x.date, dateEnd: x.dateEnd || '', detail: x.detail || '', type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
+      App.save(function () { return x.edit ? App.pf().updateIncident(x.edit, body) : App.pf().addIncident(body); }).then(function (inc) {
+        var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
+        if (i >= 0) list[i] = inc; else list.push(inc);
+        R.form = null; render(); App.toast(x.edit ? '事案を直しました' : '事案を登録しました');
+      });
     },
     key: function (e) {
       if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }

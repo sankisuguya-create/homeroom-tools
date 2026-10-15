@@ -78,6 +78,20 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     b = call('apiBoot', 4).v;
     assert.equal(b.incidents.length, 1); assert.deepEqual(b.incidents[0].ids, ['40000011', '40000021']);
     assert.equal(call('apiSchoolIncidents').v.length, 2);
+    // 関係図つきの事案：関係する児童と役割は関係図から決まり、直すと入れ替わる
+    const dg = { nodes: [{ id: '40000011', x: 10, y: 10 }, { id: '40000012', x: 100, y: 10 }], edges: [{ f: 'k:40000012', t: 'k:40000011' }] };
+    const di = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DG1/edit', title: '関係図', date: '2026-10-03', type: '対人', diagram: dg });
+    assert.ok(di.ok, di.err); assert.deepEqual(di.v.ids, ['40000011', '40000012']); assert.equal(di.v.roles['40000012'], 'harm');
+    let got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
+    assert.equal(got.roles['40000011'], 'victim'); assert.equal(got.diagram.edges.length, 1);
+    assert.equal(call('apiAddIncident', { url: 'https://docs.google.com/document/d/DG2/edit', date: '2026-10-05', dateEnd: '2026-10-01', diagram: dg }).ok, false, '終わりが始まりより前は不可');
+    const up = call('apiUpdateIncident', di.v.id, { url: got.url, title: got.title, date: got.date, dateEnd: '2026-10-20', detail: '=経緯 '.repeat(300), type: got.type, diagram: { nodes: dg.nodes.concat([{ id: '40000013', x: 200, y: 10 }]), edges: [{ f: 'k:40000011', t: 'k:40000012' }, { f: 'k:40000012', t: 'k:40000011' }] } });
+    assert.ok(up.ok, up.err);
+    got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
+    assert.deepEqual(got.ids.slice().sort(), ['40000011', '40000012', '40000013']);
+    assert.equal(got.roles['40000011'], 'mutual'); assert.equal(got.roles['40000013'], 'related');
+    assert.equal(got.dateEnd, '2026-10-20', '期間の終わり'); assert.ok(got.detail.length > 1000 && got.detail.charAt(0) === "'", '詳細は長くても切らず、式にしない');
+    assert.equal(call('apiUpdateIncident', 999, { url: got.url, diagram: dg }).ok, false);
 
     // 特別支援学級の印：有無だけ
     assert.ok(call('apiSetAttr', FY, 4, '40000012', 'sp', 1).ok);
@@ -182,7 +196,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));
     const incRow = db().getSheetByName('incidents').data.find(r => r[0] === inc2.v.id);
     assert.equal(incRow[5], '', '結び付く児童がいない事案は名前を消す'); assert.ok(incRow[8], '削除済み');
-    assert.equal(call('apiBoot', 4).v.incidents.length, 1, '他の事案は残る');
+    assert.equal(call('apiBoot', 4).v.incidents.length, 2, '他の事案は残る');
 
     // 持ち越しの候補：前年度に決定した時の組のうち、2人とも今この学年にいて、未採用のもの
     db().getSheetByName('pairs_carry').data.push([FY - 1, 'far', '40000011', '40000021'], [FY - 1, 'near', '40000021', '40000022'], [FY - 2, 'far', '40000011', '40000022']);
