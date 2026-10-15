@@ -193,8 +193,8 @@ table.h tr.cur td{font-weight:700}
 .gcol{display:flex;flex-direction:column;gap:2px;min-height:0;min-width:0}
 .gcol>.chip{height:var(--rowh);flex:none;box-sizing:border-box}
 /* 児童カード：男＝長方形、女＝ピル型。左端は旧学級の色の帯（旧番号）、地は旧学級の薄い色 */
-.chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
-  cursor:pointer;--bandw:calc(var(--rowh)*.31);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;overflow:hidden;position:relative;background:var(--ol,var(--panel))}
+.chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr) var(--jrw);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
+  cursor:pointer;--bandw:calc(var(--rowh)*.31);--jrw:calc(var(--rowh)*.5);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;overflow:hidden;position:relative;background:var(--ol,var(--panel))}
 .chip.m{border-radius:2px}
 .chip.f{border-radius:999px}
 .chip:hover{border-color:var(--sub)}
@@ -213,12 +213,15 @@ table.h tr.cur td{font-weight:700}
 .nm{font-weight:700;white-space:nowrap;font-size:calc(var(--rowh)*.42);letter-spacing:-.02em}
 .side .chip .nm{font-size:20px}
 .bs{position:relative;font-size:var(--ic);--slot:1.5em;margin:0 4px}
-.bs>.b,.bs>.jn{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
-/* 1段目は男女で右の余白を同じにして、縦に並ぶ児童で賢・リ・運の位置をそろえる（女子の丸い右端に合わせる） */
-.bs.gd{margin:0 0 0 auto;padding-right:calc(var(--rowh)*.38);align-self:stretch;width:calc(3*var(--slot));flex:none}
+.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
+/* 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は男女で同じ位置。縦に並ぶ児童でそろう */
+.bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
+.l2{display:flex;min-width:0;padding:0 4px 0 0}
+.l2>.bs:first-child{flex:1}
+/* 事案の数：旧番号の帯の反対側（右端）に、2段の真ん中で置く */
+.jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
-.chip.f .bs:not(.gd){padding-right:calc(var(--rowh)*.38)}
 .rt{font-size:.85em;font-weight:700;flex:none}
 .rt.far{color:var(--alert)} .rt.near{color:var(--link)}
 .lkm{flex:none;color:var(--sub);font-size:.85em}
@@ -293,18 +296,18 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
-    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋
+    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通）は有無だけ
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
-    // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
+    // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
       { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
       { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
       { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 2, help: ['アレルギー', '配慮の要るアレルギーがある。', 'エピペンの所持など、命に関わる対応が要る。'] },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1, max: 2, help: ['身体的配慮', '体や健康の面で配慮が要る。', '介助や設備の配慮が毎日要る。'] },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 2, help: ['通級・要支援', '通級や支援を受けている。', '個別の支援がいつも要る。'] },
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
       { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 2, help: ['賢い', '学力が高い。', 'とても高い。'] },
       { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 2, help: ['リーダー', 'まとめる力がある。', 'とても強い。学級の中心になれる。'] },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 2, help: ['運動', '運動が得意。', 'とても得意。'] }
@@ -1433,19 +1436,22 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
     var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
-    var slot = function (good) {
+    // 枠：1段目右＝良い項目（賢・リ・運）、2段目右＝その真下に有無だけの項目（ア・身・通）、2段目左＝負担の項目
+    var slot = function (pick) {
       var n = 0, out = '';
       C.ATTRS.forEach(function (at) {
-        if (!!at.good !== !!good) return;
+        if (!pick(at)) return;
         var v = s.a[at.k] | 0;
         if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
         n++;
       });
-      if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
     };
+    var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
     return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+      '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
+      '<span class="jr">' + jn + '</span></div>';
   }
 
   function renderBar() {
@@ -2156,8 +2162,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     var lv = +b.dataset.lv, m1 = App.mark(at, 1), m2 = App.mark(at, 2);
     tip.innerHTML = '<h3>' + App.esc(at.help[0]) + '</h3><table>' +
       '<tr class="' + (lv === 1 ? 'on' : '') + '"><td>' + m1 + '</td><td>' + App.esc(at.help[1]) + '</td></tr>' +
-      '<tr class="' + (lv === 2 ? 'on' : '') + '"><td>' + m2 + '</td><td>' + App.esc(at.help[2]) + '</td></tr></table>' +
-      '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>';
+      (at.max > 1 ? '<tr class="' + (lv === 2 ? 'on' : '') + '"><td>' + m2 + '</td><td>' + App.esc(at.help[2]) + '</td></tr>' : '') + '</table>' +
+      (at.max > 1 ? '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>' : '');
     tip.hidden = false;
     var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
     var x = Math.max(8, Math.min(r.left, innerWidth - w - 8)), y = r.bottom + 6;

@@ -79,8 +79,8 @@
     var lv = +b.dataset.lv, m1 = App.mark(at, 1), m2 = App.mark(at, 2);
     tip.innerHTML = '<h3>' + App.esc(at.help[0]) + '</h3><table>' +
       '<tr class="' + (lv === 1 ? 'on' : '') + '"><td>' + m1 + '</td><td>' + App.esc(at.help[1]) + '</td></tr>' +
-      '<tr class="' + (lv === 2 ? 'on' : '') + '"><td>' + m2 + '</td><td>' + App.esc(at.help[2]) + '</td></tr></table>' +
-      '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>';
+      (at.max > 1 ? '<tr class="' + (lv === 2 ? 'on' : '') + '"><td>' + m2 + '</td><td>' + App.esc(at.help[2]) + '</td></tr>' : '') + '</table>' +
+      (at.max > 1 ? '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>' : '');
     tip.hidden = false;
     var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
     var x = Math.max(8, Math.min(r.left, innerWidth - w - 8)), y = r.bottom + 6;

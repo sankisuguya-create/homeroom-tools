@@ -74,19 +74,22 @@
     // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
     var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
-    var slot = function (good) {
+    // 枠：1段目右＝良い項目（賢・リ・運）、2段目右＝その真下に有無だけの項目（ア・身・通）、2段目左＝負担の項目
+    var slot = function (pick) {
       var n = 0, out = '';
       C.ATTRS.forEach(function (at) {
-        if (!!at.good !== !!good) return;
+        if (!pick(at)) return;
         var v = s.a[at.k] | 0;
         if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
         n++;
       });
-      if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
     };
+    var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
     return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+      '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
+      '<span class="jr">' + jn + '</span></div>';
   }
 
   function renderBar() {
