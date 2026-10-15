@@ -84,7 +84,7 @@
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: 0 };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT };
     })();
   }
 
@@ -241,7 +241,7 @@
         Object.keys(S.years[fy]).forEach(function (gr) { S.years[fy][gr].forEach(function (r) { last[r.id] = { id: r.id, name: S.kids[r.id].name, fy: fy, grade: +gr, cls: r.cls, no: r.no }; }); });
       });
       S.inc.forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
-      return later(Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + (S.settings.keepYears | 0); }).map(function (id) {
+      return later(Object.keys(last).filter(function (id) { return !now[id] && C.purgeable(last[id].fy, FY, S.settings.keepYears | 0, !!cnt[id]); }).map(function (id) {
         var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
       }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; }));
     },

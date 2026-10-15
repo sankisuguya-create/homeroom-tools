@@ -196,9 +196,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.legend');
   ok((await p.locator('.legend').textContent()).includes('学習の支援'), '設定した項目の名前が凡例に出る');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="year"]');
-  await p.click('[data-stab="year"]'); await p.waitForSelector('#purge');
+  await p.click('[data-stab="year"]'); await p.waitForSelector('.empty:has-text("候補はありません")');
+  ok(await p.locator('[data-keep="5"][aria-pressed="true"]').count() === 1, '残す年数の既定は5年度（昨年度の卒業生は候補に出ない）');
+  await p.click('[data-keep="0"]'); await p.waitForSelector('#purge');
   const n = await p.locator('[data-pp]').count();
-  ok(n === 25, `卒業・転出の候補（卒業24人＋転出1人）：${n}人`);
+  const incN = await p.locator('tbody tr').evaluateAll(rs => rs.filter(r => r.cells[5] && r.cells[5].textContent.trim()).length);
+  ok(n > 0 && n < 25 && incN === 0, `残さないにしても、事案に関わった児童は候補に出ない：${n}人（全25人）`);
   ok(await p.locator('#purge[disabled]').count() === 1, '初めは誰も選ばれていない');
   await p.check('#pall');
   await p.click('#purge'); await p.fill('#cword', n + '人の記録を消す'); await p.click('[data-act="ok"]');

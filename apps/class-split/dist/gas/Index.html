@@ -563,6 +563,15 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
+  // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
+  // （いじめ等の記録の保存の目安。正本は教育委員会の文書管理規程。docs/design.md §4）
+  CONFIG.KEEP_YEARS_DEFAULT = 5;
+  CONFIG.INCIDENT_KEEP_YEARS = 5;
+  // 最後に名簿にいた年度 lastFy の児童を、今年度 FY に消してよいか
+  CONFIG.purgeable = function (lastFy, FY, keep, hasIncident) {
+    return FY > lastFy + (hasIncident ? Math.max(keep, CONFIG.INCIDENT_KEEP_YEARS) : keep);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/config.js ここまで ▲ */
@@ -1146,7 +1155,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: 0 };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT };
     })();
   }
 
@@ -1303,7 +1312,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
         Object.keys(S.years[fy]).forEach(function (gr) { S.years[fy][gr].forEach(function (r) { last[r.id] = { id: r.id, name: S.kids[r.id].name, fy: fy, grade: +gr, cls: r.cls, no: r.no }; }); });
       });
       S.inc.forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
-      return later(Object.keys(last).filter(function (id) { return !now[id] && FY > last[id].fy + (S.settings.keepYears | 0); }).map(function (id) {
+      return later(Object.keys(last).filter(function (id) { return !now[id] && C.purgeable(last[id].fy, FY, S.settings.keepYears | 0, !!cnt[id]); }).map(function (id) {
         var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
       }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; }));
     },
@@ -1342,7 +1351,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_c36e0f573dd8';
+  var PAGE_BUILD = 'BUILD_26bb3fbe0190';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2164,7 +2173,8 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
       '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
       '<label>関係する児童と関係図（矢印＝加害）</label>' +
       '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="事案の詳細を書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="見たこと・聞いたこと・したことを、日時とともに事実で書きます">' + esc(f.detail || '') + '</textarea></label>' +
+      '<div class="note">保護者から開示を求められることがある記録です。事実を書き、推測や人柄の評価は書きません。卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は残ります。</div>' +
       '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
       '<div class="row"><label>種別<select id="fType">' +
       C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
@@ -3164,9 +3174,9 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
     var n = T.cand.filter(function (x) { return T.pick[x.id]; }).length;
     return '<h3 style="margin:0 0 6px">卒業・転出した児童の記録を消す</h3>' +
       '<p class="note">今年度の名簿にいない児童です。消すと、名簿・配慮項目・つける離す・事案との結び付きから、その児童の行が消えます。結び付く児童がいなくなった事案は、名前とURLを消します。<b>元に戻せません。</b>スプレッドシートの版の履歴と、ドライブの事案の文書そのものは残ります。</p>' +
-      '<div class="rbar"><span class="lab">卒業・転出した後も残す年数</span>' + [0, 1, 2, 3].map(function (y) {
-        return '<button class="lv" data-keep="' + y + '" aria-pressed="' + (+s.keepYears === y) + '">' + (y ? y + '年度' : '残さない') + '</button>';
-      }).join('') + '</div>' +
+      '<div class="rbar"><span class="lab">卒業・転出した後も残す年数</span>' + [0, 1, 2, 3, 4, 5, 6].map(function (y) {
+        return '<button class="lv" data-keep="' + y + '" aria-pressed="' + (+s.keepYears === y) + '">' + (y ? y + '年度' : '残さない') + (y === C.KEEP_YEARS_DEFAULT ? '（既定）' : '') + '</button>';
+      }).join('') + '</div><p class="note">事案に関わった児童は、この設定にかかわらず卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は候補に出しません（いじめ等の記録の保存の目安。年数の正本は教育委員会の文書管理規程）。</p>' +
       (T.cand.length ? '<table class="r"><thead><tr><th><input type="checkbox" id="pall"' + (n === T.cand.length ? ' checked' : '') + ' aria-label="すべて"></th><th>理由</th><th>最後の年度</th><th>学年-組-番</th><th style="text-align:left">名前</th><th>事案</th></tr></thead><tbody>' +
         T.cand.map(function (x) {
           return '<tr><td><input type="checkbox" data-pp="' + x.id + '"' + (T.pick[x.id] ? ' checked' : '') + '></td><td>' + x.reason + '</td><td>' + x.fy + '</td><td>' + x.grade + '-' + (x.cls + 1) + '-' + x.no + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + (x.incidents || '') + '</td></tr>';
