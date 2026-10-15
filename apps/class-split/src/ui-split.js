@@ -265,6 +265,7 @@
       slotL = (W - 3 * slotR - 1.3 * IW * ic - 6) / (nL - 1);
     }
     ic = Math.max(8, ic);
+    ic *= App.iconScale(); // ⚙ 設定の「表示」で選んだ倍率
     root.setProperty('--ic', ic.toFixed(2) + 'px');
     root.setProperty('--slot', slotR.toFixed(2) + 'px');
     root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');

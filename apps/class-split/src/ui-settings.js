@@ -19,9 +19,9 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function render() {
     var esc = App.esc, s = T.s;
-    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案の種別'], ['year', '年度替わり']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案の種別'], ['view', '表示'], ['year', '年度替わり']];
     var h = '<div class="rbar">' + tabs.map(function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') +
-      '<span class="sp"></span>' + (T.tab !== 'year' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
+      '<span class="sp"></span>' + (T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
         C.ATTRS.map(function (at) {
@@ -47,6 +47,12 @@
         (App.me && !s.teachers.some(function (t) { return t.email === App.me.email; }) ? '<button class="btn" id="tme">＋ 自分（' + esc(App.me.email) + '）</button>' : '') + '</div>';
     } else if (T.tab === 'types') {
       h += '<p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:20em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea>';
+    } else if (T.tab === 'view') {
+      // クラス分けの盤面のアイコンの大きさ。端末の画面の大きさで合う値が違うので、この端末にだけ覚える
+      var cur = App.iconScale();
+      h += '<h3 style="margin:0 0 6px">クラス分けの盤面のアイコンの大きさ</h3><div class="lvs">' + App.ICON_SCALES.map(function (x) {
+        return '<button class="lv" data-isz="' + x.v + '" aria-pressed="' + (x.v === cur) + '">' + x.label + '</button>';
+      }).join('') + '</div><p class="note">押すとすぐに変わり、この端末だけに覚えます（ほかの先生の画面は変わりません）。<br>「標準」は、＋のアイコンが隣に重ならない範囲でいちばん大きい大きさです。大きくすると、＋のアイコンや＋の印が隣に重なることがあります。</p>';
     } else {
       h += yearTab();
     }
@@ -101,6 +107,7 @@
     click: function (t) {
       var x, s = T.s;
       if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; render(); return true; }
+      if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0 }); }); render(); return true; }
       if (t.closest('#tme')) { set(function () { s.teachers.push({ email: App.me.email, grade: App.st.grade, cls: 1 }); }); render(); return true; }
