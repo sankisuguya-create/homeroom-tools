@@ -76,6 +76,54 @@
     return { p: p, ms: Math.round(performance.now() - t0) };
   }
 
+  // ===== 並び順：組の中の児童の並べ方（第一〜第三優先）。この端末にだけ覚える =====
+  var SORT_KEYS = [
+    { k: 'old', label: '旧クラス', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
+    { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
+    { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
+    { k: 'no', label: '旧出席番号', f: function (s) { return s.old < 0 ? 999 : s.no; } },
+    { k: 'kana', label: 'よみ（五十音）', f: null }
+  ];
+  var DEF_ORDER = ['old', 'no', ''];
+  function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
+  var ORDER = loadOrder();
+  function byOrder(x, y) {
+    var a = S.P.kids[x], b = S.P.kids[y];
+    for (var i = 0; i < ORDER.length; i++) {
+      var key = SORT_KEYS.filter(function (q) { return q.k === ORDER[i]; })[0];
+      if (!key) continue;
+      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
+      if (d) return d;
+    }
+    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
+  }
+  function orderDialog() {
+    var O = ORDER.slice();
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>組の中の並び順</h2>' +
+          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
+            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
+              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
+          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-ord]');
+        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
+        if (t.closest('[data-ordreset]')) { O = DEF_ORDER.slice(); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () {
+        ORDER = O.slice();
+        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+        App.closeDlg(); render();
+      }
+    });
+  }
+
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
@@ -123,7 +171,7 @@
         '<button class="btn" id="trans">転入生…</button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
-    h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
+    h += '<button class="btn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>並び順…</button><button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
     if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
     return '<div class="bar">' + h + '</div>';
   }
@@ -141,8 +189,7 @@
     for (k = 0; k < nc; k++) {
       var ids = [];
       for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k) ids.push(i);
-      var ord = function (s) { return s.old < 0 ? 99 : s.old; }; // 転入生は組の最後
-      ids.sort(function (x, y) { return ord(S.P.kids[x]) - ord(S.P.kids[y]) || S.P.kids[x].no - S.P.kids[y].no || (S.P.kids[x].kana < S.P.kids[y].kana ? -1 : 1); });
+      ids.sort(byOrder);
       var half = Math.ceil(ids.length / 2);
       per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
@@ -634,6 +681,7 @@
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
+      if (t.closest('#order')) { orderDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
