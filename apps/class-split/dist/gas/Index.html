@@ -93,8 +93,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .house>em{top:.12em}
 .b.house{width:1.65em;height:1.65em;margin:-.08em}
 .bs>.b.house{width:1.4em;height:1.4em;margin:0}
-/* リ：右の切れ込みは深さ12.7%（もとの38%の3分の1） */
-.crown>i{clip-path:polygon(0 4%,100% 4%,87.3% 50%,100% 96%,0 96%)}
+/* リ：右の切れ込みは深さ38%（横幅を広げたので浅くした分を戻した） */
+.crown>i{clip-path:polygon(0 4%,100% 4%,62% 50%,100% 96%,0 96%)}
 .crown>em{left:-.2em}
 .b.crown{width:1.75em}
 .bs>.b.crown{width:1.45em}
@@ -1068,7 +1068,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_fdcf6c00433a';
+  var PAGE_BUILD = 'BUILD_17d65045ba6e';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 

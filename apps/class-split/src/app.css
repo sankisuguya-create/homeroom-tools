@@ -85,8 +85,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .house>em{top:.12em}
 .b.house{width:1.65em;height:1.65em;margin:-.08em}
 .bs>.b.house{width:1.4em;height:1.4em;margin:0}
-/* リ：右の切れ込みは深さ12.7%（もとの38%の3分の1） */
-.crown>i{clip-path:polygon(0 4%,100% 4%,87.3% 50%,100% 96%,0 96%)}
+/* リ：右の切れ込みは深さ38%（横幅を広げたので浅くした分を戻した） */
+.crown>i{clip-path:polygon(0 4%,100% 4%,62% 50%,100% 96%,0 96%)}
 .crown>em{left:-.2em}
 .b.crown{width:1.75em}
 .bs>.b.crown{width:1.45em}
