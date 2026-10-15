@@ -352,6 +352,15 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* カードの事案の数：押すと記録の窓 */
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
+/* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
+.bigs{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+.bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
+.bigs .big[data-go="roster"] b{font-size:2rem}
+.bigs .big[data-go="roster"] span{font-size:1rem}
+.bigs .big[data-go="split"]{padding:16px}
+.bigs .big[data-go="split"] b{font-size:1.1rem}
+.bigs .big[data-go="split"] span{font-size:.8rem}
+.bigs .big:only-child{grid-column:1/-1}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
