@@ -194,15 +194,15 @@
     // 右の枠（賢・リ・運／ア・身・通）は有無だけなので＋が無い：間隔はアイコン1つ分＋すき間。
     // 左の枠（学・欠・問・保）の＋は1.3倍で、右上の＋は中心から (.48em＋.62em)×1.3 はみ出す。
     // 間隔は「＋のアイコンの中心から＋の右端まで」＋「隣のアイコンの左半分」以上にする（＋が隣に被らない）
-    var RW = 1.35, PLUSW = (.48 + .62) * 1.3 + 1.25 / 2;
+    var IW = 1.8, RW = IW + .1, PLUSW = Math.max((.48 + .62) * 1.3, IW / 2 * 1.3) + IW / 2; // IW＝カードのアイコンの横幅（em）
     // 右の枠は要る分（少しゆとり）だけ取り、残りを左の枠へ回す。足りなければアイコンを小さくする
     var slotR = Math.min((W - nameW) / 3, RW * ic * 1.15);
     ic = Math.min(ic, slotR / RW);
-    var slotL = Math.min((W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1), ic * 3);
+    var slotL = Math.min((W - 3 * slotR - 1.3 * IW * ic - 6) / (nL - 1), ic * 4);
     if (slotL < PLUSW * ic) {
-      ic = (W - 6) / (3 * RW * 1.15 + (nL - 1) * PLUSW + 1.3 * 1.25);
+      ic = (W - 6) / (3 * RW * 1.15 + (nL - 1) * PLUSW + 1.3 * IW);
       slotR = Math.min((W - nameW) / 3, RW * ic * 1.15); ic = Math.min(ic, slotR / RW);
-      slotL = (W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1);
+      slotL = (W - 3 * slotR - 1.3 * IW * ic - 6) / (nL - 1);
     }
     ic = Math.max(8, ic);
     root.setProperty('--ic', ic.toFixed(2) + 'px');

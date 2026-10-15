@@ -224,6 +224,9 @@ table.h tr.cur td{font-weight:700}
 .jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
+/* 横幅はいちばん広い形（貝）にそろえ、ほかの形も横に広げる（縦はそのまま） */
+.b.b{width:2.15em}
+.bs>.b.b{width:1.8em}
 .rt{font-size:.85em;font-weight:700;flex:none}
 .rt.far{color:var(--alert)} .rt.near{color:var(--link)}
 .lkm{flex:none;color:var(--sub);font-size:.85em}
