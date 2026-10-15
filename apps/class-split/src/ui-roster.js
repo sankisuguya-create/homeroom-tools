@@ -3,7 +3,7 @@
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;
-  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, byCount: false, kid: null, form: null, school: null };
+  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
@@ -45,6 +45,25 @@
     });
   }
 
+  // ===== 並び順（第一〜第三優先）。クラス分けと同じ窓。この端末にだけ覚える =====
+  // 行には id・kana・male・cls・no・a・n（その年度の事案の件数）を持たせて比べる
+  var SORT_KEYS = [
+    { k: 'cls', label: '組', f: function (s) { return s.cls; } },
+    { k: 'no', label: '出席番号', f: function (s) { return s.no; } },
+    { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
+    { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
+    { k: 'kana', label: 'よみ（五十音）', f: null },
+    { k: 'inc', label: '事案の件数（多い順）', f: function (s) { return -s.n; } },
+    { k: 'care', label: '配慮項目の数（多い順）', f: function (s) { var n = 0; C.ATTRS.forEach(function (at) { if (!at.good && (s.a[at.k] | 0)) n += s.a[at.k] | 0; }); return -n; } }
+  ];
+  var DEF_ORDER = ['cls', 'no', ''];
+  var ORDER = (function () { try { var v = JSON.parse(localStorage.getItem('classSplit.rosterOrder')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); })();
+  function setOrder(O) {
+    ORDER = O;
+    try { localStorage.setItem('classSplit.rosterOrder', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+    render();
+  }
+
   // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
   function moreDialog() {
     App.openDlg({
@@ -58,7 +77,7 @@
           }).join('') + '</div></section>' +
           '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
           '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
-          '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label></div></section>' +
+          '<button class="btn" id="rorder">並び順…</button></div></section>' +
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
@@ -70,7 +89,7 @@
       input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
       // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
       click: function (t) {
-        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste')) return false;
+        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste,#rorder')) return false;
         App.closeDlg(); return App.screens.roster.click(t);
       }
     });
@@ -98,7 +117,9 @@
     else {
       if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
         (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
-      if (R.onlyInc || R.byCount) h += '<span class="state">' + [R.onlyInc ? '事案のある児童だけ' : '', R.byCount ? '件数の多い順' : ''].filter(String).join('・') + '<button class="btn" id="unfilter">解除</button></span>';
+      if (R.onlyInc) h += '<span class="state">事案のある児童だけ<button class="btn" id="unfilter">解除</button></span>';
+      if (ORDER.join() !== DEF_ORDER.join()) h += '<span class="state">並び順：' + ORDER.filter(String).map(function (k) { return SORT_KEYS.filter(function (q) { return q.k === k; })[0].label; }).join('→') +
+        '<button class="btn" id="rorder">変える</button><button class="btn" id="unorder">戻す</button></span>';
     }
     h += '<span class="sp"></span><button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
@@ -141,7 +162,8 @@
       return { r: r, n: incsOf(r.id, R.fy).length };
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
-    rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
+    rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
+    rows.sort(function (a, b) { return App.byKeys(SORT_KEYS, ORDER, a, b); });
     var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="spc" title="特別支援学級">特支</th>' +
       C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
     rows.forEach(function (x) {
@@ -345,7 +367,9 @@
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rpairs')) { openPairs(null); return true; }
       if (t.closest('#rmore')) { moreDialog(); return true; }
-      if (t.closest('#unfilter')) { R.onlyInc = R.byCount = false; render(); return true; }
+      if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
+      if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
+      if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
       if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
       if ((x = t.closest('[data-memo]'))) {
         if (R.fy !== editableFy()) return true;
@@ -359,7 +383,6 @@
     },
     input: function (t) {
       if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
-      if (t.id === 'byCount') { R.byCount = t.checked; render(); return; }
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;

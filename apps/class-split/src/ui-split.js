@@ -98,41 +98,13 @@
   var DEF_ORDER = ['old', 'no', ''];
   function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
   var ORDER = loadOrder();
-  function byOrder(x, y) {
-    var a = S.P.kids[x], b = S.P.kids[y];
-    for (var i = 0; i < ORDER.length; i++) {
-      var key = SORT_KEYS.filter(function (q) { return q.k === ORDER[i]; })[0];
-      if (!key) continue;
-      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
-      if (d) return d;
-    }
-    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
-  }
+  function byOrder(x, y) { return App.byKeys(SORT_KEYS, ORDER, S.P.kids[x], S.P.kids[y]); }
   function orderDialog() {
-    var O = ORDER.slice();
-    App.openDlg({
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>組の中の並び順</h2>' +
-          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
-            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
-              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
-            }).join('') + '</div></div>';
-          }).join('') +
-          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
-          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var x = t.closest('[data-ord]');
-        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
-        if (t.closest('[data-ordreset]')) { O = DEF_ORDER.slice(); App.refreshDlg(); return true; }
-        return false;
-      },
-      onOk: function () {
-        ORDER = O.slice();
-        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
-        App.closeDlg(); render();
-      }
-    });
+    App.orderDialog({ title: '組の中の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: function (O) {
+      ORDER = O;
+      try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+      render();
+    } });
   }
 
   // ===== 描画 =====

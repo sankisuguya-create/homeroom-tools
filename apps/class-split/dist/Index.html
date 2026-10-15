@@ -1180,6 +1180,40 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     for (var i = 0; i < ts.length; i++) { var d = ts[i].scrollWidth - ts[i].parentNode.clientWidth; if (d > 1) over.push([ts[i], d]); } // 測ってから書く（行ごとの再計算を避ける）
     over.forEach(function (x) { x[0].style.setProperty('--d', -x[1] + 'px'); x[0].style.setProperty('--dur', (3 + x[1] / 25).toFixed(1) + 's'); x[0].classList.add('run'); });
   };
+  // 並び順の窓（第一〜第三優先）。クラス分けと名簿で共用。o: { title, keys:[{k,label}], def, cur, onOk(O) }
+  App.orderDialog = function (o) {
+    var O = o.cur.slice();
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>' + o.title + '</h2>' +
+          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
+            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + o.keys.concat([{ k: '', label: 'なし' }]).map(function (q) {
+              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
+          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-ord]');
+        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
+        if (t.closest('[data-ordreset]')) { O = o.def.slice(); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
+    });
+  };
+  // 第一〜第三優先で比べる。keys の f が無いものは よみ で比べる。最後は よみ・ID
+  App.byKeys = function (keys, order, a, b) {
+    for (var i = 0; i < order.length; i++) {
+      var key = keys.filter(function (q) { return q.k === order[i]; })[0];
+      if (!key) continue;
+      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
+      if (d) return d;
+    }
+    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
+  };
+
   // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
   var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
   // クラス分けの盤面のアイコンの大きさ（倍率）。この端末にだけ覚える
@@ -1260,7 +1294,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;
-  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, byCount: false, kid: null, form: null, school: null };
+  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
@@ -1302,6 +1336,25 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     });
   }
 
+  // ===== 並び順（第一〜第三優先）。クラス分けと同じ窓。この端末にだけ覚える =====
+  // 行には id・kana・male・cls・no・a・n（その年度の事案の件数）を持たせて比べる
+  var SORT_KEYS = [
+    { k: 'cls', label: '組', f: function (s) { return s.cls; } },
+    { k: 'no', label: '出席番号', f: function (s) { return s.no; } },
+    { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
+    { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
+    { k: 'kana', label: 'よみ（五十音）', f: null },
+    { k: 'inc', label: '事案の件数（多い順）', f: function (s) { return -s.n; } },
+    { k: 'care', label: '配慮項目の数（多い順）', f: function (s) { var n = 0; C.ATTRS.forEach(function (at) { if (!at.good && (s.a[at.k] | 0)) n += s.a[at.k] | 0; }); return -n; } }
+  ];
+  var DEF_ORDER = ['cls', 'no', ''];
+  var ORDER = (function () { try { var v = JSON.parse(localStorage.getItem('classSplit.rosterOrder')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); })();
+  function setOrder(O) {
+    ORDER = O;
+    try { localStorage.setItem('classSplit.rosterOrder', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+    render();
+  }
+
   // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
   function moreDialog() {
     App.openDlg({
@@ -1315,7 +1368,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
           }).join('') + '</div></section>' +
           '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
           '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
-          '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label></div></section>' +
+          '<button class="btn" id="rorder">並び順…</button></div></section>' +
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
@@ -1327,7 +1380,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
       // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
       click: function (t) {
-        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste')) return false;
+        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste,#rorder')) return false;
         App.closeDlg(); return App.screens.roster.click(t);
       }
     });
@@ -1355,7 +1408,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     else {
       if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
         (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
-      if (R.onlyInc || R.byCount) h += '<span class="state">' + [R.onlyInc ? '事案のある児童だけ' : '', R.byCount ? '件数の多い順' : ''].filter(String).join('・') + '<button class="btn" id="unfilter">解除</button></span>';
+      if (R.onlyInc) h += '<span class="state">事案のある児童だけ<button class="btn" id="unfilter">解除</button></span>';
+      if (ORDER.join() !== DEF_ORDER.join()) h += '<span class="state">並び順：' + ORDER.filter(String).map(function (k) { return SORT_KEYS.filter(function (q) { return q.k === k; })[0].label; }).join('→') +
+        '<button class="btn" id="rorder">変える</button><button class="btn" id="unorder">戻す</button></span>';
     }
     h += '<span class="sp"></span><button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
@@ -1398,7 +1453,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       return { r: r, n: incsOf(r.id, R.fy).length };
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
-    rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
+    rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
+    rows.sort(function (a, b) { return App.byKeys(SORT_KEYS, ORDER, a, b); });
     var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="spc" title="特別支援学級">特支</th>' +
       C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
     rows.forEach(function (x) {
@@ -1602,7 +1658,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rpairs')) { openPairs(null); return true; }
       if (t.closest('#rmore')) { moreDialog(); return true; }
-      if (t.closest('#unfilter')) { R.onlyInc = R.byCount = false; render(); return true; }
+      if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
+      if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
+      if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
       if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
       if ((x = t.closest('[data-memo]'))) {
         if (R.fy !== editableFy()) return true;
@@ -1616,7 +1674,6 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     },
     input: function (t) {
       if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
-      if (t.id === 'byCount') { R.byCount = t.checked; render(); return; }
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
@@ -1752,41 +1809,13 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   var DEF_ORDER = ['old', 'no', ''];
   function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
   var ORDER = loadOrder();
-  function byOrder(x, y) {
-    var a = S.P.kids[x], b = S.P.kids[y];
-    for (var i = 0; i < ORDER.length; i++) {
-      var key = SORT_KEYS.filter(function (q) { return q.k === ORDER[i]; })[0];
-      if (!key) continue;
-      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
-      if (d) return d;
-    }
-    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
-  }
+  function byOrder(x, y) { return App.byKeys(SORT_KEYS, ORDER, S.P.kids[x], S.P.kids[y]); }
   function orderDialog() {
-    var O = ORDER.slice();
-    App.openDlg({
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>組の中の並び順</h2>' +
-          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
-            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
-              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
-            }).join('') + '</div></div>';
-          }).join('') +
-          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
-          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var x = t.closest('[data-ord]');
-        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
-        if (t.closest('[data-ordreset]')) { O = DEF_ORDER.slice(); App.refreshDlg(); return true; }
-        return false;
-      },
-      onOk: function () {
-        ORDER = O.slice();
-        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
-        App.closeDlg(); render();
-      }
-    });
+    App.orderDialog({ title: '組の中の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: function (O) {
+      ORDER = O;
+      try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+      render();
+    } });
   }
 
   // ===== 描画 =====

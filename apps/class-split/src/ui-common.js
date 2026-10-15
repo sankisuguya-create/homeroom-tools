@@ -29,6 +29,40 @@
     for (var i = 0; i < ts.length; i++) { var d = ts[i].scrollWidth - ts[i].parentNode.clientWidth; if (d > 1) over.push([ts[i], d]); } // 測ってから書く（行ごとの再計算を避ける）
     over.forEach(function (x) { x[0].style.setProperty('--d', -x[1] + 'px'); x[0].style.setProperty('--dur', (3 + x[1] / 25).toFixed(1) + 's'); x[0].classList.add('run'); });
   };
+  // 並び順の窓（第一〜第三優先）。クラス分けと名簿で共用。o: { title, keys:[{k,label}], def, cur, onOk(O) }
+  App.orderDialog = function (o) {
+    var O = o.cur.slice();
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>' + o.title + '</h2>' +
+          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
+            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + o.keys.concat([{ k: '', label: 'なし' }]).map(function (q) {
+              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
+          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-ord]');
+        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
+        if (t.closest('[data-ordreset]')) { O = o.def.slice(); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
+    });
+  };
+  // 第一〜第三優先で比べる。keys の f が無いものは よみ で比べる。最後は よみ・ID
+  App.byKeys = function (keys, order, a, b) {
+    for (var i = 0; i < order.length; i++) {
+      var key = keys.filter(function (q) { return q.k === order[i]; })[0];
+      if (!key) continue;
+      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
+      if (d) return d;
+    }
+    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
+  };
+
   // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
   var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
   // クラス分けの盤面のアイコンの大きさ（倍率）。この端末にだけ覚える

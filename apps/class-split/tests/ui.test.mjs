@@ -109,6 +109,13 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.dlg.more #onlyInc').isChecked() && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
   await p.keyboard.press('Escape'); await p.click('#unfilter');
   ok(await p.locator('#main .state').count() === 0, `${w}x${h} 解除で状態が消える`);
+  await p.click('#rmore'); await p.click('.dlg.more #rorder');
+  await p.click('[data-ord="0:female"]'); await p.click('[data-ord="1:kana"]'); await p.keyboard.press('Enter');
+  const sx = await p.locator('td.nm .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
+  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 並び順（女が先）が名簿に効く`);
+  ok(await p.locator('#main .state', { hasText: '並び順' }).count() === 1, `${w}x${h} 並び順を変えると帯に出る`);
+  await p.click('#unorder');
+  ok(await p.locator('#main .state').count() === 0 && (await p.locator('td.nm').first().evaluate(e => e.closest('tr').cells[0].textContent)) === '1', `${w}x${h} 戻すで番号順`);
   await p.click('#rmore'); await p.locator('.dlg.more .tab[data-fy]').last().click();
   ok(await p.locator('.dlg.more').count() === 0 && await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと窓が閉じ、帯に「見るだけ」が出る`);
   await p.locator('#main .state .btn').click();
