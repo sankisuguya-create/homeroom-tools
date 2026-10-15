@@ -98,41 +98,13 @@
   var DEF_ORDER = ['old', 'no', ''];
   function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
   var ORDER = loadOrder();
-  function byOrder(x, y) {
-    var a = S.P.kids[x], b = S.P.kids[y];
-    for (var i = 0; i < ORDER.length; i++) {
-      var key = SORT_KEYS.filter(function (q) { return q.k === ORDER[i]; })[0];
-      if (!key) continue;
-      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
-      if (d) return d;
-    }
-    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
-  }
+  function byOrder(x, y) { return App.byKeys(SORT_KEYS, ORDER, S.P.kids[x], S.P.kids[y]); }
   function orderDialog() {
-    var O = ORDER.slice();
-    App.openDlg({
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>組の中の並び順</h2>' +
-          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
-            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
-              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
-            }).join('') + '</div></div>';
-          }).join('') +
-          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
-          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var x = t.closest('[data-ord]');
-        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
-        if (t.closest('[data-ordreset]')) { O = DEF_ORDER.slice(); App.refreshDlg(); return true; }
-        return false;
-      },
-      onOk: function () {
-        ORDER = O.slice();
-        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
-        App.closeDlg(); render();
-      }
-    });
+    App.orderDialog({ title: '組の中の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: function (O) {
+      ORDER = O;
+      try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+      render();
+    } });
   }
 
   // ===== 描画 =====
@@ -161,6 +133,27 @@
       '<span class="jr">' + jn + '</span></div>';
   }
 
+  function moreDialog() {
+    var ro = !!S.decision, np = S.view !== 'plan';
+    var btn = function (id, label, kbd, off) { return '<button class="btn" id="' + id + '"' + (off ? ' disabled' : '') + '>' + label + (kbd ? '<kbd>' + kbd + '</kbd>' : '') + '</button>'; };
+    App.openDlg({
+      noEnter: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
+          (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
+            '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
+          '<section><h3>表示</h3><div class="rbar">' + btn('order', '並び順…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
+          (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var b = t.closest('button[id]');
+        if (!b || b.disabled) return false;
+        App.closeDlg(); return App.screens.split.click(t);
+      }
+    });
+  }
+
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
@@ -172,17 +165,11 @@
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
     h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
-    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　4/1まで取り消せます<button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
-    else {
-      h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
-        '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>' +
-        '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
-        (S.plans.length > 1 && !S.decision ? '<button class="btn" id="delp"' + (S.view !== 'plan' ? ' disabled' : '') + '>削除<kbd>Del</kbd></button>' : '') +
-        '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
-        '<button class="btn" id="trans">転入生…</button>' +
-        '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
-    }
-    h += '<button class="btn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>並び順…</button><button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
+    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '<button class="btn primary" id="cnames">組の番号を決める…</button><button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
+    else h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
+      '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>';
+    // 編集中に毎回は使わない操作は「その他…」の窓へ（キーの近道はそのまま効く）
+    h += '<button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
     if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
     return '<div class="bar">' + h + '</div>';
   }
@@ -209,8 +196,8 @@
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner, hk) { return '<span class="c ' + (fl[m] ? 'w' : '') + (hk && S.hl === hk ? ' on' : '') + '"' + (hk ? ' data-hl="' + hk + '" role="button" title="押すと、この項目の児童だけを明るく出す"' : '') + '>' + inner + c[m] + '</span>'; };
-      h += '<section class="col" style="--cc:' + App.classColor(k).l + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
-        '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
+      h += '<section class="col nc' + (k % 2) + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
+        '<div class="h1"><b class="ncl">' + C.newClass(k) + '</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1), at.k); }).join('') + '</div>' +
@@ -314,7 +301,7 @@
 
   // ===== 確認の枠 =====
   function chipsSide(ids, from, to, ex) {
-    return '<div class="side"><div class="lab"><b>' + (from + 1) + '組</b> → ' + (to + 1) + '組</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
+    return '<div class="side"><div class="lab"><b>' + C.newClass(from) + '</b> → ' + C.newClass(to) + '</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
   }
   function swapDialog(d) {
     var p = S.plans[S.active];
@@ -323,7 +310,7 @@
       html: function () {
         var left, right, arrow, title, ex = [], note = '';
         if (d.type === 'swap') { var r = E.swapChanges(d); d.ch = r.ch; ex = r.ex; left = r.A; right = r.B; arrow = '⇄'; title = '入れ替えますか？'; }
-        else { left = d.GA; arrow = '→'; title = (d.kb + 1) + '組へ移しますか？'; }
+        else { left = d.GA; arrow = '→'; title = C.newClass(d.kb) + 'へ移しますか？'; }
         if (d.GA.length > 1 || (d.GB && d.GB.length > 1)) note += '<span>「つける」の相手と一緒に動かします。</span>';
         if (ex.length) note += '<span><b>' + ex.map(function (i) { return App.esc(S.P.kids[i].name); }).join('・') + '</b> は人数を合わせるため自動で選びました（偏りが最も小さくなる児童）。</span>' +
           (d.cands.length > d.cnt ? '<button class="btn" data-act="next">別の児童にする（' + ((d.ci / d.cnt | 0) + 1) + '/' + Math.floor(d.cands.length / d.cnt) + '）<kbd>Tab</kbd></button>' : '');
@@ -335,17 +322,17 @@
             tgt.slice(0, 3).map(function (i) { return chipHTML(i, ''); }).join('') +
             (tgt.length > 3 ? '<details class="more"><summary>＋ あと' + (tgt.length - 3) + '人</summary><div class="side">' + tgt.slice(3).map(function (i) { return chipHTML(i, ''); }).join('') + '</div></details>' : '') + '</div></div>';
         }
-        if (d.type === 'move' && E.sizeOf(p.asg, d.kb) + left.length > C.CAP) warn += '<div class="warnbox">✕ ' + (d.kb + 1) + '組が上限' + C.CAP + '人を超えます</div>';
+        if (d.type === 'move' && E.sizeOf(p.asg, d.kb) + left.length > C.CAP) warn += '<div class="warnbox">✕ ' + C.newClass(d.kb) + 'が上限' + C.CAP + '人を超えます</div>';
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + title + '"><h2>' + title + '</h2>' +
           '<div class="swap">' + chipsSide(left, d.ka, d.kb, ex) + '<div class="arrow">' + arrow + '</div>' +
-          (right ? chipsSide(right, d.kb, d.ka, ex) : '<div class="side"><div class="lab"><b>' + (d.kb + 1) + '組</b>（' + E.sizeOf(p.asg, d.kb) + '人 → ' + (E.sizeOf(p.asg, d.kb) + left.length) + '人）</div></div>') + '</div>' +
+          (right ? chipsSide(right, d.kb, d.ka, ex) : '<div class="side"><div class="lab"><b>' + C.newClass(d.kb) + '</b>（' + E.sizeOf(p.asg, d.kb) + '人 → ' + (E.sizeOf(p.asg, d.kb) + left.length) + '人）</div></div>') + '</div>' +
           (note ? '<div class="notebox">' + note + '</div>' : '') + warn +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">' +
           (br.length ? '続行する' : d.type === 'swap' ? '入れ替える' : '移す') + '<kbd>Enter</kbd></button></div></div></div>';
       },
       onOk: function () {
         var names = d.type === 'swap' ? d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' ⇄ ' + E.swapChanges(d).B.map(function (i) { return S.P.kids[i].name; }).join('・')
-          : d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' → ' + (d.kb + 1) + '組';
+          : d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' → ' + C.newClass(d.kb);
         App.closeDlg();
         doMove(d.ch, names);
         if (d.next != null) { S.follow = d.next; S.sel = d.next; updateSel(); flash([d.next]); }
@@ -420,10 +407,41 @@
     });
   }
 
+  // 決定した組の番号。未設定の間は仮（A組＝1組…）
+  function namesOf() { var d = S.decision, n = d && d.names; return n && n.length ? n : Array.from({ length: S.P.nc }, function (_, k) { return k + 1; }); }
+  function namesText() {
+    return namesOf().map(function (v, k) { return C.newClass(k) + '＝' + v + '組'; }).join('・') + (S.decision.named ? '' : '（仮）');
+  }
+  function namesDialog() {
+    var N = namesOf().slice(), grade = App.st.grade;
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="組の番号を決める" style="max-width:560px"><h2>組の番号を決める</h2>' +
+          N.map(function (v, k) {
+            return '<div class="ordrow"><b class="ncl">' + C.newClass(k) + '</b><span>→</span><div class="lvs">' + N.map(function (_, j) {
+              return '<button class="lv" data-cn="' + k + ':' + (j + 1) + '" aria-pressed="' + (v === j + 1) + '">' + (j + 1) + '組</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">番号を押すと、その番号だった組と入れ替わります。保存すると、来年度の名簿の組が付け替わります（出席番号は組の中で変わりません）。後から何度でも直せます。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この番号にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-cn]'); if (!x) return false;
+        var p = x.dataset.cn.split(':'), k = +p[0], v = +p[1], j = N.indexOf(v);
+        N[j] = N[k]; N[k] = v; App.refreshDlg(); return true;
+      },
+      onOk: function () {
+        App.closeDlg();
+        App.save(function () { return App.pf().setClassNames(grade, N); }).then(function () { return App.reload(); })
+          .then(function () { App.toast('組の番号を決めました：' + N.map(function (v, k) { return C.newClass(k) + '＝' + v + '組'; }).join('・')); });
+      }
+    });
+  }
+
   function decideDialog() {
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), grade = App.st.grade;
     var body = '<p>' + App.esc(planName(p)) + ' で決定します。次のことを行います。</p><ul><li>' + (grade + 1) + '年の名簿を作ります（新しい番号は組ごとの男女混合の五十音順）</li>' +
-      '<li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
+      '<li>組の番号は仮で A組＝1組・B組＝2組… にします。番号は後で「組の番号を決める」で決めます</li><li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
     confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
@@ -484,17 +502,29 @@
   }
 
   function pairsDialog() {
-    var d = App.st.data, esc = App.esc, kids = S.P.kids;
+    App.pairsDialog({
+      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old }; }), nc: S.P.nc, pre: '旧',
+      // 案を先に保存してから読み込み直す（案は残る）
+      save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
+    });
+  }
+
+  // つける・離す・組に固定の窓。クラス分けの画面と名簿の画面から開く
+  // o: { kids:[{id,name,kana,no,cls}], nc, pre:'旧'|'', a:最初に選んでおく児童, save:function(list)→Promise }
+  App.pairsDialog = function (o) {
+    var d = App.st.data, esc = App.esc, kids = o.kids, kidOf = {};
+    kids.forEach(function (s) { kidOf[s.id] = s; });
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     var carry = (d.carry || []).slice();
-    var F = { t: 'far', a: null, b: null, k: 0, memo: '' };
-    var nm = function (id) { var i = S.idx[id]; return i == null ? id : kids[i].name + '（旧' + (kids[i].old + 1) + '組）'; };
-    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + (p.k + 1) + '組' : nm(p.a) + ' と ' + nm(p.b); };
+    var F = { t: 'far', a: o.a || null, b: null, k: 0, memo: '' };
+    var cl = function (s) { return s.cls < 0 ? '転入' : o.pre + (s.cls + 1) + '組'; };
+    var nm = function (id) { var s = kidOf[id]; return s ? s.name + '（' + cl(s) + '）' : id; };
+    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + C.newClass(p.k) : nm(p.a) + ' と ' + nm(p.b); };
     var sugg = function (q, slot) {
       q = (q || '').trim();
       if (!q) return '';
       var hit = kids.filter(function (s) { return s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || s.id.indexOf(q) === 0; }).slice(0, 8);
-      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">旧' + (s.old + 1) + '組' + s.no + '番 ' + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">' + cl(s) + (s.no ? s.no + '番 ' : ' ') + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
     };
     var pick = function (slot) {
       var id = F[slot];
@@ -503,12 +533,12 @@
     };
     var canAdd = function () { return F.a && (F.t === 'fix' ? true : F.b && F.b !== F.a); };
     App.openDlg({
-      focus: 'qa',
+      focus: F.a ? 'qb' : 'qa',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す"><h2>つける・離す・組に固定</h2>' +
           '<div class="form"><div class="toggles">' + ['far', 'near', 'fix'].map(function (t) { return '<button class="tg" data-pt="' + t + '" aria-pressed="' + (F.t === t) + '">' + PT[t] + '</button>'; }).join('') + '</div>' +
           '<div class="row" style="align-items:flex-start"><div>' + pick('a') + '</div><div>' + (F.t === 'fix' ?
-            '<div class="lvs">' + Array.from({ length: S.P.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
+            '<div class="lvs">' + Array.from({ length: o.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + C.newClass(k) + '</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
           '<div class="row"><input id="pmemo" placeholder="メモ（任意・氏名は書かない）" value="' + esc(F.memo) + '" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><button class="btn" id="padd"' + (canAdd() ? '' : ' disabled') + '>追加</button></div></div>' +
           '<div class="tw" style="max-height:220px"><table class="r ro"><thead><tr><th>種類</th><th style="text-align:left">児童</th><th style="text-align:left">メモ</th><th></th></tr></thead><tbody>' +
           (list.map(function (p, i) { return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td style="text-align:left">' + esc(p.memo || '') + '</td><td><button class="btn" data-pdel="' + i + '">削除</button></td></tr>'; }).join('') ||
@@ -538,15 +568,13 @@
         return false;
       },
       onOk: function () {
-        var grade = App.st.grade, data = serialize(), n = list.length;
+        var n = list.length;
         App.closeDlg();
-        // 案を先に保存してから読み込み直す（案は残る）
-        clearTimeout(saveT);
-        App.save(function () { return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); })
+        App.save(function () { return o.save(list); })
           .then(function () { return App.reload(); }).then(function () { App.toast('つける・離すを保存しました（' + n + '件）'); });
       }
     });
-  }
+  };
 
   function showViol() {
     var a = E.analyze(S.ctx, S.plans[S.active].asg), r = App.$('vbtn').getBoundingClientRect(), esc = App.esc;
@@ -693,6 +721,8 @@
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
+      if (t.closest('#smore')) { moreDialog(); return true; }
+      if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }

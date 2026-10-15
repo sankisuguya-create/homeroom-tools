@@ -156,6 +156,7 @@
     setAttr: function (fy, grade, id, k, v, text) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
+      if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 200); else delete r.a.memo; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
       return later({ ok: true });
@@ -193,7 +194,7 @@
       var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
       S.years[FY + 1] = S.years[FY + 1] || {};
       S.years[FY + 1][grade + 1] = E.nextYearRows(kids, asg, nc);
-      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
+      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), names: Array.from({ length: nc }, function (_, k) { return k + 1; }), named: false, carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
       return later(S.decisions[grade]);
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
@@ -235,6 +236,16 @@
       S.inc = S.inc.filter(function (x) { return x.ids.length; });
       ids.forEach(function (id) { delete S.kids[id]; });
       return later({ kids: ids.length });
+    },
+    // 組の番号を決める：来年度の名簿の組を付け替える（A組から順に names の番号へ）
+    setClassNames: function (grade, names) { gen();
+      var dec = S.decisions[grade];
+      if (!dec) return Promise.reject(new Error('決定されていません'));
+      var old = dec.names, nc = old.length;
+      if (names.length !== nc || names.slice().sort().join() !== old.slice().sort().join()) return Promise.reject(new Error('組の番号は 1〜' + nc + ' を1つずつ使ってください'));
+      (S.years[FY + 1][grade + 1] || []).forEach(function (r) { var k = old.indexOf(r.cls + 1); if (k >= 0) r.cls = names[k] - 1; });
+      dec.names = names.slice(); dec.named = true;
+      return later({ ok: true });
     },
     undoDecide: function (grade) { gen();
       if (!S.decisions[grade]) return Promise.reject(new Error('決定されていません'));

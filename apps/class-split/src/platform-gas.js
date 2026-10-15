@@ -66,6 +66,7 @@
     importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
     savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
     undoDecide: function (grade) { return call('apiUndoDecide', grade); },
+    setClassNames: function (grade, names) { return call('apiSetClassNames', grade, names); },
     settings: function () { return call('apiSettings'); },
     saveSettings: function (s) { return call('apiSaveSettings', s); },
     leaveCandidates: function () { return call('apiLeaveCandidates'); },

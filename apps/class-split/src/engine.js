@@ -158,21 +158,21 @@
     var c = counts(ctx, asg), bad = [], warn = [], kids = ctx.P.kids, k, m;
     ctx.P.pairs.forEach(function (p) {
       if (!pairBroken(p, asg)) return;
-      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + (asg[p.i] + 1) + '組', ids: [p.i, p.j] });
-      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + (asg[p.i] + 1) + '組）と ' + kids[p.j].name + '（' + (asg[p.j] + 1) + '組）が別', ids: [p.i, p.j] });
-      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + (p.k + 1) + '組でない', ids: [p.i] });
+      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + C.newClass(asg[p.i]), ids: [p.i, p.j] });
+      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + C.newClass(asg[p.i]) + '）と ' + kids[p.j].name + '（' + C.newClass(asg[p.j]) + '）が別', ids: [p.i, p.j] });
+      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + C.newClass(p.k) + 'でない', ids: [p.i] });
     });
     var flag = [];
     for (k = 0; k < ctx.nc; k++) {
       flag.push(new Array(ctx.M + 1).fill(false));
-      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: (k + 1) + '組 ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
-      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: (k + 1) + '組 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
+      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: C.newClass(k) + ' ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
+      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: C.newClass(k) + ' 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
       ctx.HV.forEach(function (hv) {
-        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: (k + 1) + '組 ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
+        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: C.newClass(k) + ' ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
       });
       for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
-        warn.push({ txt: (k + 1) + '組 ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
+        warn.push({ txt: C.newClass(k) + ' ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
     }
     return { c: c, bad: bad, warn: warn, flag: flag, inc: incByClass(ctx, asg) };
@@ -318,6 +318,7 @@
       var a = {};
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if (at.side && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; });
       if (s.a.sp) a.sp = 1;
+      if (s.a.memo) a.memo = s.a.memo;
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }

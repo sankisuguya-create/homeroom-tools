@@ -139,7 +139,9 @@ td.cell:hover{background:var(--soft)}
 table.ro td.cell{cursor:default}
 table.ro td.cell:hover{background:none}
 td.ji{cursor:pointer}
-.sx{color:var(--sub);font-weight:400;font-size:.8rem;margin-right:4px}
+.sx{color:var(--sub);font-weight:700;font-size:.8rem;margin-right:4px}
+.sx.f{color:#D11F3A}
+.sx.m{color:#1A62D6}
 .frozen{font-size:.85rem;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
 .pane{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto;box-sizing:border-box}
 .pane h2{margin:0;font-size:1.2rem}
@@ -315,7 +317,10 @@ body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(
 body[data-screen="split"] .hint{color:#ECECEC}
 :is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
-.col{background:color-mix(in srgb,var(--cc,#fff) 40%,#fff)}
+.col{background:#F7F8FA}
+/* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
+.col.nc1{background:#D9DFE6}
+.ncl{display:inline-block;background:#1A1A1A;color:#fff;border-radius:4px;padding:0 8px;letter-spacing:.05em}
 /* 名簿の表：横線に加えて縦線も薄く引く */
 body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
 body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}
@@ -326,8 +331,29 @@ body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filte
 body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
 body[data-screen="roster"] table.r{font-size:17px}
 body[data-screen="roster"] table.r :is(th,td){padding:5px 6px}
+/* マスの幅と高さを固定し、＋のアイコンは描くときだけ拡大する（行の高さ・列の幅を変えない） */
+body[data-screen="roster"] table.r td.cell{width:2.6em;min-width:2.6em;max-width:2.6em;height:38px;padding:0;box-sizing:border-box;overflow:visible}
 body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
-body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{font-size:1.3em}
+body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{transform:scale(1.45)}
+/* 特別支援学級：有無だけなので最小の幅 */
+body[data-screen="roster"] table.r :is(th,td).spc{width:2.2em;min-width:2.2em;max-width:2.2em;padding:0 2px;font-size:.78em}
+body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
+body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
+/* つける・離す：数だけ。相手はカーソルで出す */
+body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
+table.r td.pr{min-width:3.4em}
+table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
+table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
+.prm{display:inline-flex;gap:3px}
+.prm b{font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid}
+.prm .pf{color:var(--alert);border-color:var(--alert)}
+.prm .pn{color:var(--link);border-color:var(--link)}
+.prm .px{color:var(--sub);border-color:var(--sub)}
+/* 備考：1行で切り、全文はカーソルで出す（押すと書ける） */
+table.r :is(th,td).memo{text-align:left;min-width:10em;font-size:.85em}
+table.r td.memo>div{width:0;min-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* 名前の列は枠の幅だけ。表の余りは備考の列が受ける */
+body[data-screen="roster"] table.r :is(th,td):nth-child(-n+3):not(.cell){width:1%}
 body[data-screen="roster"] table.r th .b{font-size:.8em}
 /* 児童の窓（経年の記録と事案） */
 .kidpop{width:min(760px,94vw);max-height:88vh;max-width:none;position:relative;padding:14px 16px}
@@ -352,6 +378,17 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* カードの事案の数：押すと記録の窓 */
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
+/* 名簿の上の帯：いまの状態（既定と違う時だけ）。戻す・解除のボタンを添える */
+.rbar .state{display:inline-flex;gap:6px;align-items:center;font-size:.85rem;background:var(--fill-b);color:var(--ink);border-radius:6px;padding:2px 4px 2px 10px}
+.rbar .state .btn{padding:2px 8px}
+.dlg.more section{margin-bottom:10px}
+.dlg.more h3{margin:0 0 4px;font-size:.9rem}
+/* 名簿の名前：空白込み8文字分の枠。入らない名前は左へ流して最初に戻す（動きを減らす設定では止める） */
+.nmw{display:inline-block;width:8em;overflow:hidden;white-space:nowrap;vertical-align:bottom}
+.nmt{display:inline-block}
+.nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
+@keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -425,6 +462,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     var y = +p[0], m = +p[1];
     return m >= 4 ? y : y - 1;
   };
+
+  // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -590,21 +630,21 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     var c = counts(ctx, asg), bad = [], warn = [], kids = ctx.P.kids, k, m;
     ctx.P.pairs.forEach(function (p) {
       if (!pairBroken(p, asg)) return;
-      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + (asg[p.i] + 1) + '組', ids: [p.i, p.j] });
-      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + (asg[p.i] + 1) + '組）と ' + kids[p.j].name + '（' + (asg[p.j] + 1) + '組）が別', ids: [p.i, p.j] });
-      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + (p.k + 1) + '組でない', ids: [p.i] });
+      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + C.newClass(asg[p.i]), ids: [p.i, p.j] });
+      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + C.newClass(asg[p.i]) + '）と ' + kids[p.j].name + '（' + C.newClass(asg[p.j]) + '）が別', ids: [p.i, p.j] });
+      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + C.newClass(p.k) + 'でない', ids: [p.i] });
     });
     var flag = [];
     for (k = 0; k < ctx.nc; k++) {
       flag.push(new Array(ctx.M + 1).fill(false));
-      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: (k + 1) + '組 ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
-      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: (k + 1) + '組 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
+      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: C.newClass(k) + ' ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
+      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: C.newClass(k) + ' 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
       ctx.HV.forEach(function (hv) {
-        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: (k + 1) + '組 ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
+        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: C.newClass(k) + ' ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
       });
       for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
-        warn.push({ txt: (k + 1) + '組 ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
+        warn.push({ txt: C.newClass(k) + ' ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
     }
     return { c: c, bad: bad, warn: warn, flag: flag, inc: incByClass(ctx, asg) };
@@ -750,6 +790,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       var a = {};
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if (at.side && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; });
       if (s.a.sp) a.sp = 1;
+      if (s.a.memo) a.memo = s.a.memo;
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -1023,6 +1064,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     setAttr: function (fy, grade, id, k, v, text) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
+      if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 200); else delete r.a.memo; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
       return later({ ok: true });
@@ -1060,7 +1102,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
       S.years[FY + 1] = S.years[FY + 1] || {};
       S.years[FY + 1][grade + 1] = E.nextYearRows(kids, asg, nc);
-      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
+      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), names: Array.from({ length: nc }, function (_, k) { return k + 1; }), named: false, carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
       return later(S.decisions[grade]);
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
@@ -1103,6 +1145,16 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       ids.forEach(function (id) { delete S.kids[id]; });
       return later({ kids: ids.length });
     },
+    // 組の番号を決める：来年度の名簿の組を付け替える（A組から順に names の番号へ）
+    setClassNames: function (grade, names) { gen();
+      var dec = S.decisions[grade];
+      if (!dec) return Promise.reject(new Error('決定されていません'));
+      var old = dec.names, nc = old.length;
+      if (names.length !== nc || names.slice().sort().join() !== old.slice().sort().join()) return Promise.reject(new Error('組の番号は 1〜' + nc + ' を1つずつ使ってください'));
+      (S.years[FY + 1][grade + 1] || []).forEach(function (r) { var k = old.indexOf(r.cls + 1); if (k >= 0) r.cls = names[k] - 1; });
+      dec.names = names.slice(); dec.named = true;
+      return later({ ok: true });
+    },
     undoDecide: function (grade) { gen();
       if (!S.decisions[grade]) return Promise.reject(new Error('決定されていません'));
       if (S.years[FY + 1]) delete S.years[FY + 1][grade + 1];
@@ -1137,6 +1189,47 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
+  // 名簿の名前：枠は空白込み8文字分。入らない名前だけ、左へ流して最初に戻すのを繰り返す
+  App.nameBox = function (name) { return '<span class="nmw"><span class="nmt">' + App.esc(name) + '</span></span>'; };
+  App.fitNames = function (root) {
+    var ts = root.querySelectorAll('.nmt'), over = [];
+    for (var i = 0; i < ts.length; i++) { var d = ts[i].scrollWidth - ts[i].parentNode.clientWidth; if (d > 1) over.push([ts[i], d]); } // 測ってから書く（行ごとの再計算を避ける）
+    over.forEach(function (x) { x[0].style.setProperty('--d', -x[1] + 'px'); x[0].style.setProperty('--dur', (3 + x[1] / 25).toFixed(1) + 's'); x[0].classList.add('run'); });
+  };
+  // 並び順の窓（第一〜第三優先）。クラス分けと名簿で共用。o: { title, keys:[{k,label}], def, cur, onOk(O) }
+  App.orderDialog = function (o) {
+    var O = o.cur.slice();
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>' + o.title + '</h2>' +
+          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
+            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + o.keys.concat([{ k: '', label: 'なし' }]).map(function (q) {
+              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
+          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-ord]');
+        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
+        if (t.closest('[data-ordreset]')) { O = o.def.slice(); App.refreshDlg(); return true; }
+        return false;
+      },
+      onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
+    });
+  };
+  // 第一〜第三優先で比べる。keys の f が無いものは よみ で比べる。最後は よみ・ID
+  App.byKeys = function (keys, order, a, b) {
+    for (var i = 0; i < order.length; i++) {
+      var key = keys.filter(function (q) { return q.k === order[i]; })[0];
+      if (!key) continue;
+      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
+      if (d) return d;
+    }
+    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
+  };
+
   // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
   var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
   // クラス分けの盤面のアイコンの大きさ（倍率）。この端末にだけ覚える
@@ -1217,13 +1310,96 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;
-  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, byCount: false, kid: null, form: null, school: null };
+  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null };
 
   function D() { return App.st.data; }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incsOf(id, fy) {
     return D().incidents.filter(function (x) { return x.ids.indexOf(id) >= 0 && (fy == null || C.fiscalYearOfIso(x.date) === fy); });
+  }
+
+  // つける・離すは今年度の学年の分だけ（決定の後は前年度からの候補として持ち越す）
+  function pairEdit() { return R.fy === D().fy && !D().decision; }
+  function pairsOf(id) { return D().pairs.filter(function (p) { return p.a === id || p.b === id; }); }
+  function openPairs(a) {
+    var d = D(), Y = yearOf(d.fy), nc = 0;
+    Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var kids = Y.rows.map(function (r) { var s = d.kids[r.id]; return { id: r.id, name: s.name, kana: s.kana, no: r.no, cls: r.cls }; });
+    (d.transfers || []).forEach(function (t) { kids.push({ id: t.id, name: t.name, kana: t.kana, no: 0, cls: -1 }); });
+    App.pairsDialog({ kids: kids, nc: Math.min(C.MAX_CLASSES, Math.max(2, nc)), pre: '', a: a,
+      save: function (list) { return App.pf().savePairs(d.grade, list); } });
+  }
+
+  // 備考：児童ごと・年度ごとの自由記述。決定で来年度に写る
+  function memoDialog(Y, r) {
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    App.openDlg({
+      focus: 'mtx',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:520px">' +
+          '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
+          '<textarea id="mtx" rows="4" maxlength="200" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（200字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
+      },
+      onOk: function () {
+        var text = App.$('mtx').value.trim();
+        if (text) r.a.memo = text; else delete r.a.memo;
+        App.closeDlg(); render();
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+      }
+    });
+  }
+
+  // ===== 並び順（第一〜第三優先）。クラス分けと同じ窓。この端末にだけ覚える =====
+  // 行には id・kana・male・cls・no・a・n（その年度の事案の件数）を持たせて比べる
+  var SORT_KEYS = [
+    { k: 'cls', label: '組', f: function (s) { return s.cls; } },
+    { k: 'no', label: '出席番号', f: function (s) { return s.no; } },
+    { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
+    { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
+    { k: 'kana', label: 'よみ（五十音）', f: null },
+    { k: 'inc', label: '事案の件数（多い順）', f: function (s) { return -s.n; } },
+    { k: 'care', label: '配慮項目の数（多い順）', f: function (s) { var n = 0; C.ATTRS.forEach(function (at) { if (!at.good && (s.a[at.k] | 0)) n += s.a[at.k] | 0; }); return -n; } }
+  ];
+  var DEF_ORDER = ['cls', 'no', ''];
+  var ORDER = (function () { try { var v = JSON.parse(localStorage.getItem('classSplit.rosterOrder')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); })();
+  function setOrder(O) {
+    ORDER = O;
+    try { localStorage.setItem('classSplit.rosterOrder', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+    render();
+  }
+
+  // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
+  function moreDialog() {
+    App.openDlg({
+      html: function () {
+        var d = D(), edit = R.fy === editableFy();
+        var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
+        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:640px"><h2>その他</h2>' +
+          '<section><h3>年度</h3><div class="rbar">' + years.map(function (fy) {
+            return '<button class="tab" data-fy="' + fy + '" aria-selected="' + (fy === R.fy) + '">' + fy + '年度（' + yearOf(fy).grade + '年）' +
+              (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</button>';
+          }).join('') + '</div></section>' +
+          '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
+          '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
+          '<button class="btn" id="rorder">並び順…</button></div></section>' +
+          '<section><h3>編集</h3><div class="rbar">' +
+          (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
+          (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
+          '<section><h3>使い方</h3><div class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通と備考は内容を書く（自動保存）。<br>' +
+          'つける・離すの列を押すと、その児童を選んで設定の窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      noEnter: true,
+      input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
+      // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
+      click: function (t) {
+        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste,#rorder')) return false;
+        App.closeDlg(); return App.screens.roster.click(t);
+      }
+    });
   }
 
   function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
@@ -1240,28 +1416,26 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       return;
     }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
-    var h = '<div class="rbar"><span class="lab">年度</span>' + years.map(function (fy) {
-      var y = yearOf(fy);
-      return '<button class="tab" data-fy="' + fy + '" aria-selected="' + (fy === R.fy) + '">' + fy + '年度（' + y.grade + '年）' +
-        (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</button>';
-    }).join('') + '</div>';
-    h += '<div class="rbar"><span class="lab">範囲</span>';
-    for (var k = 0; k < nc; k++) h += '<button class="tab" data-cls="' + k + '" aria-selected="' + (R.scope === 'cls' && R.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組（' + Y.rows.filter(function (r) { return r.cls === k; }).length + '人）</button>';
+    // 上の帯：編集中に使う「組・学年」の切り替えと、いまの状態（既定と違う時だけ）だけを出す。ほかは「その他…」の窓へ
+    var h = '<div class="rbar">';
+    // 決定の後の準備中の年度：組の番号が仮の間は、どの新しい組かを添える
+    var prov = R.fy === d.fy + 1 && d.decision && !d.decision.named ? d.decision.names : null;
+    for (var k = 0; k < nc; k++) h += '<button class="tab" data-cls="' + k + '" aria-selected="' + (R.scope === 'cls' && R.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組' + (prov && prov.indexOf(k + 1) >= 0 ? '〔' + C.newClass(prov.indexOf(k + 1)) + '・仮〕' : '') + '（' + Y.rows.filter(function (r) { return r.cls === k; }).length + '人）</button>';
     h += '<button class="tab" data-scope="grade" aria-selected="' + (R.scope === 'grade') + '">学年（' + Y.rows.length + '人）</button>';
-    h += '<button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>';
-    if (R.scope !== 'school') {
-      h += '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>';
-      h += '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label>';
+    if (R.scope === 'school') h += '<span class="state">全校の事案を表示中<button class="btn" data-scope="cls">戻る</button></span>';
+    else {
+      if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
+        (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
+      if (R.onlyInc) h += '<span class="state">事案のある児童だけ<button class="btn" id="unfilter">解除</button></span>';
+      if (ORDER.join() !== DEF_ORDER.join()) h += '<span class="state">並び順：' + ORDER.filter(String).map(function (k) { return SORT_KEYS.filter(function (q) { return q.k === k; })[0].label; }).join('→') +
+        '<button class="btn" id="rorder">変える</button><button class="btn" id="unorder">戻す</button></span>';
     }
-    h += '<span class="sp"></span>';
-    if (edit && R.scope !== 'school') h += '<button class="btn" id="paste">名簿を貼る…</button>';
-    if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通は内容を書く（自動保存）</span>' :
-      R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
-      '<span class="note">過去の年度は見るだけです</span>';
+    h += '<span class="sp"></span><button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
+    App.fitNames(App.$('main'));
     kidPop();
   }
 
@@ -1292,24 +1466,41 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   }
 
   function table(Y, edit) {
-    var d = D(), esc = App.esc;
+    var d = D(), esc = App.esc, showPairs = R.fy === d.fy, pe = pairEdit();
     var rows = Y.rows.filter(function (r) { return R.scope === 'grade' || r.cls === R.cls; }).map(function (r) {
       return { r: r, n: incsOf(r.id, R.fy).length };
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
-    rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="an">特別支援学級</th>' +
-      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+    rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
+    rows.sort(function (a, b) { return App.byKeys(SORT_KEYS, ORDER, a, b); });
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="spc" title="特別支援学級">特支</th>' +
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
-        '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx">' + (s.male ? '男' : '女') + '</span>' + esc(s.name) + '</td>' +
-        '<td class="cell" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
+        '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span>' + App.nameBox(s.name) + '</td>' +
+        '<td class="cell spc" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
-        '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td></tr>';
+        '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td>' +
+        (showPairs ? '<td class="pr' + (pe ? ' ed' : '') + '"' + (pe ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
+        '<td class="memo' + (edit ? ' ed' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
     });
-    if (!rows.length) h += '<tr><td colspan="14" class="empty">該当する児童はいません</td></tr>';
+    if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
+  }
+
+  // その児童の「離す」「つける」「固定」の数。相手の名前はカーソルで出す
+  function pairMarks(id) {
+    var d = D(), ps = pairsOf(id), n = { far: 0, near: 0, fix: 0 }, tip = [];
+    var PT = { far: '離す', near: 'つける', fix: '組に固定' };
+    ps.forEach(function (p) {
+      n[p.t]++;
+      var o = p.a === id ? p.b : p.a;
+      tip.push(PT[p.t] + '：' + (p.t === 'fix' ? (p.k + 1) + '組' : d.kids[o] ? d.kids[o].name : o));
+    });
+    if (!ps.length) return '';
+    return '<span class="prm" title="' + App.esc(tip.join('\n')) + '">' + (n.far ? '<b class="pf">離' + (n.far > 1 ? n.far : '') + '</b>' : '') +
+      (n.near ? '<b class="pn">つ' + (n.near > 1 ? n.near : '') + '</b>' : '') + (n.fix ? '<b class="px">固</b>' : '') + '</span>';
   }
 
   function schoolTable() {
@@ -1483,6 +1674,16 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       }
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
+      if (t.closest('#rpairs')) { openPairs(null); return true; }
+      if (t.closest('#rmore')) { moreDialog(); return true; }
+      if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
+      if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
+      if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
+      if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
+      if ((x = t.closest('[data-memo]'))) {
+        if (R.fy !== editableFy()) return true;
+        var MY = yearOf(R.fy); memoDialog(MY, MY.rows.filter(function (y) { return y.id === x.dataset.memo; })[0]); return true;
+      }
       if (t.closest('#addInc')) { R.form = { ids: [R.kid] }; render(); refocus('fUrl'); return true; }
       if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
       if ((x = t.closest('[data-pick]'))) { R.form.ids.push(x.dataset.pick); render(); refocus('fQ'); return true; }
@@ -1490,6 +1691,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       return false;
     },
     input: function (t) {
+      if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
@@ -1508,8 +1710,6 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
           });
         }, 400);
       }
-      else if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); }
-      else if (t.id === 'byCount') { R.byCount = t.checked; render(); }
     },
     submit: function (f) {
       if (f.id !== 'incForm') return;
@@ -1627,41 +1827,13 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   var DEF_ORDER = ['old', 'no', ''];
   function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
   var ORDER = loadOrder();
-  function byOrder(x, y) {
-    var a = S.P.kids[x], b = S.P.kids[y];
-    for (var i = 0; i < ORDER.length; i++) {
-      var key = SORT_KEYS.filter(function (q) { return q.k === ORDER[i]; })[0];
-      if (!key) continue;
-      var d = key.f ? key.f(a) - key.f(b) : String(a.kana).localeCompare(String(b.kana), 'ja');
-      if (d) return d;
-    }
-    return String(a.kana).localeCompare(String(b.kana), 'ja') || (a.id < b.id ? -1 : 1);
-  }
+  function byOrder(x, y) { return App.byKeys(SORT_KEYS, ORDER, S.P.kids[x], S.P.kids[y]); }
   function orderDialog() {
-    var O = ORDER.slice();
-    App.openDlg({
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="並び順" style="max-width:780px"><h2>組の中の並び順</h2>' +
-          ['第一優先', '第二優先', '第三優先'].map(function (lab, i) {
-            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
-              return '<button class="lv" data-ord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
-            }).join('') + '</div></div>';
-          }).join('') +
-          '<div class="note">同じ順位の児童は、よみの順に並べます。並び順はこの端末だけに覚えます（ほかの先生の画面は変わりません）。</div>' +
-          '<div class="acts"><button class="btn" data-ordreset="1" style="margin-right:auto">初めに戻す</button><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この順にする<kbd>Enter</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var x = t.closest('[data-ord]');
-        if (x) { var p = x.dataset.ord.split(':'); O[+p[0]] = p[1]; App.refreshDlg(); return true; }
-        if (t.closest('[data-ordreset]')) { O = DEF_ORDER.slice(); App.refreshDlg(); return true; }
-        return false;
-      },
-      onOk: function () {
-        ORDER = O.slice();
-        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
-        App.closeDlg(); render();
-      }
-    });
+    App.orderDialog({ title: '組の中の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: function (O) {
+      ORDER = O;
+      try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
+      render();
+    } });
   }
 
   // ===== 描画 =====
@@ -1690,6 +1862,27 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       '<span class="jr">' + jn + '</span></div>';
   }
 
+  function moreDialog() {
+    var ro = !!S.decision, np = S.view !== 'plan';
+    var btn = function (id, label, kbd, off) { return '<button class="btn" id="' + id + '"' + (off ? ' disabled' : '') + '>' + label + (kbd ? '<kbd>' + kbd + '</kbd>' : '') + '</button>'; };
+    App.openDlg({
+      noEnter: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
+          (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
+            '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
+          '<section><h3>表示</h3><div class="rbar">' + btn('order', '並び順…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
+          (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var b = t.closest('button[id]');
+        if (!b || b.disabled) return false;
+        App.closeDlg(); return App.screens.split.click(t);
+      }
+    });
+  }
+
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
@@ -1701,17 +1894,11 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
     h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
-    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　4/1まで取り消せます<button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
-    else {
-      h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
-        '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>' +
-        '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
-        (S.plans.length > 1 && !S.decision ? '<button class="btn" id="delp"' + (S.view !== 'plan' ? ' disabled' : '') + '>削除<kbd>Del</kbd></button>' : '') +
-        '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
-        '<button class="btn" id="trans">転入生…</button>' +
-        '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
-    }
-    h += '<button class="btn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>並び順…</button><button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
+    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '<button class="btn primary" id="cnames">組の番号を決める…</button><button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
+    else h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
+      '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>';
+    // 編集中に毎回は使わない操作は「その他…」の窓へ（キーの近道はそのまま効く）
+    h += '<button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
     if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
     return '<div class="bar">' + h + '</div>';
   }
@@ -1738,8 +1925,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner, hk) { return '<span class="c ' + (fl[m] ? 'w' : '') + (hk && S.hl === hk ? ' on' : '') + '"' + (hk ? ' data-hl="' + hk + '" role="button" title="押すと、この項目の児童だけを明るく出す"' : '') + '>' + inner + c[m] + '</span>'; };
-      h += '<section class="col" style="--cc:' + App.classColor(k).l + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
-        '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
+      h += '<section class="col nc' + (k % 2) + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
+        '<div class="h1"><b class="ncl">' + C.newClass(k) + '</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1), at.k); }).join('') + '</div>' +
@@ -1843,7 +2030,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 
   // ===== 確認の枠 =====
   function chipsSide(ids, from, to, ex) {
-    return '<div class="side"><div class="lab"><b>' + (from + 1) + '組</b> → ' + (to + 1) + '組</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
+    return '<div class="side"><div class="lab"><b>' + C.newClass(from) + '</b> → ' + C.newClass(to) + '</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
   }
   function swapDialog(d) {
     var p = S.plans[S.active];
@@ -1852,7 +2039,7 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       html: function () {
         var left, right, arrow, title, ex = [], note = '';
         if (d.type === 'swap') { var r = E.swapChanges(d); d.ch = r.ch; ex = r.ex; left = r.A; right = r.B; arrow = '⇄'; title = '入れ替えますか？'; }
-        else { left = d.GA; arrow = '→'; title = (d.kb + 1) + '組へ移しますか？'; }
+        else { left = d.GA; arrow = '→'; title = C.newClass(d.kb) + 'へ移しますか？'; }
         if (d.GA.length > 1 || (d.GB && d.GB.length > 1)) note += '<span>「つける」の相手と一緒に動かします。</span>';
         if (ex.length) note += '<span><b>' + ex.map(function (i) { return App.esc(S.P.kids[i].name); }).join('・') + '</b> は人数を合わせるため自動で選びました（偏りが最も小さくなる児童）。</span>' +
           (d.cands.length > d.cnt ? '<button class="btn" data-act="next">別の児童にする（' + ((d.ci / d.cnt | 0) + 1) + '/' + Math.floor(d.cands.length / d.cnt) + '）<kbd>Tab</kbd></button>' : '');
@@ -1864,17 +2051,17 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
             tgt.slice(0, 3).map(function (i) { return chipHTML(i, ''); }).join('') +
             (tgt.length > 3 ? '<details class="more"><summary>＋ あと' + (tgt.length - 3) + '人</summary><div class="side">' + tgt.slice(3).map(function (i) { return chipHTML(i, ''); }).join('') + '</div></details>' : '') + '</div></div>';
         }
-        if (d.type === 'move' && E.sizeOf(p.asg, d.kb) + left.length > C.CAP) warn += '<div class="warnbox">✕ ' + (d.kb + 1) + '組が上限' + C.CAP + '人を超えます</div>';
+        if (d.type === 'move' && E.sizeOf(p.asg, d.kb) + left.length > C.CAP) warn += '<div class="warnbox">✕ ' + C.newClass(d.kb) + 'が上限' + C.CAP + '人を超えます</div>';
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + title + '"><h2>' + title + '</h2>' +
           '<div class="swap">' + chipsSide(left, d.ka, d.kb, ex) + '<div class="arrow">' + arrow + '</div>' +
-          (right ? chipsSide(right, d.kb, d.ka, ex) : '<div class="side"><div class="lab"><b>' + (d.kb + 1) + '組</b>（' + E.sizeOf(p.asg, d.kb) + '人 → ' + (E.sizeOf(p.asg, d.kb) + left.length) + '人）</div></div>') + '</div>' +
+          (right ? chipsSide(right, d.kb, d.ka, ex) : '<div class="side"><div class="lab"><b>' + C.newClass(d.kb) + '</b>（' + E.sizeOf(p.asg, d.kb) + '人 → ' + (E.sizeOf(p.asg, d.kb) + left.length) + '人）</div></div>') + '</div>' +
           (note ? '<div class="notebox">' + note + '</div>' : '') + warn +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">' +
           (br.length ? '続行する' : d.type === 'swap' ? '入れ替える' : '移す') + '<kbd>Enter</kbd></button></div></div></div>';
       },
       onOk: function () {
         var names = d.type === 'swap' ? d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' ⇄ ' + E.swapChanges(d).B.map(function (i) { return S.P.kids[i].name; }).join('・')
-          : d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' → ' + (d.kb + 1) + '組';
+          : d.GA.map(function (i) { return S.P.kids[i].name; }).join('・') + ' → ' + C.newClass(d.kb);
         App.closeDlg();
         doMove(d.ch, names);
         if (d.next != null) { S.follow = d.next; S.sel = d.next; updateSel(); flash([d.next]); }
@@ -1949,10 +2136,41 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     });
   }
 
+  // 決定した組の番号。未設定の間は仮（A組＝1組…）
+  function namesOf() { var d = S.decision, n = d && d.names; return n && n.length ? n : Array.from({ length: S.P.nc }, function (_, k) { return k + 1; }); }
+  function namesText() {
+    return namesOf().map(function (v, k) { return C.newClass(k) + '＝' + v + '組'; }).join('・') + (S.decision.named ? '' : '（仮）');
+  }
+  function namesDialog() {
+    var N = namesOf().slice(), grade = App.st.grade;
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="組の番号を決める" style="max-width:560px"><h2>組の番号を決める</h2>' +
+          N.map(function (v, k) {
+            return '<div class="ordrow"><b class="ncl">' + C.newClass(k) + '</b><span>→</span><div class="lvs">' + N.map(function (_, j) {
+              return '<button class="lv" data-cn="' + k + ':' + (j + 1) + '" aria-pressed="' + (v === j + 1) + '">' + (j + 1) + '組</button>';
+            }).join('') + '</div></div>';
+          }).join('') +
+          '<div class="note">番号を押すと、その番号だった組と入れ替わります。保存すると、来年度の名簿の組が付け替わります（出席番号は組の中で変わりません）。後から何度でも直せます。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">この番号にする<kbd>Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x = t.closest('[data-cn]'); if (!x) return false;
+        var p = x.dataset.cn.split(':'), k = +p[0], v = +p[1], j = N.indexOf(v);
+        N[j] = N[k]; N[k] = v; App.refreshDlg(); return true;
+      },
+      onOk: function () {
+        App.closeDlg();
+        App.save(function () { return App.pf().setClassNames(grade, N); }).then(function () { return App.reload(); })
+          .then(function () { App.toast('組の番号を決めました：' + N.map(function (v, k) { return C.newClass(k) + '＝' + v + '組'; }).join('・')); });
+      }
+    });
+  }
+
   function decideDialog() {
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), grade = App.st.grade;
     var body = '<p>' + App.esc(planName(p)) + ' で決定します。次のことを行います。</p><ul><li>' + (grade + 1) + '年の名簿を作ります（新しい番号は組ごとの男女混合の五十音順）</li>' +
-      '<li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
+      '<li>組の番号は仮で A組＝1組・B組＝2組… にします。番号は後で「組の番号を決める」で決めます</li><li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
     confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
@@ -2013,17 +2231,29 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
   }
 
   function pairsDialog() {
-    var d = App.st.data, esc = App.esc, kids = S.P.kids;
+    App.pairsDialog({
+      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old }; }), nc: S.P.nc, pre: '旧',
+      // 案を先に保存してから読み込み直す（案は残る）
+      save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
+    });
+  }
+
+  // つける・離す・組に固定の窓。クラス分けの画面と名簿の画面から開く
+  // o: { kids:[{id,name,kana,no,cls}], nc, pre:'旧'|'', a:最初に選んでおく児童, save:function(list)→Promise }
+  App.pairsDialog = function (o) {
+    var d = App.st.data, esc = App.esc, kids = o.kids, kidOf = {};
+    kids.forEach(function (s) { kidOf[s.id] = s; });
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     var carry = (d.carry || []).slice();
-    var F = { t: 'far', a: null, b: null, k: 0, memo: '' };
-    var nm = function (id) { var i = S.idx[id]; return i == null ? id : kids[i].name + '（旧' + (kids[i].old + 1) + '組）'; };
-    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + (p.k + 1) + '組' : nm(p.a) + ' と ' + nm(p.b); };
+    var F = { t: 'far', a: o.a || null, b: null, k: 0, memo: '' };
+    var cl = function (s) { return s.cls < 0 ? '転入' : o.pre + (s.cls + 1) + '組'; };
+    var nm = function (id) { var s = kidOf[id]; return s ? s.name + '（' + cl(s) + '）' : id; };
+    var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + C.newClass(p.k) : nm(p.a) + ' と ' + nm(p.b); };
     var sugg = function (q, slot) {
       q = (q || '').trim();
       if (!q) return '';
       var hit = kids.filter(function (s) { return s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || s.id.indexOf(q) === 0; }).slice(0, 8);
-      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">旧' + (s.old + 1) + '組' + s.no + '番 ' + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">' + cl(s) + (s.no ? s.no + '番 ' : ' ') + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
     };
     var pick = function (slot) {
       var id = F[slot];
@@ -2032,12 +2262,12 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
     };
     var canAdd = function () { return F.a && (F.t === 'fix' ? true : F.b && F.b !== F.a); };
     App.openDlg({
-      focus: 'qa',
+      focus: F.a ? 'qb' : 'qa',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す"><h2>つける・離す・組に固定</h2>' +
           '<div class="form"><div class="toggles">' + ['far', 'near', 'fix'].map(function (t) { return '<button class="tg" data-pt="' + t + '" aria-pressed="' + (F.t === t) + '">' + PT[t] + '</button>'; }).join('') + '</div>' +
           '<div class="row" style="align-items:flex-start"><div>' + pick('a') + '</div><div>' + (F.t === 'fix' ?
-            '<div class="lvs">' + Array.from({ length: S.P.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
+            '<div class="lvs">' + Array.from({ length: o.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + C.newClass(k) + '</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
           '<div class="row"><input id="pmemo" placeholder="メモ（任意・氏名は書かない）" value="' + esc(F.memo) + '" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><button class="btn" id="padd"' + (canAdd() ? '' : ' disabled') + '>追加</button></div></div>' +
           '<div class="tw" style="max-height:220px"><table class="r ro"><thead><tr><th>種類</th><th style="text-align:left">児童</th><th style="text-align:left">メモ</th><th></th></tr></thead><tbody>' +
           (list.map(function (p, i) { return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td style="text-align:left">' + esc(p.memo || '') + '</td><td><button class="btn" data-pdel="' + i + '">削除</button></td></tr>'; }).join('') ||
@@ -2067,15 +2297,13 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
         return false;
       },
       onOk: function () {
-        var grade = App.st.grade, data = serialize(), n = list.length;
+        var n = list.length;
         App.closeDlg();
-        // 案を先に保存してから読み込み直す（案は残る）
-        clearTimeout(saveT);
-        App.save(function () { return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); })
+        App.save(function () { return o.save(list); })
           .then(function () { return App.reload(); }).then(function () { App.toast('つける・離すを保存しました（' + n + '件）'); });
       }
     });
-  }
+  };
 
   function showViol() {
     var a = E.analyze(S.ctx, S.plans[S.active].asg), r = App.$('vbtn').getBoundingClientRect(), esc = App.esc;
@@ -2222,6 +2450,8 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
+      if (t.closest('#smore')) { moreDialog(); return true; }
+      if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
