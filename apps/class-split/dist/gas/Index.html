@@ -14,7 +14,7 @@
   --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
   /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
   --f:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
-  --rowh:30px; --ic:12px;
+  --rowh:30px; --ic:12px; --slot:18px; --slotL:18px;
 }
 html,body{height:100%}
 body{background:var(--bg);color:var(--ink);font-family:var(--f);margin:0;font-size:15px;line-height:1.45;
@@ -69,7 +69,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .b>i{position:absolute;inset:0;background:var(--c)}
 .b>em{position:relative;font-style:normal;color:var(--t)}
 /* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
-.b>u{position:absolute;left:calc(50% + .3em);top:-.32em;display:flex;line-height:0;text-decoration:none}
+.b>u{position:absolute;right:-.3em;top:-.5em;display:flex;line-height:0;text-decoration:none}
 .b>u>svg{width:.95em;height:.95em;display:block}
 /* アイコンの説明（カーソルを合わせると出す）。1つの枠を使い回す */
 .tip{position:fixed;z-index:40;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0003;padding:8px 12px;font-size:.85rem;line-height:1.6;max-width:22rem;pointer-events:none}
@@ -195,9 +195,12 @@ table.h tr.cur td{font-weight:700}
 .gcol>.chip{height:var(--rowh);flex:none;box-sizing:border-box}
 /* 児童カード：男＝長方形、女＝ピル型。左端は旧学級の色の帯（旧番号）、地は旧学級の薄い色 */
 .chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr) var(--jrw);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
-  cursor:pointer;--bandw:calc(var(--rowh)*.31);--jrw:calc(var(--rowh)*.5);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;overflow:hidden;position:relative;background:var(--ol,var(--panel))}
+  cursor:pointer;--bandw:calc(var(--rowh)*.31);--jrw:calc(var(--rowh)*.5);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;position:relative;background:var(--ol,var(--panel))}
 .chip.m{border-radius:2px}
 .chip.f{border-radius:999px}
+/* 帯の角はカードの角に合わせる（アイコンをはみ出させるので、カードで切り取らない） */
+.chip.m .old{border-radius:1px 0 0 1px}
+.chip.f .old{border-radius:999px 0 0 999px}
 .chip:hover{border-color:var(--sub)}
 .chip.sel{border:3px solid var(--link);box-shadow:inset 0 0 0 2px #fff}
 .chip.locked{background:repeating-linear-gradient(135deg,var(--ol) 0 5px,#0000001f 5px 6px)}
@@ -211,15 +214,20 @@ table.h tr.cur td{font-weight:700}
 @media (prefers-reduced-motion:reduce){.chip.flash{animation:none;box-shadow:0 0 0 4px var(--fill-b)}}
 .old{grid-row:1/3;background:var(--oc);color:var(--ot);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.5em;font-variant-numeric:tabular-nums}
 .l1{display:flex;align-items:center;gap:3px;padding:0 4px 1px;min-width:0}
-.nm{font-weight:700;white-space:nowrap;font-size:calc(var(--rowh)*.42);letter-spacing:-.02em}
+.nm{font-weight:700;white-space:nowrap;overflow:hidden;font-size:calc(var(--rowh)*.38);letter-spacing:-.02em}
 .side .chip .nm{font-size:20px}
-.bs{position:relative;font-size:var(--ic);--slot:1.5em;margin:0 4px}
+.bs{position:relative;font-size:var(--ic);margin:0 4px}
 .bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
 /* 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は男女で同じ位置。縦に並ぶ児童でそろう */
 .bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
 .l2{display:flex;min-width:0;padding:0 4px 0 0}
-.l2>.bs:first-child{flex:1}
+.l2>.bs:first-child{flex:1;--slot:var(--slotL)}
 /* 事案の数：旧番号の帯の反対側（右端）に、2段の真ん中で置く */
+.chip .bs>.b{z-index:1}
+/* ＋のアイコンは大きくする。1段目（良い項目）は上へ、2段目左（学・欠・問・保）は下へ、カードの枠からはみ出してよい */
+.chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3)}
+.chip .l1 .bs>.b[data-lv="2"]{transform-origin:50% 90%}
+.chip .l2>.bs:first-child>.b[data-lv="2"]{transform-origin:50% 10%}
 .jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
@@ -247,7 +255,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .side .lab{font-size:.9rem;color:var(--sub);font-variant-numeric:tabular-nums}
 .side .lab b{color:var(--ink);font-size:1.05rem}
 .side .chip{--rowh:52px;height:52px;cursor:default}
-.side .chip .bs{font-size:17px}
+.side .chip .bs{font-size:17px;--slot:1.7em}
 .side .chip .old{font-size:.8em}
 .side .chip.extra{border:2px dashed #A85800}
 .arrow{font-size:2.4rem;color:var(--link);font-weight:700;line-height:1}
@@ -297,6 +305,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
+    NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通）は有無だけ
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
@@ -1022,7 +1031,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_c20b227e1be5';
+  var PAGE_BUILD = 'BUILD_bc2382ab72aa';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1555,7 +1564,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     };
     var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
     return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
       '<span class="jr">' + jn + '</span></div>';
   }
@@ -1653,8 +1662,22 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
-    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / ((C.ATTRS.filter(function (a) { return !a.good; }).length + 1) * 1.5 + .1));
-    root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
+    // アイコンの間隔は崩れない範囲で最大にとる（＋で大きくしたアイコンどうしが重ならないように）。
+    // 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は縦にそろえるので同じ間隔：1段目の名前（空白を含め NAME_CHARS 文字）の残り。
+    // 2段目の左の枠（学・欠・問・保）は、右の枠の残りを使い切る間隔
+    var W = gc.clientWidth - 2 - rhc * .31 - rhc * .5 - 8, ic = rhc * .36;
+    var nameW = (C.NAME_CHARS - .5) * rhc * .38 + 6; // 空白は半角の幅
+    var nL = C.ATTRS.filter(function (a) { return !a.good && !a.side; }).length;
+    // ＋のアイコンは1.3倍（幅 1.25em×1.3）で、右上の＋の点は .3em はみ出す。
+    // 間隔は「＋のアイコンの中心から点の右端まで」＋「隣のアイコンの左半分」以上にする（点が隣に被らない）
+    var PLUSW = (1.25 / 2 + .3) * 1.3 + 1.25 / 2;
+    var slotR = Math.min((W - nameW) / 3, (W - PLUSW * ic - 6) / 6); // 広い画面では2段目の左右で均等に分ける
+    ic = Math.max(8, Math.min(ic, slotR / PLUSW));
+    var slotL = Math.min((W - 3 * slotR - PLUSW * ic - 6) / (nL - 1), ic * 3);
+    if (slotL < PLUSW * ic) { ic = Math.max(8, (W - 3 * slotR - 6) / ((nL - 1) * PLUSW + PLUSW)); slotL = PLUSW * ic; }
+    root.setProperty('--ic', ic.toFixed(2) + 'px');
+    root.setProperty('--slot', slotR.toFixed(2) + 'px');
+    root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');
   }
 
   function renderCmp() {
@@ -1671,7 +1694,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       { lab: '手で動かした回数', f: function (p) { return p.edits; }, nobest: true },
       { lab: '案' + ref.letter + 'と所属が違う児童', f: function (p) { return E.diffCount(S.ctx, p.asg, ref.asg); }, nobest: true },
       { lab: '元にした案', f: function (p) { return p.from || '—'; }, txt: true },
-      { lab: '重み（な・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
+      { lab: '重み（無・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
       { lab: '外した必ず守る条件', f: function (p) { return C.HARD.filter(function (h) { return !p.gen.hard[h.k]; }).map(function (h) { return h.label; }).join('・') || '—'; }, txt: true }
     ]);
     var h = '<div class="cmpwrap"><table class="cmp"><thead><tr><th>指標</th>' + S.plans.map(function (p, pi) { return '<th data-p="' + pi + '" tabindex="0">' + App.esc(planName(p)) + '</th>'; }).join('') + '</tr></thead><tbody>';

@@ -87,7 +87,7 @@
     };
     var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
     return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
       '<span class="jr">' + jn + '</span></div>';
   }
@@ -185,8 +185,22 @@
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
-    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / ((C.ATTRS.filter(function (a) { return !a.good; }).length + 1) * 1.5 + .1));
-    root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
+    // アイコンの間隔は崩れない範囲で最大にとる（＋で大きくしたアイコンどうしが重ならないように）。
+    // 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は縦にそろえるので同じ間隔：1段目の名前（空白を含め NAME_CHARS 文字）の残り。
+    // 2段目の左の枠（学・欠・問・保）は、右の枠の残りを使い切る間隔
+    var W = gc.clientWidth - 2 - rhc * .31 - rhc * .5 - 8, ic = rhc * .36;
+    var nameW = (C.NAME_CHARS - .5) * rhc * .38 + 6; // 空白は半角の幅
+    var nL = C.ATTRS.filter(function (a) { return !a.good && !a.side; }).length;
+    // ＋のアイコンは1.3倍（幅 1.25em×1.3）で、右上の＋の点は .3em はみ出す。
+    // 間隔は「＋のアイコンの中心から点の右端まで」＋「隣のアイコンの左半分」以上にする（点が隣に被らない）
+    var PLUSW = (1.25 / 2 + .3) * 1.3 + 1.25 / 2;
+    var slotR = Math.min((W - nameW) / 3, (W - PLUSW * ic - 6) / 6); // 広い画面では2段目の左右で均等に分ける
+    ic = Math.max(8, Math.min(ic, slotR / PLUSW));
+    var slotL = Math.min((W - 3 * slotR - PLUSW * ic - 6) / (nL - 1), ic * 3);
+    if (slotL < PLUSW * ic) { ic = Math.max(8, (W - 3 * slotR - 6) / ((nL - 1) * PLUSW + PLUSW)); slotL = PLUSW * ic; }
+    root.setProperty('--ic', ic.toFixed(2) + 'px');
+    root.setProperty('--slot', slotR.toFixed(2) + 'px');
+    root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');
   }
 
   function renderCmp() {
@@ -203,7 +217,7 @@
       { lab: '手で動かした回数', f: function (p) { return p.edits; }, nobest: true },
       { lab: '案' + ref.letter + 'と所属が違う児童', f: function (p) { return E.diffCount(S.ctx, p.asg, ref.asg); }, nobest: true },
       { lab: '元にした案', f: function (p) { return p.from || '—'; }, txt: true },
-      { lab: '重み（な・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
+      { lab: '重み（無・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
       { lab: '外した必ず守る条件', f: function (p) { return C.HARD.filter(function (h) { return !p.gen.hard[h.k]; }).map(function (h) { return h.label; }).join('・') || '—'; }, txt: true }
     ]);
     var h = '<div class="cmpwrap"><table class="cmp"><thead><tr><th>指標</th>' + S.plans.map(function (p, pi) { return '<th data-p="' + pi + '" tabindex="0">' + App.esc(planName(p)) + '</th>'; }).join('') + '</tr></thead><tbody>';
