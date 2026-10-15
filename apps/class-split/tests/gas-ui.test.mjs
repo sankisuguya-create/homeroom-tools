@@ -76,8 +76,8 @@ await p.waitForSelector('.gbtn');
 ok(await p.locator('.gbtn small', { hasText: '90人' }).count() === 1, '試行をやめると本番のデータに戻る');
 
 // 名簿を貼る（本番）：見出しで読み、取り込むとシートに入る
-await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#paste');
-await p.click('#paste');
+await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#rmore');
+await p.click('#rmore'); await p.click('#paste');
 await p.fill('#ptxt', '児童ID\t名前\tよみ\t性別\t組\t番号\n50000101\t児童1-1\tじどう101\t男\t1\t1\n50000401\t転入 さん\tてんにゅう\t女\t1\t31');
 await p.waitForSelector('#okbtn:not([disabled])');
 ok((await p.locator('#psum').textContent()).includes('2人'), '貼ると読み取った人数が出る');

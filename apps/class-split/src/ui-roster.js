@@ -45,6 +45,37 @@
     });
   }
 
+  // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
+  function moreDialog() {
+    App.openDlg({
+      html: function () {
+        var d = D(), edit = R.fy === editableFy();
+        var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
+        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:640px"><h2>その他</h2>' +
+          '<section><h3>年度</h3><div class="rbar">' + years.map(function (fy) {
+            return '<button class="tab" data-fy="' + fy + '" aria-selected="' + (fy === R.fy) + '">' + fy + '年度（' + yearOf(fy).grade + '年）' +
+              (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</button>';
+          }).join('') + '</div></section>' +
+          '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
+          '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
+          '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label></div></section>' +
+          '<section><h3>編集</h3><div class="rbar">' +
+          (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
+          (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
+          '<section><h3>使い方</h3><div class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通と備考は内容を書く（自動保存）。<br>' +
+          'つける・離すの列を押すと、その児童を選んで設定の窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      noEnter: true,
+      input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
+      // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
+      click: function (t) {
+        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste')) return false;
+        App.closeDlg(); return App.screens.roster.click(t);
+      }
+    });
+  }
+
   function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
 
   function render() {
@@ -59,25 +90,17 @@
       return;
     }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
-    var h = '<div class="rbar"><span class="lab">年度</span>' + years.map(function (fy) {
-      var y = yearOf(fy);
-      return '<button class="tab" data-fy="' + fy + '" aria-selected="' + (fy === R.fy) + '">' + fy + '年度（' + y.grade + '年）' +
-        (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</button>';
-    }).join('') + '</div>';
-    h += '<div class="rbar"><span class="lab">範囲</span>';
+    // 上の帯：編集中に使う「組・学年」の切り替えと、いまの状態（既定と違う時だけ）だけを出す。ほかは「その他…」の窓へ
+    var h = '<div class="rbar">';
     for (var k = 0; k < nc; k++) h += '<button class="tab" data-cls="' + k + '" aria-selected="' + (R.scope === 'cls' && R.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組（' + Y.rows.filter(function (r) { return r.cls === k; }).length + '人）</button>';
     h += '<button class="tab" data-scope="grade" aria-selected="' + (R.scope === 'grade') + '">学年（' + Y.rows.length + '人）</button>';
-    h += '<button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>';
-    if (R.scope !== 'school') {
-      h += '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>';
-      h += '<label class="chk"><input type="checkbox" id="byCount"' + (R.byCount ? ' checked' : '') + '>件数の多い順</label>';
+    if (R.scope === 'school') h += '<span class="state">全校の事案を表示中<button class="btn" data-scope="cls">戻る</button></span>';
+    else {
+      if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
+        (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
+      if (R.onlyInc || R.byCount) h += '<span class="state">' + [R.onlyInc ? '事案のある児童だけ' : '', R.byCount ? '件数の多い順' : ''].filter(String).join('・') + '<button class="btn" id="unfilter">解除</button></span>';
     }
-    h += '<span class="sp"></span>';
-    if (pairEdit() && R.scope !== 'school') h += '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>';
-    if (edit && R.scope !== 'school') h += '<button class="btn" id="paste">名簿を貼る…</button>';
-    if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通は内容を書く（自動保存）</span>' :
-      R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
-      '<span class="note">過去の年度は見るだけです</span>';
+    h += '<span class="sp"></span><button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
@@ -320,6 +343,8 @@
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rpairs')) { openPairs(null); return true; }
+      if (t.closest('#rmore')) { moreDialog(); return true; }
+      if (t.closest('#unfilter')) { R.onlyInc = R.byCount = false; render(); return true; }
       if ((x = t.closest('[data-rpair]'))) { openPairs(x.dataset.rpair); return true; }
       if ((x = t.closest('[data-memo]'))) {
         if (R.fy !== editableFy()) return true;
@@ -332,6 +357,8 @@
       return false;
     },
     input: function (t) {
+      if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
+      if (t.id === 'byCount') { R.byCount = t.checked; render(); return; }
       if (!R.form) return;
       if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
       else if (t.id === 'fTitle') R.form.title = t.value;
@@ -350,8 +377,6 @@
           });
         }, 400);
       }
-      else if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); }
-      else if (t.id === 'byCount') { R.byCount = t.checked; render(); }
     },
     submit: function (f) {
       if (f.id !== 'incForm') return;
