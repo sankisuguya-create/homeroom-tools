@@ -191,13 +191,20 @@
     var W = gc.clientWidth - 2 - rhc * .31 - rhc * .5 - 8, ic = rhc * .36;
     var nameW = (C.NAME_CHARS - .5) * rhc * .38 + 6; // 空白は半角の幅
     var nL = C.ATTRS.filter(function (a) { return !a.good && !a.side; }).length;
-    // ＋のアイコンは1.3倍（幅 1.25em×1.3）で、右上の＋の点は .3em はみ出す。
-    // 間隔は「＋のアイコンの中心から点の右端まで」＋「隣のアイコンの左半分」以上にする（点が隣に被らない）
-    var PLUSW = (1.25 / 2 + .3) * 1.3 + 1.25 / 2;
-    var slotR = Math.min((W - nameW) / 3, (W - PLUSW * ic - 6) / 6); // 広い画面では2段目の左右で均等に分ける
-    ic = Math.max(8, Math.min(ic, slotR / PLUSW));
-    var slotL = Math.min((W - 3 * slotR - PLUSW * ic - 6) / (nL - 1), ic * 3);
-    if (slotL < PLUSW * ic) { ic = Math.max(8, (W - 3 * slotR - 6) / ((nL - 1) * PLUSW + PLUSW)); slotL = PLUSW * ic; }
+    // 右の枠（賢・リ・運／ア・身・通）は有無だけなので＋が無い：間隔はアイコン1つ分＋すき間。
+    // 左の枠（学・欠・問・保）の＋は1.3倍で、右上の＋は中心から (.48em＋.62em)×1.3 はみ出す。
+    // 間隔は「＋のアイコンの中心から＋の右端まで」＋「隣のアイコンの左半分」以上にする（＋が隣に被らない）
+    var RW = 1.35, PLUSW = (.48 + .62) * 1.3 + 1.25 / 2;
+    // 右の枠は要る分（少しゆとり）だけ取り、残りを左の枠へ回す。足りなければアイコンを小さくする
+    var slotR = Math.min((W - nameW) / 3, RW * ic * 1.15);
+    ic = Math.min(ic, slotR / RW);
+    var slotL = Math.min((W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1), ic * 3);
+    if (slotL < PLUSW * ic) {
+      ic = (W - 6) / (3 * RW * 1.15 + (nL - 1) * PLUSW + 1.3 * 1.25);
+      slotR = Math.min((W - nameW) / 3, RW * ic * 1.15); ic = Math.min(ic, slotR / RW);
+      slotL = (W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1);
+    }
+    ic = Math.max(8, ic);
     root.setProperty('--ic', ic.toFixed(2) + 'px');
     root.setProperty('--slot', slotR.toFixed(2) + 'px');
     root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');

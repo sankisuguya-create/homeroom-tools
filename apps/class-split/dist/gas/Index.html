@@ -69,8 +69,8 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .b>i{position:absolute;inset:0;background:var(--c)}
 .b>em{position:relative;font-style:normal;color:var(--t)}
 /* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
-.b>u{position:absolute;right:-.3em;top:-.5em;display:flex;line-height:0;text-decoration:none}
-.b>u>svg{width:.95em;height:.95em;display:block}
+.b>u{position:absolute;left:calc(50% + .48em);top:-.34em;display:flex;line-height:0;text-decoration:none}
+.b>u>svg{width:.62em;height:.62em;display:block}
 /* アイコンの説明（カーソルを合わせると出す）。1つの枠を使い回す */
 .tip{position:fixed;z-index:40;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0003;padding:8px 12px;font-size:.85rem;line-height:1.6;max-width:22rem;pointer-events:none}
 .tip h3{margin:0 0 4px;font-size:.9rem}
@@ -224,10 +224,8 @@ table.h tr.cur td{font-weight:700}
 .l2>.bs:first-child{flex:1;--slot:var(--slotL)}
 /* 事案の数：旧番号の帯の反対側（右端）に、2段の真ん中で置く */
 .chip .bs>.b{z-index:1}
-/* ＋のアイコンは大きくする。1段目（良い項目）は上へ、2段目左（学・欠・問・保）は下へ、カードの枠からはみ出してよい */
-.chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3)}
-.chip .l1 .bs>.b[data-lv="2"]{transform-origin:50% 90%}
-.chip .l2>.bs:first-child>.b[data-lv="2"]{transform-origin:50% 10%}
+/* ＋のアイコン（学・欠・問・保）は大きくし、下へはみ出してよい */
+.chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3);transform-origin:50% 10%}
 .jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
@@ -306,7 +304,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
-    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通）は有無だけ
+    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
     // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
@@ -318,9 +316,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
       { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
-      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 2, help: ['賢い', '学力が高い。', 'とても高い。'] },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 2, help: ['リーダー', 'まとめる力がある。', 'とても強い。学級の中心になれる。'] },
-      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 2, help: ['運動', '運動が得意。', 'とても得意。'] }
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
+      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['運動', '運動が得意。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
@@ -1031,7 +1029,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_bc2382ab72aa';
+  var PAGE_BUILD = 'BUILD_abb080b6ac78';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1115,8 +1113,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   App.mode = g.Platforms.gas ? 'gas' : 'demo';
   App.pf = function () { return g.Platforms[App.mode]; };
 
-  // 程度の＋：黒い丸に白い十字の「点」を、アイコンの右上へ持ち上げて付ける（縦横同じ長さの十字を図で描く）
-  var PLUS = '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.4" fill="#1A1A1A" stroke="#fff" stroke-width="1.2"/><path d="M6 2.8V9.2M2.8 6H9.2" stroke="#fff" stroke-width="2.2"/></svg>';
+  // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
+  // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
+  var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
   App.mark = function (at, lv, note) {
     lv = Math.min(lv, at.max || lv); // 以前の値（程度3）はアイコン＋で出す
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
@@ -1668,13 +1667,20 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     var W = gc.clientWidth - 2 - rhc * .31 - rhc * .5 - 8, ic = rhc * .36;
     var nameW = (C.NAME_CHARS - .5) * rhc * .38 + 6; // 空白は半角の幅
     var nL = C.ATTRS.filter(function (a) { return !a.good && !a.side; }).length;
-    // ＋のアイコンは1.3倍（幅 1.25em×1.3）で、右上の＋の点は .3em はみ出す。
-    // 間隔は「＋のアイコンの中心から点の右端まで」＋「隣のアイコンの左半分」以上にする（点が隣に被らない）
-    var PLUSW = (1.25 / 2 + .3) * 1.3 + 1.25 / 2;
-    var slotR = Math.min((W - nameW) / 3, (W - PLUSW * ic - 6) / 6); // 広い画面では2段目の左右で均等に分ける
-    ic = Math.max(8, Math.min(ic, slotR / PLUSW));
-    var slotL = Math.min((W - 3 * slotR - PLUSW * ic - 6) / (nL - 1), ic * 3);
-    if (slotL < PLUSW * ic) { ic = Math.max(8, (W - 3 * slotR - 6) / ((nL - 1) * PLUSW + PLUSW)); slotL = PLUSW * ic; }
+    // 右の枠（賢・リ・運／ア・身・通）は有無だけなので＋が無い：間隔はアイコン1つ分＋すき間。
+    // 左の枠（学・欠・問・保）の＋は1.3倍で、右上の＋は中心から (.48em＋.62em)×1.3 はみ出す。
+    // 間隔は「＋のアイコンの中心から＋の右端まで」＋「隣のアイコンの左半分」以上にする（＋が隣に被らない）
+    var RW = 1.35, PLUSW = (.48 + .62) * 1.3 + 1.25 / 2;
+    // 右の枠は要る分（少しゆとり）だけ取り、残りを左の枠へ回す。足りなければアイコンを小さくする
+    var slotR = Math.min((W - nameW) / 3, RW * ic * 1.15);
+    ic = Math.min(ic, slotR / RW);
+    var slotL = Math.min((W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1), ic * 3);
+    if (slotL < PLUSW * ic) {
+      ic = (W - 6) / (3 * RW * 1.15 + (nL - 1) * PLUSW + 1.3 * 1.25);
+      slotR = Math.min((W - nameW) / 3, RW * ic * 1.15); ic = Math.min(ic, slotR / RW);
+      slotL = (W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1);
+    }
+    ic = Math.max(8, ic);
     root.setProperty('--ic', ic.toFixed(2) + 'px');
     root.setProperty('--slot', slotR.toFixed(2) + 'px');
     root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');
