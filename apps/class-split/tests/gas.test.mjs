@@ -61,6 +61,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k4', 0, '', []).ok);
     k4 = call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a;
     assert.equal(k4.k4_t, undefined, '無にすると経緯も消える');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2, '休み時間に手が出る', [2]).ok, '問も経緯と事案を持てる');
+    assert.deepEqual(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k3_i, [2]);
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 0, '').ok);
     assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, undefined, 'なしにすると内容も消える');
     // 備考：列の無い古いシートでも書け、空にすると消える
