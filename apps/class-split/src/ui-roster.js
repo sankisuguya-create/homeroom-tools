@@ -83,16 +83,17 @@
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th>' +
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
       C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx">' + (s.male ? '男' : '女') + '</span>' + esc(s.name) + '</td>' +
+        '<td class="cell" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td></tr>';
     });
-    if (!rows.length) h += '<tr><td colspan="12" class="empty">該当する児童はいません</td></tr>';
+    if (!rows.length) h += '<tr><td colspan="14" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
   }
 
@@ -227,6 +228,13 @@
       if ((x = t.closest('[data-cell]'))) {
         if (R.fy !== editableFy()) return true;
         var Y = yearOf(R.fy), r = Y.rows.filter(function (y) { return y.id === x.dataset.cell; })[0], k = x.dataset.k;
+        if (k === 'sp') { // 特別支援学級：押すたびに あり／なし
+          var sv = r.a.sp ? 0 : 1, sfy = R.fy, sg = Y.grade;
+          if (sv) r.a.sp = 1; else delete r.a.sp;
+          x.innerHTML = sv ? '<span class="spb">支</span>' : '';
+          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); });
+          return true;
+        }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
         if (at.side) { noteDialog(Y, r, at, x); return true; }
         r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無

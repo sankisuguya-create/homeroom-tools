@@ -22,7 +22,9 @@
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
-  App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
+  // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
+  var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
+  App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
   App.toast = function (msg, undoFn) {

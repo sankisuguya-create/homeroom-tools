@@ -15,7 +15,7 @@
   var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18, k10: .06 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
-  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
+  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, transfers: {}, nextInc: 1 };
   function yearRows(fy, grade) { S.years[fy] = S.years[fy] || {}; return (S.years[fy][grade] = S.years[fy][grade] || []); }
 
   // ダミーデータは初めて使う時に作る（本番の画面では「試行」を押すまで作らない）
@@ -49,6 +49,7 @@
             a[at.k] = v;
             if (at.side && v) a[at.k + '_t'] = NOTE[at.k][(+id) % NOTE[at.k].length];
           });
+          if ((+id) % 53 === 7) a.sp = 1; // 特別支援学級の児童の見本（各学年2〜3人）
           rows.push({ id: id, cls: ix % nc, no: 0, a: a });
         });
         for (var k = 0; k < nc; k++) rows.filter(function (r) { return r.cls === k; })
@@ -120,6 +121,10 @@
       return later(out);
     },
     boot: function (grade) { gen();
+      if (!S.transfers[grade] && grade === 4) { // 新年度の転入生の見本（5年は上限の144人なので4年に置く）
+        S.transfers[4] = [{ id: 'T' + FY + '001', name: '中島 リス', kana: 'なかじま りす', male: false }, { id: 'T' + FY + '002', name: '野村 シカ', kana: 'のむら しか', male: true }];
+        S.transfers[4].forEach(function (t) { S.kids[t.id] = { id: t.id, name: t.name, kana: t.kana, male: t.male, area: '' }; });
+      }
       var years = cohortYears(grade), idset = {};
       years.forEach(function (y) { y.rows.forEach(function (r) { idset[r.id] = 1; }); });
       var kids = {};
@@ -127,13 +132,31 @@
       return later({
         fy: FY, grade: grade, years: years, kids: kids,
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
-        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null
+        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
+        transfers: clone(S.transfers[grade] || [])
       });
+    },
+    addTransfer: function (grade, x) { gen();
+      if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
+      var name = String(x.name || '').trim(), id = String(x.id || '').trim();
+      if (!name) return Promise.reject(new Error('名前を入れてください'));
+      if (id && !/^\d{8}$/.test(id)) return Promise.reject(new Error('児童IDは数字8桁です（分からなければ空のまま）'));
+      if (id && S.kids[id]) return Promise.reject(new Error('その児童IDはもう使われています'));
+      if (!id) { var n = 1; while (S.kids['T' + FY + ('00' + n).slice(-3)]) n++; id = 'T' + FY + ('00' + n).slice(-3); }
+      var t = { id: id, name: name, kana: String(x.kana || '').trim(), male: !!x.male };
+      (S.transfers[grade] = S.transfers[grade] || []).push(t);
+      S.kids[id] = { id: id, name: t.name, kana: t.kana, male: t.male, area: '' };
+      return later({ id: id });
+    },
+    removeTransfer: function (grade, id) { gen();
+      if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから消してください'));
+      S.transfers[grade] = (S.transfers[grade] || []).filter(function (t) { return t.id !== id; });
+      return later({ ok: true });
     },
     setAttr: function (fy, grade, id, k, v, text) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
-      r.a[k] = v;
+      if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
       return later({ ok: true });
     },
@@ -163,8 +186,10 @@
     decide: function (grade, plan) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです'));
       if (grade >= 6) return Promise.reject(new Error('6年は決定しません'));
-      var cur = yearRows(FY, grade), kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
+      var cur = yearRows(FY, grade).concat((S.transfers[grade] || []).map(function (t) { return { id: t.id, a: {} }; }));
+      var kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
       var asg = cur.map(function (r) { return plan.assign[r.id]; });
+      if (asg.some(function (k) { return !(k >= 0 && k < C.MAX_CLASSES); })) return Promise.reject(new Error('組の決まっていない児童がいます'));
       var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
       S.years[FY + 1] = S.years[FY + 1] || {};
       S.years[FY + 1][grade + 1] = E.nextYearRows(kids, asg, nc);

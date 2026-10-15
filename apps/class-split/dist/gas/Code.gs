@@ -391,6 +391,7 @@
     return kids.map(function (s, i) {
       var a = {};
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if (at.side && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; });
+      if (s.a.sp) a.sp = 1;
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -418,7 +419,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_0e966bf39fcb';
+var SERVER_BUILD = 'BUILD_fdcf6c00433a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -471,12 +472,15 @@ var TABLES_ = [
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b'] },
   { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted'] },
   { name: 'incident_kids', head: ['inc_id', 'id8'] },
-  { name: 'log', head: ['at', 'by', 'action', 'n'] }
+  { name: 'log', head: ['at', 'by', 'action', 'n'] },
+  // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
+  { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] }
 ];
 // side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
 function attrsHead_() {
   var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
   CONFIG.ATTRS.forEach(function (at) { if (at.side) h.push(at.k + '_t'); });
+  h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
   return h;
 }
 // シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
@@ -564,6 +568,7 @@ function attrsMap_(fy) {
   read_('attrs_' + fy).rows.forEach(function (r) {
     var a = {};
     CONFIG.ATTRS.forEach(function (at) { a[at.k] = +r[at.k] || 0; if (at.side && r[at.k + '_t']) a[at.k + '_t'] = String(r[at.k + '_t']); });
+    if (+r.sp) a.sp = 1;
     m[String(r.id8)] = a;
   });
   return m;
@@ -619,9 +624,44 @@ var apiBoot = api_(function (grade) {
     fy: FY, grade: grade, years: years, kids: kids, incidents: incs,
     pairs: pairs_(FY, grade),
     carry: carry_(FY, grade, idset),
+    transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
     decision: dec ? { plan: String(dec.plan), at: String(dec.at) } : null
   };
+});
+function transfers_(fy, grade) {
+  return read_('transfers').rows.filter(function (r) { return +r.fy === fy && +r.grade === grade && String(r.id8); }).map(function (r) {
+    return { id: String(r.id8), name: String(r.name), kana: String(r.kana), male: String(r.sex) === '男' };
+  });
+}
+// 転入生を足す：児童IDが分からなければ仮のID（T＋数字）。名簿の児童IDと重なれば断る
+var apiAddTransfer = api_(function (grade, x) {
+  var by = requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  var name = String(x && x.name || '').trim(), kana = String(x && x.kana || '').trim(), id = String(x && x.id || '').trim();
+  if (!name) throw userError_('名前を入れてください');
+  if (id && !/^\d{8}$/.test(id)) throw userError_('児童IDは数字8桁です（分からなければ空のまま）');
+  return withLock_(function () {
+    if (decisionOf_(FY, grade)) throw userError_('決定済みです。決定を取り消してから足してください');
+    var used = {};
+    rosterRows_(FY).concat(rosterRows_(FY + 1)).forEach(function (r) { used[r.id] = 1; });
+    read_('transfers').rows.forEach(function (r) { used[String(r.id8)] = 1; });
+    if (id && used[id]) throw userError_('その児童IDはもう使われています');
+    if (!id) { var n = 1; while (used['T' + FY + ('00' + n).slice(-3)]) n++; id = 'T' + FY + ('00' + n).slice(-3); }
+    append_('transfers', TABLES_[6].head, [{ fy: FY, grade: grade, id8: id, name: plainText_(name), kana: plainText_(kana), sex: x.male ? '男' : '女', by: by, at: new Date().toISOString() }]);
+    return { id: id };
+  });
+});
+var apiRemoveTransfer = api_(function (grade, id) {
+  requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  return withLock_(function () {
+    if (decisionOf_(FY, grade)) throw userError_('決定済みです。決定を取り消してから消してください');
+    removeRows_('transfers', function (r) { return +r.fy === FY && +r.grade === grade && String(r.id8) === String(id); });
+    return { ok: true };
+  });
 });
 function emptyAttrs_() { var a = {}; CONFIG.ATTRS.forEach(function (at) { a[at.k] = 0; }); return a; }
 
@@ -703,7 +743,7 @@ function isoDate_(v) {
 var apiSetAttr = api_(function (fy, grade, id, k, v, text) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
-  var at = CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  var at = k === 'sp' ? { k: 'sp', max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
   if (!at) throw userError_('項目が違います');
   if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY), dec = decisionOf_(FY, cohortGrade);
@@ -786,6 +826,9 @@ var apiDecide = api_(function (grade, plan) {
     var am = attrsMap_(FY);
     var cur = rosterRows_(FY).filter(function (r) { return r.grade === grade; });
     if (!cur.length) throw userError_('名簿がありません');
+    // 転入生も名簿の児童と同じに扱う（今年度の値は無いので空）
+    var tr = transfers_(FY, grade).map(function (t) { return { id: t.id, name: t.name, kana: t.kana, male: t.male }; });
+    cur = cur.concat(tr);
     var kids = cur.map(function (r) { return { id: r.id, kana: r.kana, a: am[r.id] || emptyAttrs_() }; });
     var asg = cur.map(function (r) { return plan.assign[r.id]; });
     if (asg.some(function (k) { return !(k >= 0 && k < CONFIG.MAX_CLASSES); })) throw userError_('組の決まっていない児童がいます');
@@ -798,7 +841,7 @@ var apiDecide = api_(function (grade, plan) {
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
-    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if (at.side && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t']); }); return o; }));
+    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if (at.side && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t']); }); if (r.a.sp) o.sp = 1; return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
     append_('decisions', TABLES_[1].head, [{ fy: FY, grade: grade, plan: String(plan.name), by: by, at: new Date().toISOString(), undone: '' }]);
@@ -817,6 +860,7 @@ var apiUndoDecide = api_(function (grade) {
     if (!dec) throw userError_('決定されていません（年度が変わった後は取り消せません）');
     var ids = {};
     rosterRows_(FY).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
+    transfers_(FY, grade).forEach(function (t) { ids[t.id] = 1; });
     var n = removeRows_('roster_' + (FY + 1), function (r) { return +r.grade === grade + 1 && ids[String(r.id8)]; });
     removeRows_('attrs_' + (FY + 1), function (r) { return ids[String(r.id8)]; });
     removeRows_('pairs_carry', function (r) { return +r.fy === FY && (ids[String(r.a)] || ids[String(r.b)]); });
@@ -905,6 +949,7 @@ var apiPurge = api_(function (ids) {
       else if (/^pairs_/.test(name)) removeRows_(name, function (r) { return set[String(r.a)] || set[String(r.b)]; });
     });
     removeRows_('incident_kids', function (r) { return set[String(r.id8)]; });
+    removeRows_('transfers', function (r) { return set[String(r.id8)]; });
     var left = {};
     read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
     var t = read_('incidents');

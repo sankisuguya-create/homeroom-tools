@@ -15,6 +15,11 @@
       var s = d.kids[r.id]; idx[r.id] = i;
       return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area };
     });
+    // 新年度の転入生：旧学級は無し（-1）。名簿の児童の後ろに並べる
+    (d.transfers || []).forEach(function (t) {
+      idx[t.id] = kids.length;
+      kids.push({ id: t.id, name: t.name, kana: t.kana, male: t.male, old: -1, no: 0, a: {}, area: '', tr: true });
+    });
     var pairs = [];
     d.pairs.forEach(function (p) {
       if (!(p.a in idx)) return;
@@ -35,7 +40,10 @@
     // 保存済みの案を戻す
     (d.plans || []).forEach(function (sp) {
       var asg = new Int8Array(kids.length);
-      kids.forEach(function (s, i) { asg[i] = sp.assign[s.id] | 0; });
+      var miss = [], sz = new Array(nc).fill(0);
+      kids.forEach(function (s, i) { if (s.id in sp.assign) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
+      // 案を作った後に足した転入生は、その案でいちばん人数の少ない組に入れる
+      miss.forEach(function (i) { var k = sz.indexOf(Math.min.apply(null, sz)); asg[i] = k; sz[k]++; });
       var locks = new Set((sp.locks || []).filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }));
       S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
@@ -71,8 +79,10 @@
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
+    // 特別支援学級の児童は、地（旧学級の薄い色）を薄いオレンジにする。帯は旧学級の色のまま
+    var bg = s.a.sp ? '#FFE0BF' : oc.l;
     // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
-    var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
+    var tt = esc(s.name) + '（' + (s.tr ? '転入生' : '旧' + (s.old + 1) + '組' + s.no + '番') + '・' + (s.male ? '男' : '女') + (s.a.sp ? '・特別支援学級' : '') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     // 枠：1段目右＝良い項目（賢・リ・運）、2段目右＝その真下に有無だけの項目（ア・身・通）、2段目左＝負担の項目
     var slot = function (pick) {
@@ -86,8 +96,8 @@
       return out;
     };
     var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
-    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
+      '<span class="old" title="' + tt + '">' + (s.tr ? '転' : s.no) + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
       '<span class="jr">' + jn + '</span></div>';
   }
@@ -110,6 +120,7 @@
         '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
         (S.plans.length > 1 && !S.decision ? '<button class="btn" id="delp"' + (S.view !== 'plan' ? ' disabled' : '') + '>削除<kbd>Del</kbd></button>' : '') +
         '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
+        '<button class="btn" id="trans">転入生…</button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
     h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
@@ -130,7 +141,8 @@
     for (k = 0; k < nc; k++) {
       var ids = [];
       for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k) ids.push(i);
-      ids.sort(function (x, y) { return S.P.kids[x].old - S.P.kids[y].old || S.P.kids[x].no - S.P.kids[y].no; });
+      var ord = function (s) { return s.old < 0 ? 99 : s.old; }; // 転入生は組の最後
+      ids.sort(function (x, y) { return ord(S.P.kids[x]) - ord(S.P.kids[y]) || S.P.kids[x].no - S.P.kids[y].no || (S.P.kids[x].kana < S.P.kids[y].kana ? -1 : 1); });
       var half = Math.ceil(ids.length / 2);
       per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
@@ -148,7 +160,8 @@
     }
     App.$('board').innerHTML = h + '</div>';
     // 凡例は計測の前に入れる（後から折り返すと盤面が縮み、最後の児童がはみ出す）
-    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('');
+    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
+      '<span class="c"><span class="lg" style="background:#FFE0BF"></span>特別支援学級</span><span class="c"><span class="lg tr"></span>転入生</span>';
     fit(rows);
     var gcols = App.$('board').querySelectorAll('.gcol');
     for (k = 0; k < nc; k++) for (var g2 = 0; g2 < 2; g2++)
@@ -368,6 +381,48 @@
   // ===== つける・離す・組に固定 =====
   // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
   var PT = { far: '離す', near: 'つける', fix: '組に固定' };
+  // 新年度の転入生：足すと、すべての案でいちばん人数の少ない組に入る。決定で来年度の名簿に入る
+  function transDialog() {
+    var grade = App.st.grade, F = { name: '', kana: '', male: true, id: '' }, busy = false;
+    var list = function () { return S.P.kids.filter(function (s) { return s.tr; }); };
+    // 足す・消すの前に、手元の案を保存してから読み直す（案の入れ替えを失わない）
+    var run = function (fn) {
+      if (busy) return; busy = true;
+      clearTimeout(saveT);
+      App.save(function () { return App.pf().savePlans(grade, serialize()); })
+        .then(function () { return App.save(fn); })
+        .then(function () { App.closeDlg(); return App.reload(); }).then(function () { transDialog(); });
+    };
+    App.openDlg({
+      focus: 'trName',
+      html: function () {
+        var esc = App.esc, L = list();
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="転入生" style="max-width:560px"><h2>新年度の転入生（' + grade + '年→' + (grade + 1) + '年）</h2>' +
+          (L.length ? '<table class="r"><tbody>' + L.map(function (s) {
+            return '<tr><td>' + (s.male ? '男' : '女') + '</td><td style="text-align:left"><b>' + esc(s.name) + '</b> <span class="note">' + esc(s.kana) + '</span></td><td class="note">' + (s.id.charAt(0) === 'T' ? 'IDは未定' : esc(s.id)) + '</td>' +
+              '<td><button class="btn" data-trdel="' + esc(s.id) + '">消す</button></td></tr>';
+          }).join('') + '</tbody></table>' : '<div class="note">まだいません。</div>') +
+          '<div class="trf"><input id="trName" placeholder="名前（例：中島 リス）" value="' + esc(F.name) + '"><input id="trKana" placeholder="よみ（番号の五十音順に使う）" value="' + esc(F.kana) + '">' +
+          '<span class="lvs"><button class="lv" data-trsex="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-trsex="0" aria-pressed="' + !F.male + '">女</button></span>' +
+          '<input id="trId" inputmode="numeric" maxlength="8" placeholder="児童ID（分かれば。8桁）" value="' + esc(F.id) + '"></div>' +
+          '<div class="note">足すと、どの案でもいちばん人数の少ない組に入ります。カードは灰色の帯・白い地で出ます。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">足す<kbd>Enter</kbd></button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'trName') F.name = t.value; if (t.id === 'trKana') F.kana = t.value; if (t.id === 'trId') F.id = t.value; },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-trsex]'))) { F.male = x.dataset.trsex === '1'; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-trdel]'))) { var id = x.dataset.trdel; run(function () { return App.pf().removeTransfer(grade, id); }); return true; }
+        return false;
+      },
+      onOk: function () {
+        if (!F.name.trim()) { App.toast('名前を入れてください'); return; }
+        var x = { name: F.name, kana: F.kana, male: F.male, id: F.id };
+        run(function () { return App.pf().addTransfer(grade, x); });
+      }
+    });
+  }
+
   function pairsDialog() {
     var d = App.st.data, esc = App.esc, kids = S.P.kids;
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
@@ -578,6 +633,7 @@
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
+      if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }

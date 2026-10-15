@@ -294,6 +294,13 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;cursor:pointer;max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 .toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
+
+/* 特別支援学級（名簿の「支」）・転入生の凡例 */
+.spb{display:inline-block;background:#FFE0BF;border:1px solid #C77A2E;color:#7A3E00;border-radius:3px;padding:0 4px;font-weight:700;font-size:.85em}
+.lg{display:inline-block;width:1.6em;height:1em;border:1px solid var(--line);border-radius:2px;vertical-align:middle}
+.lg.tr{background:linear-gradient(90deg,#8C8C8C 0 30%,#fff 30%)}
+.trf{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;align-items:center}
+.trf input{flex:1 1 10em;min-width:0;padding:6px 8px;font-size:1rem}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -691,6 +698,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     return kids.map(function (s, i) {
       var a = {};
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if (at.side && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; });
+      if (s.a.sp) a.sp = 1;
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -823,7 +831,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18, k10: .06 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
-  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, nextInc: 1 };
+  var S = { kids: {}, years: {}, inc: [], pairs: {}, carry: {}, plans: {}, decisions: {}, transfers: {}, nextInc: 1 };
   function yearRows(fy, grade) { S.years[fy] = S.years[fy] || {}; return (S.years[fy][grade] = S.years[fy][grade] || []); }
 
   // ダミーデータは初めて使う時に作る（本番の画面では「試行」を押すまで作らない）
@@ -857,6 +865,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
             a[at.k] = v;
             if (at.side && v) a[at.k + '_t'] = NOTE[at.k][(+id) % NOTE[at.k].length];
           });
+          if ((+id) % 53 === 7) a.sp = 1; // 特別支援学級の児童の見本（各学年2〜3人）
           rows.push({ id: id, cls: ix % nc, no: 0, a: a });
         });
         for (var k = 0; k < nc; k++) rows.filter(function (r) { return r.cls === k; })
@@ -928,6 +937,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return later(out);
     },
     boot: function (grade) { gen();
+      if (!S.transfers[grade] && grade === 4) { // 新年度の転入生の見本（5年は上限の144人なので4年に置く）
+        S.transfers[4] = [{ id: 'T' + FY + '001', name: '中島 リス', kana: 'なかじま りす', male: false }, { id: 'T' + FY + '002', name: '野村 シカ', kana: 'のむら しか', male: true }];
+        S.transfers[4].forEach(function (t) { S.kids[t.id] = { id: t.id, name: t.name, kana: t.kana, male: t.male, area: '' }; });
+      }
       var years = cohortYears(grade), idset = {};
       years.forEach(function (y) { y.rows.forEach(function (r) { idset[r.id] = 1; }); });
       var kids = {};
@@ -935,13 +948,31 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return later({
         fy: FY, grade: grade, years: years, kids: kids,
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
-        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null
+        pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
+        transfers: clone(S.transfers[grade] || [])
       });
+    },
+    addTransfer: function (grade, x) { gen();
+      if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
+      var name = String(x.name || '').trim(), id = String(x.id || '').trim();
+      if (!name) return Promise.reject(new Error('名前を入れてください'));
+      if (id && !/^\d{8}$/.test(id)) return Promise.reject(new Error('児童IDは数字8桁です（分からなければ空のまま）'));
+      if (id && S.kids[id]) return Promise.reject(new Error('その児童IDはもう使われています'));
+      if (!id) { var n = 1; while (S.kids['T' + FY + ('00' + n).slice(-3)]) n++; id = 'T' + FY + ('00' + n).slice(-3); }
+      var t = { id: id, name: name, kana: String(x.kana || '').trim(), male: !!x.male };
+      (S.transfers[grade] = S.transfers[grade] || []).push(t);
+      S.kids[id] = { id: id, name: t.name, kana: t.kana, male: t.male, area: '' };
+      return later({ id: id });
+    },
+    removeTransfer: function (grade, id) { gen();
+      if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから消してください'));
+      S.transfers[grade] = (S.transfers[grade] || []).filter(function (t) { return t.id !== id; });
+      return later({ ok: true });
     },
     setAttr: function (fy, grade, id, k, v, text) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
-      r.a[k] = v;
+      if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
       return later({ ok: true });
     },
@@ -971,8 +1002,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     decide: function (grade, plan) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです'));
       if (grade >= 6) return Promise.reject(new Error('6年は決定しません'));
-      var cur = yearRows(FY, grade), kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
+      var cur = yearRows(FY, grade).concat((S.transfers[grade] || []).map(function (t) { return { id: t.id, a: {} }; }));
+      var kids = cur.map(function (r) { var s = S.kids[r.id]; return { id: r.id, kana: s.kana, a: r.a }; });
       var asg = cur.map(function (r) { return plan.assign[r.id]; });
+      if (asg.some(function (k) { return !(k >= 0 && k < C.MAX_CLASSES); })) return Promise.reject(new Error('組の決まっていない児童がいます'));
       var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
       S.years[FY + 1] = S.years[FY + 1] || {};
       S.years[FY + 1][grade + 1] = E.nextYearRows(kids, asg, nc);
@@ -1053,7 +1086,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
-  App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
+  // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
+  var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
+  App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
   App.toast = function (msg, undoFn) {
@@ -1207,16 +1242,17 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th>' +
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
       C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx">' + (s.male ? '男' : '女') + '</span>' + esc(s.name) + '</td>' +
+        '<td class="cell" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td></tr>';
     });
-    if (!rows.length) h += '<tr><td colspan="12" class="empty">該当する児童はいません</td></tr>';
+    if (!rows.length) h += '<tr><td colspan="14" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
   }
 
@@ -1351,6 +1387,13 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       if ((x = t.closest('[data-cell]'))) {
         if (R.fy !== editableFy()) return true;
         var Y = yearOf(R.fy), r = Y.rows.filter(function (y) { return y.id === x.dataset.cell; })[0], k = x.dataset.k;
+        if (k === 'sp') { // 特別支援学級：押すたびに あり／なし
+          var sv = r.a.sp ? 0 : 1, sfy = R.fy, sg = Y.grade;
+          if (sv) r.a.sp = 1; else delete r.a.sp;
+          x.innerHTML = sv ? '<span class="spb">支</span>' : '';
+          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); });
+          return true;
+        }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
         if (at.side) { noteDialog(Y, r, at, x); return true; }
         r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
@@ -1423,6 +1466,11 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       var s = d.kids[r.id]; idx[r.id] = i;
       return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area };
     });
+    // 新年度の転入生：旧学級は無し（-1）。名簿の児童の後ろに並べる
+    (d.transfers || []).forEach(function (t) {
+      idx[t.id] = kids.length;
+      kids.push({ id: t.id, name: t.name, kana: t.kana, male: t.male, old: -1, no: 0, a: {}, area: '', tr: true });
+    });
     var pairs = [];
     d.pairs.forEach(function (p) {
       if (!(p.a in idx)) return;
@@ -1443,7 +1491,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     // 保存済みの案を戻す
     (d.plans || []).forEach(function (sp) {
       var asg = new Int8Array(kids.length);
-      kids.forEach(function (s, i) { asg[i] = sp.assign[s.id] | 0; });
+      var miss = [], sz = new Array(nc).fill(0);
+      kids.forEach(function (s, i) { if (s.id in sp.assign) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
+      // 案を作った後に足した転入生は、その案でいちばん人数の少ない組に入れる
+      miss.forEach(function (i) { var k = sz.indexOf(Math.min.apply(null, sz)); asg[i] = k; sz[k]++; });
       var locks = new Set((sp.locks || []).filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }));
       S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
@@ -1479,8 +1530,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
+    // 特別支援学級の児童は、地（旧学級の薄い色）を薄いオレンジにする。帯は旧学級の色のまま
+    var bg = s.a.sp ? '#FFE0BF' : oc.l;
     // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
-    var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
+    var tt = esc(s.name) + '（' + (s.tr ? '転入生' : '旧' + (s.old + 1) + '組' + s.no + '番') + '・' + (s.male ? '男' : '女') + (s.a.sp ? '・特別支援学級' : '') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     // 枠：1段目右＝良い項目（賢・リ・運）、2段目右＝その真下に有無だけの項目（ア・身・通）、2段目左＝負担の項目
     var slot = function (pick) {
@@ -1494,8 +1547,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       return out;
     };
     var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
-    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
-      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
+      '<span class="old" title="' + tt + '">' + (s.tr ? '転' : s.no) + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
       '<span class="jr">' + jn + '</span></div>';
   }
@@ -1518,6 +1571,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
         '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
         (S.plans.length > 1 && !S.decision ? '<button class="btn" id="delp"' + (S.view !== 'plan' ? ' disabled' : '') + '>削除<kbd>Del</kbd></button>' : '') +
         '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
+        '<button class="btn" id="trans">転入生…</button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
     h += '<button class="btn" id="fs">全画面<kbd>F</kbd></button><button class="btn" id="hbtn" aria-label="ショートカット一覧">?</button>';
@@ -1538,7 +1592,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     for (k = 0; k < nc; k++) {
       var ids = [];
       for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k) ids.push(i);
-      ids.sort(function (x, y) { return S.P.kids[x].old - S.P.kids[y].old || S.P.kids[x].no - S.P.kids[y].no; });
+      var ord = function (s) { return s.old < 0 ? 99 : s.old; }; // 転入生は組の最後
+      ids.sort(function (x, y) { return ord(S.P.kids[x]) - ord(S.P.kids[y]) || S.P.kids[x].no - S.P.kids[y].no || (S.P.kids[x].kana < S.P.kids[y].kana ? -1 : 1); });
       var half = Math.ceil(ids.length / 2);
       per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
@@ -1556,7 +1611,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     }
     App.$('board').innerHTML = h + '</div>';
     // 凡例は計測の前に入れる（後から折り返すと盤面が縮み、最後の児童がはみ出す）
-    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('');
+    App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
+      '<span class="c"><span class="lg" style="background:#FFE0BF"></span>特別支援学級</span><span class="c"><span class="lg tr"></span>転入生</span>';
     fit(rows);
     var gcols = App.$('board').querySelectorAll('.gcol');
     for (k = 0; k < nc; k++) for (var g2 = 0; g2 < 2; g2++)
@@ -1776,6 +1832,48 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   // ===== つける・離す・組に固定 =====
   // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
   var PT = { far: '離す', near: 'つける', fix: '組に固定' };
+  // 新年度の転入生：足すと、すべての案でいちばん人数の少ない組に入る。決定で来年度の名簿に入る
+  function transDialog() {
+    var grade = App.st.grade, F = { name: '', kana: '', male: true, id: '' }, busy = false;
+    var list = function () { return S.P.kids.filter(function (s) { return s.tr; }); };
+    // 足す・消すの前に、手元の案を保存してから読み直す（案の入れ替えを失わない）
+    var run = function (fn) {
+      if (busy) return; busy = true;
+      clearTimeout(saveT);
+      App.save(function () { return App.pf().savePlans(grade, serialize()); })
+        .then(function () { return App.save(fn); })
+        .then(function () { App.closeDlg(); return App.reload(); }).then(function () { transDialog(); });
+    };
+    App.openDlg({
+      focus: 'trName',
+      html: function () {
+        var esc = App.esc, L = list();
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="転入生" style="max-width:560px"><h2>新年度の転入生（' + grade + '年→' + (grade + 1) + '年）</h2>' +
+          (L.length ? '<table class="r"><tbody>' + L.map(function (s) {
+            return '<tr><td>' + (s.male ? '男' : '女') + '</td><td style="text-align:left"><b>' + esc(s.name) + '</b> <span class="note">' + esc(s.kana) + '</span></td><td class="note">' + (s.id.charAt(0) === 'T' ? 'IDは未定' : esc(s.id)) + '</td>' +
+              '<td><button class="btn" data-trdel="' + esc(s.id) + '">消す</button></td></tr>';
+          }).join('') + '</tbody></table>' : '<div class="note">まだいません。</div>') +
+          '<div class="trf"><input id="trName" placeholder="名前（例：中島 リス）" value="' + esc(F.name) + '"><input id="trKana" placeholder="よみ（番号の五十音順に使う）" value="' + esc(F.kana) + '">' +
+          '<span class="lvs"><button class="lv" data-trsex="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-trsex="0" aria-pressed="' + !F.male + '">女</button></span>' +
+          '<input id="trId" inputmode="numeric" maxlength="8" placeholder="児童ID（分かれば。8桁）" value="' + esc(F.id) + '"></div>' +
+          '<div class="note">足すと、どの案でもいちばん人数の少ない組に入ります。カードは灰色の帯・白い地で出ます。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">足す<kbd>Enter</kbd></button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'trName') F.name = t.value; if (t.id === 'trKana') F.kana = t.value; if (t.id === 'trId') F.id = t.value; },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-trsex]'))) { F.male = x.dataset.trsex === '1'; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-trdel]'))) { var id = x.dataset.trdel; run(function () { return App.pf().removeTransfer(grade, id); }); return true; }
+        return false;
+      },
+      onOk: function () {
+        if (!F.name.trim()) { App.toast('名前を入れてください'); return; }
+        var x = { name: F.name, kana: F.kana, male: F.male, id: F.id };
+        run(function () { return App.pf().addTransfer(grade, x); });
+      }
+    });
+  }
+
   function pairsDialog() {
     var d = App.st.data, esc = App.esc, kids = S.P.kids;
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
@@ -1986,6 +2084,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
+      if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }

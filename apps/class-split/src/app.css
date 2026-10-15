@@ -286,3 +286,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;cursor:pointer;max-width:calc(100% - 32px)}
 .toast[hidden]{display:none}
 .toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
+
+/* 特別支援学級（名簿の「支」）・転入生の凡例 */
+.spb{display:inline-block;background:#FFE0BF;border:1px solid #C77A2E;color:#7A3E00;border-radius:3px;padding:0 4px;font-weight:700;font-size:.85em}
+.lg{display:inline-block;width:1.6em;height:1em;border:1px solid var(--line);border-radius:2px;vertical-align:middle}
+.lg.tr{background:linear-gradient(90deg,#8C8C8C 0 30%,#fff 30%)}
+.trf{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;align-items:center}
+.trf input{flex:1 1 10em;min-width:0;padding:6px 8px;font-size:1rem}
