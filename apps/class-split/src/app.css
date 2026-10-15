@@ -198,10 +198,11 @@ table.h tr.cur td{font-weight:700}
 .side .chip .nm{font-size:20px}
 .bs{position:relative;font-size:var(--ic);--slot:1.5em;margin:0 4px}
 .bs>.b,.bs>.jn{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
-.bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
+/* 1段目は男女で右の余白を同じにして、縦に並ぶ児童で賢・リ・運の位置をそろえる（女子の丸い右端に合わせる） */
+.bs.gd{margin:0 0 0 auto;padding-right:calc(var(--rowh)*.38);align-self:stretch;width:calc(3*var(--slot));flex:none}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
-.chip.f .bs{padding-right:calc(var(--rowh)*.38)}
+.chip.f .bs:not(.gd){padding-right:calc(var(--rowh)*.38)}
 .rt{font-size:.85em;font-weight:700;flex:none}
 .rt.far{color:var(--alert)} .rt.near{color:var(--link)}
 .lkm{flex:none;color:var(--sub);font-size:.85em}

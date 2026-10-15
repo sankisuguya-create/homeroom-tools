@@ -206,10 +206,11 @@ table.h tr.cur td{font-weight:700}
 .side .chip .nm{font-size:20px}
 .bs{position:relative;font-size:var(--ic);--slot:1.5em;margin:0 4px}
 .bs>.b,.bs>.jn{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
-.bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
+/* 1段目は男女で右の余白を同じにして、縦に並ぶ児童で賢・リ・運の位置をそろえる（女子の丸い右端に合わせる） */
+.bs.gd{margin:0 0 0 auto;padding-right:calc(var(--rowh)*.38);align-self:stretch;width:calc(3*var(--slot));flex:none}
 .bs>.b{width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
-.chip.f .bs{padding-right:calc(var(--rowh)*.38)}
+.chip.f .bs:not(.gd){padding-right:calc(var(--rowh)*.38)}
 .rt{font-size:.85em;font-weight:700;flex:none}
 .rt.far{color:var(--alert)} .rt.near{color:var(--link)}
 .lkm{flex:none;color:var(--sub);font-size:.85em}
@@ -1004,7 +1005,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_da065d8d5e1b';
+  var PAGE_BUILD = 'BUILD_748bcad068be';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1495,15 +1496,14 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
-    // 2段目のアイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
+    // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     var slot = function (good) {
-      var n = 0, out = '', ats = C.ATTRS.filter(function (at) { return !!at.good === !!good; });
-      // 良い項目（1段目）は右詰め：ある分だけを枠の右端から並べる。2段目は項目ごとに決まった位置
-      if (good) n = ats.length - ats.filter(function (at) { return s.a[at.k] | 0; }).length;
-      ats.forEach(function (at) {
+      var n = 0, out = '';
+      C.ATTRS.forEach(function (at) {
+        if (!!at.good !== !!good) return;
         var v = s.a[at.k] | 0;
         if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
-        if (v || !good) n++;
+        n++;
       });
       if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
