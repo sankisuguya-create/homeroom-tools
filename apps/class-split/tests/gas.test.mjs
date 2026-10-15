@@ -56,6 +56,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, "'=卵", 'ア・身・通の内容は文字のまま残る（式にしない）');
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 0, '').ok);
     assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, undefined, 'なしにすると内容も消える');
+    // 備考：列の無い古いシートでも書け、空にすると消える
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'memo', 1, '前の席').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.memo, '前の席');
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k3, 2, '備考を書いても配慮項目は変わらない');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'memo', 0, '').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.memo, undefined);
 
     // 案：版が合えば保存、古い版からの保存は上書きしない
     const plans = [{ letter: 'A', assign: {} }];

@@ -318,8 +318,26 @@ body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filte
 body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
 body[data-screen="roster"] table.r{font-size:17px}
 body[data-screen="roster"] table.r :is(th,td){padding:5px 6px}
+/* マスの幅と高さを固定し、＋のアイコンは描くときだけ拡大する（行の高さ・列の幅を変えない） */
+body[data-screen="roster"] table.r td.cell{width:2.6em;min-width:2.6em;max-width:2.6em;height:38px;padding:0;box-sizing:border-box;overflow:visible}
 body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
-body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{font-size:1.3em}
+body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{transform:scale(1.45)}
+/* 特別支援学級：有無だけなので最小の幅 */
+body[data-screen="roster"] table.r :is(th,td).spc{width:2.2em;min-width:2.2em;max-width:2.2em;padding:0 2px;font-size:.78em}
+body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
+body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
+/* つける・離す：数だけ。相手はカーソルで出す */
+body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
+table.r td.pr{min-width:3.4em}
+table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
+table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
+.prm{display:inline-flex;gap:3px}
+.prm b{font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid}
+.prm .pf{color:var(--alert);border-color:var(--alert)}
+.prm .pn{color:var(--link);border-color:var(--link)}
+.prm .px{color:var(--sub);border-color:var(--sub)}
+/* 備考：1行で切り、全文はカーソルで出す（押すと書ける） */
+table.r :is(th,td).memo{text-align:left;width:14em;min-width:10em;max-width:14em;overflow:hidden;text-overflow:ellipsis;font-size:.85em}
 body[data-screen="roster"] table.r th .b{font-size:.8em}
 /* 児童の窓（経年の記録と事案） */
 .kidpop{width:min(760px,94vw);max-height:88vh;max-width:none;position:relative;padding:14px 16px}

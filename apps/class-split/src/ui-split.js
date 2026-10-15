@@ -484,17 +484,29 @@
   }
 
   function pairsDialog() {
-    var d = App.st.data, esc = App.esc, kids = S.P.kids;
+    App.pairsDialog({
+      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old }; }), nc: S.P.nc, pre: '旧',
+      // 案を先に保存してから読み込み直す（案は残る）
+      save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
+    });
+  }
+
+  // つける・離す・組に固定の窓。クラス分けの画面と名簿の画面から開く
+  // o: { kids:[{id,name,kana,no,cls}], nc, pre:'旧'|'', a:最初に選んでおく児童, save:function(list)→Promise }
+  App.pairsDialog = function (o) {
+    var d = App.st.data, esc = App.esc, kids = o.kids, kidOf = {};
+    kids.forEach(function (s) { kidOf[s.id] = s; });
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     var carry = (d.carry || []).slice();
-    var F = { t: 'far', a: null, b: null, k: 0, memo: '' };
-    var nm = function (id) { var i = S.idx[id]; return i == null ? id : kids[i].name + '（旧' + (kids[i].old + 1) + '組）'; };
+    var F = { t: 'far', a: o.a || null, b: null, k: 0, memo: '' };
+    var cl = function (s) { return s.cls < 0 ? '転入' : o.pre + (s.cls + 1) + '組'; };
+    var nm = function (id) { var s = kidOf[id]; return s ? s.name + '（' + cl(s) + '）' : id; };
     var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + (p.k + 1) + '組' : nm(p.a) + ' と ' + nm(p.b); };
     var sugg = function (q, slot) {
       q = (q || '').trim();
       if (!q) return '';
       var hit = kids.filter(function (s) { return s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || s.id.indexOf(q) === 0; }).slice(0, 8);
-      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">旧' + (s.old + 1) + '組' + s.no + '番 ' + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+      return hit.length ? '<div class="sugg">' + hit.map(function (s) { return '<button type="button" data-pk="' + slot + ':' + s.id + '">' + cl(s) + (s.no ? s.no + '番 ' : ' ') + esc(s.name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
     };
     var pick = function (slot) {
       var id = F[slot];
@@ -503,12 +515,12 @@
     };
     var canAdd = function () { return F.a && (F.t === 'fix' ? true : F.b && F.b !== F.a); };
     App.openDlg({
-      focus: 'qa',
+      focus: F.a ? 'qb' : 'qa',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す"><h2>つける・離す・組に固定</h2>' +
           '<div class="form"><div class="toggles">' + ['far', 'near', 'fix'].map(function (t) { return '<button class="tg" data-pt="' + t + '" aria-pressed="' + (F.t === t) + '">' + PT[t] + '</button>'; }).join('') + '</div>' +
           '<div class="row" style="align-items:flex-start"><div>' + pick('a') + '</div><div>' + (F.t === 'fix' ?
-            '<div class="lvs">' + Array.from({ length: S.P.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
+            '<div class="lvs">' + Array.from({ length: o.nc }, function (_, k) { return '<button class="lv" data-pkc="' + k + '" aria-pressed="' + (F.k === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div>' : pick('b')) + '</div></div>' +
           '<div class="row"><input id="pmemo" placeholder="メモ（任意・氏名は書かない）" value="' + esc(F.memo) + '" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"><button class="btn" id="padd"' + (canAdd() ? '' : ' disabled') + '>追加</button></div></div>' +
           '<div class="tw" style="max-height:220px"><table class="r ro"><thead><tr><th>種類</th><th style="text-align:left">児童</th><th style="text-align:left">メモ</th><th></th></tr></thead><tbody>' +
           (list.map(function (p, i) { return '<tr><td>' + PT[p.t] + '</td><td style="text-align:left">' + esc(desc(p)) + '</td><td style="text-align:left">' + esc(p.memo || '') + '</td><td><button class="btn" data-pdel="' + i + '">削除</button></td></tr>'; }).join('') ||
@@ -538,15 +550,13 @@
         return false;
       },
       onOk: function () {
-        var grade = App.st.grade, data = serialize(), n = list.length;
+        var n = list.length;
         App.closeDlg();
-        // 案を先に保存してから読み込み直す（案は残る）
-        clearTimeout(saveT);
-        App.save(function () { return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); })
+        App.save(function () { return o.save(list); })
           .then(function () { return App.reload(); }).then(function () { App.toast('つける・離すを保存しました（' + n + '件）'); });
       }
     });
-  }
+  };
 
   function showViol() {
     var a = E.analyze(S.ctx, S.plans[S.active].asg), r = App.$('vbtn').getBoundingClientRect(), esc = App.esc;

@@ -114,6 +114,31 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
   ok(true, `${w}x${h} 保存済みと表示`);
 
+  // ＋のアイコンにしても行の高さ・列の幅が変わらない
+  const k1 = p.locator('td.cell[data-k="k1"]').nth(2);
+  const box = async () => p.evaluate(() => { const t = document.querySelector('table.r'); return [t.getBoundingClientRect().width, t.querySelector('tbody tr:nth-child(3)').getBoundingClientRect().height]; });
+  const b0 = await box(), seen = new Set();
+  for (let n = 0; n < 3; n++) { await p.locator('td.cell[data-k="k1"]').nth(2).click(); seen.add(await p.locator('td.cell[data-k="k1"]').nth(2).locator('.b').getAttribute('data-lv').catch(() => null)); const b = await box(); ok(Math.abs(b[0] - b0[0]) < .5 && Math.abs(b[1] - b0[1]) < .5, `${w}x${h} 程度${n + 1}回目でも表の幅・行の高さが同じ（${b} / ${b0}）`); }
+  ok(seen.has('2'), `${w}x${h} ＋のアイコンを通った`);
+  ok((await p.locator('th.spc').boundingBox()).width < 45, `${w}x${h} 特支の列は細い`);
+
+  // 名簿からつける・離すを足す
+  const first = await p.locator('td.nm').first().getAttribute('data-kid');
+  await p.locator('td.pr').first().click();
+  ok(await p.locator('.dlg[aria-label="つける・離す"] [data-unpk="a"]').count() === 1, `${w}x${h} つける・離すの列を押すと、その児童を選んだ窓が開く`);
+  await p.fill('#qb', await p.locator('td.nm').nth(1).evaluate(e => e.lastChild.textContent.slice(0, 2)));
+  await p.locator('[data-pk^="b:"]').first().click();
+  const np = await p.evaluate(() => App.st.data.pairs.length);
+  await p.click('#padd'); await p.click('#okbtn');
+  await p.waitForFunction(n => App.st.data.pairs.length > n, np);
+  ok(await p.locator(`td.pr .prm`).count() >= 2 && await p.evaluate(id => App.st.data.pairs.some(q => q.a === id), first), `${w}x${h} 保存すると表に印が出る`);
+
+  // 備考
+  await p.locator('td.memo').first().click();
+  await p.fill('#mtx', '給食当番は前半'); await p.keyboard.press('Control+Enter');
+  await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
+  ok((await p.locator('td.memo').first().textContent()) === '給食当番は前半', `${w}x${h} 備考を書ける`);
+
   ok(errs.length === 0, `${w}x${h} 画面のエラーなし ${errs.join(' / ')}`);
   await p.close();
 }
