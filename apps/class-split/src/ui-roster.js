@@ -38,7 +38,7 @@
     var k = td.dataset.k;
     if (k === 'sp') { levelDialog(Y, r, { k: 'sp', label: '特別支援学級', max: 1, help: ['特別支援学級', '在籍している。'] }, td); return; }
     var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
-    if (at.side) noteDialog(Y, r, at, td); else levelDialog(Y, r, at, td);
+    if (at.side) noteDialog(Y, r, at, td); else if (at.ctx) ctxDialog(Y, r, at, td); else levelDialog(Y, r, at, td);
   }
   // 程度を選ぶ窓（説明つき）
   function levelDialog(Y, r, at, cell) {
@@ -58,6 +58,41 @@
         App.closeDlg();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); });
         return true;
+      }
+    });
+  }
+
+  // 程度＋経緯の文＋事案の紐付け（保護者など ctx の項目）
+  function ctxDialog(Y, r, at, cell) {
+    var d = D(), s = d.kids[r.id], fy = R.fy, grade = Y.grade, esc = App.esc;
+    var F = { v: r.a[at.k] | 0, text: r.a[at.k + '_t'] || '', incs: (r.a[at.k + '_i'] || []).slice(), show: !!(r.a[at.k + '_i'] || []).length };
+    var rel = d.incidents.filter(function (x) { return x.ids.indexOf(r.id) >= 0; }).sort(function (a, b) { return b.date < a.date ? -1 : 1; });
+    App.openDlg({
+      focus: 'ctxt', noEnter: true,
+      html: function () {
+        var opts = [[0, '無', '']].concat([[1, App.mark(at, 1), at.help[1] || ''], [2, App.mark(at, 2), at.help[2] || '']]);
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(at.label) + '" style="max-width:640px"><h2>' + esc(s.name) + 'の' + esc(at.label) + '</h2>' +
+          '<div class="lvpick">' + opts.map(function (o) { return '<button type="button" class="lvopt" data-cv="' + o[0] + '" aria-pressed="' + (F.v === o[0]) + '"><span class="ic">' + o[1] + '</span><span>' + esc(o[2]) + '</span></button>'; }).join('') + '</div>' +
+          '<label class="ctxl">経緯<textarea id="ctxt" rows="4" maxlength="1000" placeholder="いつから・どんなことが・どう対応したか">' + esc(F.text) + '</textarea></label>' +
+          '<label class="chk"><input type="checkbox" id="cshow"' + (F.show ? ' checked' : '') + '>関わる事案を見て紐付ける（' + rel.length + '件）</label>' +
+          (F.show ? '<div class="pinclist">' + (rel.map(function (x) { return '<label class="chk"><input type="checkbox" data-cinc="' + x.id + '"' + (F.incs.indexOf(x.id) >= 0 ? ' checked' : '') + '><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="note">' + App.span(x) + '</span></label>'; }).join('') || '<div class="note">事案はありません</div>') + '</div>' : '') +
+          '<div class="note">「無」で保存すると、経緯と紐付けも消えます。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存</button></div></div></div>';
+      },
+      input: function (t) {
+        if (t.id === 'ctxt') F.text = t.value;
+        else if (t.id === 'cshow') { F.show = t.checked; App.refreshDlg(); }
+        else if (t.dataset.cinc) { var n = +t.dataset.cinc, i = F.incs.indexOf(n); if (t.checked && i < 0) F.incs.push(n); if (!t.checked && i >= 0) F.incs.splice(i, 1); }
+      },
+      click: function (t) { var x = t.closest('[data-cv]'); if (!x) return false; F.v = +x.dataset.cv; App.refreshDlg(); return true; },
+      onOk: function () {
+        var v = F.v, text = v ? F.text.trim() : '', incs = v ? F.incs.slice() : [];
+        r.a[at.k] = v;
+        if (text) r.a[at.k + '_t'] = text; else delete r.a[at.k + '_t'];
+        if (incs.length) r.a[at.k + '_i'] = incs; else delete r.a[at.k + '_i'];
+        App.closeDlg();
+        cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); });
       }
     });
   }
@@ -477,7 +512,8 @@
       var d = D(), x;
       // 表の欄：右下の灰色の角を押すと設定の窓、欄の真ん中を押すと値を変える（0→1→2）
       var td = t.closest('td.cc');
-      if (td && e && inCorner(td, e)) { cornerDialog(td); return true; }
+      // 事案・つける離す・備考は、欄のどこを押しても同じ窓
+      if (td && ((e && inCorner(td, e)) || td.matches('.ji,.pr,.memo'))) { cornerDialog(td); return true; }
       if ((x = t.closest('[data-fy]'))) { R.fy = +x.dataset.fy; render(); return true; }
       if ((x = t.closest('[data-cls]'))) { R.scope = 'cls'; R.cls = +x.dataset.cls; render(); return true; }
       if ((x = t.closest('[data-scope]'))) { R.scope = x.dataset.scope; if (R.scope === 'school') R.school = null; render(); return true; }

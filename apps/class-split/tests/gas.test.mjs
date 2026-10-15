@@ -54,6 +54,13 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k7', 2).ok, false, '賢・リ・運も有無だけ');
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 1, '=卵').ok);
     assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, "'=卵", 'ア・身・通の内容は文字のまま残る（式にしない）');
+    // 保護者：経緯の文と事案の紐付け
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k4', 2, '入学時から電話が多い', [7, 9]).ok);
+    let k4 = call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a;
+    assert.deepEqual([k4.k4, k4.k4_t, k4.k4_i], [2, '入学時から電話が多い', [7, 9]]);
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k4', 0, '', []).ok);
+    k4 = call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a;
+    assert.equal(k4.k4_t, undefined, '無にすると経緯も消える');
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 0, '').ok);
     assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, undefined, 'なしにすると内容も消える');
     // 備考：列の無い古いシートでも書け、空にすると消える

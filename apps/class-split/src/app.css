@@ -458,7 +458,8 @@ span.ptag{cursor:default;margin-right:3px}
 table.r td.cc{position:relative}
 table.r td.cc::after{content:"";position:absolute;right:0;bottom:0;width:12px;height:12px;background:linear-gradient(135deg,transparent 50%,#b4bac1 50%);pointer-events:none}
 table.r td.cc:hover::after{background:linear-gradient(135deg,transparent 50%,#6e767e 50%)}
-table.r td.pr.cc,table.r td.memo.cc,table.r td.ji.cc{cursor:default}
+table.r td.pr.cc,table.r td.memo.cc,table.r td.ji.cc{cursor:pointer}
+table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{background:var(--soft)}
 /* 程度を選ぶ窓 */
 .lvpick{display:flex;flex-direction:column;gap:6px}
 .lvopt{display:flex;gap:12px;align-items:center;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit;color:var(--ink)}
@@ -467,3 +468,5 @@ table.r td.pr.cc,table.r td.memo.cc,table.r td.ji.cc{cursor:default}
 /* 備考の定型の言葉 */
 .mpicks{display:flex;flex-wrap:wrap;gap:6px}
 .mpicks select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.ctxl{display:flex;flex-direction:column;gap:3px}
+.ctxl textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical}

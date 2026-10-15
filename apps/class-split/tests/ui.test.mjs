@@ -161,9 +161,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // 備考
   await p.locator('td.memo').first().click();
-  ok(await p.locator('#mtx').count() === 0, `${w}x${h} 備考の欄の真ん中を押しても窓は開かない`);
-  await corner(p.locator('td.memo').first());
-  ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'mtx'), `${w}x${h} 開いたらすぐ書ける`);
+  ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'mtx'), `${w}x${h} 備考の欄を押すと窓が開き、すぐ書ける`);
   await p.selectOption('[data-mpick="1"]', '優しい');
   ok((await p.inputValue('#mtx')).indexOf('優しい') >= 0, `${w}x${h} 定型の言葉を選ぶと入る`);
   await p.fill('#mtx', '');
