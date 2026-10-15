@@ -193,7 +193,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
-  await p.click('#decide');
+  await p.click('#smore'); await p.click('#decide');
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');

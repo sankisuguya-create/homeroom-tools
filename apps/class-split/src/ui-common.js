@@ -22,6 +22,13 @@
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
+  // 名簿の名前：枠は空白込み8文字分。入らない名前だけ、左へ流して最初に戻すのを繰り返す
+  App.nameBox = function (name) { return '<span class="nmw"><span class="nmt">' + App.esc(name) + '</span></span>'; };
+  App.fitNames = function (root) {
+    var ts = root.querySelectorAll('.nmt'), over = [];
+    for (var i = 0; i < ts.length; i++) { var d = ts[i].scrollWidth - ts[i].parentNode.clientWidth; if (d > 1) over.push([ts[i], d]); } // 測ってから書く（行ごとの再計算を避ける）
+    over.forEach(function (x) { x[0].style.setProperty('--d', -x[1] + 'px'); x[0].style.setProperty('--dur', (3 + x[1] / 25).toFixed(1) + 's'); x[0].classList.add('run'); });
+  };
   // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
   var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
   // クラス分けの盤面のアイコンの大きさ（倍率）。この端末にだけ覚える

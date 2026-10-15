@@ -95,7 +95,7 @@ await p.click('#padd');
 await p.click('#okbtn');
 await p.waitForFunction(() => /保存しました/.test(document.getElementById('toast').textContent));
 ok(gas.call('apiBoot', 5).v.pairs.length === 1, 'つける・離すがシートに入った');
-ok(await p.locator('#pairs').count() === 1, '保存後もクラス分けの画面のまま');
+ok(await p.locator('#smore').count() === 1, '保存後もクラス分けの画面のまま');
 
 // 版ずれの警告
 const p2 = await browser.newPage();

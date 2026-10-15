@@ -131,7 +131,9 @@ td.cell:hover{background:var(--soft)}
 table.ro td.cell{cursor:default}
 table.ro td.cell:hover{background:none}
 td.ji{cursor:pointer}
-.sx{color:var(--sub);font-weight:400;font-size:.8rem;margin-right:4px}
+.sx{color:var(--sub);font-weight:700;font-size:.8rem;margin-right:4px}
+.sx.f{color:#D11F3A}
+.sx.m{color:#1A62D6}
 .frozen{font-size:.85rem;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
 .pane{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto;box-sizing:border-box}
 .pane h2{margin:0;font-size:1.2rem}
@@ -337,7 +339,10 @@ table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
 .prm .pn{color:var(--link);border-color:var(--link)}
 .prm .px{color:var(--sub);border-color:var(--sub)}
 /* 備考：1行で切り、全文はカーソルで出す（押すと書ける） */
-table.r :is(th,td).memo{text-align:left;width:14em;min-width:10em;max-width:14em;overflow:hidden;text-overflow:ellipsis;font-size:.85em}
+table.r :is(th,td).memo{text-align:left;min-width:10em;font-size:.85em}
+table.r td.memo>div{width:0;min-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* 名前の列は枠の幅だけ。表の余りは備考の列が受ける */
+body[data-screen="roster"] table.r :is(th,td):nth-child(-n+3):not(.cell){width:1%}
 body[data-screen="roster"] table.r th .b{font-size:.8em}
 /* 児童の窓（経年の記録と事案） */
 .kidpop{width:min(760px,94vw);max-height:88vh;max-width:none;position:relative;padding:14px 16px}
@@ -367,3 +372,9 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .rbar .state .btn{padding:2px 8px}
 .dlg.more section{margin-bottom:10px}
 .dlg.more h3{margin:0 0 4px;font-size:.9rem}
+/* 名簿の名前：空白込み8文字分の枠。入らない名前は左へ流して最初に戻す（動きを減らす設定では止める） */
+.nmw{display:inline-block;width:8em;overflow:hidden;white-space:nowrap;vertical-align:bottom}
+.nmt{display:inline-block}
+.nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
+@keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
