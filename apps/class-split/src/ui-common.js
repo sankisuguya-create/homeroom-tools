@@ -16,9 +16,9 @@
 
   // 程度の＋：黒い丸に白い十字の「点」を、アイコンの右上へ持ち上げて付ける（縦横同じ長さの十字を図で描く）
   var PLUS = '<svg viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5.4" fill="#1A1A1A" stroke="#fff" stroke-width="1.2"/><path d="M6 2.8V9.2M2.8 6H9.2" stroke="#fff" stroke-width="2.2"/></svg>';
-  App.mark = function (at, lv) {
+  App.mark = function (at, lv, note) {
     lv = Math.min(lv, at.max || lv); // 以前の値（程度3）はアイコン＋で出す
-    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"><i></i><em>' + at.s + '</em>' +
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };

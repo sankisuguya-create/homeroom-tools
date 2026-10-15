@@ -52,6 +52,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok, false, '程度は2（アイコン＋）まで');
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k5', 2).ok, false, 'ア・身・通は有無だけ');
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k7', 2).ok, '賢・リ・運は＋を付けられる');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 1, '=卵').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, "'=卵", 'ア・身・通の内容は文字のまま残る（式にしない）');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 0, '').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, undefined, 'なしにすると内容も消える');
 
     // 案：版が合えば保存、古い版からの保存は上書きしない
     const plans = [{ letter: 'A', assign: {} }];

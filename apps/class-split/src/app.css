@@ -70,6 +70,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .tip td{padding:1px 8px 1px 0;vertical-align:top}
 .tip td:first-child{white-space:nowrap;font-size:1.1rem}
 .tip tr.on td{font-weight:700}
+.tip .tn{margin:6px 0 0;padding:4px 8px;background:var(--panel,#f4f4f4);border-left:3px solid var(--ink);white-space:pre-wrap;font-weight:700}
 .tip p{margin:4px 0 0;color:var(--sub);font-size:.8rem}
 /* 学：角が欠けたボロボロの四角（利用者の選んだ案A） */
 .square>i{clip-path:polygon(14% 4%,62% 4%,70% 12%,96% 6%,92% 40%,97% 70%,84% 96%,40% 92%,24% 97%,4% 82%,8% 50%,3% 20%)}

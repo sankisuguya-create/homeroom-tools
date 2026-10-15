@@ -80,7 +80,7 @@
       C.ATTRS.forEach(function (at) {
         if (!pick(at)) return;
         var v = s.a[at.k] | 0;
-        if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
+        if (v) out += App.mark(at, v, s.a[at.k + '_t']).replace('style="', 'style="--s:' + n + ';');
         n++;
       });
       return out;

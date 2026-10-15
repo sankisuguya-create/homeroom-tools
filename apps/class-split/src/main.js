@@ -80,6 +80,7 @@
     tip.innerHTML = '<h3>' + App.esc(at.help[0]) + '</h3><table>' +
       '<tr class="' + (lv === 1 ? 'on' : '') + '"><td>' + m1 + '</td><td>' + App.esc(at.help[1]) + '</td></tr>' +
       (at.max > 1 ? '<tr class="' + (lv === 2 ? 'on' : '') + '"><td>' + m2 + '</td><td>' + App.esc(at.help[2]) + '</td></tr>' : '') + '</table>' +
+      (b.dataset.t ? '<div class="tn">' + App.esc(b.dataset.t) + '</div>' : '') +
       (at.max > 1 ? '<p>' + (at.good ? '特に際立つ場合はプラスをつけてください。' : '担任の負担が明確に増える場合はプラスをつけてください。') + '</p>' : '');
     tip.hidden = false;
     var r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;

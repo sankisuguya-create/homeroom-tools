@@ -57,7 +57,14 @@ var TABLES_ = [
   { name: 'incident_kids', head: ['inc_id', 'id8'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] }
 ];
-function attrsHead_() { return ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; })); }
+// side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
+function attrsHead_() {
+  var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
+  CONFIG.ATTRS.forEach(function (at) { if (at.side) h.push(at.k + '_t'); });
+  return h;
+}
+// シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
+function plainText_(s) { s = String(s == null ? '' : s).slice(0, 200); return /^[=+\-@]/.test(s) ? "'" + s : s; }
 
 var SS_ = null;
 function db_() {
@@ -140,7 +147,7 @@ function attrsMap_(fy) {
   var m = {};
   read_('attrs_' + fy).rows.forEach(function (r) {
     var a = {};
-    CONFIG.ATTRS.forEach(function (at) { a[at.k] = +r[at.k] || 0; });
+    CONFIG.ATTRS.forEach(function (at) { a[at.k] = +r[at.k] || 0; if (at.side && r[at.k + '_t']) a[at.k + '_t'] = String(r[at.k + '_t']); });
     m[String(r.id8)] = a;
   });
   return m;
@@ -277,7 +284,7 @@ function isoDate_(v) {
 }
 
 // 配慮項目は編集できる年度だけ（決定前＝今年度、決定後＝来年度）。決定後の今年度は凍結
-var apiSetAttr = api_(function (fy, grade, id, k, v) {
+var apiSetAttr = api_(function (fy, grade, id, k, v, text) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
   var at = CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
@@ -291,8 +298,9 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
     ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
-    if (row) writeCell_(t, row, k, v);
-    else { var o = { id8: String(id) }; o[k] = v; append_(name, attrsHead_(), [o]); }
+    var tk = at.side && text !== undefined ? k + '_t' : null, tv = tk ? plainText_(v ? text : '') : '';
+    if (row) { writeCell_(t, row, k, v); if (tk) writeCell_(t, row, tk, tv); }
+    else { var o = { id8: String(id) }; o[k] = v; if (tk) o[tk] = tv; append_(name, attrsHead_(), [o]); }
     return { ok: true, by: by };
   });
 });
@@ -374,7 +382,7 @@ var apiDecide = api_(function (grade, plan) {
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
-    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
+    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if (at.side && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t']); }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
     append_('decisions', TABLES_[1].head, [{ fy: FY, grade: grade, plan: String(plan.name), by: by, at: new Date().toISOString(), undone: '' }]);

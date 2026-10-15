@@ -5,7 +5,7 @@
 | 置き場 | 個人を指す列 | 機微な列 | 消す時 |
 |---|---|---|---|
 | `roster_<年度>` | id8, name, kana | — | 卒業・転出の削除の候補で |
-| `attrs_<年度>` | id8 | k1〜k10（配慮項目の程度。名前は settings にだけある） | 同上 |
+| `attrs_<年度>` | id8 | k1〜k10（配慮項目の程度。名前は settings にだけある）、k5_t・k6_t・k10_t（ア・身・通の内容の文字。病名・配慮の中身など特に機微） | 同上 |
 | `pairs_<年度>_<学年>` | id_a, id_b | type, memo（自由記述。氏名を書かない運用） | 同上 |
 | `pairs_carry` | id_a, id_b | type（memo は持ち越さない） | 同上 |
 | `settings` の `plans_<年度>_<学年>` | assign, locks（id8） | — | 同上 |

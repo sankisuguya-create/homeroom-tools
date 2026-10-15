@@ -45,7 +45,7 @@
         return d;
       });
     },
-    setAttr: function (fy, grade, id, k, v) { return call('apiSetAttr', fy, grade, id, k, v); },
+    setAttr: function (fy, grade, id, k, v, text) { return call('apiSetAttr', fy, grade, id, k, v, text); },
     savePlans: function (grade, plans) {
       return call('apiSavePlans', grade, plans, planVer[grade] || 0).then(function (r) {
         if (r.conflict) {
