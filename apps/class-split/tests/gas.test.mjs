@@ -114,6 +114,17 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY + 1, 5, '40000011', 'k3', 1).ok);
     assert.equal(call('apiListGrades').v[3].decided, true);
 
+    // 組の番号：決定の直後は仮（A組＝1組）。決めると来年度の名簿の組が付け替わり、出席番号は変わらない
+    assert.deepEqual(b.decision.names, [1, 2]); assert.equal(b.decision.named, false);
+    const before = Object.fromEntries(next.rows.map(r => [r.id, [r.cls, r.no]]));
+    assert.equal(call('apiSetClassNames', 4, [1, 1]).ok, false, '番号の重複は不可');
+    assert.ok(call('apiSetClassNames', 4, [2, 1]).ok);
+    b = call('apiBoot', 4).v;
+    assert.deepEqual(b.decision.names, [2, 1]); assert.equal(b.decision.named, true);
+    b.years.find(y => y.fy === FY + 1).rows.forEach(r => { assert.equal(r.cls, 1 - before[r.id][0]); assert.equal(r.no, before[r.id][1]); });
+    assert.ok(call('apiSetClassNames', 4, [1, 2]).ok, '直せる');
+    call('apiBoot', 4).v.years.find(y => y.fy === FY + 1).rows.forEach(r => assert.equal(r.cls, before[r.id][0]));
+
     // 取り消し：来年度の行が消え、今年度がまた直せる
     assert.ok(call('apiUndoDecide', 4).ok);
     b = call('apiBoot', 4).v;

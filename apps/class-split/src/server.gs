@@ -51,7 +51,7 @@ function setup() {
 var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no'];
 var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
-  { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone'] },
+  { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b'] },
   { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted'] },
   { name: 'incident_kids', head: ['inc_id', 'id8'] },
@@ -211,7 +211,7 @@ var apiBoot = api_(function (grade) {
     carry: carry_(FY, grade, idset),
     transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
-    decision: dec ? { plan: String(dec.plan), at: String(dec.at) } : null
+    decision: dec ? { plan: String(dec.plan), at: String(dec.at), names: namesOf_(dec, FY, grade), named: !!String(dec.names || '') } : null
   };
 });
 function transfers_(fy, grade) {
@@ -461,6 +461,47 @@ var apiUndoDecide = api_(function (grade) {
     return { ok: true };
   });
 });
+// 決定した組の番号（A組から順）。未設定は仮で A組＝1組…
+function namesOf_(dec, FY, grade) {
+  var v = String(dec.names || '');
+  if (v) return v.split(',').map(Number);
+  var nc = 0;
+  rosterRows_(FY + 1).forEach(function (r) { if (r.grade === grade + 1 && r.cls + 1 > nc) nc = r.cls + 1; });
+  var out = []; for (var k = 0; k < nc; k++) out.push(k + 1);
+  return out;
+}
+// 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
+var apiSetClassNames = api_(function (grade, names) {
+  var by = requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  return withLock_(function () {
+    var dec = decisionOf_(FY, grade);
+    if (!dec) throw userError_('決定されていません');
+    var old = namesOf_(dec, FY, grade), nc = old.length;
+    names = (names || []).map(Number);
+    var ok = names.length === nc && names.slice().sort(function (a, b) { return a - b; }).every(function (v, i) { return v === i + 1; });
+    if (!ok) throw userError_('組の番号は 1〜' + nc + ' を1つずつ使ってください');
+    var ids = {};
+    rosterRows_(FY).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
+    transfers_(FY, grade).forEach(function (t) { ids[t.id] = 1; });
+    var t = read_('roster_' + (FY + 1)), c = t.head.indexOf('class');
+    if (t.rows.length) {
+      var col = t.rows.map(function (r) {
+        var v = +r['class'];
+        if (+r.grade === grade + 1 && ids[String(r.id8)]) { var k = old.indexOf(v); if (k >= 0) v = names[k]; }
+        return [v];
+      });
+      t.sh.getRange(2, c + 1, col.length, 1).setValues(col); // 1回で書く（行ごとに書くと遅い）
+    }
+    ensureCols_('decisions', TABLES_[1].head);
+    var d = read_('decisions');
+    writeCell_(d, d.rows.filter(function (r) { return r._r === dec._r; })[0], 'names', names.join(','));
+    log_(by, 'classNames', nc);
+    return { ok: true };
+  });
+});
+
 // 行を消す（下の行から消すので行番号がずれない）
 function removeRows_(name, pred) {
   var t = read_(name), n = 0;

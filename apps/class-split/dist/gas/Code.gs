@@ -68,6 +68,9 @@
     return m >= 4 ? y : y - 1;
   };
 
+  // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -232,21 +235,21 @@
     var c = counts(ctx, asg), bad = [], warn = [], kids = ctx.P.kids, k, m;
     ctx.P.pairs.forEach(function (p) {
       if (!pairBroken(p, asg)) return;
-      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + (asg[p.i] + 1) + '組', ids: [p.i, p.j] });
-      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + (asg[p.i] + 1) + '組）と ' + kids[p.j].name + '（' + (asg[p.j] + 1) + '組）が別', ids: [p.i, p.j] });
-      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + (p.k + 1) + '組でない', ids: [p.i] });
+      if (p.t === 'far') bad.push({ t: 'far', txt: '離す：' + kids[p.i].name + ' と ' + kids[p.j].name + ' が同じ' + C.newClass(asg[p.i]), ids: [p.i, p.j] });
+      else if (p.t === 'near') bad.push({ t: 'near', txt: 'つける：' + kids[p.i].name + '（' + C.newClass(asg[p.i]) + '）と ' + kids[p.j].name + '（' + C.newClass(asg[p.j]) + '）が別', ids: [p.i, p.j] });
+      else bad.push({ t: 'fix', txt: '組に固定：' + kids[p.i].name + ' が' + C.newClass(p.k) + 'でない', ids: [p.i] });
     });
     var flag = [];
     for (k = 0; k < ctx.nc; k++) {
       flag.push(new Array(ctx.M + 1).fill(false));
-      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: (k + 1) + '組 ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
-      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: (k + 1) + '組 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
+      if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: C.newClass(k) + ' ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
+      else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: C.newClass(k) + ' 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
       ctx.HV.forEach(function (hv) {
-        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: (k + 1) + '組 ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
+        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: C.newClass(k) + ' ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
       });
       for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
-        warn.push({ txt: (k + 1) + '組 ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
+        warn.push({ txt: C.newClass(k) + ' ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
     }
     return { c: c, bad: bad, warn: warn, flag: flag, inc: incByClass(ctx, asg) };
@@ -420,7 +423,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_a3bb3a57e1c9';
+var SERVER_BUILD = 'BUILD_2144c7f99bcd';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -469,7 +472,7 @@ function setup() {
 var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no'];
 var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
-  { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone'] },
+  { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b'] },
   { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted'] },
   { name: 'incident_kids', head: ['inc_id', 'id8'] },
@@ -629,7 +632,7 @@ var apiBoot = api_(function (grade) {
     carry: carry_(FY, grade, idset),
     transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
-    decision: dec ? { plan: String(dec.plan), at: String(dec.at) } : null
+    decision: dec ? { plan: String(dec.plan), at: String(dec.at), names: namesOf_(dec, FY, grade), named: !!String(dec.names || '') } : null
   };
 });
 function transfers_(fy, grade) {
@@ -879,6 +882,47 @@ var apiUndoDecide = api_(function (grade) {
     return { ok: true };
   });
 });
+// 決定した組の番号（A組から順）。未設定は仮で A組＝1組…
+function namesOf_(dec, FY, grade) {
+  var v = String(dec.names || '');
+  if (v) return v.split(',').map(Number);
+  var nc = 0;
+  rosterRows_(FY + 1).forEach(function (r) { if (r.grade === grade + 1 && r.cls + 1 > nc) nc = r.cls + 1; });
+  var out = []; for (var k = 0; k < nc; k++) out.push(k + 1);
+  return out;
+}
+// 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
+var apiSetClassNames = api_(function (grade, names) {
+  var by = requireTeacher_();
+  grade = +grade;
+  var FY = CONFIG.fiscalYear();
+  return withLock_(function () {
+    var dec = decisionOf_(FY, grade);
+    if (!dec) throw userError_('決定されていません');
+    var old = namesOf_(dec, FY, grade), nc = old.length;
+    names = (names || []).map(Number);
+    var ok = names.length === nc && names.slice().sort(function (a, b) { return a - b; }).every(function (v, i) { return v === i + 1; });
+    if (!ok) throw userError_('組の番号は 1〜' + nc + ' を1つずつ使ってください');
+    var ids = {};
+    rosterRows_(FY).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
+    transfers_(FY, grade).forEach(function (t) { ids[t.id] = 1; });
+    var t = read_('roster_' + (FY + 1)), c = t.head.indexOf('class');
+    if (t.rows.length) {
+      var col = t.rows.map(function (r) {
+        var v = +r['class'];
+        if (+r.grade === grade + 1 && ids[String(r.id8)]) { var k = old.indexOf(v); if (k >= 0) v = names[k]; }
+        return [v];
+      });
+      t.sh.getRange(2, c + 1, col.length, 1).setValues(col); // 1回で書く（行ごとに書くと遅い）
+    }
+    ensureCols_('decisions', TABLES_[1].head);
+    var d = read_('decisions');
+    writeCell_(d, d.rows.filter(function (r) { return r._r === dec._r; })[0], 'names', names.join(','));
+    log_(by, 'classNames', nc);
+    return { ok: true };
+  });
+});
+
 // 行を消す（下の行から消すので行番号がずれない）
 function removeRows_(name, pred) {
   var t = read_(name), n = 0;

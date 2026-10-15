@@ -204,6 +204,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
+  ok(await p.locator('.decided', { hasText: 'A組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 1, '決定の直後は組の番号が仮');
+  await p.click('#cnames'); await p.click('[data-cn="0:2"]'); await p.keyboard.press('Enter');
+  await p.waitForSelector('.decided:has-text("A組＝2組")');
+  ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');
+  ok(await p.locator('.ncl').first().textContent() === 'A組', 'クラス分けの枠は A組…');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   await p.click('#rmore');
   ok(await p.locator('.tab[data-fy]', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');

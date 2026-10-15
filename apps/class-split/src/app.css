@@ -309,7 +309,10 @@ body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(
 body[data-screen="split"] .hint{color:#ECECEC}
 :is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
-.col{background:color-mix(in srgb,var(--cc,#fff) 40%,#fff)}
+.col{background:#F7F8FA}
+/* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
+.col.nc1{background:#D9DFE6}
+.ncl{display:inline-block;background:#1A1A1A;color:#fff;border-radius:4px;padding:0 8px;letter-spacing:.05em}
 /* 名簿の表：横線に加えて縦線も薄く引く */
 body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
 body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}

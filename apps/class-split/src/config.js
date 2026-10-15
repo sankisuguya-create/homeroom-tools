@@ -64,5 +64,8 @@
     return m >= 4 ? y : y - 1;
   };
 
+  // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
