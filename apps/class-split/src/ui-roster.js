@@ -1,5 +1,5 @@
 // 名簿：年度・組（または学年・全校）を切り替えて見る。編集できる年度は1つだけ
-// （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。右に児童の経年の記録と事案。
+// （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。児童の名前を押すと、経年の記録と事案を窓で出す。
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;
@@ -44,10 +44,11 @@
     if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通は内容を書く（自動保存）</span>' :
       R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
       '<span class="note">過去の年度は見るだけです</span>';
-    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + pane() + '</div>';
+    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
+    kidPop();
   }
 
   // ア・身・通：有無と内容（例：卵・エピペン）を書く。内容はアイコンにカーソルを合わせると出る
@@ -83,8 +84,8 @@
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
-      C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="an">特別支援学級</th>' +
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
@@ -110,18 +111,32 @@
       }).join('') + '</tbody></table></div>';
   }
 
+  // 児童の窓：経年の記録と事案。名前を押すと開き、閉じると選択も外す
+  function kidPop() {
+    var d = D();
+    if (!R.kid || !d.kids[R.kid]) { if (App.dlg && App.dlg.kid) App.closeDlg(); return; }
+    if (App.dlg && App.dlg.kid) { App.refreshDlg(); return; }
+    if (App.dlg) return; // ほかの枠が開いている間は出さない
+    App.openDlg({
+      kid: true,
+      html: function () { return '<div class="pop" data-close="1">' + pane() + '</div>'; },
+      click: function (t) { return t.closest('.kidpop') ? App.screens.roster.click(t) : false; },
+      input: function (t) { App.screens.roster.input(t); },
+      onClose: function () { R.kid = null; R.form = null; render(); }
+    });
+  }
+
   function pane() {
     var d = D(), esc = App.esc;
-    if (!R.kid || !d.kids[R.kid]) return '<aside class="pane"><div class="empty">児童の名前を押すと、<br>経年の記録と事案が出ます</div></aside>';
     var s = d.kids[R.kid];
-    var h = '<aside class="pane"><h2>' + esc(s.name) + ' <span class="id">' + s.id + '・' + (s.male ? '男' : '女') + '</span></h2>' +
+    var h = '<aside class="dlg pane kidpop" role="dialog" aria-modal="true" aria-label="' + esc(s.name) + 'の記録"><button class="btn kx" data-act="close" aria-label="閉じる">閉じる<kbd>Esc</kbd></button><h2>' + esc(s.name) + ' <span class="id">' + s.id + '・' + (s.male ? '男' : '女') + '</span></h2>' +
       '<section><h3>経年の記録</h3><table class="h"><thead><tr><th>年度</th><th>学年-組-番</th>' +
       C.ATTRS.map(function (at) { return '<th>' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     d.years.slice().sort(function (a, b) { return a.fy - b.fy; }).forEach(function (y) {
       var r = y.rows.filter(function (x) { return x.id === R.kid; })[0];
       if (!r) return;
       var n = incsOf(R.kid, y.fy).length;
-      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-' + r.no + '</td>' +
+      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n || '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。「準」は決定後の準備中の年度。</div></section>';
@@ -283,7 +298,7 @@
       }).then(function (inc) { D().incidents.push(inc); R.form = null; render(); App.toast('事案を登録しました'); });
     },
     key: function (e) {
-      if (e.key === 'Escape' && (R.form || R.kid)) { if (R.form) R.form = null; else R.kid = null; render(); return true; }
+      if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }
       return false;
     }
   };

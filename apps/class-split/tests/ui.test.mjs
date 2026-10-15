@@ -104,7 +104,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('.rbar .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿`);
   await p.locator('td.nm').first().click();
-  ok(await p.locator('table.h tbody tr').count() === 6, `${w}x${h} 経年の記録が6行`);
+  ok(await p.locator('.kidpop table.h tbody tr').count() === 6, `${w}x${h} 名前を押すと窓が開き、経年の記録が6行`);
+  await p.keyboard.press('Escape');
+  ok(await p.locator('.kidpop').count() === 0, `${w}x${h} Escで窓を閉じる`);
   const cell = p.locator('td.cell').first();
   const v0 = await cell.innerHTML();
   await cell.click();

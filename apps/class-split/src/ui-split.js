@@ -151,7 +151,7 @@
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
-      h += '<section class="col"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
+      h += '<section class="col" style="--cc:' + App.classColor(k).l + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +

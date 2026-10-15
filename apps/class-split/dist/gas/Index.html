@@ -308,6 +308,38 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
 .hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+
+/* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
+body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
+body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
+body[data-screen="split"] .hint{color:#ECECEC}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
+/* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
+.col{background:color-mix(in srgb,var(--cc,#fff) 40%,#fff)}
+/* 名簿の表：横線に加えて縦線も薄く引く */
+body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
+body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}
+/* 黒地の凡例では、黒いアイコン（欠）が沈まないよう白い縁を付ける */
+body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 .5px #fff)}
+
+/* ===== 名簿：表を広く・大きく。＋のアイコンは大きく、ふつうのアイコンは少しだけ小さく ===== */
+body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
+body[data-screen="roster"] table.r{font-size:17px}
+body[data-screen="roster"] table.r :is(th,td){padding:5px 6px}
+body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
+body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{font-size:1.3em}
+body[data-screen="roster"] table.r th .b{font-size:.8em}
+/* 児童の窓（経年の記録と事案） */
+.kidpop{width:min(760px,94vw);max-height:88vh;max-width:none;position:relative;padding:14px 16px}
+.kidpop .kx{position:absolute;right:12px;top:10px}
+.kidpop h2{padding-right:7em}
+.kidpop table.h{font-size:.95rem}
+body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
+/* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
+body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
+/* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
+table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
+table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1075,7 +1107,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_4d34f12d1c18';
+  var PAGE_BUILD = 'BUILD_f99f37b27cda';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1187,7 +1219,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
   App.dlg = null;
   App.openDlg = function (d) { App.dlg = d; App.$('layer').innerHTML = d.html(); if (d.focus) { var f = App.$(d.focus); if (f) f.focus(); } };
   App.refreshDlg = function () { if (App.dlg) App.openDlg(App.dlg); };
-  App.closeDlg = function () { App.dlg = null; App.$('layer').innerHTML = ''; };
+  App.closeDlg = function () { var d = App.dlg; App.dlg = null; App.$('layer').innerHTML = ''; if (d && d.onClose) d.onClose(); };
 
   // 保存状態（自動保存の結果を必ず画面に返す）
   // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
@@ -1241,7 +1273,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 /* ▲ src/ui-menu.js ここまで ▲ */
 /* ▼ src/ui-roster.js から。直すのは src のほう ▼ */
 // 名簿：年度・組（または学年・全校）を切り替えて見る。編集できる年度は1つだけ
-// （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。右に児童の経年の記録と事案。
+// （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。児童の名前を押すと、経年の記録と事案を窓で出す。
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG;
@@ -1286,10 +1318,11 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通は内容を書く（自動保存）</span>' :
       R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
       '<span class="note">過去の年度は見るだけです</span>';
-    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + pane() + '</div>';
+    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
+    kidPop();
   }
 
   // ア・身・通：有無と内容（例：卵・エピペン）を書く。内容はアイコンにカーソルを合わせると出る
@@ -1325,8 +1358,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
-      C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="an">特別支援学級</th>' +
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
@@ -1352,18 +1385,32 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       }).join('') + '</tbody></table></div>';
   }
 
+  // 児童の窓：経年の記録と事案。名前を押すと開き、閉じると選択も外す
+  function kidPop() {
+    var d = D();
+    if (!R.kid || !d.kids[R.kid]) { if (App.dlg && App.dlg.kid) App.closeDlg(); return; }
+    if (App.dlg && App.dlg.kid) { App.refreshDlg(); return; }
+    if (App.dlg) return; // ほかの枠が開いている間は出さない
+    App.openDlg({
+      kid: true,
+      html: function () { return '<div class="pop" data-close="1">' + pane() + '</div>'; },
+      click: function (t) { return t.closest('.kidpop') ? App.screens.roster.click(t) : false; },
+      input: function (t) { App.screens.roster.input(t); },
+      onClose: function () { R.kid = null; R.form = null; render(); }
+    });
+  }
+
   function pane() {
     var d = D(), esc = App.esc;
-    if (!R.kid || !d.kids[R.kid]) return '<aside class="pane"><div class="empty">児童の名前を押すと、<br>経年の記録と事案が出ます</div></aside>';
     var s = d.kids[R.kid];
-    var h = '<aside class="pane"><h2>' + esc(s.name) + ' <span class="id">' + s.id + '・' + (s.male ? '男' : '女') + '</span></h2>' +
+    var h = '<aside class="dlg pane kidpop" role="dialog" aria-modal="true" aria-label="' + esc(s.name) + 'の記録"><button class="btn kx" data-act="close" aria-label="閉じる">閉じる<kbd>Esc</kbd></button><h2>' + esc(s.name) + ' <span class="id">' + s.id + '・' + (s.male ? '男' : '女') + '</span></h2>' +
       '<section><h3>経年の記録</h3><table class="h"><thead><tr><th>年度</th><th>学年-組-番</th>' +
       C.ATTRS.map(function (at) { return '<th>' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     d.years.slice().sort(function (a, b) { return a.fy - b.fy; }).forEach(function (y) {
       var r = y.rows.filter(function (x) { return x.id === R.kid; })[0];
       if (!r) return;
       var n = incsOf(R.kid, y.fy).length;
-      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-' + r.no + '</td>' +
+      h += '<tr class="' + (y.fy === R.fy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n || '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。「準」は決定後の準備中の年度。</div></section>';
@@ -1525,7 +1572,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
       }).then(function (inc) { D().incidents.push(inc); R.form = null; render(); App.toast('事案を登録しました'); });
     },
     key: function (e) {
-      if (e.key === 'Escape' && (R.form || R.kid)) { if (R.form) R.form = null; else R.kid = null; render(); return true; }
+      if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }
       return false;
     }
   };
@@ -1685,7 +1732,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
-      h += '<section class="col"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
+      h += '<section class="col" style="--cc:' + App.classColor(k).l + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
@@ -2360,6 +2407,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
     App.closeDlg();
     if (grade) st.grade = grade;
     st.screen = screen;
+    document.body.dataset.screen = screen; // 名簿とクラス分けは背景を黒にする（app.css）
     crumb();
     if (screen === 'menu') {
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
