@@ -35,8 +35,8 @@
     var MET = [];
     MET.push({ k: 'sex', label: '男', w: C.LEVEL_W[gen.w.sex | 0], tol: 1, v: function (s) { return s.male ? 1 : 0; } });
     C.ATTRS.forEach(function (at) {
-      // heavy の項目は程度を足さず「いるか」で数える（＋＋は下の別枠で数える）
-      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } }); // 程度は足さない。＋の上限が1の項目もこれで古い値（＋＋以上）を＋として扱う
+      // 程度は足さず「いるか」で数える（heavy の項目の＋は下の別枠で数える）
+      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } });
     });
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
@@ -44,12 +44,12 @@
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
-    // ＋＋以上：項目ごとと、4項目のどれかが＋＋以上の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
+    // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
-      MET.push({ k: at.k + '++', grp: 'heavy', label: at.s + '＋＋', w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, v: function (s) { return (s.a[at.k] | 0) >= 2 ? 1 : 0; } });
+      MET.push({ k: at.k + '++', grp: 'heavy', label: at.s + '＋', w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, v: function (s) { return (s.a[at.k] | 0) >= 2 ? 1 : 0; } });
     });
-    MET.push({ k: 'heavy', grp: 'heavy', label: '＋＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
+    MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
     var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });

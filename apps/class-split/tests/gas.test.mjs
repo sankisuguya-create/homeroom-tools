@@ -49,8 +49,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     b = call('apiBoot', 4).v;
     assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2);
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'kX', 1).ok, false);
-    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok, false, '学・欠・問・保は＋＋まで');
-    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k5', 2).ok, false, 'ほかは＋まで');
+    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok, false, '程度は2（アイコン＋）まで');
+    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k5', 2).ok, true, 'どの項目も＋を付けられる');
 
     // 案：版が合えば保存、古い版からの保存は上書きしない
     const plans = [{ letter: 'A', assign: {} }];

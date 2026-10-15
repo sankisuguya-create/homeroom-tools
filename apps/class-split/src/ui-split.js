@@ -71,6 +71,8 @@
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
+    // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
+    var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
     var slot = function (good) {
       var n = 0, out = '';
@@ -83,8 +85,8 @@
       if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
     };
-    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" title="' + esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）">' +
-      '<span class="old">' + s.no + '</span><span class="l1"><span class="nm">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
+    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
   }
 
   function renderBar() {
@@ -136,7 +138,7 @@
       var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
       h += '<section class="col"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
-        '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋＋以上の児童">＋＋' + c[HM] + '人</span>' +
+        '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1)); }).join('') + '</div>' +
         '</div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';

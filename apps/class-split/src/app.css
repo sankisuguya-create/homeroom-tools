@@ -61,8 +61,16 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .b>i{position:absolute;inset:0;background:var(--c)}
 .b>em{position:relative;font-style:normal;color:var(--t)}
 /* ＋は形の中の字の位置に左右されないよう、印の枠を基準に全アイコンで同じ高さ・同じ距離に置く */
-.b>u{position:absolute;left:calc(50% + .48em);top:-.34em;display:flex;line-height:0;text-decoration:none}
-.b>u>svg{width:.62em;height:.62em;display:block;margin-right:-.08em}
+.b>u{position:absolute;left:calc(50% + .3em);top:-.32em;display:flex;line-height:0;text-decoration:none}
+.b>u>svg{width:.95em;height:.95em;display:block}
+/* アイコンの説明（カーソルを合わせると出す）。1つの枠を使い回す */
+.tip{position:fixed;z-index:40;background:#fff;color:var(--ink);border:1px solid var(--line);border-radius:6px;box-shadow:0 4px 14px #0003;padding:8px 12px;font-size:.85rem;line-height:1.6;max-width:22rem;pointer-events:none}
+.tip h3{margin:0 0 4px;font-size:.9rem}
+.tip table{border-collapse:collapse}
+.tip td{padding:1px 8px 1px 0;vertical-align:top}
+.tip td:first-child{white-space:nowrap;font-size:1.1rem}
+.tip tr.on td{font-weight:700}
+.tip p{margin:4px 0 0;color:var(--sub);font-size:.8rem}
 /* 学：角が欠けたボロボロの四角（利用者の選んだ案A） */
 .square>i{clip-path:polygon(14% 4%,62% 4%,70% 12%,96% 6%,92% 40%,97% 70%,84% 96%,40% 92%,24% 97%,4% 82%,8% 50%,3% 20%)}
 .circle>i{clip-path:circle(50%)}

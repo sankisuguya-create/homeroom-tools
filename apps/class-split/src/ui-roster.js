@@ -46,7 +46,7 @@
       '<span class="note">過去の年度は見るだけです</span>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + pane() + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
-      '<span>＋＝程度2　＋＋＝程度3　点線の数字＝その年度の事案の件数</span></div>';
+      '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
   }
 
@@ -202,7 +202,7 @@
         if (R.fy !== editableFy()) return true;
         var Y = yearOf(R.fy), r = Y.rows.filter(function (y) { return y.id === x.dataset.cell; })[0], k = x.dataset.k;
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
-        r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→＋（→＋＋）→無
+        r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
         var v = r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();

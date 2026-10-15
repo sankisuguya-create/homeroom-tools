@@ -9,20 +9,21 @@
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
-    MAX_LEVEL: 2,     // 配慮項目の程度の上限（0＝なし）。項目ごとの上限は max（heavy の項目は＋＋まで、他は＋まで）
+    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
+    // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2 },
-      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2 },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1 },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1 },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1 },
-      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1 },
-      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1 }
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 2, help: ['アレルギー', '配慮の要るアレルギーがある。', 'エピペンの所持など、命に関わる対応が要る。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1, max: 2, help: ['身体的配慮', '体や健康の面で配慮が要る。', '介助や設備の配慮が毎日要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 2, help: ['通級・要支援', '通級や支援を受けている。', '個別の支援がいつも要る。'] },
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 2, help: ['賢い', '学力が高い。', 'とても高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 2, help: ['リーダー', 'まとめる力がある。', 'とても強い。学級の中心になれる。'] },
+      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 2, help: ['運動', '運動が得意。', 'とても得意。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
@@ -39,7 +40,7 @@
       { k: 'far',  label: '離す' },
       { k: 'near', label: 'つける' },
       { k: 'fix',  label: '組に固定' },
-      { k: 'heavy', label: '＋＋を組に分ける' }, // heavy の項目の＋＋以上は、担任の負担が＋2つ分では済まないので人数で分ける
+      { k: 'heavy', label: '負担の＋を組に分ける' }, // heavy の項目の＋は、担任の負担が明確に増える印なので人数で分ける
       { k: 'cap',  label: '人数の上限' },
       { k: 'sex',  label: '男女の差±1' }
     ],
@@ -107,8 +108,8 @@
     var MET = [];
     MET.push({ k: 'sex', label: '男', w: C.LEVEL_W[gen.w.sex | 0], tol: 1, v: function (s) { return s.male ? 1 : 0; } });
     C.ATTRS.forEach(function (at) {
-      // heavy の項目は程度を足さず「いるか」で数える（＋＋は下の別枠で数える）
-      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } }); // 程度は足さない。＋の上限が1の項目もこれで古い値（＋＋以上）を＋として扱う
+      // 程度は足さず「いるか」で数える（heavy の項目の＋は下の別枠で数える）
+      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } });
     });
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
@@ -116,12 +117,12 @@
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
-    // ＋＋以上：項目ごとと、4項目のどれかが＋＋以上の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
+    // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
-      MET.push({ k: at.k + '++', grp: 'heavy', label: at.s + '＋＋', w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, v: function (s) { return (s.a[at.k] | 0) >= 2 ? 1 : 0; } });
+      MET.push({ k: at.k + '++', grp: 'heavy', label: at.s + '＋', w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, v: function (s) { return (s.a[at.k] | 0) >= 2 ? 1 : 0; } });
     });
-    MET.push({ k: 'heavy', grp: 'heavy', label: '＋＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
+    MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
     var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });
@@ -416,7 +417,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_748bcad068be';
+var SERVER_BUILD = 'BUILD_a7062ee18d65';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
