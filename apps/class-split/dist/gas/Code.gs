@@ -22,7 +22,7 @@
       { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
       { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
       { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
-      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'plain',    w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
       { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
       { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['運動', '運動が得意。'] }
     ],
@@ -418,7 +418,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_abb080b6ac78';
+var SERVER_BUILD = 'BUILD_8f909a7dd72a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

@@ -85,12 +85,15 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .house>em{top:.12em}
 .b.house{width:1.65em;height:1.65em;margin:-.08em}
 .bs>.b.house{width:1.4em;height:1.4em;margin:0}
-.crown>i{clip-path:polygon(0 4%,100% 4%,62% 50%,100% 96%,0 96%)}
+/* リ：右の切れ込みは深さ12.7%（もとの38%の3分の1） */
+.crown>i{clip-path:polygon(0 4%,100% 4%,87.3% 50%,100% 96%,0 96%)}
 .crown>em{left:-.2em}
 .b.crown{width:1.75em}
 .bs>.b.crown{width:1.45em}
 .diamond>em{font-size:.82em}
 .hexagon>i{clip-path:polygon(25% 2%,75% 2%,100% 50%,75% 98%,25% 98%,0 50%)}
+/* 賢：正方形 */
+.plain>i{inset:.06em}
 .pentagon>i{clip-path:polygon(50% 0,100% 38%,82% 100%,18% 100%,0 38%)}
 .pentagon>em{top:.1em}
 .b.pill{width:2em}.pill>i{clip-path:inset(12% 0 round 999px)}
