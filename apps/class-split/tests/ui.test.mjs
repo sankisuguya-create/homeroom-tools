@@ -102,7 +102,24 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  ok(await p.locator('.rbar .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿`);
+  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#main .rbar .tab[data-fy], main #paste, main .chk').count() === 0, `${w}x${h} 上の帯は組・学年と「その他…」だけ`);
+  await p.click('#rmore');
+  ok(await p.locator('.dlg.more .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿（その他の窓）`);
+  await p.check('.dlg.more #onlyInc');
+  ok(await p.locator('.dlg.more #onlyInc').isChecked() && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
+  await p.keyboard.press('Escape'); await p.click('#unfilter');
+  ok(await p.locator('#main .state').count() === 0, `${w}x${h} 解除で状態が消える`);
+  await p.click('#rmore'); await p.click('.dlg.more #rorder');
+  await p.click('[data-ord="0:female"]'); await p.click('[data-ord="1:kana"]'); await p.keyboard.press('Enter');
+  const sx = await p.locator('td.nm .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
+  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 並び順（女が先）が名簿に効く`);
+  ok(await p.locator('#main .state', { hasText: '並び順' }).count() === 1, `${w}x${h} 並び順を変えると帯に出る`);
+  await p.click('#unorder');
+  ok(await p.locator('#main .state').count() === 0 && (await p.locator('td.nm').first().evaluate(e => e.closest('tr').cells[0].textContent)) === '1', `${w}x${h} 戻すで番号順`);
+  await p.click('#rmore'); await p.locator('.dlg.more .tab[data-fy]').last().click();
+  ok(await p.locator('.dlg.more').count() === 0 && await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと窓が閉じ、帯に「見るだけ」が出る`);
+  await p.locator('#main .state .btn').click();
+  ok(await p.locator('table.r.ro').count() === 0, `${w}x${h} 戻るで編集できる年度に戻る`);
   await p.locator('td.nm').first().click();
   ok(await p.locator('.kidpop table.h tbody tr').count() === 6, `${w}x${h} 名前を押すと窓が開き、経年の記録が6行`);
   await p.keyboard.press('Escape');
@@ -113,6 +130,31 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok((await p.locator('td.cell').first().innerHTML()) !== v0, `${w}x${h} 配慮項目のマスを押すと値が変わる`);
   await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
   ok(true, `${w}x${h} 保存済みと表示`);
+
+  // ＋のアイコンにしても行の高さ・列の幅が変わらない
+  const k1 = p.locator('td.cell[data-k="k1"]').nth(2);
+  const box = async () => p.evaluate(() => { const t = document.querySelector('table.r'); return [t.getBoundingClientRect().width, t.querySelector('tbody tr:nth-child(3)').getBoundingClientRect().height]; });
+  const b0 = await box(), seen = new Set();
+  for (let n = 0; n < 3; n++) { await p.locator('td.cell[data-k="k1"]').nth(2).click(); seen.add(await p.locator('td.cell[data-k="k1"]').nth(2).locator('.b').getAttribute('data-lv').catch(() => null)); const b = await box(); ok(Math.abs(b[0] - b0[0]) < .5 && Math.abs(b[1] - b0[1]) < .5, `${w}x${h} 程度${n + 1}回目でも表の幅・行の高さが同じ（${b} / ${b0}）`); }
+  ok(seen.has('2'), `${w}x${h} ＋のアイコンを通った`);
+  ok((await p.locator('th.spc').boundingBox()).width < 45, `${w}x${h} 特支の列は細い`);
+
+  // 名簿からつける・離すを足す
+  const first = await p.locator('td.nm').first().getAttribute('data-kid');
+  await p.locator('td.pr').first().click();
+  ok(await p.locator('.dlg[aria-label="つける・離す"] [data-unpk="a"]').count() === 1, `${w}x${h} つける・離すの列を押すと、その児童を選んだ窓が開く`);
+  await p.fill('#qb', await p.locator('td.nm').nth(1).evaluate(e => e.lastChild.textContent.slice(0, 2)));
+  await p.locator('[data-pk^="b:"]').first().click();
+  const np = await p.evaluate(() => App.st.data.pairs.length);
+  await p.click('#padd'); await p.click('#okbtn');
+  await p.waitForFunction(n => App.st.data.pairs.length > n, np);
+  ok(await p.locator(`td.pr .prm`).count() >= 2 && await p.evaluate(id => App.st.data.pairs.some(q => q.a === id), first), `${w}x${h} 保存すると表に印が出る`);
+
+  // 備考
+  await p.locator('td.memo').first().click();
+  await p.fill('#mtx', '給食当番は前半'); await p.keyboard.press('Control+Enter');
+  await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
+  ok((await p.locator('td.memo').first().textContent()) === '給食当番は前半', `${w}x${h} 備考を書ける`);
 
   ok(errs.length === 0, `${w}x${h} 画面のエラーなし ${errs.join(' / ')}`);
   await p.close();
@@ -158,11 +200,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
-  await p.click('#decide');
+  await p.click('#smore'); await p.click('#decide');
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
+  ok(await p.locator('.decided', { hasText: 'A組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 1, '決定の直後は組の番号が仮');
+  await p.click('#cnames'); await p.click('[data-cn="0:2"]'); await p.keyboard.press('Enter');
+  await p.waitForSelector('.decided:has-text("A組＝2組")');
+  ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');
+  ok(await p.locator('.ncl').first().textContent() === 'A組', 'クラス分けの枠は A組…');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
+  await p.click('#rmore');
   ok(await p.locator('.tab[data-fy]', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');
   await p.locator('.tab[data-fy]', { hasText: '今年度' }).click();
   ok(await p.locator('table.r.ro').count() === 1, '決定後の今年度は凍結（見るだけ）');
