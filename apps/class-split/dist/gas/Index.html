@@ -335,6 +335,8 @@ body[data-screen="roster"] table.r th .b{font-size:.8em}
 .kidpop h2{padding-right:7em}
 .kidpop table.h{font-size:.95rem}
 body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
+/* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
+body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1102,7 +1104,7 @@ body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_8d110541a7c0';
+  var PAGE_BUILD = 'BUILD_9076cf3c5939';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1353,8 +1355,8 @@ body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
-      C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="an">特別支援学級</th>' +
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +

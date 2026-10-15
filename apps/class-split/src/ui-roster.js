@@ -84,8 +84,8 @@
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.sort(function (a, b) { return (R.byCount ? b.n - a.n : 0) || a.r.cls - b.r.cls || a.r.no - b.r.no; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th title="特別支援学級">支</th>' +
-      C.ATTRS.map(function (at) { return '<th title="' + at.label + '">' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="an">特別支援学級</th>' +
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
