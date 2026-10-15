@@ -293,3 +293,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .lg.tr{background:linear-gradient(90deg,#8C8C8C 0 30%,#fff 30%)}
 .trf{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;align-items:center}
 .trf input{flex:1 1 10em;min-width:0;padding:6px 8px;font-size:1rem}
+
+/* 設定：説明文の欄 */
+.hrow td{border-top:0;padding-top:0}
+.hlp{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.85rem}
+.hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
+.hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
+.hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}

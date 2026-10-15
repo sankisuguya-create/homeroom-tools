@@ -486,7 +486,9 @@ var apiSaveSettings = api_(function (s) {
     var x = s.attrs[at.k] || {};
     var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
     if (!label || !ini) throw userError_('項目の名前と頭文字は空にできません');
-    clean.attrs[at.k] = { label: label, s: ini, w: Math.max(0, Math.min(3, +x.w || 0)) };
+    // 説明文：空の欄は既定の文に戻す
+    var help = (at.help || []).map(function (d, i) { var t = String(x.help && x.help[i] || '').trim().slice(0, 80); return t || d; });
+    clean.attrs[at.k] = { label: label, s: ini, w: Math.max(0, Math.min(3, +x.w || 0)), help: help };
   });
   clean.types = (s.types || []).map(function (t) { return String(t).trim(); }).filter(Boolean).slice(0, 20);
   if (!clean.types.length) throw userError_('事案の種別を1つ以上入れてください');

@@ -147,6 +147,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.deepEqual(st.v.types, ['対人', 'けが']); assert.equal(st.v.keepYears, 6); assert.equal(st.v.attrs.k1.s, '援');
     const me = call('apiSettings').v.me;
     assert.deepEqual([me.grade, me.cls], [4, 1], 'メールの大文字小文字を無視して担任を見つける');
+    const hs = call('apiSaveSettings', { attrs: { k3: { label: '問題行動', s: '問', w: 3, help: ['トラブル', '  ', '深刻'] }, k5: { label: 'アレルギー', s: 'ア', w: 1, help: ['食物', '要配慮', 'これは捨てる'] } }, types: ['対人'] });
+    assert.ok(hs.ok, hs.err);
+    assert.deepEqual(hs.v.attrs.k3.help, ['トラブル', '多い。', '深刻'], '空の欄は既定の文に戻る');
+    assert.equal(hs.v.attrs.k5.help.length, 2, '有無だけの項目は2つまで');
     call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { keepYears: 0 }));
 
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
