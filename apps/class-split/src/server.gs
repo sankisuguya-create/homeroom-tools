@@ -53,8 +53,9 @@ var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone'] },
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b'] },
-  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted'] },
-  { name: 'incident_kids', head: ['inc_id', 'id8'] },
+  // diagram：関係図（児童IDとグループの記号だけ。氏名は入れない）。role：関係図から決めた役割（harm・victim・mutual・related）
+  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram'] },
+  { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] },
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
   { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] }
@@ -311,11 +312,28 @@ var apiImportRoster = api_(function (fy, grade, rows) {
 });
 
 function incidents_() {
-  var kids = {};
-  read_('incident_kids').rows.forEach(function (r) { (kids[r.inc_id] = kids[r.inc_id] || []).push(String(r.id8)); });
-  return read_('incidents').rows.filter(function (r) { return !r.deleted && r.inc_id !== ''; }).map(function (r) {
-    return { id: +r.inc_id, date: isoDate_(r.date), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [] };
+  var kids = {}, roles = {};
+  read_('incident_kids').rows.forEach(function (r) {
+    (kids[r.inc_id] = kids[r.inc_id] || []).push(String(r.id8));
+    if (r.role) (roles[r.inc_id] = roles[r.inc_id] || {})[String(r.id8)] = String(r.role);
   });
+  return read_('incidents').rows.filter(function (r) { return !r.deleted && r.inc_id !== ''; }).map(function (r) {
+    var dg = null;
+    if (r.diagram) { try { dg = Engine.normDiagram(JSON.parse(String(r.diagram))); } catch (e) { dg = null; } }
+    return { id: +r.inc_id, date: isoDate_(r.date), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg };
+  });
+}
+// 事案の入力を確かめる：関係図があれば、関係する児童と役割は関係図から決める
+function incidentInput_(x) {
+  if (!x) throw userError_('事案が読めません');
+  if (!/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
+  var dg = x.diagram ? Engine.normDiagram(x.diagram) : null, ids, roles = {};
+  if (dg && dg.nodes.length) { ids = dg.nodes.map(function (n) { return n.id; }); roles = Engine.diagramRoles(dg); }
+  else { ids = (x.ids || []).map(String); dg = null; }
+  if (!ids.length) throw userError_('関係する児童を選んでください');
+  var json = dg ? JSON.stringify(dg) : '';
+  if (json.length > 40000) throw userError_('関係図が大きすぎます');
+  return { ids: ids, roles: roles, diagram: dg, json: json, date: String(x.date), type: String(x.type), url: String(x.url) };
 }
 function isoDate_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -372,17 +390,35 @@ var apiFetchTitle = api_(function (url) { requireTeacher_(); return { title: tit
 
 var apiAddIncident = api_(function (x) {
   var by = requireTeacher_();
-  if (!x || !x.ids || !x.ids.length) throw userError_('関係する児童を選んでください');
-  if (!/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
-  var title = String(x.title || '').trim() || titleOf_(x.url);
+  var v = incidentInput_(x);
+  var title = String(x.title || '').trim() || titleOf_(v.url);
   return withLock_(function () {
+    ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), next = 1;
     t.rows.forEach(function (r) { if (+r.inc_id >= next) next = +r.inc_id + 1; });
-    var inc = { inc_id: next, date: String(x.date), type: String(x.type), url: String(x.url), file_id: fileIdOf_(x.url), title: title, by: by, at: new Date(), deleted: '' };
+    var inc = { inc_id: next, date: v.date, type: v.type, url: v.url, file_id: fileIdOf_(v.url), title: title, by: by, at: new Date(), deleted: '', diagram: v.json };
     append_('incidents', TABLES_[3].head, [inc]);
-    append_('incident_kids', TABLES_[4].head, x.ids.map(function (id) { return { inc_id: next, id8: String(id) }; }));
-    log_(by, 'addIncident', x.ids.length);
-    return { id: next, date: inc.date, type: inc.type, title: title, url: inc.url, ids: x.ids.map(String) };
+    append_('incident_kids', TABLES_[4].head, v.ids.map(function (id) { return { inc_id: next, id8: id, role: v.roles[id] || '' }; }));
+    log_(by, 'addIncident', v.ids.length);
+    return { id: next, date: inc.date, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
+  });
+});
+
+// 事案を直す（関係図・文書・日付・種別）。関係する児童は関係図から入れ直す
+var apiUpdateIncident = api_(function (id, x) {
+  var by = requireTeacher_();
+  id = +id;
+  var v = incidentInput_(x);
+  var title = String(x.title || '').trim() || titleOf_(v.url);
+  return withLock_(function () {
+    ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
+    var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
+    if (!row) throw userError_('事案が見つかりません');
+    [['date', v.date], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
+    removeRows_('incident_kids', function (r) { return +r.inc_id === id; });
+    append_('incident_kids', TABLES_[4].head, v.ids.map(function (k) { return { inc_id: id, id8: k, role: v.roles[k] || '' }; }));
+    log_(by, 'updateIncident', v.ids.length);
+    return { id: id, date: v.date, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
   });
 });
 
@@ -540,6 +576,14 @@ var apiPurge = api_(function (ids) {
     var t = read_('incidents');
     t.rows.forEach(function (r) {
       if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
+      // 関係図からも消した児童を外す（残った児童の関係図は、その児童のいない形で残す）
+      if (r.diagram) {
+        var dg; try { dg = JSON.parse(String(r.diagram)); } catch (e) { dg = null; }
+        if (dg && (dg.nodes || []).some(function (nd) { return set[String(nd.id)]; })) {
+          dg.nodes = dg.nodes.filter(function (nd) { return !set[String(nd.id)]; });
+          writeCell_(t, r, 'diagram', left[r.inc_id] ? JSON.stringify(Engine.normDiagram(dg)) : '');
+        }
+      }
     });
     read_('settings').rows.forEach(function (r) {
       if (!/^plans_/.test(String(r.key))) return;

@@ -353,3 +353,28 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 .bigs .big[data-go="split"] b{font-size:1.1rem}
 .bigs .big[data-go="split"] span{font-size:.8rem}
 .bigs .big:only-child{grid-column:1/-1}
+/* ===== 事案の関係図 ===== */
+.dg{display:flex;flex-direction:column;gap:6px}
+.dg-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dg-hint{margin:0}
+.dg-canvas{position:relative;width:100%;aspect-ratio:2/1;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;user-select:none;overflow:hidden}
+.dg-svg{position:absolute;inset:0;width:100%;height:100%}
+.dg-g{fill:#0F5EA80d;stroke:#0F5EA8;stroke-width:2}
+.dg-g.from{stroke:#C0330A;stroke-width:3}
+.dg-e{stroke:#C0330A;stroke-width:2.5;fill:none}
+.dg-ah{fill:#C0330A}
+.dg-eh{stroke:transparent;stroke-width:14;fill:none}
+.dg-n{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:3px 8px;font-weight:700;white-space:nowrap;cursor:grab;font-size:15px;z-index:2}
+.dg-n.from{outline:3px solid #C0330A}
+.dg-n.pick{outline:3px solid var(--link);background:var(--fill)}
+.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px}
+.dg-n.card.f{border-radius:999px 14px 14px 999px}
+.dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
+.dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
+.dg-gl.from{background:#C0330A}
+.dg-sum{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.9rem;align-items:baseline}
+.dg-sum em,.meta em{font-style:normal;font-weight:700;margin-right:3px}
+.r-harm{color:#C0330A}.r-victim{color:#0F5EA8}.r-mutual{color:#7B3FA0}.r-related{color:var(--sub)}
+.inc .it .ie{align-self:flex-start;font-size:.8rem;padding:2px 8px}
+.form .dg-bar label.chk{display:inline-flex;flex-direction:row;gap:4px;align-items:center;margin:0}

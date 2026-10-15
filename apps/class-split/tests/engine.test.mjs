@@ -189,3 +189,25 @@ test('＋＋は＋2つ分ではない：＋＋の児童は各組の上限（均�
   const bad = new Int8Array(asg); P.kids.forEach((s, i) => { if (s.a.k3 === 2) bad[i] = 0; });
   assert.ok(E.analyze(ctx, bad).bad.some(b => b.t === 'heavy'));
 });
+
+test('関係図：矢印から役割と型を決める（付箋の①〜④）', () => {
+  const N = ids => ids.map((id, i) => ({ id, x: i * 50, y: 0 }));
+  // ① 山田→田中
+  let d = { nodes: N(['田中', '山田']), edges: [{ f: 'k:山田', t: 'k:田中' }] };
+  assert.deepEqual(E.diagramRoles(d), { 田中: 'victim', 山田: 'harm' });
+  assert.equal(E.diagramPattern(d), '一方的加害（個人）');
+  // ② グループA⇄グループB
+  d = { nodes: N(['山田', '林田', '水田', '田中', '上田']), groups: [{ g: 'A', members: ['山田', '林田', '水田'] }, { g: 'B', members: ['田中', '上田'] }], edges: [{ f: 'g:A', t: 'g:B' }, { f: 'g:B', t: 'g:A' }] };
+  assert.equal(E.diagramRoles(d).上田, 'mutual');
+  assert.equal(E.diagramPattern(d), '相互加害（グループ）');
+  // ③ 山田→田中・山田→水田（矢印が複数）
+  d = { nodes: N(['田中', '山田', '水田']), edges: [{ f: 'k:山田', t: 'k:田中' }, { f: 'k:山田', t: 'k:水田' }] };
+  assert.equal(E.diagramPattern(d), '一方的加害（複線）');
+  // ④ グループC→上田、グループA→上田
+  d = { nodes: N(['野原', '田野', '田中', '山田', '上田']), groups: [{ g: 'C', members: ['野原', '田野'] }, { g: 'A', members: ['田中', '山田'] }], edges: [{ f: 'g:C', t: 'k:上田' }, { f: 'g:A', t: 'k:上田' }] };
+  assert.equal(E.diagramPattern(d), '一方的加害（グループ・複線）');
+  // 矢印の無い児童は関係者。壊れた参照・自分への矢印・重複は捨てる
+  d = E.normDiagram({ nodes: N(['a', 'b', 'c']), groups: [{ g: 'X', members: ['a', 'zz'] }], edges: [{ f: 'k:a', t: 'k:a' }, { f: 'k:a', t: 'k:b' }, { f: 'k:a', t: 'k:b' }, { f: 'g:Q', t: 'k:b' }] });
+  assert.equal(d.edges.length, 1); assert.deepEqual(d.groups[0].members, ['a']);
+  assert.equal(E.diagramRoles(d).c, 'related');
+});

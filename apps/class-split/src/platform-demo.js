@@ -87,6 +87,12 @@
     })();
   }
 
+  // 本番の incidentInput_ と同じ：関係図があれば、関係する児童と役割は関係図から決める
+  function demoIncident(x) {
+    var dg = x.diagram ? E.normDiagram(x.diagram) : null;
+    if (dg && !dg.nodes.length) dg = null;
+    return { date: x.date, type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+  }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
 
@@ -163,9 +169,18 @@
     savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
     addIncident: function (x) { gen();
       // 本番は所有者の権限で文書の名前を取る。取れない時は title を空で返し、画面が入力を求める
-      var inc = { id: S.nextInc++, date: x.date, type: x.type, title: x.title || '', url: x.url, ids: x.ids.slice() };
+      var inc = Object.assign({ id: S.nextInc++ }, demoIncident(x));
+      if (!inc.ids.length) return Promise.reject(new Error('関係する児童を選んでください'));
       S.inc.push(inc);
-      return later(inc);
+      return later(clone(inc));
+    },
+    updateIncident: function (id, x) { gen();
+      var cur = S.inc.filter(function (y) { return y.id === +id; })[0];
+      if (!cur) return Promise.reject(new Error('事案が見つかりません'));
+      var v = demoIncident(x);
+      if (!v.ids.length) return Promise.reject(new Error('関係する児童を選んでください'));
+      Object.assign(cur, v);
+      return later(clone(cur));
     },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
