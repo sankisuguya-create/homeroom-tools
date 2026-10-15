@@ -68,9 +68,9 @@
     var n = T.cand.filter(function (x) { return T.pick[x.id]; }).length;
     return '<h3 style="margin:0 0 6px">卒業・転出した児童の記録を消す</h3>' +
       '<p class="note">今年度の名簿にいない児童です。消すと、名簿・配慮項目・つける離す・事案との結び付きから、その児童の行が消えます。結び付く児童がいなくなった事案は、名前とURLを消します。<b>元に戻せません。</b>スプレッドシートの版の履歴と、ドライブの事案の文書そのものは残ります。</p>' +
-      '<div class="rbar"><span class="lab">卒業・転出した後も残す年数</span>' + [0, 1, 2, 3].map(function (y) {
-        return '<button class="lv" data-keep="' + y + '" aria-pressed="' + (+s.keepYears === y) + '">' + (y ? y + '年度' : '残さない') + '</button>';
-      }).join('') + '</div>' +
+      '<div class="rbar"><span class="lab">卒業・転出した後も残す年数</span>' + [0, 1, 2, 3, 4, 5, 6].map(function (y) {
+        return '<button class="lv" data-keep="' + y + '" aria-pressed="' + (+s.keepYears === y) + '">' + (y ? y + '年度' : '残さない') + (y === C.KEEP_YEARS_DEFAULT ? '（既定）' : '') + '</button>';
+      }).join('') + '</div><p class="note">事案に関わった児童は、この設定にかかわらず卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は候補に出しません（いじめ等の記録の保存の目安。年数の正本は教育委員会の文書管理規程）。</p>' +
       (T.cand.length ? '<table class="r"><thead><tr><th><input type="checkbox" id="pall"' + (n === T.cand.length ? ' checked' : '') + ' aria-label="すべて"></th><th>理由</th><th>最後の年度</th><th>学年-組-番</th><th style="text-align:left">名前</th><th>事案</th></tr></thead><tbody>' +
         T.cand.map(function (x) {
           return '<tr><td><input type="checkbox" data-pp="' + x.id + '"' + (T.pick[x.id] ? ' checked' : '') + '></td><td>' + x.reason + '</td><td>' + x.fy + '</td><td>' + x.grade + '-' + (x.cls + 1) + '-' + x.no + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + (x.incidents || '') + '</td></tr>';

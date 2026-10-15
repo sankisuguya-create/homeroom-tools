@@ -67,5 +67,14 @@
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
+  // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
+  // （いじめ等の記録の保存の目安。正本は教育委員会の文書管理規程。docs/design.md §4）
+  CONFIG.KEEP_YEARS_DEFAULT = 5;
+  CONFIG.INCIDENT_KEEP_YEARS = 5;
+  // 最後に名簿にいた年度 lastFy の児童を、今年度 FY に消してよいか
+  CONFIG.purgeable = function (lastFy, FY, keep, hasIncident) {
+    return FY > lastFy + (hasIncident ? Math.max(keep, CONFIG.INCIDENT_KEEP_YEARS) : keep);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
