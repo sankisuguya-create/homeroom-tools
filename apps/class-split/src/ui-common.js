@@ -24,6 +24,10 @@
   };
   // 旧学級の無い児童（新年度の転入生）は、帯を灰色・地を白にする
   var NO_CLASS = { c: '#8C8C8C', t: '#FFFFFF', l: '#FFFFFF' };
+  // クラス分けの盤面のアイコンの大きさ（倍率）。この端末にだけ覚える
+  App.ICON_SCALES = [{ v: .8, label: '小' }, { v: 1, label: '標準' }, { v: 1.2, label: '大' }, { v: 1.4, label: '特大' }, { v: 1.6, label: '最大' }];
+  App.iconScale = function () { try { var v = +localStorage.getItem('classSplit.iconScale'); if (v >= .5 && v <= 2) return v; } catch (e) { /* 読めない時は標準 */ } return 1; };
+  App.setIconScale = function (v) { try { localStorage.setItem('classSplit.iconScale', String(v)); } catch (e) { /* 覚えられない時は何もしない */ } };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;

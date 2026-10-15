@@ -173,14 +173,14 @@ table.h tr.cur td{font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
 .board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
-.col{background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
+.col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
 .head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .head.target{background:var(--fill)}
 .h1{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
 .h1 b{font-size:1.1rem}
 .h1 .w{color:var(--alert);font-weight:700}
 .jis{border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 5px;font-size:.85rem}
-.st{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:.8rem;font-variant-numeric:tabular-nums;align-items:center}
+.st{display:flex;flex-wrap:nowrap;gap:0 .4em;font-size:min(.8rem,calc((100cqw - 16px) / 37));white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;align-items:center}
 .st .w{color:var(--alert);font-weight:700}
 .st .w::after{content:"△"}
 .st.sub{color:var(--sub)}
@@ -332,3 +332,15 @@ body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line
 /* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
 table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
 table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
+/* 並び順の枠 */
+.ordrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ordrow>b{min-width:5em}
+.ordrow .lv{white-space:nowrap}
+/* 項目で絞って見る：該当しない児童を暗くする。押した項目は見出しで枠を付ける */
+.st [data-hl]{cursor:pointer;border-radius:4px;padding:0 2px}
+.st [data-hl]:hover{background:#0000000f}
+.st [data-hl].on{outline:2px solid var(--ink);background:#fff}
+.board.hl .chip:not(.hit){opacity:.22;filter:grayscale(.6)}
+/* カードの事案の数：押すと記録の窓 */
+.board .chip .jn{cursor:zoom-in}
+.board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
