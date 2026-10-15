@@ -61,6 +61,8 @@
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
+    addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
+    removeTransfer: function (grade, id) { return call('apiRemoveTransfer', grade, id); },
     importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
     savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
     undoDecide: function (grade) { return call('apiUndoDecide', grade); },

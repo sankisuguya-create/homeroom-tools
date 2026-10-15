@@ -142,10 +142,13 @@ test('Platform（見本）：決定で次の年度の名簿ができ、取り消
   const b = await PF.boot(4);
   const cur = b.years.find(y => y.fy === b.fy).rows;
   const assign = {}; cur.forEach((r, i) => { assign[r.id] = i % 4; });
+  assert.ok(b.transfers.length, '4年の見本には転入生がいる');
+  await assert.rejects(PF.decide(4, { name: '案A', assign }), /組の決まっていない/, '転入生の組が無ければ決定しない');
+  b.transfers.forEach((t, i) => { assign[t.id] = i % 4; });
   await PF.decide(4, { name: '案A', assign });
   const b2 = await PF.boot(4);
   const next = b2.years.find(y => y.fy === b.fy + 1);
-  assert.equal(next.rows.length, cur.length);
+  assert.equal(next.rows.length, cur.length + b.transfers.length, '転入生も来年度の名簿に入る');
   assert.equal(next.grade, 5);
   assert.ok(b2.decision);
   await PF.undoDecide(4);

@@ -6,9 +6,13 @@
   var T = { tab: 'attrs', s: null, cand: null, pick: {}, dirty: false };
 
   // 読み込んだ設定を画面の設定に反映する（項目の名前・頭文字・既定の重み、事案の種別）
+  // 説明文の既定（config.js の help）。設定で空にした欄はこれに戻る
+  var DEF_HELP = {};
+  C.ATTRS.forEach(function (at) { DEF_HELP[at.k] = (at.help || []).slice(); });
+  function helpOf(at, x) { var d = DEF_HELP[at.k], h = x && x.help || []; return d.map(function (t, i) { return h[i] ? String(h[i]) : t; }); }
   App.applySettings = function (s) {
     App.settings = s;
-    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } });
+    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } at.help = helpOf(at, x); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.slice();
   };
 
@@ -25,8 +29,13 @@
           return '<tr><td style="font-size:20px">' + App.mark(prev, 1) + '</td>' +
             '<td style="text-align:left"><input data-al="' + at.k + '" value="' + esc(x.label) + '" maxlength="20" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"></td>' +
             '<td><input data-as="' + at.k + '" value="' + esc(x.s) + '" maxlength="1" style="width:2.5em;text-align:center;padding:4px;border:1px solid var(--line);border-radius:4px"></td>' +
-            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>';
-        }).join('') + '</tbody></table><p class="note">色と形は項目の位置ごとに決まっていて変えられません（見分けやすさを確かめた組み合わせのため）。保存した値は、次に画面を開いた時から使われます。</p>';
+            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>' +
+            // 説明文（アイコンにカーソルを合わせると出る）：見出し・アイコン・アイコン＋
+            '<tr class="hrow"><td></td><td colspan="3"><div class="hlp">' + helpOf(at, x).map(function (t, i) {
+              var lab = i === 0 ? '見出し' : i === 1 ? App.mark(prev, 1) : App.mark(prev, 2);
+              return '<label><span>' + lab + '</span><input data-ah="' + at.k + ':' + i + '" value="' + esc(t) + '" maxlength="80" placeholder="' + esc(DEF_HELP[at.k][i]) + '"></label>';
+            }).join('') + '</div></td></tr>';
+        }).join('') + '</tbody></table><p class="note">説明文は、アイコンにカーソルを合わせると出ます。空にすると既定の文に戻ります。色と形は項目の位置ごとに決まっていて変えられません（見分けやすさを確かめた組み合わせのため）。保存した値は、次に画面を開いた時から使われます。</p>';
     } else if (T.tab === 'teachers') {
       h += '<p class="note">担任と学級を登録すると、開いた時にその学年・学級を選んだ状態になります。</p><table class="r"><thead><tr><th style="text-align:left">教員のメール</th><th>学年</th><th>組</th><th></th></tr></thead><tbody>' +
         s.teachers.map(function (t, i) {
@@ -114,6 +123,7 @@
       var s = T.s, k;
       if ((k = t.dataset.al)) set(function () { s.attrs[k].label = t.value; });
       else if ((k = t.dataset.as)) set(function () { s.attrs[k].s = t.value; });
+      else if (t.dataset.ah) { var q = t.dataset.ah.split(':'), at = C.ATTRS.filter(function (a) { return a.k === q[0]; })[0]; set(function () { var h = helpOf(at, s.attrs[q[0]]); h[+q[1]] = t.value; s.attrs[q[0]].help = h; }); }
       else if (t.dataset.te != null) set(function () { s.teachers[+t.dataset.te].email = t.value.trim(); });
       else if (t.dataset.tg != null) set(function () { s.teachers[+t.dataset.tg].grade = +t.value; });
       else if (t.dataset.tc != null) set(function () { s.teachers[+t.dataset.tc].cls = +t.value; });

@@ -73,16 +73,35 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(b.incidents.length, 1); assert.deepEqual(b.incidents[0].ids, ['40000011', '40000021']);
     assert.equal(call('apiSchoolIncidents').v.length, 2);
 
+    // 特別支援学級の印：有無だけ
+    assert.ok(call('apiSetAttr', FY, 4, '40000012', 'sp', 1).ok);
+    assert.equal(call('apiSetAttr', FY, 4, '40000012', 'sp', 2).ok, false);
+    // 新年度の転入生：IDが無ければ仮のID。名簿のIDと重なれば断る
+    const tr = call('apiAddTransfer', 4, { name: '転入 太郎', kana: 'てんにゅう たろう', male: true });
+    assert.ok(tr.ok, tr.err); assert.match(tr.v.id, /^T\d{7}$/);
+    assert.equal(call('apiAddTransfer', 4, { name: 'x', id: '40000011' }).ok, false);
+    assert.equal(call('apiAddTransfer', 4, { name: '' }).ok, false);
+    const tr2 = call('apiAddTransfer', 4, { name: '=消す 花子', kana: 'けす はなこ', male: false, id: '49999999' });
+    assert.ok(tr2.ok);
+    assert.ok(call('apiRemoveTransfer', 4, '49999999').ok);
+    assert.deepEqual(call('apiBoot', 4).v.transfers.map(t => t.id), [tr.v.id]);
+
     // 決定：来年度の名簿（五十音順の番号）と値の写し。今年度は凍結、来年度は直せる
     const assign = {}; rows.forEach((r, i) => { assign[r[0]] = i % 2; });
+    assert.equal(call('apiDecide', 4, { name: 'x', assign }).ok, false, '転入生の組が無ければ決定しない');
+    assign[tr.v.id] = 1;
     const d = call('apiDecide', 4, { name: '案A（標準）', assign });
     assert.ok(d.ok, d.err);
+    assert.equal(call('apiAddTransfer', 4, { name: 'y' }).ok, false, '決定後は足せない');
     assert.equal(call('apiDecide', 4, { name: 'x', assign }).ok, false);
     b = call('apiBoot', 4).v;
     const next = b.years.find(y => y.fy === FY + 1);
-    assert.equal(next.grade, 5); assert.equal(next.rows.length, 8);
+    assert.equal(next.grade, 5); assert.equal(next.rows.length, 9, '転入生も入る');
+    assert.equal(b.kids[tr.v.id].name, '転入 太郎');
+    assert.equal(next.rows.find(r => r.id === '40000012').a.sp, 1, '特別支援学級の印が写る');
     assert.equal(next.rows.find(r => r.id === '40000011').a.k3, 2, '値が写る');
     assert.deepEqual(next.rows.filter(r => r.cls === 0).map(r => r.no).sort(), [1, 2, 3, 4]);
+    assert.deepEqual(next.rows.filter(r => r.cls === 1).map(r => r.no).sort(), [1, 2, 3, 4, 5]);
     assert.ok(b.decision);
     const frozen = call('apiSetAttr', FY, 4, '40000011', 'k3', 1);
     assert.equal(frozen.ok, false); assert.match(frozen.err, /凍結|直せません/);
@@ -128,6 +147,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.deepEqual(st.v.types, ['対人', 'けが']); assert.equal(st.v.keepYears, 6); assert.equal(st.v.attrs.k1.s, '援');
     const me = call('apiSettings').v.me;
     assert.deepEqual([me.grade, me.cls], [4, 1], 'メールの大文字小文字を無視して担任を見つける');
+    const hs = call('apiSaveSettings', { attrs: { k3: { label: '問題行動', s: '問', w: 3, help: ['トラブル', '  ', '深刻'] }, k5: { label: 'アレルギー', s: 'ア', w: 1, help: ['食物', '要配慮', 'これは捨てる'] } }, types: ['対人'] });
+    assert.ok(hs.ok, hs.err);
+    assert.deepEqual(hs.v.attrs.k3.help, ['トラブル', '多い。', '深刻'], '空の欄は既定の文に戻る');
+    assert.equal(hs.v.attrs.k5.help.length, 2, '有無だけの項目は2つまで');
     call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { keepYears: 0 }));
 
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
