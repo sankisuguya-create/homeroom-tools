@@ -41,13 +41,39 @@
     }
     h += '<span class="sp"></span>';
     if (edit && R.scope !== 'school') h += '<button class="btn" id="paste">名簿を貼る…</button>';
-    if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→1→2→3→空（自動保存）</span>' :
+    if (R.scope !== 'school') h += edit ? '<span class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通は内容を書く（自動保存）</span>' :
       R.fy === d.fy && d.decision ? '<span class="frozen">クラス替えを決定したので、今年度の値は凍結しています。直すのは「準備中」の年度です。</span>' :
       '<span class="note">過去の年度は見るだけです</span>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + pane() + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
-      '<span>＋＝程度2　＋＋＝程度3　点線の数字＝その年度の事案の件数</span></div>';
+      '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
+  }
+
+  // ア・身・通：有無と内容（例：卵・エピペン）を書く。内容はアイコンにカーソルを合わせると出る
+  function noteDialog(Y, r, at, cell) {
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    var put = function (v, text) {
+      r.a[at.k] = v;
+      if (v && text) r.a[at.k + '_t'] = text; else delete r.a[at.k + '_t'];
+      App.closeDlg();
+      cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
+      if (R.kid === r.id) render();
+      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); });
+    };
+    App.openDlg({
+      focus: 'ntx',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + App.esc(at.label) + '" style="max-width:480px">' +
+          '<h2>' + App.mark(at, 1) + ' ' + App.esc(s.name) + 'の' + App.esc(at.label) + '</h2>' +
+          '<textarea id="ntx" rows="3" maxlength="200" placeholder="内容（例：' + (at.k === 'k5' ? '卵・ピーナッツ。エピペンあり' : at.k === 'k6' ? '右耳が聞こえにくい。前の席' : '週1回 ことばの教室') + '）">' + App.esc(r.a[at.k + '_t'] || '') + '</textarea>' +
+          '<div class="note">カーソルを合わせると、この内容が出ます。</div>' +
+          '<div class="acts">' + ((r.a[at.k] | 0) ? '<button class="btn" data-act="none" style="margin-right:auto">なしにする</button>' : '') +
+          '<button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">ありで保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
+      },
+      click: function (t) { if (t.closest('[data-act="none"]')) { put(0, ''); return true; } return false; },
+      onOk: function () { put(1, App.$('ntx').value.trim()); }
+    });
   }
 
   function table(Y, edit) {
@@ -63,7 +89,7 @@
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx">' + (s.male ? '男' : '女') + '</span>' + esc(s.name) + '</td>' +
-        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v) : '') + '</td>'; }).join('') +
+        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="12" class="empty">該当する児童はいません</td></tr>';
@@ -201,8 +227,10 @@
       if ((x = t.closest('[data-cell]'))) {
         if (R.fy !== editableFy()) return true;
         var Y = yearOf(R.fy), r = Y.rows.filter(function (y) { return y.id === x.dataset.cell; })[0], k = x.dataset.k;
-        r.a[k] = ((r.a[k] | 0) + 1) % (C.MAX_LEVEL + 1);
-        var v = r.a[k], fy = R.fy, grade = Y.grade, at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
+        var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
+        if (at.side) { noteDialog(Y, r, at, x); return true; }
+        r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
+        var v = r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });

@@ -71,20 +71,25 @@
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
+    // 名前と旧学級の説明は名前と帯にだけ付ける（アイコンの上ではアイコンの説明を出すため）
+    var tt = esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）';
     // アイコンは項目ごとに決まった位置（--s 番目の枠）に置く。空の枠は要素を作らない（140人×10枠の要素が重いため）
-    var slot = function (good) {
+    // 枠：1段目右＝良い項目（賢・リ・運）、2段目右＝その真下に有無だけの項目（ア・身・通）、2段目左＝負担の項目
+    var slot = function (pick) {
       var n = 0, out = '';
       C.ATTRS.forEach(function (at) {
-        if (!!at.good !== !!good) return;
+        if (!pick(at)) return;
         var v = s.a[at.k] | 0;
-        if (v) out += App.mark(at, v).replace('style="', 'style="--s:' + n + ';');
+        if (v) out += App.mark(at, v, s.a[at.k + '_t']).replace('style="', 'style="--s:' + n + ';');
         n++;
       });
-      if (!good && S.ji[i]) out += '<span class="jn" style="--s:' + n + '" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>';
       return out;
     };
-    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" title="' + esc(s.name) + '（旧' + (s.old + 1) + '組' + s.no + '番・' + (s.male ? '男' : '女') + '）">' +
-      '<span class="old">' + s.no + '</span><span class="l1"><span class="nm">' + esc(s.name) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(1) + '</span></span><span class="bs">' + slot(0) + '</span></div>';
+    var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件">' + S.ji[i] + '</span>' : '';
+    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + oc.l + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
+      '<span class="old" title="' + tt + '">' + s.no + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
+      '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
+      '<span class="jr">' + jn + '</span></div>';
   }
 
   function renderBar() {
@@ -103,6 +108,7 @@
       h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
         '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>' +
         '<button class="btn" id="dup"' + (S.view !== 'plan' ? ' disabled' : '') + '>複製<kbd>D</kbd></button>' +
+        (S.plans.length > 1 && !S.decision ? '<button class="btn" id="delp"' + (S.view !== 'plan' ? ' disabled' : '') + '>削除<kbd>Del</kbd></button>' : '') +
         '<button class="btn" id="pairs">つける・離す…<kbd>P</kbd></button>' +
         '<button class="btn" id="decide"' + (App.st.grade >= 6 ? ' disabled title="6年は決定しません"' : '') + '>決定…</button>';
     }
@@ -129,11 +135,13 @@
       per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
     var M = S.ctx.M, h = '<div class="cols" style="--nc:' + nc + '">';
+    var HM = S.ctx.MET.findIndex(function (m) { return m.k === 'heavy'; });
     for (k = 0; k < nc; k++) {
       var c = a.c[k], fl = a.flag[k];
       var cnt = function (m, inner) { return '<span class="c ' + (fl[m] ? 'w' : '') + '">' + inner + c[m] + '</span>'; };
       h += '<section class="col"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b>' + (k + 1) + '組</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
+        '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
         '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1)); }).join('') + '</div>' +
         '</div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
@@ -177,8 +185,29 @@
     if (!gc) return;
     var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
-    var ic = Math.min(rhc * .36, (gc.clientWidth - rhc * .31 - rhc * .38 - 10) / ((C.ATTRS.filter(function (a) { return !a.good; }).length + 1) * 1.5 + .1));
-    root.setProperty('--ic', Math.max(8, ic).toFixed(2) + 'px');
+    // アイコンの間隔は崩れない範囲で最大にとる（＋で大きくしたアイコンどうしが重ならないように）。
+    // 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は縦にそろえるので同じ間隔：1段目の名前（空白を含め NAME_CHARS 文字）の残り。
+    // 2段目の左の枠（学・欠・問・保）は、右の枠の残りを使い切る間隔
+    var W = gc.clientWidth - 2 - rhc * .31 - rhc * .5 - 8, ic = rhc * .36;
+    var nameW = (C.NAME_CHARS - .5) * rhc * .38 + 6; // 空白は半角の幅
+    var nL = C.ATTRS.filter(function (a) { return !a.good && !a.side; }).length;
+    // 右の枠（賢・リ・運／ア・身・通）は有無だけなので＋が無い：間隔はアイコン1つ分＋すき間。
+    // 左の枠（学・欠・問・保）の＋は1.3倍で、右上の＋は中心から (.48em＋.62em)×1.3 はみ出す。
+    // 間隔は「＋のアイコンの中心から＋の右端まで」＋「隣のアイコンの左半分」以上にする（＋が隣に被らない）
+    var RW = 1.35, PLUSW = (.48 + .62) * 1.3 + 1.25 / 2;
+    // 右の枠は要る分（少しゆとり）だけ取り、残りを左の枠へ回す。足りなければアイコンを小さくする
+    var slotR = Math.min((W - nameW) / 3, RW * ic * 1.15);
+    ic = Math.min(ic, slotR / RW);
+    var slotL = Math.min((W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1), ic * 3);
+    if (slotL < PLUSW * ic) {
+      ic = (W - 6) / (3 * RW * 1.15 + (nL - 1) * PLUSW + 1.3 * 1.25);
+      slotR = Math.min((W - nameW) / 3, RW * ic * 1.15); ic = Math.min(ic, slotR / RW);
+      slotL = (W - 3 * slotR - 1.3 * 1.25 * ic - 6) / (nL - 1);
+    }
+    ic = Math.max(8, ic);
+    root.setProperty('--ic', ic.toFixed(2) + 'px');
+    root.setProperty('--slot', slotR.toFixed(2) + 'px');
+    root.setProperty('--slotL', Math.max(ic * 1.2, slotL).toFixed(2) + 'px');
   }
 
   function renderCmp() {
@@ -195,7 +224,7 @@
       { lab: '手で動かした回数', f: function (p) { return p.edits; }, nobest: true },
       { lab: '案' + ref.letter + 'と所属が違う児童', f: function (p) { return E.diffCount(S.ctx, p.asg, ref.asg); }, nobest: true },
       { lab: '元にした案', f: function (p) { return p.from || '—'; }, txt: true },
-      { lab: '重み（な・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
+      { lab: '重み（無・弱・中・強）', f: function (p) { return E.genSummary(p.gen); }, txt: true, small: true },
       { lab: '外した必ず守る条件', f: function (p) { return C.HARD.filter(function (h) { return !p.gen.hard[h.k]; }).map(function (h) { return h.label; }).join('・') || '—'; }, txt: true }
     ]);
     var h = '<div class="cmpwrap"><table class="cmp"><thead><tr><th>指標</th>' + S.plans.map(function (p, pi) { return '<th data-p="' + pi + '" tabindex="0">' + App.esc(planName(p)) + '</th>'; }).join('') + '</tr></thead><tbody>';
@@ -430,7 +459,7 @@
   }
   function helpDialog() {
     var keys = [['クリック → クリック', '入れ替え（確認の枠が出る）'], ['Enter', '確認の枠で実行'], ['Esc', '選択の解除・枠を閉じる'], ['Ctrl+Z', '元に戻す'], ['Ctrl+Y／Ctrl+Shift+Z', 'やり直す'],
-      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['P', 'つける・離す・組に固定'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
+      ['1〜9', '案のタブを切り替え'], ['0', '比較'], ['G', '案を作る（設定の枠。Enterで前回の設定のまま作る）'], ['D', 'この案を複製'], ['Delete', 'この案を削除（通知の「戻す」で戻せる）'], ['P', 'つける・離す・組に固定'], ['L', '選択中の児童を固定／解除'], ['V', '違反・偏りの一覧'], ['F', '全画面'], ['?', 'この一覧']];
     App.openDlg({
       focus: 'okbtn',
       html: function () {
@@ -483,6 +512,28 @@
       ids.forEach(function (i) { var el = document.querySelector('.board .chip[data-i="' + i + '"]'); if (el) { el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); } });
     });
   }
+  // 案を消す：確かめてから消し、通知欄の「戻す」で元の位置に戻せる
+  function delDialog(pi) {
+    if (S.plans.length < 2 || S.decision) return;
+    var p = S.plans[pi], nm = '案' + p.letter;
+    App.openDlg({
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="案を削除" style="max-width:480px"><h2>' + App.esc(planName(p)) + 'を削除しますか</h2>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">削除する<kbd>Enter</kbd></button></div></div></div>';
+      },
+      onOk: function () {
+        App.closeDlg();
+        var at = S.plans.indexOf(p); if (at < 0) return;
+        S.plans.splice(at, 1);
+        if (S.active >= S.plans.length) S.active = S.plans.length - 1; else if (S.active > at) S.active--;
+        S.sel = -1; S.follow = null; render(); persist();
+        App.toast(nm + 'を削除しました', function () {
+          if (S.decision || S.plans.indexOf(p) >= 0) return;
+          S.plans.splice(Math.min(at, S.plans.length), 0, p); S.active = S.plans.indexOf(p); S.view = 'plan'; render(); persist();
+        });
+      }
+    });
+  }
   function dup() {
     if (S.view !== 'plan' || S.decision) return;
     var p = S.plans[S.active];
@@ -514,14 +565,9 @@
     click: function (t, e) {
       var x;
       if ((x = t.closest('[data-del]'))) {
-        e.stopPropagation();
-        var pi = +x.dataset.del, nm = '案' + S.plans[pi].letter;
-        if (x.dataset.armed !== '1') { x.dataset.armed = '1'; x.textContent = '削除？'; setTimeout(function () { if (x.isConnected) { x.dataset.armed = ''; x.textContent = '×'; } }, 2500); return true; }
-        S.plans.splice(pi, 1);
-        if (S.active >= S.plans.length) S.active = S.plans.length - 1; else if (S.active > pi) S.active--;
-        S.sel = -1; S.follow = null; render(); persist(); App.toast(nm + 'を削除しました');
-        return true;
+        e.stopPropagation(); delDialog(+x.dataset.del); return true;
       }
+      if (t.closest('#delp')) { delDialog(S.active); return true; }
       if ((x = t.closest('.tab'))) { if (x.dataset.cmp) { S.view = 'cmp'; S.sel = -1; S.follow = null; render(); } else selectPlan(+x.dataset.p); return true; }
       if ((x = t.closest('th[data-p]'))) { selectPlan(+x.dataset.p); return true; }
       if (t.closest('#vbtn')) { showViol(); return true; }
@@ -552,6 +598,7 @@
       var K = k.toLowerCase();
       if (K === 'g' && !S.decision) { genDialog(); return true; }
       if (K === 'd') { dup(); return true; }
+      if (k === 'Delete' && S.view === 'plan') { delDialog(S.active); return true; }
       if (K === 'p' && !S.decision) { pairsDialog(); return true; }
       if (K === 'l' && S.view === 'plan') { toggleLock(); return true; }
       if (K === 'f') { fullscreen(); return true; }

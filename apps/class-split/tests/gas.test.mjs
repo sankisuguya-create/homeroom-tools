@@ -41,14 +41,21 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     // 項目を足す前に作ったシート（通の列が無い）でも、足した項目を書ける
     const asd = db().getSheetByName('attrs_' + FY).data, ki = asd[0].indexOf('k10');
     assert.ok(ki > 0); asd.forEach(r => r.splice(ki, 1));
-    assert.ok(call('apiSetAttr', FY, 4, '40000012', 'k10', 2).ok);
-    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000012').a.k10, 2);
+    assert.ok(call('apiSetAttr', FY, 4, '40000012', 'k10', 1).ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000012').a.k10, 1);
 
     // 配慮項目：今年度は直せる
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;
     assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2);
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'kX', 1).ok, false);
+    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok, false, '程度は2（アイコン＋）まで');
+    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k5', 2).ok, false, 'ア・身・通は有無だけ');
+    assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k7', 2).ok, false, '賢・リ・運も有無だけ');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 1, '=卵').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, "'=卵", 'ア・身・通の内容は文字のまま残る（式にしない）');
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k5', 0, '').ok);
+    assert.equal(call('apiBoot', 4).v.years[0].rows.find(r => r.id === '40000011').a.k5_t, undefined, 'なしにすると内容も消える');
 
     // 案：版が合えば保存、古い版からの保存は上書きしない
     const plans = [{ letter: 'A', assign: {} }];
@@ -87,7 +94,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     b = call('apiBoot', 4).v;
     assert.equal(b.years.find(y => y.fy === FY + 1), undefined);
     assert.equal(b.decision, null);
-    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok);
+    assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     assert.equal(db().getSheetByName('roster_' + (FY + 1)).getLastRow(), 1, '見出しだけ残る');
 
     // 名簿の取り込み：同じIDは上書き（値は残す）、新しいIDは足す、貼った中にいない児童は知らせる（消さない）
@@ -100,7 +107,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(imp.v.missing.length, 3, '1組の残り3人');
     b = call('apiBoot', 4).v;
     assert.equal(b.kids['40000011'].name, '児童11改');
-    assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 3, '配慮項目の値は残る');
+    assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2, '配慮項目の値は残る');
     assert.equal(b.years[0].rows.length, 9);
     assert.equal(call('apiImportRoster', FY - 1, 4, [{ id: '40000011', name: 'x', cls: 0, no: 1 }]).ok, false, '過去の年度は入れられない');
 

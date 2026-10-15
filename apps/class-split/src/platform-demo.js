@@ -25,6 +25,8 @@
     made = true;
     // grade 7 は昨年度に卒業した学年（年度替わりの削除の候補の見本）
     for (var grade = 1; grade <= 7; grade++) {
+      // ア・身・通の内容の見本
+      var NOTE = { k5: ['卵', '小麦・そば', 'ピーナッツ。エピペンあり', '乳製品', ''], k6: ['右耳が聞こえにくい。前の席', 'ぜんそく', '視力が弱い。前の席', ''], k10: ['週1回 ことばの教室', '週2回 通級（LD）', '支援員が国語に入る', ''] };
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
       var nc = grade === 3 ? 3 : grade === 7 ? 2 : 4, n = nc === 3 ? 103 : grade === 7 ? 24 : grade === 5 ? 144 : 138, ny = Math.min(grade, 6), entry = FY - grade + 1, ids = [], base = {};
@@ -34,7 +36,7 @@
         S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: pick(C.AREAS) };
         ids.push(id);
         var a = {};
-        C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? 1 + Math.floor(R() * R() * 3) : 0; });
+        C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? Math.min(at.max, 1 + Math.floor(R() * R() * 3)) : 0; });
         base[id] = a;
       }
       for (var y = 0; y < ny; y++) {
@@ -43,8 +45,9 @@
           var a = {};
           C.ATTRS.forEach(function (at) {
             var v = base[id][at.k];
-            if (R() < .2) v = Math.max(0, Math.min(C.MAX_LEVEL, v + (R() < .5 ? -1 : 1)));
+            if (R() < .2) v = Math.max(0, Math.min(at.max, v + (R() < .5 ? -1 : 1)));
             a[at.k] = v;
+            if (at.side && v) a[at.k + '_t'] = NOTE[at.k][(+id) % NOTE[at.k].length];
           });
           rows.push({ id: id, cls: ix % nc, no: 0, a: a });
         });
@@ -127,10 +130,11 @@
         pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null
       });
     },
-    setAttr: function (fy, grade, id, k, v) { gen();
+    setAttr: function (fy, grade, id, k, v, text) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       r.a[k] = v;
+      if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
       return later({ ok: true });
     },
     savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },

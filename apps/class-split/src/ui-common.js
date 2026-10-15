@@ -17,9 +17,10 @@
   // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
   // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
   var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
-  App.mark = function (at, lv) {
-    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" title="' + at.label + '（' + lv + '）"><i></i><em>' + at.s + '</em>' +
-      (lv > 1 ? '<u>' + PLUS.repeat(lv - 1) + '</u>' : '') + '</span>';
+  App.mark = function (at, lv, note) {
+    lv = Math.min(lv, at.max || lv); // 以前の値（程度3）はアイコン＋で出す
+    return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
+      (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
   App.classColor = function (k) { return C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
@@ -30,7 +31,7 @@
     t.hidden = false;
     App.toastUndo = undoFn || null;
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.hidden = true; }, 3500);
+    toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す
   };
 
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる

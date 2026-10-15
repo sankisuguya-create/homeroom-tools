@@ -5,20 +5,22 @@
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
-    MAX_LEVEL: 3,     // 配慮項目の程度（0＝なし、1〜3）
+    NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
+    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
+    // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2 },
-      { k: 'k2', label: '長欠',         s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
-      { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
-      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
+      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['運動', '運動が得意。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
@@ -29,12 +31,13 @@
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5],
-    LEVEL_NAMES: ['なし', '弱', '中', '強'],
+    LEVEL_NAMES: ['無', '弱', '中', '強'],
     // 必ず守る条件（設定の枠でオン・オフ）
     HARD: [
       { k: 'far',  label: '離す' },
       { k: 'near', label: 'つける' },
       { k: 'fix',  label: '組に固定' },
+      { k: 'heavy', label: '負担の＋を組に分ける' }, // heavy の項目の＋は、担任の負担が明確に増える印なので人数で分ける
       { k: 'cap',  label: '人数の上限' },
       { k: 'sex',  label: '男女の差±1' }
     ],

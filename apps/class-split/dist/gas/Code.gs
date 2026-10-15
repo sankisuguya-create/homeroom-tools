@@ -9,20 +9,22 @@
   var CONFIG = {
     MAX_CLASSES: 4,   // 1学年の学級数の上限
     CAP: 36,          // 1学級の人数の上限
-    MAX_LEVEL: 3,     // 配慮項目の程度（0＝なし、1〜3）
+    NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
+    MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
 
     // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
+    // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2 },
-      { k: 'k2', label: '長欠',         s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1 },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3 },
-      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2 },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#1A1A1A', t: '#FFFFFF', sh: 'octagon',  w: 1 },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#8C6D31', t: '#FFFFFF', sh: 'shield',   w: 1 },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2 },
-      { k: 'k7', label: '賢',           s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1 },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1 },
-      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1 }
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#56B4E9', t: '#1A1A1A', sh: 'circle',   w: 1, heavy: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
+      { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
+      { k: 'k7', label: '賢い',         s: '賢', c: '#009E73', t: '#FFFFFF', sh: 'pentagon', w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
+      { k: 'k9', label: '運動',         s: '運', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['運動', '運動が得意。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
@@ -33,12 +35,13 @@
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5],
-    LEVEL_NAMES: ['なし', '弱', '中', '強'],
+    LEVEL_NAMES: ['無', '弱', '中', '強'],
     // 必ず守る条件（設定の枠でオン・オフ）
     HARD: [
       { k: 'far',  label: '離す' },
       { k: 'near', label: 'つける' },
       { k: 'fix',  label: '組に固定' },
+      { k: 'heavy', label: '負担の＋を組に分ける' }, // heavy の項目の＋は、担任の負担が明確に増える印なので人数で分ける
       { k: 'cap',  label: '人数の上限' },
       { k: 'sex',  label: '男女の差±1' }
     ],
@@ -106,7 +109,8 @@
     var MET = [];
     MET.push({ k: 'sex', label: '男', w: C.LEVEL_W[gen.w.sex | 0], tol: 1, v: function (s) { return s.male ? 1 : 0; } });
     C.ATTRS.forEach(function (at) {
-      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return s.a[at.k] | 0; } });
+      // 程度は足さず「いるか」で数える（heavy の項目の＋は下の別枠で数える）
+      MET.push({ k: at.k, label: at.s, w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, at: at, v: function (s) { return (s.a[at.k] | 0) ? 1 : 0; } });
     });
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
@@ -114,6 +118,12 @@
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
+    // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
+    var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
+    heavyAt.forEach(function (at) {
+      MET.push({ k: at.k + '++', grp: 'heavy', label: at.s + '＋', w: C.LEVEL_W[gen.w[at.k] | 0], tol: 1, v: function (s) { return (s.a[at.k] | 0) >= 2 ? 1 : 0; } });
+    });
+    MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
     var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });
@@ -124,7 +134,9 @@
     });
     var incOfKid = P.kids.map(function () { return []; });
     (P.inc || []).forEach(function (x, xi) { x.kids.forEach(function (i) { incOfKid[i].push(xi); }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc,
+    var HV = [];
+    MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -178,6 +190,7 @@
       var ds = r[ctx.M] - ctx.SIZE_MEAN; t += W_SIZE * ds * ds;
       if (h.cap && r[ctx.M] > ctx.cap) t += W_CAP * (r[ctx.M] - ctx.cap);
       if (h.sex) { var ex = Math.abs(r[0] - ctx.MEAN[0]) - 1; if (ex > 0) t += W_HARD * ex; }
+      if (h.heavy) for (var q = 0; q < ctx.HV.length; q++) { var eh = r[ctx.HV[q].m] - ctx.HV[q].max; if (eh > 0) t += W_HARD * eh; }
     }
     return t;
   }
@@ -228,7 +241,10 @@
       flag.push(new Array(ctx.M + 1).fill(false));
       if (c[k][ctx.M] > ctx.cap) { flag[k][ctx.M] = true; bad.push({ t: 'cap', txt: (k + 1) + '組 ' + c[k][ctx.M] + '人（上限' + ctx.cap + '人）', ids: [] }); }
       else if (Math.abs(c[k][ctx.M] - ctx.SIZE_MEAN) > 1) { flag[k][ctx.M] = true; warn.push({ txt: (k + 1) + '組 人数 ' + c[k][ctx.M] + '（平均' + ctx.SIZE_MEAN.toFixed(1) + '）', k: k, m: ctx.M }); }
-      for (m = 0; m < ctx.M; m++) if (Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
+      ctx.HV.forEach(function (hv) {
+        if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: (k + 1) + '組 ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
+      });
+      for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
         warn.push({ txt: (k + 1) + '組 ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
@@ -374,7 +390,7 @@
     var num = assignNumbers(kids, asg, nc);
     return kids.map(function (s, i) {
       var a = {};
-      C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; });
+      C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if (at.side && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; });
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -402,7 +418,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_403386da40b8';
+var SERVER_BUILD = 'BUILD_abb080b6ac78';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -457,7 +473,14 @@ var TABLES_ = [
   { name: 'incident_kids', head: ['inc_id', 'id8'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] }
 ];
-function attrsHead_() { return ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; })); }
+// side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
+function attrsHead_() {
+  var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
+  CONFIG.ATTRS.forEach(function (at) { if (at.side) h.push(at.k + '_t'); });
+  return h;
+}
+// シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
+function plainText_(s) { s = String(s == null ? '' : s).slice(0, 200); return /^[=+\-@]/.test(s) ? "'" + s : s; }
 
 var SS_ = null;
 function db_() {
@@ -540,7 +563,7 @@ function attrsMap_(fy) {
   var m = {};
   read_('attrs_' + fy).rows.forEach(function (r) {
     var a = {};
-    CONFIG.ATTRS.forEach(function (at) { a[at.k] = +r[at.k] || 0; });
+    CONFIG.ATTRS.forEach(function (at) { a[at.k] = +r[at.k] || 0; if (at.side && r[at.k + '_t']) a[at.k + '_t'] = String(r[at.k + '_t']); });
     m[String(r.id8)] = a;
   });
   return m;
@@ -677,11 +700,12 @@ function isoDate_(v) {
 }
 
 // 配慮項目は編集できる年度だけ（決定前＝今年度、決定後＝来年度）。決定後の今年度は凍結
-var apiSetAttr = api_(function (fy, grade, id, k, v) {
+var apiSetAttr = api_(function (fy, grade, id, k, v, text) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
-  if (!CONFIG.ATTRS.some(function (at) { return at.k === k; })) throw userError_('項目が違います');
-  if (!(v >= 0 && v <= CONFIG.MAX_LEVEL)) throw userError_('値が違います');
+  var at = CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  if (!at) throw userError_('項目が違います');
+  if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY), dec = decisionOf_(FY, cohortGrade);
   var editable = dec ? FY + 1 : FY;
   if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
@@ -690,8 +714,9 @@ var apiSetAttr = api_(function (fy, grade, id, k, v) {
     ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
-    if (row) writeCell_(t, row, k, v);
-    else { var o = { id8: String(id) }; o[k] = v; append_(name, attrsHead_(), [o]); }
+    var tk = at.side && text !== undefined ? k + '_t' : null, tv = tk ? plainText_(v ? text : '') : '';
+    if (row) { writeCell_(t, row, k, v); if (tk) writeCell_(t, row, tk, tv); }
+    else { var o = { id8: String(id) }; o[k] = v; if (tk) o[tk] = tv; append_(name, attrsHead_(), [o]); }
     return { ok: true, by: by };
   });
 });
@@ -773,7 +798,7 @@ var apiDecide = api_(function (grade, plan) {
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
-    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; }); return o; }));
+    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if (at.side && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t']); }); return o; }));
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return { fy: FY, type: p.t, a: p.a, b: p.b }; }));
     append_('decisions', TABLES_[1].head, [{ fy: FY, grade: grade, plan: String(plan.name), by: by, at: new Date().toISOString(), undone: '' }]);
