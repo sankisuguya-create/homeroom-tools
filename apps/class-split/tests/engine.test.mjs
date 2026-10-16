@@ -116,9 +116,9 @@ test('案の名前：既定は「標準」、重みを上げた項目と固定�
   const gen = E.defaultGen();
   assert.equal(E.autoName(gen, 0), '標準');
   gen.w.k3 = 3; gen.w.k4 = 3; gen.w.k2 = 3;
-  assert.equal(E.autoName(gen, 0), '欠・保の分散重視');
+  assert.equal(E.autoName(gen, 0), '欠・問の分散重視');
   gen.hard.far = false;
-  assert.equal(E.autoName(gen, 5), '欠・保の分散重視・離すを外す・固定5人');
+  assert.equal(E.autoName(gen, 5), '欠・問の分散重視・離すを外す・固定5人');
 });
 
 test('組の番号の付け替えは「違い」に数えない', () => {
