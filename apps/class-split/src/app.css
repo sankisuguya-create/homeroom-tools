@@ -499,3 +499,42 @@ table.r th.sorth{cursor:pointer;user-select:none}
 table.r th.sorth:hover{background:#e3e8ed}
 table.r th.sorth.on{background:var(--fill)}
 table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
+
+/* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
+#printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
+#printbox .pbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);color:var(--ink);z-index:1}
+#printbox .pbar #pover{color:#B00020;font-weight:700}
+#printbox .pages{display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px}
+.pp{width:210mm;height:297mm;box-sizing:border-box;padding:8.5mm 15mm 0;background:#fff;position:relative;overflow:hidden;font-family:inherit}
+.pp-h{position:absolute;top:2.5mm;left:15mm;font-size:8pt}
+.pp-f{position:absolute;bottom:2.5mm;left:15mm;font-size:6.5pt;display:flex;align-items:center;gap:3mm}
+.pp-ruler{display:inline-block;width:100mm;height:1.5mm;border:solid #000;border-width:0 .3mm .3mm .3mm}
+.pc{width:180mm;height:40mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:.8mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
+.pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
+.pc-band{height:100%}
+.pc-l{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
+.pc-kana{font-size:7pt}
+.pc-name{font-size:16pt;font-weight:700;white-space:nowrap;line-height:1.1}
+.pc-ic{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.6mm;font-size:9pt}
+.pc-sp{border:.3mm solid #000;border-radius:1mm;padding:0 .8mm;font-size:7pt}
+.pc-r{display:grid;grid-template-rows:1fr 1fr;min-width:0}
+.pc-t,.pc-b{overflow:hidden;padding:.8mm 1.5mm;line-height:1.25;min-height:0}
+.pc-t{border-bottom:.3mm solid #000}
+.pc-t b,.pc-b b{font-weight:700;margin-right:.5mm}
+.pc-b .b{font-size:.9em;vertical-align:middle}
+.fit.over{outline:.4mm dashed #B00020;outline-offset:-.6mm}
+.pc-fam{display:grid;grid-template-rows:auto 1fr 1fr 1fr;border-left:.3mm solid #000;font-size:6.5pt}
+.pc-fam div{border-bottom:.2mm solid #000;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.pc-fam div:last-child{border-bottom:0}
+@media print{
+  @page{size:A4 portrait;margin:0}
+  body.printing>*:not(#printbox){display:none!important}
+  body.printing{background:#fff!important}
+  #printbox{position:static;background:none;overflow:visible}
+  #printbox .pbar{display:none}
+  #printbox .pages{display:block;padding:0}
+  .pp{break-after:page;page-break-after:always}
+  .pp:last-child{break-after:auto}
+  .fit.over{outline:none}
+}
