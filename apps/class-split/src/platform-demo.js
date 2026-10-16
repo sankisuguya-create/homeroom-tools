@@ -228,6 +228,8 @@
       Object.assign(cur, v);
       return later(clone(cur));
     },
+    saveDraft: function (grade, d) { S.drafts = S.drafts || {}; S.drafts[grade] = d ? { at: new Date().toISOString(), draft: clone(d) } : null; return later({ ok: true }); },
+    loadDraft: function (grade) { return later((S.drafts || {})[grade] || null); },
     // 試行では様式のファイルが無いので Excel は作れない（コピペ用の表は使える）
     exportReport: function () { return Promise.reject(Object.assign(new Error('試行では Excel を作れません。下の表からコピーしてください'), { noRetry: true })); },
     fetchTitle: function (url) { gen();

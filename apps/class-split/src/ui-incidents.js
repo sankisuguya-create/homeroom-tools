@@ -78,13 +78,19 @@
     }
     h += '</div><div class="ipane" id="ipane">' + pane() + '</div><aside class="iassist" id="iassist">' + assistHtml() + '</aside></div>';
     App.$('main').innerHTML = h;
-    mountDg();
+    mountDg(); autosizeAll(); showExtra();
   }
   function pane() {
     if (I.mode === 'form') return formHtml();
+    var dr = I.draft && I.draft.draft;
+    var banner = dr ? '<div class="notebox idb">書きかけがあります（' + esc(dr.mode === 'add2' ? 'その後の経緯の追記' : dr.form.edit != null ? '事案を直す' : '新しい事案') + '・' + esc(String(I.draft.at || '').slice(5, 16).replace('T', ' ')) + '）' +
+      '<button class="btn primary" id="idrGo">続きを書く</button><button class="btn" id="idrDel">捨てる</button></div>' : '';
+    if (I.mode === 'add2') return add2Html(incOf(I.sel));
+    return banner + paneView();
+  }
+  function paneView() {
     var x = I.sel != null && incOf(I.sel);
     if (!x) return '<div class="empty">左の一覧から事案を選ぶか、「＋ 事案を登録」を押します</div>';
-    if (I.mode === 'add2') return add2Html(x);
     return viewHtml(x);
   }
   function rowsView(rows) {
@@ -111,19 +117,79 @@
     return h;
   }
 
-  // 記録の行：日付・時間帯・本文を横に並べる
-  function rowsEdit(sec, key, rows) {
-    return '<div class="irows">' + rows.map(function (r, i) {
-      var at = sec + ':' + key + ':' + i;
-      return '<div class="irow" data-phs="' + sec + ':' + key + '"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"><select data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' +
-        C.TIME_SLOTS.map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + (r.p && C.TIME_SLOTS.indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
-        '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="2" maxlength="2000" placeholder="右の記入補助から選ぶか、事実を書く">' + esc(r.t) + '</textarea>' +
-        '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button></div>';
-    }).join('') + '<button type="button" class="btn ib iaddrow" data-radd="' + sec + ':' + key + '">' + IC.plus + '行を足す</button></div>';
+  // 欄の見出しは「何を書く欄か」を問いで示す。欄ごとに色の帯を付け、右の記入補助の見出しも同じ色にする
+  var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
+    's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
+  var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
+  function slotShort(p) { var m = /^(\d+)校時$/.exec(p); return m ? m[1] : String(p).charAt(0); }
+  function secHtml(sec, key, rows) {
+    var w = sec + ':' + key;
+    var h = '<div class="isec s-' + sec + key + '" data-sec="' + w + '"><h3 class="ish"><b>' + SEC_NAME[w] + '</b><span>' + ASK[w] + '</span></h3>';
+    if (w === 's1:sd') h += stepsHtml(rows);
+    h += '<div class="irows">' + rows.map(function (r, i) {
+      var at = w + ':' + i;
+      return '<div class="irow" data-row="' + at + '"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付">' +
+        '<button type="button" class="islot' + (r.p ? ' on' : '') + '" data-slotof="' + at + '" title="時間帯">' + esc(r.p || '時間帯') + '</button>' +
+        '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
+        '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button>' +
+        '<div class="irx" id="irx-' + sec + '-' + key + '-' + i + '"></div></div>';
+    }).join('') + '<button type="button" class="btn ib iaddrow" data-radd="' + w + '">' + IC.plus + '行を足す</button></div></div>';
+    return h;
   }
+  // 指導の「よくある手順」：チェックで行を足す・外す
+  function stepsHtml(rows) {
+    var all = rows.map(function (r) { return r.t; }).join('\n');
+    return '<div class="isteps">' + C.SD_STEPS.map(function (t, i) { return '<label class="chk"><input type="checkbox" data-step="' + i + '"' + (all.indexOf(t) >= 0 ? ' checked' : '') + '> ' + esc(t) + '</label>'; }).join('') + '</div>';
+  }
+  // 選んでいる行の下：時間帯のボタン列と、次によく書く文
+  function extraHtml(at) {
+    var q = at.split(':'), w = q[0] + ':' + q[1], r = I.form.rep[q[0]][q[1]][+q[2]]; if (!r) return '';
+    var h = '<div class="islots">' + C.TIME_SLOTS.map(function (p) { return '<button type="button" data-slot="' + esc(at + ':' + p) + '" aria-pressed="' + (r.p === p) + '" title="' + esc(p) + '">' + esc(slotShort(p)) + '</button>'; }).join('') + '</div>';
+    var sg = [];
+    if (w === 's1:kk') leads().forEach(function (t) { sg.push({ t: t, nm: true }); });
+    nextPhrases(w, 5).forEach(function (t) { sg.push({ t: t }); });
+    if (sg.length) h += '<div class="iph isg">' + sg.map(function (x) { return '<button type="button" class="' + (x.nm ? 'nm' : '') + '" data-ph="' + esc(x.t) + '">' + esc(x.t) + '</button>'; }).join('') + '</div>';
+    return h;
+  }
+  function showExtra() {
+    Array.prototype.forEach.call(document.querySelectorAll('.irx'), function (el) { el.innerHTML = ''; });
+    Array.prototype.forEach.call(document.querySelectorAll('.irow.cur'), function (el) { el.classList.remove('cur'); });
+    if (!I.form || !I.focus || I.focus === 'kikan') return;
+    var q = I.focus.split(':'), el = App.$('irx-' + q[0] + '-' + q[1] + '-' + q[2]);
+    if (el) { el.innerHTML = extraHtml(I.focus); el.parentNode.classList.add('cur'); }
+  }
+  // その欄で使った定型文の、後に続く文から順に（使った文は出さない）
+  function phrasesOf(w) { return C.PHRASES[w === 'kikan' ? 'kikan' : w === 's2:sd' ? 's2sd' : w.split(':')[1]] || []; }
+  function usedIn(w) {
+    if (w === 'kikan') return I.form.rep.s2.kikan;
+    var q = w.split(':'); return I.form.rep[q[0]][q[1]].map(function (r) { return r.t; }).join('\n');
+  }
+  function nextPhrases(w, n) {
+    // 指導の「よくある手順」はチェックで入れるので、行の下には出さない
+    var ph = phrasesOf(w).filter(function (t) { return w !== 's1:sd' || C.SD_STEPS.indexOf(t) < 0; }), txt = usedIn(w), last = -1;
+    ph.forEach(function (t, i) { if (txt.indexOf(t) >= 0) last = i; });
+    var out = [];
+    for (var k = 1; k <= ph.length && out.length < n; k++) { var t = ph[(last + k) % ph.length]; if (txt.indexOf(t) < 0) out.push(t); }
+    return out;
+  }
+  // 関係図の矢印から「（加害の児童）が（被害の児童）」
+  function leads() {
+    var f = I.form; if (!f || !f.dg) return [];
+    var d = f.dg.d, nameOf = function (end) {
+      var p = end.split(':');
+      if (p[0] === 'k') return kidName(p[1]);
+      var gr = d.groups.filter(function (x) { return x.g === p[1]; })[0];
+      return gr ? gr.members.map(kidName).join('・') : '';
+    };
+    // 助詞は続けて選ぶ文の側が持つ（「に悪口を言った」「を叩いた」）ので、ここでは「Aが B」まで
+    return d.edges.map(function (e) { return nameOf(e.f) + 'が' + nameOf(e.t); });
+  }
+  function autosize(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+  function autosizeAll() { Array.prototype.forEach.call(document.querySelectorAll('.irow textarea'), autosize); }
+
   function formHtml() {
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
-    var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '</h2>' +
+    var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
       '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
       '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
@@ -134,7 +200,7 @@
         '<div class="lab">いじめの態様（複数選べます）</div><div class="imodes">' + C.MODES.map(function (m, i) { return '<label class="chk"><input type="checkbox" data-mode="' + i + '"' + (rp.modes[i] ? ' checked' : '') + '> ' + esc(m.t) + '</label>'; }).join('') + '</div>' +
         '<label>その他の内容<input id="fOther" value="' + esc(rp.other) + '" maxlength="200"' + (rp.modes[C.MODES.length - 1] ? '' : ' disabled') + '></label></fieldset>';
     }
-    ['hk', 'kk', 'sd'].forEach(function (k) { h += '<h3>' + Rp.SECTIONS[k] + '</h3>' + rowsEdit('s1', k, rp.s1[k]); });
+    ['hk', 'kk', 'sd'].forEach(function (k) { h += secHtml('s1', k, rp.s1[k]); });
     h += '<details class="iopt"><summary>文書のURL・題名（任意）</summary><label>文書のURL<input id="fUrl" value="' + esc(f.url || '') + '" placeholder="docs.google.com/… を貼る"></label>' +
       '<label>題名（空なら「種別の事案」）<input id="fTitle" value="' + esc(f.title || '') + '" maxlength="80" placeholder="児童の氏名は入れない"></label></details>' +
       (f.detail ? '<label>詳細（以前の記録）<textarea id="fDetail" rows="4" maxlength="5000">' + esc(f.detail) + '</textarea></label>' : '') +
@@ -144,9 +210,9 @@
   }
   function add2Html(x) {
     var f = I.form, s2 = f.rep.s2;
-    var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）</h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
-    ['sd', 'vi', 'ha'].forEach(function (k) { h += '<h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsEdit('s2', k, s2[k]); });
-    h += '<h3>関係機関との連携</h3><input id="fKikan" class="ikikan" data-phs="kikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="右の記入補助から選ぶか、書く">' +
+    var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）<span class="idraft" id="idraft"></span></h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
+    ['sd', 'vi', 'ha'].forEach(function (k) { h += secHtml('s2', k, s2[k]); });
+    h += '<h3 class="ish"><b>関係機関との連携</b><span>相談・連携した機関（無ければ「なし」）</span></h3><input id="fKikan" class="ikikan" data-phs="kikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="右の記入補助から選ぶか、書く">' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">保存する</button></div></form>';
     return h;
   }
@@ -170,7 +236,7 @@
     cv.parentNode.insertBefore(box, cv); box.appendChild(cv);
     cv.style.width = Math.round(cw) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * k) + 'px';
   }
-  function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); } renderAssist(); }
+  function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); autosizeAll(); showExtra(); } renderAssist(); }
 
   // ===== 記入補助（右）：選んでいる欄に合う定型文と、関係する児童の名前。押すか、ドラッグして入れる =====
   var ASSIST_NAMES = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子', kikan: '関係機関との連携' };
@@ -182,9 +248,10 @@
     if (I.form && I.focus === 'kikan') where = 'kikan';
     if (!I.form || !where || !ASSIST_NAMES[where]) return h + '<p class="note">入力欄を押すと、その欄に合う文がここに出ます。押すか、入力欄へドラッグして入れます。</p>';
     var names = formKids(), ph = C.PHRASES[phraseKey(where)] || [];
-    h += '<div class="iaw">' + ASSIST_NAMES[where] + '</div>';
+    h += '<div class="iaw s-' + where.replace(':', '') + '">' + ASSIST_NAMES[where] + '</div>';
+    var used = usedIn(where);
     if (names.length && where !== 'kikan') h += '<div class="lab">児童の名前</div><div class="iph">' + names.map(function (n) { return '<button type="button" class="nm" draggable="true" data-ph="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
-    h += '<div class="lab">定型文</div><div class="iph col">' + ph.map(function (t) { return '<button type="button" draggable="true" data-ph="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>';
+    h += '<div class="lab">定型文（使った文は ✓）</div><div class="iph col">' + ph.map(function (t) { var u = used.indexOf(t) >= 0; return '<button type="button" draggable="true" class="' + (u ? 'used' : '') + '" data-ph="' + esc(t) + '">' + (u ? '✓ ' : '') + esc(t) + '</button>'; }).join('') + '</div>';
     return h;
   }
   function renderAssist() { var a = App.$('iassist'); if (a) a.innerHTML = assistHtml(); }
@@ -207,18 +274,66 @@
     var el = App.$('rw-' + q[0] + '-' + q[1] + '-' + q[2]), pos = el ? el.selectionStart : r.t.length, end = el ? el.selectionEnd : r.t.length;
     var before = r.t.slice(0, pos), after = r.t.slice(end), isName = formKids().indexOf(text) >= 0;
     var lastName = formKids().some(function (n) { return before.slice(-n.length) === n; });
-    var glue = !before || isName || lastName || /[。、\s]$/.test(before) || after ? '' : '。';
+    // 助詞で始まる文（「に悪口を言った」）や、助詞で終わる途中（「Aが」）にはつなげて入れる
+    var glue = !before || isName || lastName || /[。、\s]$/.test(before) || /[がにをとへでものは]$/.test(before) || /^[にをのがとへでも]/.test(text) || after ? '' : '。';
     r.t = before + glue + text + after; pos = (before + glue + text).length;
-    if (el) { el.value = r.t; el.focus(); el.setSelectionRange(pos, pos); }
+    if (el) { el.value = r.t; el.focus(); el.setSelectionRange(pos, pos); autosize(el); }
+    afterEdit();
+  }
+  // 入力が変わった後：選んでいる行の補助と右の一覧（✓）を描き直し、書きかけを保存する
+  function afterEdit() { showExtra(); renderAssist(); syncSteps(); saveDraftSoon(); }
+  function syncSteps() {
+    if (!I.form || !I.form.rep.s1) return;
+    var all = I.form.rep.s1.sd.map(function (r) { return r.t; }).join('\n');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (cb) { cb.checked = all.indexOf(C.SD_STEPS[+cb.dataset.step]) >= 0; });
+  }
+  // ===== 書きかけ（下書き）：入力が止まって1.5秒後にサーバーへ =====
+  var draftT = 0;
+  function draftOf() {
+    var f = I.form; if (!f) return null;
+    return { mode: I.mode, form: { edit: f.edit, type: f.type, url: f.url, title: f.title, detail: f.detail, rep: f.rep, dg: f.dg ? f.dg.d : null } };
+  }
+  function saveDraftSoon() {
+    clearTimeout(draftT);
+    draftT = setTimeout(function () {
+      var d = draftOf(); if (!d) return;
+      App.pf().saveDraft(App.st.grade, d).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存しました'; }, function () { var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存できません（通信）'; });
+    }, 1500);
+  }
+  function dropDraft() { clearTimeout(draftT); I.draft = null; App.pf().saveDraft(App.st.grade, null); }
+  function restoreDraft() {
+    var dr = I.draft && I.draft.draft; if (!dr) return;
+    var f = dr.form;
+    if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; I.mode = 'add2'; I.sel = x.id; }
+    else { I.form = { edit: f.edit, dg: App.Diagram.state(f.dg), type: f.type || '', url: f.url || '', title: f.title || '', detail: f.detail || '', rep: Rp.norm(f.rep) }; I.mode = 'form'; if (f.edit != null) I.sel = f.edit; }
+    ['hk', 'kk', 'sd'].forEach(function (k) { if (I.mode === 'form' && !I.form.rep.s1[k].length) I.form.rep.s1[k].push({ d: today(), p: '', t: '' }); });
+    ['sd', 'vi', 'ha'].forEach(function (k) { if (I.mode === 'add2' && !I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
+    I.focus = null;
   }
   // 最後に触った入力欄を覚え、記入補助を描き直す
   document.addEventListener('focusin', function (e) {
     if (App.st.screen !== 'incidents' || !I.form) return;
     var t = e.target, was = I.focus;
-    if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) { var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2]; }
-    else if (t && t.id === 'fKikan') I.focus = 'kikan';
+    if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) {
+      var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2];
+      // 経緯の最初の行が空なら、関係図の矢印から「Aが B」を入れておく
+      var r = I.form.rep[q[0]][q[1]][+q[2]], ld = leads();
+      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length) { r.t = ld[0]; t.value = r.t; t.setSelectionRange(r.t.length, r.t.length); saveDraftSoon(); }
+    } else if (t && t.id === 'fKikan') I.focus = 'kikan';
     else return;
+    if (was !== I.focus) showExtra();
     if (!was || was.split(':').slice(0, 2).join() !== I.focus.split(':').slice(0, 2).join()) renderAssist();
+  });
+  // Enter で次の行（Shift+Enter は行の中で改行）。日本語の変換中は何もしない
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229 || !t || t.tagName !== 'TEXTAREA' || !t.dataset.rw || !I.form) return;
+    e.preventDefault();
+    if (!t.value.trim()) return;
+    var q = t.dataset.rw.split(':'), rows = I.form.rep[q[0]][q[1]], i = +q[2], r = rows[i];
+    if (rows[i + 1] && !rows[i + 1].t) { refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); return; }
+    rows.splice(i + 1, 0, { d: r.d, p: r.p, t: '' });
+    rerenderPane(); refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); saveDraftSoon();
   });
   document.addEventListener('dragstart', function (e) {
     var b = e.target && e.target.closest && e.target.closest('.iassist [data-ph]');
@@ -342,79 +457,130 @@
     ta.remove();
     App.toast(ok ? 'コピーしました' : 'コピーできませんでした。値を選んでコピーしてください');
   }
+  // その行より後の、まだ書いていない行の日付をそろえる（前日の事案で日付を1つずつ直さなくてよい）
+  function spreadDate(at, d) {
+    var q = at.split(':'), order = q[0] === 's1' ? ['hk', 'kk', 'sd'] : ['sd', 'vi', 'ha'], seen = false;
+    order.forEach(function (k) {
+      I.form.rep[q[0]][k].forEach(function (r, i) {
+        if (k === q[1] && i === +q[2]) { seen = true; return; }
+        if (seen && !r.t) { r.d = d; var el = document.querySelector('[data-rw="' + q[0] + ':' + k + ':' + i + ':d"]'); if (el) el.value = d; }
+      });
+    });
+  }
+  function toggleStep(i, on) {
+    var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
+    if (on) {
+      if (last && !last.t) last.t = t;
+      else rows.push({ d: last ? last.d : today(), p: last ? last.p : '', t: t });
+    } else {
+      rows.forEach(function (r) { r.t = r.t.replace(t, '').replace(/^。|。(?=。)|。$/g, ''); });
+      for (var k = rows.length - 1; k >= 0 && rows.length > 1; k--) if (!rows[k].t.trim()) rows.splice(k, 1);
+    }
+    rerenderPane(); saveDraftSoon();
+  }
+  function closeForm() { I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
+
   App.screens.incidents = {
     enter: function () {
-      I.mode = 'view'; I.form = null; I.focus = null;
+      I.mode = 'view'; I.form = null; I.focus = null; I.draft = null;
       var f = App.st.incFocus; App.st.incFocus = null;
       if (f && f.edit != null && incOf(f.edit)) editForm(incOf(f.edit));
       else if (f && f.sel != null && incOf(f.sel)) I.sel = f.sel;
       else if (f && f.add) newForm(f.kid || null);
       else if (I.sel != null && !incOf(I.sel)) I.sel = null;
       render();
+      // 書きかけがあれば知らせる（入力中でなければ）
+      var grade = App.st.grade;
+      App.pf().loadDraft(grade).then(function (dr) {
+        if (!dr || App.st.screen !== 'incidents' || App.st.grade !== grade) return;
+        I.draft = dr; if (I.mode === 'view') rerenderPane();
+      }, function () { /* 読めなくても入力はできる */ });
     },
+    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { I.draft = { at: new Date().toISOString(), draft: d }; App.pf().saveDraft(App.st.grade, d); } } },
     click: function (t) {
       var x;
       if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
       if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
-      if ((x = t.closest('.iassist [data-ph]'))) { putPhrase(x.dataset.ph); return true; }
-      if (t.closest('#iadd')) { if (I.mode !== 'view' && !confirmLeave()) return true; newForm(null); render(); refocus('fQ'); return true; }
-      if ((x = t.closest('[data-isel]'))) { if (I.mode !== 'view' && !confirmLeave()) return true; I.sel = +x.dataset.isel; I.mode = 'view'; I.form = null; I.focus = null; render(); return true; }
+      if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
+      if (t.closest('#idrGo')) { restoreDraft(); render(); return true; }
+      if (t.closest('#idrDel')) { dropDraft(); rerenderPane(); App.toast('書きかけを捨てました'); return true; }
+      // 書きかけはサーバーに残っているので、別の事案を開いても失わない
+      if (t.closest('#iadd')) { if (I.form) App.screens.incidents.leave(); newForm(null); render(); refocus('fQ'); return true; }
+      if ((x = t.closest('[data-isel]'))) { if (I.form) App.screens.incidents.leave(); I.sel = +x.dataset.isel; closeForm(); render(); return true; }
       if (t.closest('#iedit')) { editForm(incOf(I.sel)); rerenderPane(); return true; }
       if (t.closest('#iadd2')) { add2Form(incOf(I.sel)); rerenderPane(); return true; }
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
-      if (t.closest('#cancelInc')) { I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; rerenderPane(); return true; }
-      if ((x = t.closest('[data-ty]'))) {
-        var ts = typesOf(I.form.type), ty = x.dataset.ty, i = ts.indexOf(ty);
-        if (i >= 0) ts.splice(i, 1); else ts.push(ty);
-        I.form.type = C.INCIDENT_TYPES.filter(function (t0) { return ts.indexOf(t0) >= 0; }).join('・');
-        rerenderPane(); return true;
+      if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
+      if ((x = t.closest('[data-slotof]'))) { var a = x.dataset.slotof.split(':'); refocus('rw-' + a[0] + '-' + a[1] + '-' + a[2]); return true; }
+      if ((x = t.closest('[data-slot]'))) {
+        var sp = x.dataset.slot.split(':'), row = I.form.rep[sp[0]][sp[1]][+sp[2]], v = sp.slice(3).join(':');
+        row.p = row.p === v ? '' : v;
+        var b = document.querySelector('[data-slotof="' + sp.slice(0, 3).join(':') + '"]'); if (b) { b.textContent = row.p || '時間帯'; b.classList.toggle('on', !!row.p); }
+        showExtra(); refocus('rw-' + sp[0] + '-' + sp[1] + '-' + sp[2]); saveDraftSoon(); return true;
       }
-      if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); return true; }
+      if ((x = t.closest('[data-ty]'))) {
+        var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);
+        if (k >= 0) ts.splice(k, 1); else ts.push(ty);
+        I.form.type = C.INCIDENT_TYPES.filter(function (t0) { return ts.indexOf(t0) >= 0; }).join('・');
+        rerenderPane(); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
       if ((x = t.closest('[data-pick]'))) {
         App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
         if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
-        renderAssist(); refocus('fQ'); return true;
+        renderAssist(); refocus('fQ'); saveDraftSoon(); return true;
       }
       if ((x = t.closest('[data-radd]'))) {
         var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];
         rows.push({ d: prev ? prev.d : today(), p: prev ? prev.p : '', t: '' });
         rerenderPane(); var p = x.dataset.radd.split(':'); refocus('rw-' + p[0] + '-' + p[1] + '-' + (rows.length - 1)); return true;
       }
-      if ((x = t.closest('[data-rdel]'))) { var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); return true; }
+      if ((x = t.closest('[data-rdel]'))) { var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); saveDraftSoon(); return true; }
       return false;
     },
     input: function (t) {
       var f = I.form; if (!f) return;
-      if (t.dataset.rw) { var q = t.dataset.rw.split(':'), r = f.rep[q[0]][q[1]][+q[2]]; if (r) r[q[3]] = t.value; return; }
-      if (t.dataset.mode != null) { f.rep.modes[+t.dataset.mode] = t.checked; var o = App.$('fOther'); if (o) o.disabled = !f.rep.modes[C.MODES.length - 1]; return; }
+      if (t.dataset.step != null) { toggleStep(+t.dataset.step, t.checked); return; }
+      if (t.dataset.rw) {
+        var q = t.dataset.rw.split(':'), r = f.rep[q[0]][q[1]][+q[2]]; if (!r) return;
+        r[q[3]] = t.value;
+        if (q[3] === 'd') spreadDate(q.slice(0, 3).join(':'), t.value);
+        if (q[3] === 't') { autosize(t); renderAssist(); syncSteps(); var ex = App.$('irx-' + q[0] + '-' + q[1] + '-' + q[2]); if (ex && I.focus === q.slice(0, 3).join(':')) ex.innerHTML = extraHtml(I.focus); }
+        saveDraftSoon(); return;
+      }
+      if (t.dataset.mode != null) { f.rep.modes[+t.dataset.mode] = t.checked; var o = App.$('fOther'); if (o) o.disabled = !f.rep.modes[C.MODES.length - 1]; saveDraftSoon(); return; }
       switch (t.id) {
-        case 'fQ': App.$('fSugg').innerHTML = suggHtml(t.value); break;
+        case 'fQ': App.$('fSugg').innerHTML = suggHtml(t.value); return;
         case 'fUrl': f.url = t.value.trim(); break;
         case 'fTitle': f.title = t.value; break;
         case 'fDetail': f.detail = t.value; break;
         case 'fFound': f.rep.found = t.value; break;
         case 'fOther': f.rep.other = t.value; break;
-        case 'fKikan': f.rep.s2.kikan = t.value; break;
+        case 'fKikan': f.rep.s2.kikan = t.value; renderAssist(); break;
+        default: return;
       }
+      saveDraftSoon();
     },
     submit: function (form) {
       var f = I.form; if (!f) return;
       if (form.id === 'inc2Form') {
         var x2 = incOf(f.edit);
-        App.save(function () { return App.pf().updateIncident(x2.id, body(x2, { rep: f.rep })); }).then(function (inc) { saved(inc, 'その後の経緯を保存しました'); });
+        App.save(function () { return App.pf().updateIncident(x2.id, body(x2, { rep: f.rep })); }).then(function (inc) { dropDraft(); saved(inc, 'その後の経緯を保存しました'); });
         return;
       }
       if (form.id !== 'incForm') return;
       if (!typesOf(f.type).length) { App.toast('事案の種別を選んでください'); return; }
       if (!f.dg.d.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
+      // 保護者への連絡が書かれていなければ一度だけ知らせる（もう一度押せばそのまま登録）
+      var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
+      if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }
       var x = f.edit != null ? incOf(f.edit) : {};
       var b = body(x, f);
-      App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) { saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました'); });
+      App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) { dropDraft(); saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました'); });
     },
     key: function (e) {
-      if (e.key === 'Escape' && I.mode !== 'view') { I.mode = 'view'; I.form = null; I.focus = null; rerenderPane(); return true; }
+      if (e.key === 'Escape' && I.mode !== 'view') { App.screens.incidents.leave(); closeForm(); rerenderPane(); App.toast('書きかけは残してあります'); return true; }
       return false;
     }
   };
-  function confirmLeave() { return window.confirm('入力中の内容は保存されません。移りますか'); }
 })(typeof globalThis !== 'undefined' ? globalThis : this);

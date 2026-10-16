@@ -547,7 +547,7 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:7.6em 6.2em minmax(0,1fr) auto;gap:6px;align-items:start}
+.irow{display:grid;grid-template-columns:7.6em 5.4em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
 .irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
 .irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
@@ -574,3 +574,24 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ivlab{writing-mode:vertical-rl;border:0;background:none;color:var(--sub);font:inherit;font-size:.85rem;letter-spacing:.15em;cursor:pointer;padding:8px 0;margin:0 auto}
 .iwrap.lc .ilist,.iwrap.ac .iassist{align-items:center}
 .dg.ro .dg-sum .note{display:none}
+/* 事案の記録の欄：欄ごとの色の帯（右の記入補助の見出しも同じ色）。色だけに頼らず見出しの文字で区別する */
+.isec{--sc:#5B6670;border-left:4px solid var(--sc);padding:2px 0 6px 10px;margin:14px 0 4px}
+.s-s1hk{--sc:#1E6FD9}.s-s1kk{--sc:#C8641A}.s-s1sd{--sc:#2E8A4A}.s-s2sd{--sc:#2E8A4A}.s-s2vi{--sc:#7B3FA0}.s-s2ha{--sc:#B0302A}
+.ish{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.ish b{font-size:1.05rem}
+.ish span{font-size:.85rem;color:var(--sub);font-weight:400}
+.iaw{border-left:4px solid var(--sc,#5B6670)}
+.irow.cur{background:var(--fill);outline:2px solid var(--sc)}
+.irow textarea{resize:none;overflow:hidden;line-height:1.5;min-height:2.3em}
+.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.islot.on{border-style:solid;color:var(--ink)}
+.irx{grid-column:1/-1}
+.irx:empty{display:none}
+.islots{display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 4px}
+.islots button{min-width:2.2em;height:2em;font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);border-radius:5px;cursor:pointer;color:var(--ink)}
+.islots button[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+.isg{margin:2px 0 0}
+.isteps{display:flex;flex-direction:column;gap:2px;margin:0 0 6px;padding:6px 8px;background:var(--soft);border-radius:6px}
+.iph.col button.used{color:var(--sub);background:var(--soft)}
+.idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
+.idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}

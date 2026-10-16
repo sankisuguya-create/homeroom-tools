@@ -102,6 +102,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(got.url, ''); assert.equal(got.report.found, '本人からの訴え'); assert.equal(got.report.s1.hk[0].p, '朝休み');
     assert.equal(got.report.s1.kk[0].d, '', '日付でない値は空にする'); assert.equal(got.report.s1.kk[0].t.length, 2000);
     assert.equal(call('apiAddIncident', { date: '2026-10-03', type: 'いじめ', diagram: dg, report: { s1: { hk: Array.from({ length: 81 }, () => ({ t: 'a' })) } } }).ok, false, '1つの欄は80行まで');
+    // 書きかけ：教員ごと・学年ごとに残り、null で消える
+    assert.ok(call('apiSaveDraft', 4, { mode: 'form', form: { type: 'いじめ' } }).ok);
+    assert.equal(call('apiLoadDraft', 4).v.draft.form.type, 'いじめ');
+    assert.equal(call('apiLoadDraft', 3).v, null, '別の学年には出ない');
+    assert.ok(call('apiSaveDraft', 4, null).ok); assert.equal(call('apiLoadDraft', 4).v, null);
     const ex = call('apiExportReport', 'f1', { B4: '高木北小' });
     assert.equal(ex.ok, false); assert.match(ex.err, /様式のファイルが設定されていません/);
     assert.equal(call('apiExportReport', 'zz', {}).ok, false);

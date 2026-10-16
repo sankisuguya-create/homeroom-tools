@@ -60,6 +60,8 @@
     addIncident: function (x) { return call('apiAddIncident', x); },
     updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
+    saveDraft: function (grade, d) { return call('apiSaveDraft', grade, d); },
+    loadDraft: function (grade) { return call('apiLoadDraft', grade); },
     exportReport: function (kind, values, incId) { return call('apiExportReport', kind, values, incId); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },

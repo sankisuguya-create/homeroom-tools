@@ -79,6 +79,8 @@
       ha: ['反省していると話している', '被害児童に謝罪した', '同じことはしないと約束した', 'その後、同じような行為は見られない', '保護者は家庭でも指導したと話している', '保護者が、被害児童の保護者に謝罪の意向を示した'],
       kikan: ['スクールカウンセラーと面談した', 'スクールソーシャルワーカーと連携した', '子ども家庭センターに相談した', '少年サポートセンターにつないだ', '警察に相談した', '医療機関を受診した', '関係機関との連携はなし']
     },
+    // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
+    SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
     // ===== 市教委への報告書（いじめ認知報告書）=====
     // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
     FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
@@ -695,7 +697,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_d9929ba14e0c';
+var SERVER_BUILD = 'BUILD_a488c378f0a8';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1196,6 +1198,24 @@ var apiExportReport = api_(function (kind, values, incId) {
   var copy = folder ? folder.createFile(out) : DriveApp.createFile(out);
   log_(by, 'exportReport', +incId || 0);
   return { name: name, url: copy.getUrl() };
+});
+
+// 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
+// 中身は入力中の記録そのもの（氏名が入りうる）。登録するか「やめる」で消える
+function draftKey_(email, grade) { return 'incdraft_' + String(email).toLowerCase() + '_' + (+grade); }
+var apiSaveDraft = api_(function (grade, draft) {
+  var by = requireTeacher_(), key = draftKey_(by, grade);
+  return withLock_(function () {
+    if (!draft) { setSetting_(key, null); return { ok: true }; }
+    var s = JSON.stringify(draft);
+    if (s.length > 45000) throw userError_('書きかけが長すぎて保存できません。登録してから続きを書いてください');
+    setSetting_(key, { at: new Date().toISOString(), draft: draft });
+    return { ok: true };
+  });
+});
+var apiLoadDraft = api_(function (grade) {
+  var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
+  return v && v.draft ? v : null;
 });
 
 var apiSchoolIncidents = api_(function () {

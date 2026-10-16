@@ -505,6 +505,24 @@ var apiExportReport = api_(function (kind, values, incId) {
   return { name: name, url: copy.getUrl() };
 });
 
+// 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
+// 中身は入力中の記録そのもの（氏名が入りうる）。登録するか「やめる」で消える
+function draftKey_(email, grade) { return 'incdraft_' + String(email).toLowerCase() + '_' + (+grade); }
+var apiSaveDraft = api_(function (grade, draft) {
+  var by = requireTeacher_(), key = draftKey_(by, grade);
+  return withLock_(function () {
+    if (!draft) { setSetting_(key, null); return { ok: true }; }
+    var s = JSON.stringify(draft);
+    if (s.length > 45000) throw userError_('書きかけが長すぎて保存できません。登録してから続きを書いてください');
+    setSetting_(key, { at: new Date().toISOString(), draft: draft });
+    return { ok: true };
+  });
+});
+var apiLoadDraft = api_(function (grade) {
+  var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
+  return v && v.draft ? v : null;
+});
+
 var apiSchoolIncidents = api_(function () {
   requireTeacher_();
   var cur = {};

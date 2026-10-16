@@ -19,6 +19,7 @@ try {
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);
 let fails = 0;
+const C_STEP1 = '管理職に報告した';
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {
@@ -242,9 +243,14 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
-  await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
-  await p.click('[data-radd="s1:kk"]');
-  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, '行を足せる');
+  await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.click('#rw-s1-hk-0'); await p.click('.irx [data-slot$=":朝休み"]');
+  ok(await p.locator('[data-slotof="s1:hk:0"]').textContent() === '朝休み', '選んでいる行の下のボタンで時間帯が1回で決まる');
+  await p.click('#rw-s1-kk-0'); await p.keyboard.type('悪口'); await p.keyboard.press('Enter');
+  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, 'Enter で次の行ができる');
+  await p.check('[data-step="1"]');
+  ok(await p.inputValue('#rw-s1-sd-0') === C_STEP1, '指導の手順のチェックで行に文が入る');
+  await p.click('#incForm button.primary');
+  ok(await p.locator('#toast', { hasText: '保護者への連絡' }).count() === 1, '保護者への連絡が無いと一度だけ知らせる');
   await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
   ok(await p.locator('.iit').count() === n0 + 1, '事案が一覧に足される');
   await p.click('#iadd2'); await p.fill('#rw-s2-vi-0', '元気に過ごしている'); await p.click('#inc2Form button.primary'); await p.waitForSelector('#iadd2');
