@@ -426,7 +426,8 @@
     var side = C.ATTRS.filter(function (at) { return at.side; });
     var card = function (i) {
       var s = kids[i], a = s.a || {}, oc = App.classColor(s.old);
-      var ic = function (good) { return C.ATTRS.filter(function (at) { return !at.side && !at.good === !good && (a[at.k] | 0); }).map(function (at) { return App.mark(at, a[at.k] | 0); }).join(''); };
+      // 項目ごとに決まった位置に出す（無い項目は見えないアイコンで場所を取る）
+      var ic = function (good) { return C.ATTRS.filter(function (at) { return !at.side && !at.good === !good; }).map(function (at) { var v = a[at.k] | 0; return v ? App.mark(at, v) : '<span class="ph" aria-hidden="true">' + App.mark(at, 1) + '</span>'; }).join(''); };
       var who = function (js) { return js.map(function (j) { return esc(kids[j].name); }).join('・'); };
       var bot = (rel[i].far.length ? '<div><b>離</b> ' + who(rel[i].far) + '</div>' : '') + (rel[i].near.length ? '<div><b>つ</b> ' + who(rel[i].near) + '</div>' : '');
       var top = side.filter(function (at) { return a[at.k] | 0; }).map(function (at) { return '<div>' + App.mark(at, 1) + ' ' + esc(a[at.k + '_t'] || '') + '</div>'; }).join('') +
@@ -434,7 +435,7 @@
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
         '<div class="pc-l"><div class="pc-ic">' + ic(true) + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
-        '<div class="pc-ic">' + ic(false) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + App.incBox(S.ji[i], S.jv[i], '', true) + '</div></div>' +
+        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
         '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';

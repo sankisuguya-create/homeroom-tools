@@ -539,3 +539,5 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   .pp:last-child{break-after:auto}
   .fit.over{outline:none}
 }
+.pc-ic .ph{visibility:hidden}
+.pc-ji{display:inline-flex;min-width:9mm;justify-content:center}
