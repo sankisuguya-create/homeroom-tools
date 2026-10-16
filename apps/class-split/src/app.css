@@ -504,9 +504,24 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
 /* ===== 事案管理 ===== */
 
-.ibar{display:flex;align-items:center;gap:10px;padding:8px 12px}
-.iwrap{display:grid;grid-template-columns:minmax(240px,340px) minmax(0,1fr);gap:12px;padding:0 12px 24px;align-items:start}
-.ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 140px);overflow:auto;position:sticky;top:8px}
+.iwrap{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;padding:10px 12px 24px;align-items:start}
+.iwrap.lc{grid-template-columns:36px minmax(0,1fr) 280px}
+.iwrap.ac{grid-template-columns:300px minmax(0,1fr) 36px}
+.iwrap.lc.ac{grid-template-columns:36px minmax(0,1fr) 36px}
+.ihead{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:4px}
+.ifold{width:32px;height:32px;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;font:inherit;font-weight:700;color:var(--ink);flex:none}
+.iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
+.iwrap.ac .iassist{border:0;background:none;padding:0}
+.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
+.iassist .lab{font-size:.78rem;color:var(--sub);margin:6px 0 2px}
+.iph.col{flex-direction:column;align-items:stretch}
+.iph.col button{border-radius:6px;text-align:left;padding:5px 8px;cursor:grab}
+.itypes{display:flex;flex-wrap:wrap;gap:6px}
+.ikids{display:flex;flex-wrap:wrap;gap:6px}
+.ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
+.dg.ro .dg-bar,.dg.ro .dg-hint{display:none}
+.dg.ro .dg-canvas{pointer-events:none}
+.ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
 .ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}
 .iit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;cursor:pointer;font:inherit;color:var(--ink)}
 .iit.on{border:2px solid var(--link);padding:5px 7px;background:var(--fill)}
@@ -525,9 +540,9 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:9.5em minmax(0,1fr) auto;gap:6px;align-items:start}
-.itime{display:flex;flex-direction:column;gap:3px}
-.itime input,.itime select{font:inherit;font-size:.85rem;padding:3px 4px}
+.irow{display:grid;grid-template-columns:9.2em 6.5em minmax(0,1fr) auto;gap:6px;align-items:start}
+.irow input[type=date],.irow select{font:inherit;font-size:.85rem;padding:4px;height:2.3em;box-sizing:border-box}
+.iaddrow{align-self:flex-start}
 .irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
 .irow .ix{padding:2px 8px}
 .irep{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
@@ -539,7 +554,7 @@ table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 table.icopy{border-collapse:collapse;width:100%;font-size:.88rem}
 table.icopy th,table.icopy td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overflow:auto}
-@media (max-width:760px){.iwrap{grid-template-columns:1fr}.ilist{position:static;max-height:40vh}}
+@media (max-width:900px){.iwrap,.iwrap.lc,.iwrap.ac,.iwrap.lc.ac{grid-template-columns:1fr}.ilist,.iassist{position:static;max-height:40vh}}
 .dlg.iout{max-height:90vh;overflow:auto}
 table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
@@ -547,3 +562,4 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph button:hover{border-color:var(--link)}
 .iph button.nm{border-style:dashed;font-weight:700}
 .ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.dg.ro{max-width:640px}

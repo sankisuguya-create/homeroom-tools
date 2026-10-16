@@ -240,7 +240,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.iwrap');
   const n0 = await p.locator('.iit').count();
   await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
-  await p.selectOption('#fType', 'いじめ'); await p.waitForSelector('#fFound');
+  await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
   await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
   await p.click('[data-radd="s1:kk"]');
