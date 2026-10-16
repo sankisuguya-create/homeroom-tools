@@ -119,7 +119,7 @@
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT, slots: C.TIME_SLOTS.slice(), school: '（見本）○○小', template: '' };
     })();
   }
 
@@ -127,7 +127,7 @@
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
-    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
   }
   // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
   function demoDiagram(ids) {
@@ -136,6 +136,7 @@
     if (ids.length === 3) return { nodes: nodes, groups: [{ g: 'A', members: [ids[1], ids[2]] }], edges: [{ f: 'k:' + ids[0], t: 'g:A' }] };
     return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }] };
   }
+  function E_REPORT() { return g.Report; }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
 
@@ -227,6 +228,8 @@
       Object.assign(cur, v);
       return later(clone(cur));
     },
+    // 試行では様式のファイルが無いので Excel は作れない（コピペ用の表は使える）
+    exportReport: function () { return Promise.reject(Object.assign(new Error('試行では Excel を作れません。下の表からコピーしてください'), { noRetry: true })); },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },

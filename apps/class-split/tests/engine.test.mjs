@@ -8,10 +8,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
-for (const f of ['config.js', 'engine.js', 'platform-demo.js']) {
+for (const f of ['config.js', 'engine.js', 'report.js', 'platform-demo.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(SRC, f), 'utf8'), { filename: f });
 }
-const { CONFIG: C, Engine: E } = globalThis; const PF = globalThis.Platforms.demo;
+const { CONFIG: C, Engine: E, Report: RP } = globalThis; const PF = globalThis.Platforms.demo;
 
 // 小さな問題：旧4学級×36人＝144人（上限の場合）
 function problem(extra = {}) {
@@ -220,4 +220,36 @@ test('関係図：矢印から役割と型を決める（付箋の①〜④）',
   d = E.normDiagram({ nodes: N(['a', 'b', 'c']), groups: [{ g: 'X', members: ['a', 'zz'] }], edges: [{ f: 'k:a', t: 'k:a' }, { f: 'k:a', t: 'k:b' }, { f: 'k:a', t: 'k:b' }, { f: 'g:Q', t: 'k:b' }] });
   assert.equal(d.edges.length, 1); assert.deepEqual(d.groups[0].members, ['a']);
   assert.equal(E.diagramRoles(d).c, 'related');
+});
+
+test('報告書：様式のセルの値（被害・加害・態様・時系列）と、加害が7人以上の時の人数', () => {
+  const kids = { v: { grade: 4, cls: 2, male: false, name: '被害 花', kana: 'ひがい はな' } };
+  for (let i = 0; i < 8; i++) kids['h' + i] = { grade: 4, cls: 1, male: i < 5, name: '加害' + i, kana: 'かがい' + i };
+  const inc = { date: '2026-05-07', report: { found: C.FOUND_LIST[0], modes: [true, false, false, false, false, false, false, false, false, true], other: '靴を隠す',
+    s1: { hk: [{ d: '2026-05-08', p: '放課後', t: 'B' }], kk: [{ d: '2026-05-08', p: '朝休み', t: 'A' }], sd: [{ d: '', p: '', t: 'C' }] }, s2: { sd: [{ d: '2026-05-11', p: '放課後', t: '聴き取り' }], vi: [], ha: [{ d: '2026-05-12', p: '', t: '反省' }], kikan: '' } } };
+  const o = { school: '高木北小', kid: id => kids[id], victim: 'v', harms: Object.keys(kids).filter(k => k !== 'v') };
+  const c = RP.cells('f1', inc, o);
+  assert.equal(c.B4, '高木北小'); assert.equal(c.C5, 8); assert.equal(c.E5, 5); assert.equal(c.G5, 7); assert.equal(c.I5, '(木)');
+  assert.equal(c.G6, '女'); assert.equal(c.I7, '被害 花'); assert.equal(c.I19, '加害5');
+  assert.match(c.B20, /男子（　0　）名、女子（　2　）名.*全体計（　8　）名/);
+  assert.equal(c.B22, '○'); assert.equal(c.I26, '○'); assert.equal(c.K26, '靴を隠す'); assert.equal(c.H22, undefined);
+  assert.equal(c.B27, '・5月8日（金） 朝休み　A\n・5月8日（金） 放課後　B\n・C', '日付・時間帯の順。日付の無い行は最後');
+  assert.equal(RP.cells('light', inc, o).B27, undefined, '簡易報告書に概要の欄は無い');
+  const c2 = RP.cells('f2', inc, o);
+  assert.equal(c2.B8, '・5月11日（月） 放課後　聴き取り'); assert.equal(c2.B26, undefined); assert.match(c2.B32, /^（加害児童生徒及び保護者）\n・5月12日（火）　反省$/);
+  assert.equal(c2.I9, undefined, '様式Ⅱに加害の欄は無い');
+  assert.equal(RP.cells('f1', { date: '2019-05-01', report: {} }, { kid: () => null }).C5, '元');
+  Object.keys(c).forEach(r => assert.ok(RP.allowedCells('f1').includes(r), r));
+});
+
+test('報告書：シートの XML に値を書く（既存のセル・無いセル・無い行。書式は残す）', () => {
+  const xml = '<worksheet><sheetData><row r="4"><c r="A4" s="3" t="s"><v>0</v></c><c r="C4" s="5"/></row><row r="9"><c r="B9" s="2"/></row></sheetData></worksheet>';
+  const out = RP.fillSheet(xml, { C4: '高木北小', B4: 'x<&>', B9: 4, D6: '改行\nあり' });
+  assert.match(out, /<c r="A4" s="3" t="s"><v>0<\/v><\/c><c r="B4" t="inlineStr"><is><t xml:space="preserve">x&lt;&amp;&gt;<\/t><\/is><\/c><c r="C4" s="5" t="inlineStr">/);
+  assert.match(out, /<c r="B9" s="2"><v>4<\/v><\/c>/);
+  assert.ok(out.indexOf('<row r="6">') > out.indexOf('<row r="4"') && out.indexOf('<row r="6">') < out.indexOf('<row r="9"'), '行は番号の順に差し込む');
+  const wb = '<workbook><bookViews><workbookView xWindow="0" activeTab="3"/></bookViews><sheets><sheet name="簡易報告書" sheetId="2" r:id="rId2"/><sheet name="様式Ⅰ" sheetId="4" r:id="rId4"/></sheets></workbook>';
+  const rels = '<Relationships><Relationship Id="rId2" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="x" Target="worksheets/sheet4.xml"/></Relationships>';
+  assert.equal(RP.sheetPath(wb, rels, '様式Ⅰ'), 'xl/worksheets/sheet4.xml');
+  assert.match(RP.activate(wb, '様式Ⅰ'), /<workbookView xWindow="0" activeTab="1"\/>/);
 });

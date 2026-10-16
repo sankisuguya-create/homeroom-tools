@@ -236,6 +236,22 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#undoDecide'); await p.fill('#cword', '4年の決定を取り消す'); await p.click('[data-act="ok"]');
   await p.waitForSelector('#gen');
   ok(true, '決定を取り消せる');
+  // 事案管理：登録（発覚・経緯・指導の行、いじめの報告書の項目）→ 追記 → 出力のコピー用の表
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.iwrap');
+  const n0 = await p.locator('.iit').count();
+  await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
+  await p.selectOption('#fType', 'いじめ'); await p.waitForSelector('#fFound');
+  await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
+  await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
+  await p.click('[data-radd="s1:kk"]');
+  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, '行を足せる');
+  await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
+  ok(await p.locator('.iit').count() === n0 + 1, '事案が一覧に足される');
+  await p.click('#iadd2'); await p.fill('#rw-s2-vi-0', '元気に過ごしている'); await p.click('#inc2Form button.primary'); await p.waitForSelector('#iadd2');
+  ok(await p.locator('.ipane', { hasText: '元気に過ごしている' }).count() === 1, '様式Ⅱ用の追記が残る');
+  await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
+  ok(await p.locator('.icopy td', { hasText: '朝休み　訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
+  await p.keyboard.press('Escape');
   await p.close();
 }
 await browser.close();

@@ -14,12 +14,13 @@
     App.settings = s;
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } at.help = helpOf(at, x); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.slice();
+    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.slice();
   };
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function render() {
     var esc = App.esc, s = T.s;
-    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案の種別'], ['view', '表示'], ['year', '年度替わり']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案と報告書'], ['view', '表示'], ['year', '年度替わり']];
     var h = '<div class="rbar">' + tabs.map(function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') +
       '<span class="sp"></span>' + (T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
     if (T.tab === 'attrs') {
@@ -46,7 +47,11 @@
         }).join('') + '</tbody></table><div class="rbar" style="margin-top:8px"><button class="btn" id="tadd">＋ 追加</button>' +
         (App.me && !s.teachers.some(function (t) { return t.email === App.me.email; }) ? '<button class="btn" id="tme">＋ 自分（' + esc(App.me.email) + '）</button>' : '') + '</div>';
     } else if (T.tab === 'types') {
-      h += '<p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:20em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea>';
+      h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
+        '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
+        '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
+        '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
+        '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
     } else if (T.tab === 'view') {
       // クラス分けの盤面のアイコンの大きさ。端末の画面の大きさで合う値が違うので、この端末にだけ覚える
       var cur = App.iconScale();
@@ -135,6 +140,9 @@
       else if (t.dataset.tg != null) set(function () { s.teachers[+t.dataset.tg].grade = +t.value; });
       else if (t.dataset.tc != null) set(function () { s.teachers[+t.dataset.tc].cls = +t.value; });
       else if (t.id === 'types') set(function () { s.types = t.value.split('\n'); });
+      else if (t.id === 'slots') set(function () { s.slots = t.value.split('\n'); });
+      else if (t.id === 'school') set(function () { s.school = t.value; });
+      else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;

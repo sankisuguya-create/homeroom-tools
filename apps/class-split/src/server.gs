@@ -54,7 +54,7 @@ var TABLES_ = [
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b', 'memo', 'tags', 'incs', 'since'] },
   // diagram：関係図（児童IDとグループの記号だけ。氏名は入れない）。role：関係図から決めた役割（harm・victim・mutual・related）
-  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram', 'date_end', 'detail'] },
+  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram', 'date_end', 'detail', 'report'] },
   { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] },
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
@@ -337,13 +337,16 @@ function incidents_() {
   return read_('incidents').rows.filter(function (r) { return !r.deleted && r.inc_id !== ''; }).map(function (r) {
     var dg = null;
     if (r.diagram) { try { dg = Engine.normDiagram(JSON.parse(String(r.diagram))); } catch (e) { dg = null; } }
-    return { id: +r.inc_id, date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg };
+    var rp = null;
+    if (r.report) { try { rp = Report.norm(JSON.parse(String(r.report))); } catch (e) { rp = null; } }
+    return { id: +r.inc_id, date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
   });
 }
 // 事案の入力を確かめる：関係図があれば、関係する児童と役割は関係図から決める
 function incidentInput_(x) {
   if (!x) throw userError_('事案が読めません');
-  if (!/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
+  // 文書のURLは任意（事案管理の入力欄に記録を書くなら要らない）。貼るなら学校のドライブの文書だけ
+  if (x.url && !/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
   var dg = x.diagram ? Engine.normDiagram(x.diagram) : null, ids, roles = {};
   if (dg && dg.nodes.length) { ids = dg.nodes.map(function (n) { return n.id; }); roles = Engine.diagramRoles(dg); }
   else { ids = (x.ids || []).map(String); dg = null; }
@@ -354,7 +357,21 @@ function incidentInput_(x) {
   var date = String(x.date || ''), end = String(x.dateEnd || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw userError_('始まりの日を入れてください');
   if (end && (!/^\d{4}-\d{2}-\d{2}$/.test(end) || end < date)) throw userError_('終わりの日は始まりの日より後にしてください');
-  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: String(x.type), url: String(x.url) };
+  var rp = x.report ? reportInput_(x.report) : null, rjson = rp ? JSON.stringify(rp) : '';
+  if (rjson.length > 45000) throw userError_('記録が長すぎます。分けて書いてください');
+  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: String(x.type), url: String(x.url || ''), report: rp, rjson: rjson };
+}
+// 報告書の記録（発覚・経緯・指導、様式Ⅱの追記）を確かめる。文字数と行数に上限を置く
+function reportInput_(r) {
+  var rp = Report.norm(r), cut = function (a) {
+    if (a.length > 80) throw userError_('記録の行が多すぎます（1つの欄に80行まで）');
+    return a.map(function (x) { return { d: /^\d{4}-\d{2}-\d{2}$/.test(x.d) ? x.d : '', p: String(x.p).slice(0, 20), t: String(x.t).slice(0, 2000) }; });
+  };
+  ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k] = cut(rp.s1[k]); });
+  ['sd', 'vi', 'ha'].forEach(function (k) { rp.s2[k] = cut(rp.s2[k]); });
+  rp.s2.kikan = rp.s2.kikan.slice(0, 2000); rp.other = rp.other.slice(0, 200);
+  if (rp.found && CONFIG.FOUND_LIST.indexOf(rp.found) < 0) rp.found = '';
+  return rp;
 }
 function isoDate_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -419,16 +436,16 @@ var apiFetchTitle = api_(function (url) { requireTeacher_(); return { title: tit
 var apiAddIncident = api_(function (x) {
   var by = requireTeacher_();
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || titleOf_(v.url);
+  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), next = 1;
     t.rows.forEach(function (r) { if (+r.inc_id >= next) next = +r.inc_id + 1; });
-    var inc = { inc_id: next, date: v.date, date_end: v.dateEnd, detail: v.detail, type: v.type, url: v.url, file_id: fileIdOf_(v.url), title: title, by: by, at: new Date(), deleted: '', diagram: v.json };
+    var inc = { inc_id: next, date: v.date, date_end: v.dateEnd, detail: v.detail, type: v.type, url: v.url, file_id: fileIdOf_(v.url), title: title, by: by, at: new Date(), deleted: '', diagram: v.json, report: v.rjson };
     append_('incidents', TABLES_[3].head, [inc]);
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (id) { return { inc_id: next, id8: id, role: v.roles[id] || '' }; }));
     log_(by, 'addIncident', v.ids.length);
-    return { id: next, date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
+    return { id: next, date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
 });
 
@@ -437,17 +454,51 @@ var apiUpdateIncident = api_(function (id, x) {
   var by = requireTeacher_();
   id = +id;
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || titleOf_(v.url);
+  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
     if (!row) throw userError_('事案が見つかりません');
-    [['date', v.date], ['date_end', v.dateEnd], ['detail', v.detail], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
+    [['date', v.date], ['date_end', v.dateEnd], ['detail', v.detail], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json], ['report', v.rjson]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
     removeRows_('incident_kids', function (r) { return +r.inc_id === id; });
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (k) { return { inc_id: id, id8: k, role: v.roles[k] || '' }; }));
     log_(by, 'updateIncident', v.ids.length);
-    return { id: id, date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
+    return { id: id, date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
+});
+
+// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）の該当するシートのセルにだけ値を書いて返す。
+// xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。ドライブに複製は作らない
+var apiExportReport = api_(function (kind, values) {
+  var by = requireTeacher_(), R = CONFIG.REPORT;
+  if (!R.sheets[kind]) throw userError_('様式が分かりません');
+  var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
+  var vals = {};
+  Object.keys(values || {}).forEach(function (ref) {
+    if (!ok[ref]) return;
+    var v = values[ref];
+    vals[ref] = typeof v === 'number' && isFinite(v) ? v : String(v).slice(0, 8000);
+  });
+  var id = fileIdOf_(settings_().template);
+  if (!id) throw userError_('様式のファイルが設定されていません。設定の「事案と報告書」でURLを貼ってください');
+  var file;
+  try { file = DriveApp.getFileById(id); } catch (e) { throw userError_('様式のファイルを開けません。所有者が開けるドライブに置いてください'); }
+  if (file.getMimeType() !== MimeType.MICROSOFT_EXCEL) throw userError_('様式のファイルはExcel（.xlsx）のまま置いてください（スプレッドシートに変換しない）');
+  var blob = file.getBlob().setContentType('application/zip');
+  var parts = Utilities.unzip(blob), byName = {};
+  parts.forEach(function (b, i) { byName[b.getName()] = i; });
+  var text = function (n) { return parts[byName[n]].getDataAsString('UTF-8'); };
+  var put = function (n, s) { parts[byName[n]] = Utilities.newBlob(s, 'application/xml', n); };
+  if (byName['xl/workbook.xml'] == null || byName['xl/_rels/workbook.xml.rels'] == null) throw userError_('様式のファイルが読めません');
+  var wb = text('xl/workbook.xml'), path = Report.sheetPath(wb, text('xl/_rels/workbook.xml.rels'), R.sheets[kind]);
+  if (!path || byName[path] == null) throw userError_('様式のファイルに「' + R.sheets[kind] + '」のシートがありません');
+  Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
+  put(path, Report.fillSheet(text(path), vals));
+  put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
+  var name = R.names[kind] + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd') + '.xlsx';
+  var out = Utilities.zip(parts, name);
+  log_(by, 'exportReport', 0);
+  return { name: name, b64: Utilities.base64Encode(out.getBytes()) };
 });
 
 var apiSchoolIncidents = api_(function () {
@@ -572,12 +623,13 @@ function removeRows_(name, pred) {
 function defaultSettings_() {
   var attrs = {};
   CONFIG.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: CONFIG.KEEP_YEARS_DEFAULT };
+  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: CONFIG.KEEP_YEARS_DEFAULT, slots: CONFIG.TIME_SLOTS.slice(), school: '', template: '' };
 }
 function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
-    teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0 };
+    teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || '') };
 }
 var apiSettings = api_(function () {
   var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
@@ -587,7 +639,11 @@ var apiSettings = api_(function () {
 var apiSaveSettings = api_(function (s) {
   var by = requireTeacher_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
-  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)) };
+  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
+    slots: (s.slots || []).map(function (t) { return String(t).trim().slice(0, 20); }).filter(Boolean).slice(0, 30),
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300) };
+  if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
+  if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
     var x = s.attrs[at.k] || {};
     var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
@@ -652,7 +708,7 @@ var apiPurge = api_(function (ids) {
     read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
     var t = read_('incidents');
     t.rows.forEach(function (r) {
-      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); if (t.head.indexOf('detail') >= 0) writeCell_(t, r, 'detail', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
+      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); if (t.head.indexOf('detail') >= 0) writeCell_(t, r, 'detail', ''); if (t.head.indexOf('report') >= 0) writeCell_(t, r, 'report', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
       // 関係図からも消した児童を外す（残った児童の関係図は、その児童のいない形で残す）
       if (r.diagram) {
         var dg; try { dg = JSON.parse(String(r.diagram)); } catch (e) { dg = null; }

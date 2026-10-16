@@ -60,6 +60,7 @@
     addIncident: function (x) { return call('apiAddIncident', x); },
     updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
+    exportReport: function (kind, values) { return call('apiExportReport', kind, values); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
