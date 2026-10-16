@@ -406,6 +406,8 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .dg-n.card.f{border-radius:999px 14px 14px 999px}
 .dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
 .dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.dg-n.card{min-width:8em;box-sizing:border-box}
+.dg-n.card .nm2 .ph{visibility:hidden}
 .dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
 .dg-gl.from{background:#C0330A}
 .dg-sum{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.9rem;align-items:baseline}
@@ -488,6 +490,9 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 .jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
 .jn.jn2 b{font-weight:700}
 .jn.jn2 i{font-style:normal;font-size:.78em}
+.jn.jn1{width:auto;gap:.1em;padding:0 .3em;white-space:nowrap}
+.jn.jn1 b{font-weight:700}
+.jn.jn1 i{font-style:normal;font-size:.85em}
 table.r th.jh small{font-weight:400}
 /* 名簿の見出し：押すと並べ替え */
 table.r th.sorth{cursor:pointer;user-select:none}
