@@ -654,7 +654,7 @@
   }
 
   // ===== xlsx のシートの XML に値を書く（罫線・結合・入力規則はそのまま） =====
-  function xesc(s) { return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function xesc(s) { return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\r?\n/g, '&#10;'); } // 改行は文字参照にする（そのままの改行を捨てる表計算ソフトがある）
   function colNum(c) { var n = 0; for (var i = 0; i < c.length; i++) n = n * 26 + c.charCodeAt(i) - 64; return n; }
   function cellXml(ref, attrs, v) {
     attrs = (attrs || '').replace(/\s+t="[^"]*"/, '');
@@ -718,7 +718,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_7bdd6a24bd9b';
+var SERVER_BUILD = 'BUILD_8aa18f10276e';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

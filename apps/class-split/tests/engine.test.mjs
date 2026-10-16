@@ -248,6 +248,7 @@ test('報告書：シートの XML に値を書く（既存のセル・無いセ
   const out = RP.fillSheet(xml, { C4: '高木北小', B4: 'x<&>', B9: 4, D6: '改行\nあり' });
   assert.match(out, /<c r="A4" s="3" t="s"><v>0<\/v><\/c><c r="B4" t="inlineStr"><is><t xml:space="preserve">x&lt;&amp;&gt;<\/t><\/is><\/c><c r="C4" s="5" t="inlineStr">/);
   assert.match(out, /<c r="B9" s="2"><v>4<\/v><\/c>/);
+  assert.match(out, /改行&#10;あり/, '改行は文字参照で書く');
   assert.ok(out.indexOf('<row r="6">') > out.indexOf('<row r="4"') && out.indexOf('<row r="6">') < out.indexOf('<row r="9"'), '行は番号の順に差し込む');
   const wb = '<workbook><bookViews><workbookView xWindow="0" activeTab="3"/></bookViews><sheets><sheet name="簡易報告書" sheetId="2" r:id="rId2"/><sheet name="様式Ⅰ" sheetId="4" r:id="rId4"/></sheets></workbook>';
   const rels = '<Relationships><Relationship Id="rId2" Target="worksheets/sheet2.xml"/><Relationship Id="rId4" Type="x" Target="worksheets/sheet4.xml"/></Relationships>';
