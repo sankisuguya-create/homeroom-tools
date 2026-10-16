@@ -284,6 +284,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .lvs{display:flex;gap:3px}
 .lv{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 10px;cursor:pointer;min-width:3em}
 .lv[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+/* 「必」：必ず守る条件になる特別な段階。濃い赤紫の地に金の縁 */
+.lv.must{border:2px solid #8B1E5A;color:#8B1E5A;font-weight:700;margin-left:6px}
+.lv.must[aria-pressed="true"]{background:#8B1E5A;color:#fff;border-color:#E0A800;box-shadow:0 0 0 2px #E0A800}
+.mustwarn{border:2px solid #8B1E5A;background:#FBEAF2;color:#5A0E38;border-radius:6px;padding:6px 10px;font-size:.9rem}
 .gencols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:760px){.gencols{grid-template-columns:1fr}}
 .toggles{display:flex;flex-wrap:wrap;gap:6px}
@@ -366,7 +370,11 @@ body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
 /* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
 table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
-table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
+/* 学年・組・番は字の幅に頼らず、箱の幅で縦をそろえる */
+table.h td.gcn .g,table.h td.gcn .sep,table.h td.gcn .no{display:inline-block;text-align:center}
+table.h td.gcn .g{width:.8em}
+table.h td.gcn .sep{width:.6em}
+table.h td.gcn .no{width:1.4em;text-align:right}
 /* 並び順の枠 */
 .ordrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ordrow>b{min-width:5em}
@@ -520,30 +528,32 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     ],
     MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
 
-    // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
+    // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）。既定：強＝学力・賢い・男女・旧学級／中＝問・欠・保・走／弱＝その他／無＝地区・身・ア
     // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。ctx：経緯の文と事案の紐付けを持つ（角の窓で書く）。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, ctx: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
-      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#1A1A1A', t: '#FFFFFF', sh: 'circle',   w: 1, heavy: 1, ctx: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, ctx: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 3, heavy: 1, ctx: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#1A1A1A', t: '#FFFFFF', sh: 'circle',   w: 2, heavy: 1, ctx: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 2, heavy: 1, ctx: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, ctx: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
-      { k: 'k7', label: '賢い',         s: 'か', c: '#009E73', t: '#FFFFFF', sh: 'plain',    w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
-      { k: 'k9', label: '走力',         s: '走', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['走力（走る速さ）', '走るのが速い。'] }
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 0, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 0, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 1, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
+      { k: 'k7', label: '賢い',         s: 'か', c: '#009E73', t: '#FFFFFF', sh: 'plain',    w: 3, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 1, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
+      { k: 'k9', label: '走力',         s: '走', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 2, good: 1, max: 1, help: ['走力（走る速さ）', '走るのが速い。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
-      { k: 'old',  label: '旧学級', s: '旧',   w: 2 },
-      { k: 'area', label: '地区',   s: '地区', w: 1 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 0 }  // 0＝案を作る条件に入れない。設定の枠で上げると入る
+      { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
+      { k: 'area', label: '地区',   s: '地区', w: 0 },
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
     ],
     // 段階 → 計算に使う重み
-    LEVEL_W: [0, 1, 2.5, 5],
-    LEVEL_NAMES: ['無', '弱', '中', '強'],
+    LEVEL_W: [0, 1, 2.5, 5, 5],
+    LEVEL_NAMES: ['無', '弱', '中', '強', '必'],
+    MUST: 4,          // 「必」の段階：各組の人数を平均±1に収めることを必ず守る条件にする（重みは強と同じ）
+    MUST_WARN: '「必」は必ず守る条件になります。ほかの条件（離す・つける・男女・負担の＋など）と両立できないと、案が条件を守れなかったり、ほかの偏りが大きくなったりします。必要な項目だけにしてください。',
     // 必ず守る条件（設定の枠でオン・オフ）
     HARD: [
       { k: 'far',  label: '離す' },
@@ -654,9 +664,12 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     });
     var incOfKid = P.kids.map(function () { return []; });
     (P.inc || []).forEach(function (x, xi) { x.kids.forEach(function (i) { incOfKid[i].push(xi); }); });
+    // 「必」の段階の指標（＋の別枠は除く）。各組を平均±1に収めることを必ず守る
+    var MU = [];
+    MET.forEach(function (m, mi) { if (m.grp !== 'heavy' && (gen.w[m.grp || m.k] | 0) === C.MUST) MU.push(mi); });
     var HV = [];
     MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV,
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV, MU: MU,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -710,6 +723,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       var ds = r[ctx.M] - ctx.SIZE_MEAN; t += W_SIZE * ds * ds;
       if (h.cap && r[ctx.M] > ctx.cap) t += W_CAP * (r[ctx.M] - ctx.cap);
       if (h.sex) { var ex = Math.abs(r[0] - ctx.MEAN[0]) - 1; if (ex > 0) t += W_HARD * ex; }
+      for (var u = 0; u < ctx.MU.length; u++) { var eu = Math.abs(r[ctx.MU[u]] - ctx.MEAN[ctx.MU[u]]) - 1; if (eu > 0) t += W_HARD * eu; }
       if (h.heavy) for (var q = 0; q < ctx.HV.length; q++) { var eh = r[ctx.HV[q].m] - ctx.HV[q].max; if (eh > 0) t += W_HARD * eh; }
     }
     return t;
@@ -764,7 +778,10 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       ctx.HV.forEach(function (hv) {
         if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: C.newClass(k) + ' ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
       });
-      for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
+      ctx.MU.forEach(function (mi) {
+        if (Math.abs(c[k][mi] - ctx.MEAN[mi]) > 1) { flag[k][mi] = true; bad.push({ t: 'must', txt: C.newClass(k) + ' ' + ctx.MET[mi].label + ' ' + c[k][mi] + '人（必：平均' + ctx.MEAN[mi].toFixed(1) + '±1）', ids: [] }); }
+      });
+      for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && ctx.MU.indexOf(m) < 0 && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
         warn.push({ txt: C.newClass(k) + ' ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
@@ -1367,7 +1384,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_3668fb0d1863';
+  var PAGE_BUILD = 'BUILD_7a17076dc558';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2177,7 +2194,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       var r = y.rows.filter(function (x) { return x.id === kid; })[0];
       if (!r) return;
       var yl = incsOf(kid, y.fy), n = yl.length, nv = yl.filter(function (x) { return App.isVictim(x, kid); }).length;
-      h += '<tr class="' + (y.fy === curFy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
+      h += '<tr class="' + (y.fy === curFy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + '<span class="g">' + y.grade + '</span><span class="sep">-</span><span class="g">' + (r.cls + 1) + '</span><span class="sep">-</span><span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n ? n + '<small>(' + nv + ')</small>' : '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
@@ -2658,7 +2675,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function renderCmp() {
     var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
-      { lab: '違反（離す・つける・固定・上限）', f: function (p, a) { return a.bad.length; }, bad: true },
+      { lab: '違反（離す・つける・固定・上限・必）', f: function (p, a) { return a.bad.length; }, bad: true },
       { lab: '人数の差', f: function (p, a) { return E.spread(a.c, M); } },
       { lab: '男の数の差', f: function (p, a) { return E.spread(a.c, 0); } }
     ].concat(C.ATTRS.map(function (at, ai) { return { lab: at.label, f: function (p, a) { return E.spread(a.c, ai + 1); } }; })).concat([
@@ -2734,7 +2751,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       html: function () {
         var lvRow = function (x) {
           return '<tr><td>' + (x.sh ? App.mark(x, 1) + ' ' : '') + x.label + '</td><td><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) {
-            return '<button class="lv" data-w="' + x.k + '" data-lv="' + lv + '" aria-pressed="' + ((gen.w[x.k] | 0) === lv) + '">' + n + '</button>';
+            return '<button class="lv' + (lv === C.MUST ? ' must' : '') + '" data-w="' + x.k + '" data-lv="' + lv + '" aria-pressed="' + ((gen.w[x.k] | 0) === lv) + '">' + n + '</button>';
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
@@ -2742,13 +2759,14 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
           '<div><b>偏りの重み</b>（強いほど均等に分ける）<div class="gencols" style="margin-top:6px"><table>' + C.ATTRS.map(lvRow).join('') + '</table><table>' + C.EXTRA.map(lvRow).join('') + '</table></div></div>' +
+          (Object.keys(gen.w).some(function (k) { return (gen.w[k] | 0) === C.MUST; }) ? '<div class="mustwarn">⚠ ' + C.MUST_WARN + '</div>' : '') +
           '<div class="notebox">名前：案' + LET[S.letIdx % 26] + '（' + App.esc(E.autoName(gen, keep ? p.locks.size : 0)) + '）' + (keep ? '　今の案で固定した' + p.locks.size + '人はそのままの組に置きます' : '') + '</div>' +
           '<div class="acts"><button class="btn" data-act="reset">既定に戻す</button><span class="sp"></span><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button>' +
           '<button class="btn primary" data-act="ok" id="okbtn">この設定で作る<kbd>Enter</kbd></button></div></div></div>';
       },
       click: function (t) {
         var x;
-        if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); if (+x.dataset.lv === C.MUST) App.toast(C.MUST_WARN); return true; }
         if ((x = t.closest('[data-hard]'))) { gen.hard[x.dataset.hard] = !gen.hard[x.dataset.hard]; App.refreshDlg(); return true; }
         if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); App.refreshDlg(); return true; }
         return false;
@@ -3182,7 +3200,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
           return '<tr><td style="font-size:20px">' + App.mark(prev, 1) + '</td>' +
             '<td style="text-align:left"><input data-al="' + at.k + '" value="' + esc(x.label) + '" maxlength="20" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"></td>' +
             '<td><input data-as="' + at.k + '" value="' + esc(x.s) + '" maxlength="1" style="width:2.5em;text-align:center;padding:4px;border:1px solid var(--line);border-radius:4px"></td>' +
-            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>' +
+            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv' + (lv === C.MUST ? ' must' : '') + '" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>' +
             // 説明文（アイコンにカーソルを合わせると出る）：見出し・アイコン・アイコン＋
             '<tr class="hrow"><td></td><td colspan="3"><div class="hlp">' + helpOf(at, x).map(function (t, i) {
               var lab = i === 0 ? '見出し' : i === 1 ? App.mark(prev, 1) : App.mark(prev, 2);
@@ -3261,7 +3279,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       var x, s = T.s;
       if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
-      if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); return true; }
+      if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0 }); }); render(); return true; }
       if (t.closest('#tme')) { set(function () { s.teachers.push({ email: App.me.email, grade: App.st.grade, cls: 1 }); }); render(); return true; }
       if ((x = t.closest('[data-tdel]'))) { set(function () { s.teachers.splice(+x.dataset.tdel, 1); }); render(); return true; }

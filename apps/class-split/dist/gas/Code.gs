@@ -20,30 +20,32 @@
     ],
     MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
 
-    // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）
+    // 配慮項目。good=1 は良い要素（カードの1段目・緑）。w は重みの既定段階（0なし〜3強）。既定：強＝学力・賢い・男女・旧学級／中＝問・欠・保・走／弱＝その他／無＝地区・身・ア
     // help：カーソルを合わせると出す説明［見出し, アイコン, アイコン＋］（max: 1 は［見出し, アイコン］）。side：カードの2段目の右（良い項目の下）に置く。ctx：経緯の文と事案の紐付けを持つ（角の窓で書く）。負担の項目の＋は「＋2つ分」ではなく、担任の負担が明確に増えることを表す
     ATTRS: [
-      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 2, heavy: 1, ctx: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
-      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#1A1A1A', t: '#FFFFFF', sh: 'circle',   w: 1, heavy: 1, ctx: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
-      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 3, heavy: 1, ctx: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
+      { k: 'k1', label: '学力しんどさ', s: '学', c: '#1E6FD9', t: '#FFFFFF', sh: 'square',   w: 3, heavy: 1, ctx: 1, max: 2, help: ['学力のしんどさ', '学習の遅れがある。', '遅れが大きい。個別の手立てがいつも要る。'] },
+      { k: 'k2', label: '長欠・不登校傾向', s: '欠', c: '#1A1A1A', t: '#FFFFFF', sh: 'circle',   w: 2, heavy: 1, ctx: 1, max: 2, help: ['長欠・不登校傾向', '欠席・遅刻・早退が多い。', '長期欠席、または不登校。'] },
+      { k: 'k3', label: '問題行動',     s: '問', c: '#D7263D', t: '#FFFFFF', sh: 'burst',    w: 2, heavy: 1, ctx: 1, max: 2, help: ['問題行動、トラブル', '多い。', 'とても多い。または深刻。'] },
       { k: 'k4', label: '保護者',       s: '保', c: '#F2C200', t: '#1A1A1A', sh: 'house',    w: 2, heavy: 1, ctx: 1, max: 2, help: ['保護者対応', '連絡・相談が多い。', '対応にとても時間がかかる。または関係づくりが難しい。'] },
-      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 1, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
-      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 1, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
-      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 2, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
-      { k: 'k7', label: '賢い',         s: 'か', c: '#009E73', t: '#FFFFFF', sh: 'plain',    w: 1, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
-      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 2, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
-      { k: 'k9', label: '走力',         s: '走', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 1, good: 1, max: 1, help: ['走力（走る速さ）', '走るのが速い。'] }
+      { k: 'k5', label: 'アレルギー',   s: 'ア', c: '#7B3FA0', t: '#FFFFFF', sh: 'octagon',  w: 0, max: 1, side: 1, help: ['アレルギー', '配慮の要るアレルギーがある（エピペンの所持を含む）。'] },
+      { k: 'k6', label: '身体的配慮',   s: '身', c: '#7B3FA0', t: '#FFFFFF', sh: 'shield',   w: 0, max: 1, side: 1, help: ['身体的配慮', '体や健康の面で配慮が要る。'] },
+      { k: 'k10', label: '通級・要支援', s: '通', c: '#7B3FA0', t: '#FFFFFF', sh: 'shell',    w: 1, max: 1, side: 1, help: ['通級・要支援', '通級や支援を受けている。'] },
+      { k: 'k7', label: '賢い',         s: 'か', c: '#009E73', t: '#FFFFFF', sh: 'plain',    w: 3, good: 1, max: 1, help: ['賢い', '学力が高い。'] },
+      { k: 'k8', label: 'リーダー',     s: 'リ', c: '#009E73', t: '#FFFFFF', sh: 'crown',    w: 1, good: 1, max: 1, help: ['リーダー', 'まとめる力がある。'] },
+      { k: 'k9', label: '走力',         s: '走', c: '#009E73', t: '#FFFFFF', sh: 'para',     w: 2, good: 1, max: 1, help: ['走力（走る速さ）', '走るのが速い。'] }
     ],
     // 配慮項目以外の偏りの指標。w は重みの既定段階
     EXTRA: [
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
-      { k: 'old',  label: '旧学級', s: '旧',   w: 2 },
-      { k: 'area', label: '地区',   s: '地区', w: 1 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 0 }  // 0＝案を作る条件に入れない。設定の枠で上げると入る
+      { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
+      { k: 'area', label: '地区',   s: '地区', w: 0 },
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
     ],
     // 段階 → 計算に使う重み
-    LEVEL_W: [0, 1, 2.5, 5],
-    LEVEL_NAMES: ['無', '弱', '中', '強'],
+    LEVEL_W: [0, 1, 2.5, 5, 5],
+    LEVEL_NAMES: ['無', '弱', '中', '強', '必'],
+    MUST: 4,          // 「必」の段階：各組の人数を平均±1に収めることを必ず守る条件にする（重みは強と同じ）
+    MUST_WARN: '「必」は必ず守る条件になります。ほかの条件（離す・つける・男女・負担の＋など）と両立できないと、案が条件を守れなかったり、ほかの偏りが大きくなったりします。必要な項目だけにしてください。',
     // 必ず守る条件（設定の枠でオン・オフ）
     HARD: [
       { k: 'far',  label: '離す' },
@@ -154,9 +156,12 @@
     });
     var incOfKid = P.kids.map(function () { return []; });
     (P.inc || []).forEach(function (x, xi) { x.kids.forEach(function (i) { incOfKid[i].push(xi); }); });
+    // 「必」の段階の指標（＋の別枠は除く）。各組を平均±1に収めることを必ず守る
+    var MU = [];
+    MET.forEach(function (m, mi) { if (m.grp !== 'heavy' && (gen.w[m.grp || m.k] | 0) === C.MUST) MU.push(mi); });
     var HV = [];
     MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV,
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV, MU: MU,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -210,6 +215,7 @@
       var ds = r[ctx.M] - ctx.SIZE_MEAN; t += W_SIZE * ds * ds;
       if (h.cap && r[ctx.M] > ctx.cap) t += W_CAP * (r[ctx.M] - ctx.cap);
       if (h.sex) { var ex = Math.abs(r[0] - ctx.MEAN[0]) - 1; if (ex > 0) t += W_HARD * ex; }
+      for (var u = 0; u < ctx.MU.length; u++) { var eu = Math.abs(r[ctx.MU[u]] - ctx.MEAN[ctx.MU[u]]) - 1; if (eu > 0) t += W_HARD * eu; }
       if (h.heavy) for (var q = 0; q < ctx.HV.length; q++) { var eh = r[ctx.HV[q].m] - ctx.HV[q].max; if (eh > 0) t += W_HARD * eh; }
     }
     return t;
@@ -264,7 +270,10 @@
       ctx.HV.forEach(function (hv) {
         if (c[k][hv.m] > hv.max) { flag[k][hv.m] = true; bad.push({ t: 'heavy', txt: C.newClass(k) + ' ' + ctx.MET[hv.m].label + ' ' + c[k][hv.m] + '人（各組' + hv.max + '人まで）', ids: [] }); }
       });
-      for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
+      ctx.MU.forEach(function (mi) {
+        if (Math.abs(c[k][mi] - ctx.MEAN[mi]) > 1) { flag[k][mi] = true; bad.push({ t: 'must', txt: C.newClass(k) + ' ' + ctx.MET[mi].label + ' ' + c[k][mi] + '人（必：平均' + ctx.MEAN[mi].toFixed(1) + '±1）', ids: [] }); }
+      });
+      for (m = 0; m < ctx.M; m++) if (ctx.MET[m].grp !== 'heavy' && ctx.MU.indexOf(m) < 0 && Math.abs(c[k][m] - ctx.MEAN[m]) > ctx.MET[m].tol) {
         flag[k][m] = true;
         warn.push({ txt: C.newClass(k) + ' ' + ctx.MET[m].label + ' ' + c[k][m] + '（平均' + ctx.MEAN[m].toFixed(1) + '）', k: k, m: m });
       }
@@ -497,7 +506,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_3668fb0d1863';
+var SERVER_BUILD = 'BUILD_7a17076dc558';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

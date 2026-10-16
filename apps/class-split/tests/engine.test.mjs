@@ -42,6 +42,16 @@ test('案を作る：全員がちょうど1つの組に入り、必ず守る条�
   }
 });
 
+test('「必」：その項目の各組の人数を平均±1に収め、外れると違反に数える', () => {
+  const gen = E.defaultGen(); gen.w.k6 = C.MUST; gen.w.area = C.MUST;
+  const ctx = E.prepare(problem(), gen);
+  const asg = E.optimize(ctx, new Map(), 11);
+  const a = E.analyze(ctx, asg);
+  assert.equal(a.bad.length, 0, a.bad.map(b => b.txt).join(' / '));
+  ctx.MU.forEach(mi => { for (let k = 0; k < 4; k++) assert.ok(Math.abs(a.c[k][mi] - ctx.MEAN[mi]) <= 1, ctx.MET[mi].label); });
+  assert.equal(ctx.MU.length, 1 + C.AREAS.length);
+});
+
 test('案を作る：固定した児童は動かない', () => {
   const ctx = E.prepare(problem());
   const locked = new Map([[50, 3], [51, 0], [52, 1]]);
@@ -116,9 +126,9 @@ test('案の名前：既定は「標準」、重みを上げた項目と固定�
   const gen = E.defaultGen();
   assert.equal(E.autoName(gen, 0), '標準');
   gen.w.k3 = 3; gen.w.k4 = 3; gen.w.k2 = 3;
-  assert.equal(E.autoName(gen, 0), '欠・保の分散重視');
+  assert.equal(E.autoName(gen, 0), '欠・問の分散重視');
   gen.hard.far = false;
-  assert.equal(E.autoName(gen, 5), '欠・保の分散重視・離すを外す・固定5人');
+  assert.equal(E.autoName(gen, 5), '欠・問の分散重視・離すを外す・固定5人');
 });
 
 test('組の番号の付け替えは「違い」に数えない', () => {
