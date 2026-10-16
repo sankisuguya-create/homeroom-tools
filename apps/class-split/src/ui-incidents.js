@@ -121,15 +121,17 @@
   var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
     's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
   var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
-  function slotShort(p) { var m = /^(\d+)校時$/.exec(p); return m ? m[1] : String(p).charAt(0); }
+  function mdShort(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : '日付'; }
   function secHtml(sec, key, rows) {
     var w = sec + ':' + key;
     var h = '<div class="isec s-' + sec + key + '" data-sec="' + w + '"><h3 class="ish"><b>' + SEC_NAME[w] + '</b><span>' + ASK[w] + '</span></h3>';
     if (w === 's1:sd') h += stepsHtml(rows);
     h += '<div class="irows">' + rows.map(function (r, i) {
       var at = w + ':' + i;
-      return '<div class="irow" data-row="' + at + '"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付">' +
-        '<button type="button" class="islot' + (r.p ? ' on' : '') + '" data-slotof="' + at + '" title="時間帯">' + esc(r.p || '時間帯') + '</button>' +
+      // 日付は「月/日」だけを見せ、押すと暦が開く（年は事案の記録では毎回見なくてよい）
+      return '<div class="irow" data-row="' + at + '"><label class="idate" title="' + esc(Rp.md(r.d)) + '"><span>' + esc(mdShort(r.d)) + '</span><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"></label>' +
+        '<select class="islot' + (r.p ? ' on' : '') + '" data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' + Rp.slots().map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') +
+        (r.p && Rp.slots().indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
         '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
         '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button>' +
         '<div class="irx" id="irx-' + sec + '-' + key + '-' + i + '"></div></div>';
@@ -144,7 +146,7 @@
   // 選んでいる行の下：時間帯のボタン列と、次によく書く文
   function extraHtml(at) {
     var q = at.split(':'), w = q[0] + ':' + q[1], r = I.form.rep[q[0]][q[1]][+q[2]]; if (!r) return '';
-    var h = '<div class="islots">' + C.TIME_SLOTS.map(function (p) { return '<button type="button" data-slot="' + esc(at + ':' + p) + '" aria-pressed="' + (r.p === p) + '" title="' + esc(p) + '">' + esc(slotShort(p)) + '</button>'; }).join('') + '</div>';
+    var h = '';
     var sg = [];
     if (w === 's1:kk') leads().forEach(function (t) { sg.push({ t: t, nm: true }); });
     nextPhrases(w, 5).forEach(function (t) { sg.push({ t: t }); });
@@ -333,7 +335,7 @@
     if (!t.value.trim()) return;
     var q = t.dataset.rw.split(':'), rows = I.form.rep[q[0]][q[1]], i = +q[2], r = rows[i];
     if (rows[i + 1] && !rows[i + 1].t) { refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); return; }
-    rows.splice(i + 1, 0, { d: r.d, p: r.p, t: '' });
+    rows.splice(i + 1, 0, nextRow(r));
     rerenderPane(); refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); saveDraftSoon();
   });
   document.addEventListener('dragstart', function (e) {
@@ -464,7 +466,7 @@
     order.forEach(function (k) {
       I.form.rep[q[0]][k].forEach(function (r, i) {
         if (k === q[1] && i === +q[2]) { seen = true; return; }
-        if (seen && !r.t) { r.d = d; var el = document.querySelector('[data-rw="' + q[0] + ':' + k + ':' + i + ':d"]'); if (el) el.value = d; }
+        if (seen && !r.t) { r.d = d; var el = document.querySelector('[data-rw="' + q[0] + ':' + k + ':' + i + ':d"]'); if (el) { el.value = d; var lb = el.parentNode.querySelector('span'); if (lb) lb.textContent = mdShort(d); } }
       });
     });
   }
@@ -472,12 +474,18 @@
     var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
     if (on) {
       if (last && !last.t) last.t = t;
-      else rows.push({ d: last ? last.d : today(), p: last ? last.p : '', t: t });
+      else { var nr = nextRow(last); nr.t = t; rows.push(nr); }
     } else {
       rows.forEach(function (r) { r.t = r.t.replace(t, '').replace(/^。|。(?=。)|。$/g, ''); });
       for (var k = rows.length - 1; k >= 0 && rows.length > 1; k--) if (!rows[k].t.trim()) rows.splice(k, 1);
     }
     rerenderPane(); saveDraftSoon();
+  }
+  // 足す行の既定：直前の行と同じ日の、次の時間帯（直前に時間帯が無ければ空のまま）
+  function nextRow(prev) {
+    if (!prev) return { d: today(), p: '', t: '' };
+    if (!prev.p) return { d: prev.d, p: '', t: '' };
+    var n = Rp.nextSlot(prev.d, prev.p); return { d: n.d, p: n.p, t: '' };
   }
   function closeForm() { I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
 
@@ -512,13 +520,7 @@
       if (t.closest('#iadd2')) { add2Form(incOf(I.sel)); rerenderPane(); return true; }
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
       if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
-      if ((x = t.closest('[data-slotof]'))) { var a = x.dataset.slotof.split(':'); refocus('rw-' + a[0] + '-' + a[1] + '-' + a[2]); return true; }
-      if ((x = t.closest('[data-slot]'))) {
-        var sp = x.dataset.slot.split(':'), row = I.form.rep[sp[0]][sp[1]][+sp[2]], v = sp.slice(3).join(':');
-        row.p = row.p === v ? '' : v;
-        var b = document.querySelector('[data-slotof="' + sp.slice(0, 3).join(':') + '"]'); if (b) { b.textContent = row.p || '時間帯'; b.classList.toggle('on', !!row.p); }
-        showExtra(); refocus('rw-' + sp[0] + '-' + sp[1] + '-' + sp[2]); saveDraftSoon(); return true;
-      }
+      if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return true; }
       if ((x = t.closest('[data-ty]'))) {
         var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);
         if (k >= 0) ts.splice(k, 1); else ts.push(ty);
@@ -537,7 +539,7 @@
       }
       if ((x = t.closest('[data-radd]'))) {
         var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];
-        rows.push({ d: prev ? prev.d : today(), p: prev ? prev.p : '', t: '' });
+        rows.push(nextRow(prev));
         rerenderPane(); var p = x.dataset.radd.split(':'); refocus('rw-' + p[0] + '-' + p[1] + '-' + (rows.length - 1)); return true;
       }
       if ((x = t.closest('[data-rdel]'))) { var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); saveDraftSoon(); return true; }
@@ -549,7 +551,8 @@
       if (t.dataset.rw) {
         var q = t.dataset.rw.split(':'), r = f.rep[q[0]][q[1]][+q[2]]; if (!r) return;
         r[q[3]] = t.value;
-        if (q[3] === 'd') spreadDate(q.slice(0, 3).join(':'), t.value);
+        if (q[3] === 'd') { spreadDate(q.slice(0, 3).join(':'), t.value); var lb = t.parentNode.querySelector('span'); if (lb) lb.textContent = mdShort(t.value); t.parentNode.title = Rp.md(t.value); }
+        if (q[3] === 'p') t.classList.toggle('on', !!t.value);
         if (q[3] === 't') { autosize(t); renderAssist(); syncSteps(); var ex = App.$('irx-' + q[0] + '-' + q[1] + '-' + q[2]); if (ex && I.focus === q.slice(0, 3).join(':')) ex.innerHTML = extraHtml(I.focus); }
         saveDraftSoon(); return;
       }

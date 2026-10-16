@@ -547,7 +547,7 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:7.6em 5.4em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+.irow{display:grid;grid-template-columns:3.4em 7.4em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
 .irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
 .irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
@@ -601,3 +601,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iq input{flex:1}
 .dg-n.card.u{border-left-style:solid}
 .dg-n.unk .nt{font-size:1.15em}
+/* 日付は「月/日」の文字を見せ、日付の入力は透明にして重ねる（押すと暦が開く） */
+.idate{position:relative;display:flex;align-items:center;justify-content:center;height:2.3em;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:.85rem;cursor:pointer;overflow:hidden}
+.idate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0;cursor:pointer}
+.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
+.irow select.islot.on{border-style:solid;color:var(--ink)}
+.imodes{grid-template-columns:1fr !important}

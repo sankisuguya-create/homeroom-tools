@@ -254,3 +254,12 @@ test('報告書：シートの XML に値を書く（既存のセル・無いセ
   assert.equal(RP.sheetPath(wb, rels, '様式Ⅰ'), 'xl/worksheets/sheet4.xml');
   assert.match(RP.activate(wb, '様式Ⅰ'), /<workbookView xWindow="0" activeTab="1"\/>/);
 });
+
+test('時間帯：授業と授業の間を選べ、足す行は次の時間帯（放課後の次は次の登校日の朝）', () => {
+  const L = RP.slots();
+  assert.ok(L.indexOf('1・2校時の間') === L.indexOf('1校時') + 1 && L.indexOf('2校時') === L.indexOf('1校時') + 2);
+  assert.ok(L.indexOf('2・3校時の間') < 0, '2校時と3校時の間は中休み');
+  assert.deepEqual(RP.nextSlot('2026-10-16', '昼休み'), { d: '2026-10-16', p: L[L.indexOf('昼休み') + 1] });
+  assert.deepEqual(RP.nextSlot('2026-10-16', '放課後'), { d: '2026-10-19', p: '朝休み' }, '金曜の放課後の次は月曜の朝');
+  assert.equal(RP.lines([{ d: '2026-10-16', p: '2校時', t: 'b' }, { d: '2026-10-16', p: '1・2校時の間', t: 'a' }]).split('\n')[0].slice(-1), 'a');
+});
