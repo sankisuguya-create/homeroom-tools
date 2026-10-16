@@ -366,7 +366,11 @@ body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
 /* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
 table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
-table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
+/* 学年・組・番は字の幅に頼らず、箱の幅で縦をそろえる */
+table.h td.gcn .g,table.h td.gcn .sep,table.h td.gcn .no{display:inline-block;text-align:center}
+table.h td.gcn .g{width:.8em}
+table.h td.gcn .sep{width:.6em}
+table.h td.gcn .no{width:1.4em;text-align:right}
 /* 並び順の枠 */
 .ordrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .ordrow>b{min-width:5em}
@@ -1367,7 +1371,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_5377eb24ddb4';
+  var PAGE_BUILD = 'BUILD_238ad4843205';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2177,7 +2181,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       var r = y.rows.filter(function (x) { return x.id === kid; })[0];
       if (!r) return;
       var yl = incsOf(kid, y.fy), n = yl.length, nv = yl.filter(function (x) { return App.isVictim(x, kid); }).length;
-      h += '<tr class="' + (y.fy === curFy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
+      h += '<tr class="' + (y.fy === curFy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + '<span class="g">' + y.grade + '</span><span class="sep">-</span><span class="g">' + (r.cls + 1) + '</span><span class="sep">-</span><span class="no">' + r.no + '</span></td>' +
         C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n ? n + '<small>(' + nv + ')</small>' : '') + '</td></tr>';
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
