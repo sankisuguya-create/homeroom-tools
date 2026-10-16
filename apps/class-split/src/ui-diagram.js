@@ -31,7 +31,8 @@
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
     if (s.unknown) cls += ' unk';
-    if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
+    // カードでない時も、男女の形（女子は左が丸い）と左端の旧学級の色は付ける
+    if (!st.card) return '<div class="' + cls + ' lite ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + App.classColor(r ? r.cls : -1).c + '">' + esc(s.name) + '</div>';
     // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
     var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る

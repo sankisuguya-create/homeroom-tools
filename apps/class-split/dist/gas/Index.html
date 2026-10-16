@@ -620,6 +620,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
 .imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
 .ivic{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.dg-n.lite{border-left:6px solid var(--oc);padding-left:6px}
+.dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
+.dg-n.lite.u{border-left:1.5px dashed var(--ink)}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1775,7 +1778,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_51867b765eae';
+  var PAGE_BUILD = 'BUILD_517cd64e0f63';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2025,7 +2028,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
     if (s.unknown) cls += ' unk';
-    if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
+    // カードでない時も、男女の形（女子は左が丸い）と左端の旧学級の色は付ける
+    if (!st.card) return '<div class="' + cls + ' lite ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + App.classColor(r ? r.cls : -1).c + '">' + esc(s.name) + '</div>';
     // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
     var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る

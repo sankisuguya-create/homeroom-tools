@@ -612,3 +612,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
 .imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
 .ivic{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.dg-n.lite{border-left:6px solid var(--oc);padding-left:6px}
+.dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
+.dg-n.lite.u{border-left:1.5px dashed var(--ink)}
