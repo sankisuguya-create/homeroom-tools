@@ -87,9 +87,10 @@
   };
   // 事案の数と、そのうち被害の側（被害・相互）の数。関係図の役割から数える
   App.isVictim = function (x, id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; };
-  App.incBox = function (n, v, title) {
+  // line：1段（名簿の表）。省くと2段（クラス分けのカード）
+  App.incBox = function (n, v, title, line) {
     if (!n) return '';
-    return '<span class="jn jn2"' + (title ? ' title="' + App.esc(title) + '"' : '') + '><b>' + n + '</b><i>(' + v + ')</i></span>';
+    return '<span class="jn ' + (line ? 'jn1' : 'jn2') + '"' + (title ? ' title="' + App.esc(title) + '"' : '') + '><b>' + n + '</b><i>(' + v + ')</i></span>';
   };
   App.surname = function (name) { return String(name || '').split(/[ 　]/)[0]; };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };

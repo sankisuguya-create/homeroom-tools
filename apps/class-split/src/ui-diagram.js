@@ -31,9 +31,12 @@
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
     if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
-    var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
+    // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
+    var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
+    // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る
+    if (!marks) marks = '<span class="ph" aria-hidden="true">' + App.mark(g.CONFIG.ATTRS[0], 1) + '</span>';
     return '<div class="' + cls + ' card ' + (s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
-      '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + (marks ? '<span class="nm2">' + marks + '</span>' : '') + '</div>';
+      '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
   }
 
   function mount(el, st, onChange) {
