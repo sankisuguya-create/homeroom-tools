@@ -145,6 +145,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await corner(p.locator('td.pr').first());
   ok(await p.locator('.dlg[aria-label="つける・離す"] [data-padd="far"]').count() === 1, `${w}x${h} つける・離すの枠を押すと、その児童の窓が開く`);
   await p.click('[data-padd="far"]');
+  const pq = await p.$('#pq'); await p.keyboard.type('あ');
+  ok(await pq.evaluate(e => e.isConnected && document.activeElement === e), `${w}x${h} 相手の検索欄は打つたびに作り直さない（日本語入力が切れない）`);
   await p.fill('#pq', await p.locator('td.nm').nth(1).evaluate(e => e.lastChild.textContent.slice(0, 2)));
   await p.locator('[data-pfb]:not([data-pfb=""])').first().click();
   await p.fill('#pmemo2', '休み時間に言い合いが続く');

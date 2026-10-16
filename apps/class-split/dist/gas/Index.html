@@ -1351,7 +1351,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_26bb3fbe0190';
+  var PAGE_BUILD = 'BUILD_70f374ea8f71';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1898,8 +1898,8 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
-          '<section><h3>使い方</h3><div class="note">項目のマスをタップ：空→アイコン→＋→空。ア・身・通と備考は内容を書く（自動保存）。<br>' +
-          'つける・離すの列を押すと、その児童を選んで設定の窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
+          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押す：説明・経緯・事案などの窓（自動保存）。<br>' +
+          '事案・つける離す・備考の欄は、どこを押しても窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       noEnter: true,
@@ -2037,12 +2037,16 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
         (incs.length ? '<div class="pinc"><b>添えた事案</b>' + incs.map(function (y) { return '<div>' + incLink(y) + '</div>'; }).join('') + '</div>' : '') +
         (edit ? '<div class="row"><button type="button" class="btn" data-pedit="' + x.i + '">直す</button><button type="button" class="btn danger" data-pdel2="' + x.i + '">この組を消す</button></div>' : '') + '</div>';
     };
-    var form = function () {
+    // 相手の候補：入力欄は描き直さず、候補の欄だけを描き直す（入力欄を作り直すと日本語入力の変換が切れるため）
+    var suggHtml = function () {
       var hit = F.q ? kids.filter(function (k) { var s = d.kids[k]; return k !== id && s && (s.name.indexOf(F.q) >= 0 || s.kana.indexOf(F.q) >= 0); }).slice(0, 8) : [];
+      return hit.map(function (k) { return '<button type="button" data-pfb="' + esc(k) + '">' + esc(d.kids[k].name) + '</button>'; }).join('');
+    };
+    var form = function () {
       var rel = incsFor(F.b ? [id, F.b] : [id]);
       return '<div class="pform"><h3>' + (F.i != null ? '直す' : F.t === 'far' ? '離す相手を足す' : 'つける相手を足す') + '</h3>' +
         (F.b ? '<div class="row"><span class="picked"><span>' + esc(d.kids[F.b].name) + (F.i == null ? '<button type="button" data-pfb="" aria-label="外す">×</button>' : '') + '</span></span></div>' :
-          '<input id="pq" placeholder="名前・よみで探す" autocomplete="off" value="' + esc(F.q || '') + '"><div class="sugg">' + hit.map(function (k) { return '<button type="button" data-pfb="' + esc(k) + '">' + esc(d.kids[k].name) + '</button>'; }).join('') + '</div>') +
+          '<input id="pq" placeholder="名前・よみで探す" autocomplete="off" value="' + esc(F.q || '') + '"><div class="sugg" id="psugg">' + suggHtml() + '</div>') +
         '<label>経緯<textarea id="pmemo2" rows="3" maxlength="1000" placeholder="なぜ離す（つける）のか、これまでの経緯">' + esc(F.memo) + '</textarea></label>' +
         '<div class="ptags">' + C.PAIR_TAGS.map(function (t) { return '<button type="button" class="ptag' + (F.tags.indexOf(t) >= 0 ? ' on' : '') + '" data-ptag="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
         '<label class="chk"><input type="checkbox" id="pincs"' + (F.showInc ? ' checked' : '') + '>関わる事案を見て添える（' + rel.length + '件）</label>' +
@@ -2066,7 +2070,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
       },
       input: function (t) {
         if (!F) return;
-        if (t.id === 'pq') { F.q = t.value.trim(); var v = t.value; App.refreshDlg(); var q = App.$('pq'); if (q) { q.focus(); q.setSelectionRange(v.length, v.length); } }
+        if (t.id === 'pq') { F.q = t.value.trim(); App.$('psugg').innerHTML = suggHtml(); }
         else if (t.id === 'pmemo2') F.memo = t.value;
         else if (t.id === 'pincs') { F.showInc = t.checked; App.refreshDlg(); }
         else if (t.dataset.pinc) { var n = +t.dataset.pinc, k = F.incs.indexOf(n); if (t.checked && k < 0) F.incs.push(n); if (!t.checked && k >= 0) F.incs.splice(k, 1); }
