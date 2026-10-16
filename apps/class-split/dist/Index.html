@@ -388,7 +388,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
 /* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
-.bigs{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+.bigs{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
 .bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
 .bigs .big[data-go="roster"] b{font-size:2rem}
 .bigs .big[data-go="roster"] span{font-size:1rem}
@@ -507,6 +507,133 @@ table.r th.sorth{cursor:pointer;user-select:none}
 table.r th.sorth:hover{background:#e3e8ed}
 table.r th.sorth.on{background:var(--fill)}
 table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
+.setcols{display:flex;gap:28px;flex-wrap:wrap}
+.setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
+.setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+/* ===== 事案管理 ===== */
+
+.iwrap{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;padding:10px 12px 24px;align-items:start}
+.iwrap.lc{grid-template-columns:36px minmax(0,1fr) 280px}
+.iwrap.ac{grid-template-columns:300px minmax(0,1fr) 36px}
+.iwrap.lc.ac{grid-template-columns:36px minmax(0,1fr) 36px}
+.ihead{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:4px}
+.ifold{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--ink);flex:none;padding:0}
+.ifold:hover{border-color:var(--link);color:var(--link)}
+.ib{display:inline-flex;align-items:center;gap:5px}
+.ib svg{flex:none}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+.irow .ix:hover{color:#B00020;border-color:#B00020}
+.dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dg-crop .dg-canvas{border:0;border-radius:0}
+.iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
+.iwrap.ac .iassist{border:0;background:none;padding:0}
+.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
+.iassist .lab{font-size:.78rem;color:var(--sub);margin:6px 0 2px}
+.iph.col{flex-direction:column;align-items:stretch}
+.iph.col button{border-radius:6px;text-align:left;padding:5px 8px;cursor:grab}
+.itypes{display:flex;flex-wrap:wrap;gap:6px}
+.ikids{display:flex;flex-wrap:wrap;gap:6px}
+.ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
+.dg.ro .dg-hint,.dg.ro .dg-bar .lvs,.dg.ro .dg-bar .btn{display:none}
+.dg.ro .dg-canvas{pointer-events:none}
+.ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
+.ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}
+.iit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;cursor:pointer;font:inherit;color:var(--ink)}
+.iit.on{border:2px solid var(--link);padding:5px 7px;background:var(--fill)}
+.iit .d{font-size:.78rem;color:var(--sub)}
+.iit .k{font-size:.82rem}
+.iit .k em{font-style:normal;font-size:.75em;margin-left:2px;color:var(--sub)}
+.iit .bd i{font-style:normal;font-size:.72rem;border:1px solid var(--ink);border-radius:3px;padding:0 4px;margin-right:4px}
+.ipane{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:12px 16px;min-height:300px}
+.ipane h2{margin:0 0 4px}
+.ipane section{margin-top:10px}
+.ipane section h3,.iform h3{margin:12px 0 4px;font-size:1rem}
+.i2h{margin-top:18px;border-top:2px solid var(--line);padding-top:8px}
+.iacts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.iacts .sp{flex:1}
+table.irv{border-collapse:collapse;width:100%}
+table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
+table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
+.irows{display:flex;flex-direction:column;gap:6px}
+.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+.irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
+.irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
+.iaddrow{align-self:flex-start}
+.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
+.irow .ix{padding:2px 8px}
+.irep{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.irep legend{font-weight:700;padding:0 4px}
+.form label.chk,.irep label.chk{flex-direction:row;align-items:center;gap:6px;font-size:.9rem}
+.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px}
+.iopt summary{cursor:pointer;color:var(--sub);font-size:.9rem}
+.dlg.iout{max-width:900px;width:92vw}
+table.icopy{border-collapse:collapse;width:100%;font-size:.88rem}
+table.icopy th,table.icopy td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overflow:auto}
+@media (max-width:900px){.iwrap,.iwrap.lc,.iwrap.ac,.iwrap.lc.ac{grid-template-columns:1fr}.ilist,.iassist{position:static;max-height:40vh}}
+.dlg.iout{max-height:90vh;overflow:auto}
+table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
+.iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
+.iph button:hover{border-color:var(--link)}
+.iph button.nm{border-style:dashed;font-weight:700}
+.ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.dg.ro{max-width:640px}
+.ivlab{writing-mode:vertical-rl;border:0;background:none;color:var(--sub);font:inherit;font-size:.85rem;letter-spacing:.15em;cursor:pointer;padding:8px 0;margin:0 auto}
+.iwrap.lc .ilist,.iwrap.ac .iassist{align-items:center}
+.dg.ro .dg-sum .note{display:none}
+/* 事案の記録の欄：欄ごとの色の帯（右の記入補助の見出しも同じ色）。色だけに頼らず見出しの文字で区別する */
+.isec{--sc:#5B6670;border-left:4px solid var(--sc);padding:2px 0 6px 10px;margin:14px 0 4px}
+.s-s1hk{--sc:#1E6FD9}.s-s1kk{--sc:#C8641A}.s-s1sd{--sc:#2E8A4A}.s-s2sd{--sc:#2E8A4A}.s-s2vi{--sc:#7B3FA0}.s-s2ha{--sc:#B0302A}
+.ish{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.ish b{font-size:1.05rem}
+.ish span{font-size:.85rem;color:var(--sub);font-weight:400}
+.iaw{border-left:4px solid var(--sc,#5B6670)}
+.irow.cur{background:var(--fill);outline:2px solid var(--sc)}
+.irow textarea{resize:none;overflow:hidden;line-height:1.5;min-height:2.3em}
+.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.islot.on{border-style:solid;color:var(--ink)}
+.irx{grid-column:1/-1}
+.irx:empty{display:none}
+.islots{display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 4px}
+.islots button{min-width:2.2em;height:2em;font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);border-radius:5px;cursor:pointer;color:var(--ink)}
+.islots button[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+.isg{margin:2px 0 0}
+.isteps{display:flex;flex-direction:column;gap:2px;margin:0 0 6px;padding:6px 8px;background:var(--soft);border-radius:6px}
+.iph.col button.used{color:var(--sub);background:var(--soft)}
+.idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
+.idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+.iq{display:flex;gap:6px}
+.iq input{flex:1}
+.dg-n.card.u{border-left-style:solid}
+.dg-n.unk .nt{font-size:1.15em}
+/* 日付は「月/日」の文字を見せ、日付の入力は透明にして重ねる（押すと暦が開く） */
+.idate{position:relative;display:flex;align-items:center;justify-content:center;height:2.3em;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:.85rem;cursor:pointer;overflow:hidden}
+.idate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0;cursor:pointer}
+.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
+.irow select.islot.on{border-style:solid;color:var(--ink)}
+.imodes{grid-template-columns:1fr !important}
+.imode{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap}
+.imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
+.imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
+.imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
+.ivic{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.dg-n.lite{border-left:6px solid var(--oc);padding-left:6px}
+.dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
+.dg-n.lite.u{border-left:1.5px dashed var(--ink)}
+.irow .idate,.irow select.islot{height:2.3em;box-sizing:border-box}
+.irow select.islot{padding:0 0 0 2px;font-size:.78rem}
+.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px}
+.inx:hover{color:var(--link);background:var(--fill)}
+.inx svg{width:18px;height:18px}
+.irow .inx:nth-of-type(1){grid-column:1}
+.irx{grid-row:3}
+.irow{row-gap:0}
+.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}
 
 /* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
@@ -619,6 +746,49 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     ],
     AREAS: ['東', '西', '南', '北'],
     INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
+    TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
+    // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
+    // 欄：hk 発覚・kk 経緯・sd 指導・s2sd 指導の経過・vi 被害の様子・ha 加害の様子・kikan 関係機関
+    // 文は各地の教育委員会のいじめ対応の手引き（聴き取りは複数の教員で個別に・食い違いは再確認・双方の保護者への連絡・
+    // 謝罪は被害児童の意向を確かめて・解消は行為が止んで3か月）と、様式Ⅰの記入例をもとにした
+    PHRASES: {
+      hk: ['本人から担任に訴えがあった', '保護者から電話で相談があった', '保護者から連絡帳で訴えがあった', '他の児童から担任に報告があった', '担任が休み時間に現認した', '他の教職員が現認し、担任に伝えた', '生活アンケートの記述から分かった', '教育相談で本人が話した', '養護教諭が保健室で話を聞いて分かった'],
+      kk: ['に悪口を言った', 'をからかった', 'を叩いた', 'を蹴った', 'の持ち物を隠した', 'の持ち物を壊した', 'を仲間外れにした', 'を無視した', 'についてSNSに書き込んだ', 'に金品を要求した', 'に嫌なことをさせた', '以前から同じようなことがあったと話した', '周りの児童も見ていた'],
+      sd: ['複数の教員で、関係する児童から個別に聴き取りをした', '聴き取りの内容を突き合わせ、食い違う点を再度確かめた', 'いじめ対応チームを招集し、対応を協議した', '管理職に報告した', '学年の教員で情報を共有した', '加害児童に、行為の意味と相手の気持ちを考えさせる指導をした', '被害児童に、学校が守ることを伝えた', '被害児童の意向を確かめたうえで、加害児童が謝罪した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた', '家庭でも話をしてもらうよう依頼した', '休み時間の見守りを強めた', '座席や班を配慮した', '今後も見守りを続けることを伝えた'],
+      s2sd: ['被害児童から、その後の様子を聴き取った', '加害児童に、その後の様子を確かめた', 'いじめ対応チームで経過を確かめた', '行為が止んでいることを確かめた', '行為が止んでから3か月、見守りを続けている', '双方の保護者に経過を伝えた', '加害児童に再度指導した'],
+      vi: ['元気に登校している', '学級で落ち着いて過ごしている', '加害児童とも普段どおり関わっている', '心身の苦痛は感じていないと話している', 'まだ不安を感じていると話している', '保護者は学校の対応を了承している', '保護者は今後の見守りを希望している'],
+      ha: ['反省していると話している', '被害児童に謝罪した', '同じことはしないと約束した', 'その後、同じような行為は見られない', '保護者は家庭でも指導したと話している', '保護者が、被害児童の保護者に謝罪の意向を示した'],
+      kikan: ['スクールカウンセラーと面談した', 'スクールソーシャルワーカーと連携した', '子ども家庭センターに相談した', '少年サポートセンターにつないだ', '警察に相談した', '医療機関を受診した', '関係機関との連携はなし']
+    },
+    // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
+    SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
+    // ===== 市教委への報告書（いじめ認知報告書）=====
+    // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
+    FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
+    // いじめの態様（複数選択）。cell は ○ を書くセル
+    MODES: [
+      { t: '冷やかし・からかい・悪口や脅し文句、嫌なことを言われる', cell: 'B22' },
+      { t: '仲間外れ、集団による無視をされる', cell: 'H22' },
+      { t: '軽くぶつかられたり、遊ぶふりをしてたたかれたり、蹴られたりする', cell: 'B23' },
+      { t: 'ひどくぶつかられたりたたかれたり、蹴られたりする', cell: 'H23' },
+      { t: '金品をたかられる', cell: 'B24' },
+      { t: '金品を隠されたり、盗まれたり、壊されたり、捨てられたりする', cell: 'H24' },
+      { t: '嫌なことや恥ずかしいこと、危険なことをされたり、させられたりする', cell: 'B25' },
+      { t: 'パソコンや携帯電話等で、ひぼう・中傷や嫌なことをされる', cell: 'H25' },
+      { t: '性的な嫌がらせや性的な行為をされる', note: '卑猥なことを言われる、身体を触られる、性的な動画・画像を撮影・送信されるなど', cell: 'B26' },
+      { t: 'その他', cell: 'I26' }
+    ],
+    // 様式のシート名と、書くセルの番地。head は3つの様式で共通の頭の部分
+    REPORT: {
+      sheets: { light: '簡易報告書', f1: '様式Ⅰ', f2: '様式Ⅱ' },
+      names: { light: '簡易報告書', f1: '様式Ⅰ', f2: '様式Ⅱ' },
+      head: { school: 'B4', era: 'C5', month: 'E5', day: 'G5', wday: 'I5', victim: 6 }, // victim：被害の児童の行（学年B・組D・性別G・ふりがなI、名前は次の行のI）
+      harmRows: [8, 10, 12, 14, 16, 18], harmMore: 'B20', // 加害の児童（簡易・様式Ⅰ）。7人目からは人数だけ
+      found: 'B21', modeOther: 'K26',
+      f1: { gaiyou: 'B27' },
+      f2: { shido: 'B8', victim: 'B26', harm: 'B32', kikan: 'B38' }
+    },
     TEACHER_DOMAIN: 'edu.nishi.or.jp'
   };
 
@@ -985,6 +1155,8 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
   // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
   var DG_W = 640, DG_H = 320;
+  // 誰か分からない児童（加害者が不明など）：関係図にだけ置く「？」のカード。id は ? で始まり、名簿の児童には結び付けない
+  function isUnknown(id) { return String(id).charAt(0) === '?'; }
   function normDiagram(d) {
     d = d || {};
     var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
@@ -1052,10 +1224,197 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/engine.js ここまで ▲ */
+/* ▼ src/report.js から。直すのは src のほう ▼ */
+// 市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）を作る計算。画面（コピペ用の表）とサーバー（Excelの書き換え）が同じものを使う。
+// 事案の report の形：{ light, found, modes:[10], other, s1:{ hk, kk, sd }, s2:{ sd, vi, ha, kikan } }
+//   hk・kk・sd・vi・ha は記録の行の並び [{ d:'YYYY-MM-DD', p:'時間帯', t:'本文' }]
+(function (g) {
+  'use strict';
+  var C = g.CONFIG;
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  var SECTIONS = { hk: '発覚', kk: '経緯', sd: '指導' };
+  var SECTIONS2 = { sd: '指導の経過', vi: '被害児童・保護者の様子', ha: '加害児童・保護者の様子' };
+
+  function emptyReport() {
+    return { light: false, found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
+  }
+  function norm(r) {
+    var e = emptyReport(); r = r || {};
+    var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
+    e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
+    e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
+    ['hk', 'kk', 'sd'].forEach(function (k) { e.s1[k] = rows(r.s1 && r.s1[k]); });
+    ['sd', 'vi', 'ha'].forEach(function (k) { e.s2[k] = rows(r.s2 && r.s2[k]); });
+    e.s2.kikan = String(r.s2 && r.s2.kikan || '');
+    // 被害の児童が複数の時：様式Ⅱの「被害児童・保護者の様子」は児童ごと（id → 行）
+    Object.keys(r.s2v || {}).forEach(function (id) { var a = rows(r.s2v[id]); if (a.length) e.s2v[id] = a; });
+    return e;
+  }
+  function dateParts(iso) {
+    var p = String(iso || '').split('-'), y = +p[0], m = +p[1], d = +p[2];
+    if (!y || !m || !d) return null;
+    return { y: y, m: m, d: d, w: WD[new Date(y, m - 1, d).getDay()] };
+  }
+  function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
+  // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
+  // 選べる時間帯：設定の時程に、続いた2つの授業の間を「N校時後」として足す（例：1校時と2校時の間＝1校時後）
+  function slots() {
+    var b = C.TIME_SLOTS, out = [];
+    b.forEach(function (p, i) {
+      out.push(p);
+      var a = /^(\d+)校時$/.exec(p), n = b[i + 1] && /^(\d+)校時$/.exec(b[i + 1]);
+      if (a && n) out.push(a[1] + '校時後');
+    });
+    return out;
+  }
+  // 次の行の既定：同じ日の次の時間帯。最後（放課後）の次は、次の登校日（土日を飛ばす）の最初の時間帯
+  function addDays(d, n) {
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return d;
+    t.setDate(t.getDate() + n);
+    return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+  }
+  function nextSlot(d, p) {
+    var L = slots(), i = L.indexOf(p);
+    if (i < 0 || i < L.length - 1) return { d: d, p: i < 0 ? p : L[i + 1] };
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return { d: d, p: L[0] };
+    do { t.setDate(t.getDate() + 1); } while (t.getDay() === 0 || t.getDay() === 6);
+    return { d: t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2), p: L[0] };
+  }
+  function lines(rows) {
+    var L = slots(), slot = function (p) { var i = L.indexOf(p); return i < 0 ? 99 : i; };
+    return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
+      return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
+    }).reduce(function (acc, o) {
+      // 同じ日の行は1行につなぎ、日付が変わったら改行する。日付は行の初めにだけ書く
+      var t = tidy(o.x.t); if (!t) return acc;
+      var last = acc[acc.length - 1], head = (o.x.p ? o.x.p + '、' : '');
+      if (last && last.d === o.x.d) last.s += head + t;
+      else acc.push({ d: o.x.d, s: md(o.x.d) + (head || (o.x.d ? '、' : '')) + t });
+      return acc;
+    }, []).map(function (g) { return g.s; }).join('\n');
+  }
+  // 文を整える：空の行と句点の後の空白を消し、終わりに句点が無ければ足す
+  function tidy(t) {
+    t = String(t || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).join('\n');
+    t = t.replace(/。[ 　\t]+/g, '。');
+    if (t && !/[。！？!?」）)]$/.test(t)) t += '。';
+    return t;
+  }
+  function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
+
+  // その様式に書く値：{ 'B4': '高木北小', ... }
+  // kid(id) → { grade, cls(1から), male, name, kana }。victim は被害の児童の id、harms は加害の児童の id の並び
+  function cells(kind, inc, o) {
+    var R = C.REPORT, H = R.head, rep = norm(inc.report), out = {};
+    var put = function (ref, v) { if (v !== '' && v != null) out[ref] = v; };
+    put(H.school, o.school || '');
+    var dp = dateParts(inc.date);
+    if (dp) { var era = dp.y - 2018; put(H.era, era === 1 ? '元' : era); put(H.month, dp.m); put(H.day, dp.d); put(H.wday, '(' + dp.w + ')'); }
+    var kidRow = function (row, id) {
+      var k = o.kid(id); if (!k) return;
+      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), k.name);
+    };
+    if (o.victim) kidRow(H.victim, o.victim);
+    if (kind === 'f2') {
+      put(R.f2.shido, lines(rep.s2.sd));
+      var vi = o.victim && rep.s2v[o.victim] ? rep.s2v[o.victim] : rep.s2.vi;
+      if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
+      if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
+      put(R.f2.kikan, rep.s2.kikan);
+      return out;
+    }
+    var harms = o.harms || [];
+    harms.slice(0, R.harmRows.length).forEach(function (id, i) { kidRow(R.harmRows[i], id); });
+    var more = harms.slice(R.harmRows.length);
+    if (more.length) {
+      var m = more.filter(function (id) { var k = o.kid(id); return k && k.male; }).length;
+      put(R.harmMore, '※その他に男子（　' + m + '　）名、女子（　' + (more.length - m) + '　）名　　　　全体計（　' + harms.length + '　）名');
+    }
+    put(R.found, rep.found);
+    C.MODES.forEach(function (md0, i) { if (rep.modes[i]) put(md0.cell, '○'); });
+    if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
+    // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
+    if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
+    return out;
+  }
+  // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
+  function allowedCells(kind) {
+    var R = C.REPORT, H = R.head, a = [H.school, H.era, H.month, H.day, H.wday], row = function (r) { a.push('B' + r, 'D' + r, 'G' + r, 'I' + r, 'I' + (r + 1)); };
+    row(H.victim);
+    if (kind === 'f2') { a.push(R.f2.shido, R.f2.victim, R.f2.harm, R.f2.kikan); return a; }
+    R.harmRows.forEach(row);
+    a.push(R.harmMore, R.found, R.modeOther);
+    C.MODES.forEach(function (m) { a.push(m.cell); });
+    if (kind === 'f1') a.push(R.f1.gaiyou);
+    return a;
+  }
+
+  // ===== xlsx のシートの XML に値を書く（罫線・結合・入力規則はそのまま） =====
+  function xesc(s) { return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\r?\n/g, '&#10;'); } // 改行は文字参照にする（そのままの改行を捨てる表計算ソフトがある）
+  function colNum(c) { var n = 0; for (var i = 0; i < c.length; i++) n = n * 26 + c.charCodeAt(i) - 64; return n; }
+  function cellXml(ref, attrs, v) {
+    attrs = (attrs || '').replace(/\s+t="[^"]*"/, '');
+    if (typeof v === 'number') return '<c r="' + ref + '"' + attrs + '><v>' + v + '</v></c>';
+    return '<c r="' + ref + '"' + attrs + ' t="inlineStr"><is><t xml:space="preserve">' + xesc(v) + '</t></is></c>';
+  }
+  function setCell(xml, ref, v) {
+    var cr = colRow(ref); if (!cr) return xml;
+    var re = new RegExp('<c r="' + ref + '"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)');
+    if (re.test(xml)) return xml.replace(re, function (_, attrs) { return cellXml(ref, attrs, v); });
+    var rowRe = new RegExp('<row r="' + cr.r + '"([^>]*?)(/>|>([\\s\\S]*?)</row>)');
+    var nc = cellXml(ref, '', v);
+    if (rowRe.test(xml)) {
+      return xml.replace(rowRe, function (_, attrs, end, body) {
+        body = end === '/>' ? '' : body;
+        var cells = body.match(/<c r="[A-Z]+\d+"[\s\S]*?(?:\/>|<\/c>)/g) || [], placed = false, outB = '';
+        cells.forEach(function (c) {
+          var r2 = /<c r="([A-Z]+)\d+"/.exec(c)[1];
+          if (!placed && colNum(r2) > colNum(cr.c)) { outB += nc; placed = true; }
+          outB += c;
+        });
+        if (!placed) outB += nc;
+        return '<row r="' + cr.r + '"' + attrs + '>' + outB + '</row>';
+      });
+    }
+    // 行が無い：番号の順に差し込む
+    var rows = xml.match(/<row r="(\d+)"/g) || [], at = -1;
+    for (var i = 0; i < rows.length; i++) { if (+/\d+/.exec(rows[i])[0] > cr.r) { at = xml.indexOf(rows[i]); break; } }
+    var nr = '<row r="' + cr.r + '">' + nc + '</row>';
+    if (at >= 0) return xml.slice(0, at) + nr + xml.slice(at);
+    if (/<sheetData\s*\/>/.test(xml)) return xml.replace(/<sheetData\s*\/>/, '<sheetData>' + nr + '</sheetData>');
+    return xml.replace('</sheetData>', nr + '</sheetData>');
+  }
+  function fillSheet(xml, values) {
+    Object.keys(values).forEach(function (ref) { xml = setCell(xml, ref, values[ref]); });
+    return xml;
+  }
+  // workbook.xml と その rels から、シート名 → シートのファイルの道筋
+  function sheetPath(workbookXml, relsXml, name) {
+    var m = new RegExp('<sheet\\b[^>]*name="' + xesc(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"[^>]*/>').exec(workbookXml);
+    if (!m) return '';
+    var rid = /r:id="([^"]+)"/.exec(m[0]); if (!rid) return '';
+    var rel = new RegExp('<Relationship\\b[^>]*Id="' + rid[1] + '"[^>]*/>').exec(relsXml); if (!rel) return '';
+    var tgt = /Target="([^"]+)"/.exec(rel[0])[1];
+    return tgt.charAt(0) === '/' ? tgt.slice(1) : 'xl/' + tgt;
+  }
+  // 開いた時にそのシートを出す
+  function activate(workbookXml, name) {
+    var names = (workbookXml.match(/<sheet\b[^>]*\/>/g) || []).map(function (s) { return (/name="([^"]*)"/.exec(s) || [])[1]; });
+    var i = names.indexOf(xesc(name)); if (i < 0) return workbookXml;
+    return workbookXml.replace(/<workbookView\b([^>]*?)\/>/, function (_, a) { a = a.replace(/\s+(activeTab|firstSheet)="\d+"/g, ''); return '<workbookView' + a + ' activeTab="' + i + '"/>'; });
+  }
+  function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
+
+  g.Report = { addDays: addDays, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+    setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/report.js ここまで ▲ */
 /* ▼ src/paste.js から。直すのは src のほう ▼ */
 // 名簿の貼り付けを読む（画面に依存しない。tests/paste.test.mjs が直接読む）。
 // スプレッドシートからのコピーはタブ区切り。見出しの行があれば名前で列を決め、無ければ値の形から推定する。
@@ -1188,6 +1547,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       // ア・身・通の内容の見本
       var NOTE = { k5: ['卵', '小麦・そば', 'ピーナッツ。エピペンあり', '乳製品', ''], k6: ['右耳が聞こえにくい。前の席', 'ぜんそく', '視力が弱い。前の席', ''], k10: ['週1回 ことばの教室', '週2回 通級（LD）', '支援員が国語に入る', ''] };
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
+      var R2 = E.rngOf(7000 + grade), pick2 = function (a) { return a[Math.floor(R2() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
       var nc = grade === 3 ? 3 : grade === 7 ? 2 : 4, n = nc === 3 ? 103 : grade === 7 ? 24 : grade === 5 ? 144 : 138, ny = Math.min(grade, 6), entry = FY - grade + 1, ids = [], base = {};
       for (var i = 0; i < n; i++) {
@@ -1226,9 +1586,25 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
         if (R() < .12) { var o2 = pick(ids); if (kids.indexOf(o2) < 0) kids.push(o2); }
         var date = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2), dateEnd = '';
         if (R() < .2) { var d2 = new Date(yr, mo - 1, day + 2 + Math.floor(R() * 10)); dateEnd = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2); }
-        var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: pick(C.INCIDENT_TYPES), title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: '#demo-' + S.nextInc, ids: kids, diagram: demoDiagram(kids) });
+        // 種別はときどき2つ（いじめ・物損 など）。いじめには報告書の項目と、発覚・経緯・指導の記録を付ける
+        // 記録の見本は別の乱数で作る（名簿・事案の数など、ほかの見本の並びを変えないため）
+        var type = pick(C.INCIDENT_TYPES); if (type === 'いじめ' && R2() < .25) type = 'いじめ・物損';
+        var dg = demoDiagram(kids, R2);
+        // 加害者が分からないいじめ（「？」のカード）
+        if (/いじめ/.test(type) && kids.length === 1 && R2() < .5) dg = { nodes: [{ id: '?1', x: 100, y: 110 }, { id: kids[0], x: 330, y: 110 }], groups: [], edges: [{ f: 'k:?1', t: 'k:' + kids[0] }] };
+        var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: type, title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: R2() < .4 ? '#demo-' + S.nextInc : '', ids: kids, diagram: dg,
+          report: demoReport(type, date, dg, R2, pick2) });
         x.id = S.nextInc++; incFy[x.id] = fyI;
         S.inc.push(x);
+      }
+      // どの学年にも、被害の児童が2人のいじめを1件（様式を児童ごとに作る見本）。今年度の最近の日付
+      if (grade <= 6) {
+        var t3 = [ids[3], ids[7], ids[11]], nowD = new Date(), dd = new Date(nowD.getFullYear(), nowD.getMonth(), Math.max(1, nowD.getDate() - 5));
+        var iso3 = dd.getFullYear() + '-' + ('0' + (dd.getMonth() + 1)).slice(-2) + '-' + ('0' + dd.getDate()).slice(-2);
+        var dg3 = { nodes: t3.map(function (id, i) { return { id: id, x: 110 + i * 200, y: 110 + (i % 2) * 70 }; }), groups: [], edges: [{ f: 'k:' + t3[0], t: 'k:' + t3[1] }, { f: 'k:' + t3[0], t: 'k:' + t3[2] }] };
+        var rp3 = demoReport('いじめ', iso3, dg3, function () { return .2; }, pick2);
+        var x3 = demoIncident({ date: iso3, type: 'いじめ', title: '', url: '', ids: t3, diagram: dg3, report: rp3 });
+        x3.id = S.nextInc++; incFy[x3.id] = FY; S.inc.push(x3);
       }
       // 学・欠・問・保：経緯の文と、その年度までの本人の事案の紐付け（問は事案があれば紐付ける）
       var incBy = {};
@@ -1270,7 +1646,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     S.settings = (function () {
       var attrs = {};
       C.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT };
+      return { attrs: attrs, types: C.INCIDENT_TYPES.slice(), teachers: [{ email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 1 }], keepYears: C.KEEP_YEARS_DEFAULT, slots: C.TIME_SLOTS.slice(), school: '（見本）○○小', template: '' };
     })();
   }
 
@@ -1278,15 +1654,46 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
-    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !E.isUnknown(id); }) : (x.ids || []).slice(), roles: dg ? (function (all) { var o = {}; Object.keys(all).forEach(function (id) { if (!E.isUnknown(id)) o[id] = all[id]; }); return o; })(E.diagramRoles(dg)) : {}, diagram: dg };
   }
   // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
-  function demoDiagram(ids) {
+  function demoDiagram(ids, R) {
     if (ids.length < 2) return null;
     var nodes = ids.map(function (id, i) { return { id: id, x: 120 + i * 200, y: 120 + (i % 2) * 80 }; });
+    // 3人：半分は「1人が2人に」（被害の児童が2人＝様式は2つ）、残りは2人をまとまりにする
+    if (ids.length === 3 && R && R() < .5) return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }, { f: 'k:' + ids[0], t: 'k:' + ids[2] }] };
     if (ids.length === 3) return { nodes: nodes, groups: [{ g: 'A', members: [ids[1], ids[2]] }], edges: [{ f: 'k:' + ids[0], t: 'g:A' }] };
     return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }] };
   }
+  // 事案の記録の見本：定型文と時間帯で、発覚→経緯→指導の行を作る。いじめには発見のきっかけ・態様、半分に様式Ⅱ用の追記
+  function demoReport(type, date, dg, R, pick) {
+    var Rp = g.Report, rp = Rp.emptyReport(), L = Rp.slots(), si = Math.floor(R() * 8), d = date;
+    var row = function (t) { var r = { d: d, p: L[si % L.length], t: t }; var n = Rp.nextSlot(d, r.p); si = L.indexOf(n.p); d = n.d; return r; };
+    var P = C.PHRASES, names = dg ? dg.nodes.filter(function (n) { return !E.isUnknown(n.id); }).map(function (n) { return S.kids[n.id] ? S.kids[n.id].name : ''; }) : [];
+    var lead = dg && dg.edges.length ? (function (e) {
+      var nm = function (end) { var q = end.split(':'); if (q[0] === 'g') return dg.groups.filter(function (x) { return x.g === q[1]; })[0].members.map(function (id) { return S.kids[id].name; }).join('・'); return E.isUnknown(q[1]) ? '（不明の児童）' : S.kids[q[1]].name; };
+      return nm(e.f) + 'が' + nm(e.t);
+    })(dg.edges[0]) : (names[0] || '') + 'が';
+    rp.s1.hk.push(row(pick(P.hk)));
+    rp.s1.kk.push(row(lead + pick(P.kk.slice(0, 11))));
+    if (R() < .5) rp.s1.kk.push(row(pick(P.kk.slice(11))));
+    rp.s1.sd.push(row(C.SD_STEPS[0]));
+    rp.s1.sd.push(row(C.SD_STEPS[1]));
+    rp.s1.sd.push(row(R() < .7 ? C.SD_STEPS[3] : pick(P.sd)));
+    if (/いじめ/.test(type)) {
+      rp.found = pick(C.FOUND_LIST);
+      rp.modes[Math.floor(R() * 8)] = true; if (R() < .3) rp.modes[Math.floor(R() * 8)] = true;
+      if (R() < .5) {
+        d = Rp.addDays(date, 7 + Math.floor(R() * 14)); si = 1;
+        rp.s2.sd.push(row(pick(P.s2sd))); rp.s2.ha.push(row(pick(P.ha)));
+        var vic = dg ? Object.keys(E.diagramRoles(dg)).filter(function (id) { var r = E.diagramRoles(dg)[id]; return !E.isUnknown(id) && (r === 'victim' || r === 'mutual'); }) : [];
+        if (vic.length > 1) vic.forEach(function (id) { rp.s2v[id] = [row(pick(P.vi))]; }); else rp.s2.vi.push(row(pick(P.vi)));
+        rp.s2.kikan = pick(P.kikan);
+      }
+    }
+    return rp;
+  }
+  function E_REPORT() { return g.Report; }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
 
@@ -1378,6 +1785,10 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       Object.assign(cur, v);
       return later(clone(cur));
     },
+    saveDraft: function (grade, d) { S.drafts = S.drafts || {}; S.drafts[grade] = d ? { at: new Date().toISOString(), draft: clone(d) } : null; return later({ ok: true }); },
+    loadDraft: function (grade) { return later((S.drafts || {})[grade] || null); },
+    // 試行では様式のファイルが無いので Excel は作れない（コピペ用の表は使える）
+    exportReport: function () { return Promise.reject(Object.assign(new Error('試行では Excel を作れません。下の表からコピーしてください'), { noRetry: true })); },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
@@ -1618,7 +2029,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   var MODES = [['move', '動かす'], ['arrow', '矢印（加害）'], ['group', 'グループ'], ['del', '消す']];
 
   function data() { return App.st.data; }
-  function kidOf(id) { return data().kids[id] || { name: id }; }
+  function kidOf(id) { return E.isUnknown(id) ? { name: E.UNKNOWN_NAME, unknown: true } : data().kids[id] || { name: id }; }
   function rowOf(id) {
     var d = data(), y = d.years.filter(function (x) { return x.fy === d.fy; })[0];
     return y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
@@ -1641,12 +2052,14 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function nodeHtml(st, n) {
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
-    if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
+    if (s.unknown) cls += ' unk';
+    // カードでない時も、男女の形（女子は左が丸い）と左端の旧学級の色は付ける
+    if (!st.card) return '<div class="' + cls + ' lite ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + App.classColor(r ? r.cls : -1).c + '">' + esc(s.name) + '</div>';
     // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
     var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る
     if (!marks) marks = '<span class="ph" aria-hidden="true">' + App.mark(g.CONFIG.ATTRS[0], 1) + '</span>';
-    return '<div class="' + cls + ' card ' + (s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
+    return '<div class="' + cls + ' card ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
       '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
   }
 
@@ -1762,7 +2175,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-diagram.js ここまで ▲ */
 /* ▼ src/ui-menu.js から。直すのは src のほう ▼ */
-// メニュー：学年を選び、「名簿を見る」か「クラス分けをする」を選ぶ。
+// メニュー：学年を選び、「名簿を見る」「事案管理」「クラス分けをする」を選ぶ。
 (function (g) {
   'use strict';
   var App = g.App;
@@ -1774,10 +2187,11 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
           return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + x.grade + '年<small>' + x.count + '人・' + x.classes + '学級' + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +
         '<section><h2>' + st.grade + '年で何をしますか</h2><div class="bigs">' +
-        '<button class="big" data-go="roster"><b>名簿を見る</b><span>今年度と過去の年度の学級名簿。配慮項目の入力、事案の登録と一覧、児童ごとの経年の記録。</span></button>' +
+        '<button class="big" data-go="roster"><b>名簿を見る</b><span>今年度と過去の年度の学級名簿。配慮項目の入力、児童ごとの経年の記録。</span></button>' +
+        '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>' +
         (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
-        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案の種別・年度替わり）</button></section></div>';
+        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案と報告書・年度替わり）</button></section></div>';
     },
     click: function (t) {
       var gb = t.closest('[data-g]');
@@ -2179,7 +2593,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function kidPop() {
     var d = D();
     if (!R.kid || !d.kids[R.kid]) { if (App.dlg && App.dlg.kid) App.closeDlg(); return; }
-    if (App.dlg && App.dlg.kid) { App.refreshDlg(); mountDg(); return; }
+    if (App.dlg && App.dlg.kid) { App.refreshDlg(); return; }
     if (App.dlg) return; // ほかの枠が開いている間は出さない
     App.openDlg({
       kid: true,
@@ -2188,12 +2602,6 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       input: function (t) { App.screens.roster.input(t); },
       onClose: function () { R.kid = null; R.form = null; render(); }
     });
-    mountDg();
-  }
-  // 関係図は自分の枠だけ描き直す（窓全体を描き直すと入力中の文字が切れるため）
-  function mountDg() {
-    var el = App.$('fDg');
-    if (el && R.form) App.Diagram.mount(el, R.form.dg, function (st) { R.form.dg = st; });
   }
 
   function pane() { return recordHtml(R.kid, R.fy, true); }
@@ -2215,14 +2623,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
     var list = incsOf(kid).sort(function (a, b) { return b.date < a.date ? -1 : 1; });
     h += '<section><h3>事案（全' + list.length + '件）' + (canAdd && !R.form ? '<button class="btn primary" id="addInc">＋事案を登録</button>' : '') + '</h3>';
-    if (canAdd && R.form) h += form();
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];
       var role = x.roles && x.roles[kid];
-      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + App.span(x) + '・' + esc(x.type) +
+      return '<div class="it">' + (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a>' : '<b>' + esc(x.title || x.type + 'の事案') + '</b>') + '<span class="meta">' + App.span(x) + '・' + esc(x.type) +
         (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' + (x.detail ? '<div class="dt">' + esc(x.detail) + '</div>' : '') +
-        (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">関係図・直す</button>' : '') + '</div>';
+        (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">事案管理で開く</button>' : '') + '</div>';
     }).join('') || '<div class="note">事案はありません</div>') + '</div></section></aside>';
     return h;
   }
@@ -2231,36 +2638,6 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     if (!D().kids[kid]) return;
     App.openDlg({ html: function () { return '<div class="pop" data-close="1">' + recordHtml(kid, D().fy, false) + '</div>'; } });
   };
-
-  function form() {
-    var f = R.form, d = D(), esc = App.esc;
-    var today = new Date(), iso = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
-    f.date = f.date || iso;
-    return '<form class="form" id="incForm">' +
-      '<label>文書のURL<input id="fUrl" value="' + esc(f.url || '') + '" placeholder="docs.google.com/… を貼る" required></label>' +
-      '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
-      '<label>関係する児童と関係図（矢印＝加害）</label>' +
-      '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="見たこと・聞いたこと・したことを、日時とともに事実で書きます">' + esc(f.detail || '') + '</textarea></label>' +
-      '<div class="note">保護者から開示を求められることがある記録です。事実を書き、推測や人柄の評価は書きません。卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は残ります。</div>' +
-      '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
-      '<div class="row"><label>種別<select id="fType">' +
-      C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
-      '<div class="note">文書の名前に児童の氏名を入れないでください（一覧は全教員が見られます）</div>' +
-      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
-  }
-
-  // 候補だけを描き直す（入力欄を作り直すと日本語入力の変換が切れるため）
-  function suggHtml(q) {
-    var d = D(), f = R.form, esc = App.esc;
-    q = (q || '').trim();
-    if (!q) return '';
-    var items = yearOf(d.fy).rows.filter(function (r) {
-      var s = d.kids[r.id];
-      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 8);
-    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
-  }
 
   // ===== 名簿を貼る =====
   // 既存の名簿の範囲をコピーして貼る。見出しで列を読み、読めた結果と誤りをその場で見せてから取り込む
@@ -2359,52 +2736,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
       if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
       if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
-      if (t.closest('#addInc')) { var st0 = App.Diagram.state(null); App.Diagram.add(st0, R.kid); R.form = { dg: st0 }; render(); refocus('fUrl'); return true; }
-      if ((x = t.closest('[data-editinc]'))) {
-        var inc = d.incidents.filter(function (y) { return y.id === +x.dataset.editinc; })[0];
-        if (!inc) return true;
-        var st1 = App.Diagram.state(inc.diagram);
-        if (!inc.diagram) inc.ids.forEach(function (id) { App.Diagram.add(st1, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
-        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, dateEnd: inc.dateEnd || '', detail: inc.detail || '', type: inc.type, dg: st1 }; render(); return true;
-      }
-      if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
-      if ((x = t.closest('[data-pick]'))) { App.Diagram.add(R.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
+      // 事案の登録・直すは事案管理の画面で行う（開いていた児童を入れておく）
+      if (t.closest('#addInc')) { App.st.incFocus = { add: true, kid: R.kid }; App.go('incidents'); return true; }
+      if ((x = t.closest('[data-editinc]'))) { App.st.incFocus = { sel: +x.dataset.editinc }; App.go('incidents'); return true; }
       return false;
     },
     input: function (t) {
       if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
-      if (!R.form) return;
-      if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
-      else if (t.id === 'fTitle') R.form.title = t.value;
-      else if (t.id === 'fDate') { R.form.date = t.value; var fe = App.$('fDateEnd'); if (fe) fe.min = t.value; }
-      else if (t.id === 'fDateEnd') R.form.dateEnd = t.value;
-      else if (t.id === 'fDetail') R.form.detail = t.value;
-      else if (t.id === 'fType') R.form.type = t.value;
-      else if (t.id === 'fUrl') {
-        R.form.url = t.value;
-        var url = t.value;
-        clearTimeout(R.form.timer);
-        R.form.timer = setTimeout(function () {
-          App.pf().fetchTitle(url).then(function (r) {
-            if (!R.form || R.form.url !== url) return;
-            if (r.title) { R.form.title = r.title; R.form.titleMsg = '自動で取得しました'; }
-            else R.form.titleMsg = '取得できませんでした。名前を入力してください';
-            render(); refocus(r.title ? 'fType' : 'fTitle');
-          });
-        }, 400);
-      }
-    },
-    submit: function (f) {
-      if (f.id !== 'incForm') return;
-      var x = R.form, dg = x.dg.d;
-      if (!dg.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
-      if (x.dateEnd && x.dateEnd < x.date) { App.toast('終わりの日は始まりの日より後にしてください'); return; }
-      var body = { url: x.url, title: x.title || '', date: x.date, dateEnd: x.dateEnd || '', detail: x.detail || '', type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
-      App.save(function () { return x.edit ? App.pf().updateIncident(x.edit, body) : App.pf().addIncident(body); }).then(function (inc) {
-        var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
-        if (i >= 0) list[i] = inc; else list.push(inc);
-        R.form = null; render(); App.toast(x.edit ? '事案を直しました' : '事案を登録しました');
-      });
     },
     key: function (e) {
       if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }
@@ -2413,6 +2751,655 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-roster.js ここまで ▲ */
+/* ▼ src/ui-incidents.js から。直すのは src のほう ▼ */
+// 事案管理：学年の事案の一覧・登録と直す・様式Ⅱ用の追記・市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）の出力。
+// 記録は「発覚・経緯・指導」の欄に、行ごとに［日付・時間帯・本文］で書く。報告書の時系列の欄は、この行から作る。
+(function (g) {
+  'use strict';
+  var App = g.App, C = g.CONFIG, E = g.Engine, Rp = g.Report;
+  // sel：選んだ事案の id。mode：'view' | 'form'（登録・直す） | 'add2'（様式Ⅱ用の追記）
+  var I = { sel: null, mode: 'view', form: null, focus: null };
+  // 左の一覧と右の記入補助は畳める（この端末に覚える）
+  var FOLD = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incFold') || '{}'); } catch (e) { return {}; } })();
+  function saveFold() { try { localStorage.setItem('classSplit.incFold', JSON.stringify(FOLD)); } catch (e) { /* 覚えられなくても今は効く */ } }
+
+  // 画面のアイコン（線の絵。色は文字の色を使う）
+  var SVG = function (body) { return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>'; };
+  var IC = {
+    // 枠と左（右）の帯。矢印は畳む向き
+    listClose: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M16 9l-3 3 3 3"/>'),
+    listOpen: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M13 9l3 3-3 3"/>'),
+    asClose: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="M8 9l3 3-3 3"/>'),
+    asOpen: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="M11 9l-3 3 3 3"/>'),
+    plus: SVG('<path d="M12 5v14M5 12h14"/>'),
+    trash: SVG('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'),
+    edit: SVG('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13 7l4 4"/>'),
+    addNote: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M12.5 11v6M9.5 14h6"/>'),
+    file: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 13h7M9 17h5"/>'),
+    down2: SVG('<path d="M7 6l5 5 5-5"/><path d="M7 13l5 5 5-5"/>'),
+    help: SVG('<path d="M4 6h10M4 10h7M4 14h6"/><path d="M14 20l1-4 6-6-3-3-6 6-1 4z"/>')
+  };
+  function D() { return App.st.data; }
+  function esc(s) { return App.esc(s); }
+  function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
+  function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0]; }
+  function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }
+  function today() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+  // 種別は複数選べる（「いじめ・物損」のように「・」でつないで持つ）
+  function typesOf(type) { return String(type || '').split('・').filter(Boolean); }
+  function isBully(type) { return typesOf(type).indexOf('いじめ') >= 0 || /いじめ/.test(String(type || '')); }
+  function onlyDamage(type) { var t = typesOf(type); return t.length === 1 && t[0] === '物損'; }
+  function titleOf(x) { return x.title || (x.type + 'の事案'); }
+  function refocus(id) { var el = App.$(id); if (el) { el.focus(); if (el.setSelectionRange && el.type !== 'date') { var n = el.value.length; el.setSelectionRange(n, n); } } }
+
+  // その事案の日の学年・組（その年度の名簿から。無ければ今年度）
+  function kidAt(id, iso) {
+    var d = D(), s = d.kids[id]; if (!s) return null;
+    var fy = C.fiscalYearOfIso(iso || today()), y = yearOf(fy) || yearOf(d.fy), r = y && y.rows.filter(function (x) { return x.id === id; })[0];
+    if (!r) { y = yearOf(d.fy); r = y && y.rows.filter(function (x) { return x.id === id; })[0]; }
+    return { grade: y ? y.grade : '', cls: r ? r.cls + 1 : '', male: s.male, name: s.name, kana: s.kana };
+  }
+  function victimsOf(x) {
+    var v = x.ids.filter(function (id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; });
+    return v.length ? v : x.ids.slice();
+  }
+  // 矢印で被害の側に決まった児童（2人以上なら、様式Ⅱの「被害児童・保護者の様子」と Excel を児童ごとに分ける）
+  function realVictims(x) { return x.ids.filter(function (id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; }); }
+  function harmsOf(x, victim) {
+    // 矢印が1本も無い（加害・被害が決まっていない）時は、被害の児童以外を加害の側として並べる
+    var anyRole = x.ids.some(function (id) { var r = x.roles && x.roles[id]; return r === 'harm' || r === 'victim' || r === 'mutual'; });
+    return x.ids.filter(function (id) {
+      if (id === victim) return false;
+      var r = x.roles && x.roles[id];
+      return anyRole ? r === 'harm' || r === 'mutual' : true;
+    });
+  }
+
+  // ===== 描く =====
+  function render() {
+    var d = D(), list = d.incidents.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; });
+    var h = '<div class="iwrap' + (FOLD.list ? ' lc' : '') + (FOLD.assist ? ' ac' : '') + '"><div class="ilist">';
+    if (FOLD.list) h += '<button class="ifold" id="ilistT" title="事案の一覧を開く" aria-label="事案の一覧を開く">' + IC.listOpen + '</button><button class="ivlab" id="ilistT2" tabindex="-1">事案の一覧</button>';
+    else {
+      h += '<div class="ihead"><button class="btn primary ib" id="iadd">' + IC.plus + '事案を登録</button><button class="ifold" id="ilistT" title="事案の一覧を畳む" aria-label="事案の一覧を畳む">' + IC.listClose + '</button></div><div class="note">' + d.grade + '年の児童が関わる事案（' + list.length + '件）</div>';
+      var lastFy = null;
+      list.forEach(function (x) {
+        var fy = C.fiscalYearOfIso(x.date);
+        if (fy !== lastFy) { h += '<div class="ify">' + fy + '年度</div>'; lastFy = fy; }
+        var rp = x.report, more = rp && (rp.s2.sd.length || rp.s2.vi.length || rp.s2.ha.length || rp.s2.kikan || Object.keys(rp.s2v || {}).length);
+        h += '<button class="iit' + (I.sel === x.id ? ' on' : '') + '" data-isel="' + x.id + '"><span class="d">' + esc(App.span(x)) + '・' + esc(x.type) + '</span><b>' + esc(titleOf(x)) + '</b>' +
+          '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '<em class="r-' + r + '">' + E.ROLE_NAMES[r] + '</em>' : ''); }).join('、') + '</span>' +
+          (more ? '<span class="bd"><i>追記あり</i></span>' : '') + '</button>';
+      });
+      if (!list.length) h += '<div class="empty">事案はありません</div>';
+    }
+    h += '</div><div class="ipane" id="ipane">' + pane() + '</div><aside class="iassist" id="iassist">' + assistHtml() + '</aside></div>';
+    App.$('main').innerHTML = h;
+    mountDg(); autosizeAll(); showExtra();
+  }
+  function pane() {
+    if (I.mode === 'form') return formHtml();
+    var dr = I.draft && I.draft.draft;
+    var banner = dr ? '<div class="notebox idb">書きかけがあります（' + esc(dr.mode === 'add2' ? 'その後の経緯の追記' : dr.form.edit != null ? '事案を直す' : '新しい事案') + '・' + esc(String(I.draft.at || '').slice(5, 16).replace('T', ' ')) + '）' +
+      '<button class="btn primary" id="idrGo">続きを書く</button><button class="btn" id="idrDel">捨てる</button></div>' : '';
+    if (I.mode === 'add2') return add2Html(incOf(I.sel));
+    return banner + paneView();
+  }
+  function paneView() {
+    var x = I.sel != null && incOf(I.sel);
+    if (!x) return '<div class="empty">左の一覧から事案を選ぶか、「＋ 事案を登録」を押します</div>';
+    return viewHtml(x);
+  }
+  function rowsView(rows) {
+    if (!rows.length) return '<div class="note">（記入なし）</div>';
+    return '<table class="irv">' + rows.map(function (r) { return '<tr><th>' + esc(Rp.md(r.d) + (r.p || '')) + '</th><td>' + esc(r.t) + '</td></tr>'; }).join('') + '</table>';
+  }
+  function viewHtml(x) {
+    var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
+    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
+      '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
+      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>';
+    h += x.diagram && x.diagram.nodes.length ? '<section><h3>関係図</h3><div id="vDg" class="dg ro"></div></section>' :
+      '<section><h3>関係する児童</h3><div>' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
+    if (b) h += '<section><h3>いじめの項目</h3><table class="irv"><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
+      (C.MODES.filter(function (m, i) { return rp.modes[i]; }).map(function (m) { return esc(m.t); }).join('<br>') || '（未選択）') + (rp.modes[C.MODES.length - 1] && rp.other ? '：' + esc(rp.other) : '') + '</td></tr></table></section>';
+    ['hk', 'kk', 'sd'].forEach(function (k) { h += '<section><h3>' + Rp.SECTIONS[k] + '</h3>' + rowsView(rp.s1[k]) + '</section>'; });
+    var s2 = rp.s2;
+    var vv = realVictims(x), byV = vv.length > 1;
+    if (s2.sd.length || s2.vi.length || s2.ha.length || s2.kikan || Object.keys(rp.s2v).length) {
+      h += '<h3 class="i2h">その後の経緯（様式Ⅱ）</h3>';
+      ['sd', 'vi', 'ha'].forEach(function (k) {
+        if (k === 'vi' && byV) { vv.forEach(function (id) { h += '<section><h3>被害児童・保護者の様子（' + esc(kidName(id)) + '）</h3>' + rowsView(rp.s2v[id] || []) + '</section>'; }); return; }
+        h += '<section><h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsView(s2[k]) + '</section>';
+      });
+      h += '<section><h3>関係機関との連携</h3><div>' + (esc(s2.kikan) || '<span class="note">（記入なし）</span>') + '</div></section>';
+    }
+    if (x.detail) h += '<section><h3>詳細（以前の記録）</h3><div class="dt">' + esc(x.detail) + '</div></section>';
+    return h;
+  }
+
+  // 欄の見出しは「何を書く欄か」を問いで示す。欄ごとに色の帯を付け、右の記入補助の見出しも同じ色にする
+  var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
+    's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
+  var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
+  function mdShort(iso) { var p = String(iso || '').split('-'); if (p.length !== 3) return '日付'; var w = '日月火水木金土'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()); return (+p[1]) + '/' + (+p[2]) + '(' + w + ')'; }
+  function secHtml(sec, key, rows) {
+    var w = sec + ':' + key, isV = sec === 's2v';
+    var h = '<div class="isec s-' + (isV ? 's2vi' : sec + key) + '" data-sec="' + w + '"><h3 class="ish"><b>' + (isV ? '被害児童・保護者の様子（' + esc(kidName(key)) + '）' : SEC_NAME[w]) + '</b><span>' + (isV ? 'この児童と保護者の、今の様子' : ASK[w]) + '</span></h3>';
+    if (w === 's1:sd') h += stepsHtml(rows);
+    h += '<div class="irows">' + rows.map(function (r, i) {
+      var at = w + ':' + i;
+      // 日付は「月/日」だけを見せ、押すと暦が開く（年は事案の記録では毎回見なくてよい）
+      return '<div class="irow" data-row="' + at + '"><label class="idate" title="' + esc(Rp.md(r.d)) + '"><span>' + esc(mdShort(r.d)) + '</span><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"></label>' +
+        '<select class="islot' + (r.p ? ' on' : '') + '" data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' + Rp.slots().map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') +
+        (r.p && Rp.slots().indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
+        '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
+        '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button>' +
+        // 日付の下：翌日の行を足す。時間帯の下：同じ日の次の時間帯の行を足す
+        '<button type="button" class="inx" data-rnext="' + at + ':day" title="翌日の行を足す" aria-label="翌日の行を足す">' + IC.down2 + '</button>' +
+        '<button type="button" class="inx" data-rnext="' + at + ':slot" title="次の時間帯の行を足す" aria-label="次の時間帯の行を足す">' + IC.down2 + '</button>' +
+        '<div class="irx" id="irx-' + sec + '-' + key + '-' + i + '"></div></div>';
+    }).join('') + (rows.length ? '' : '<button type="button" class="btn ib iaddrow" data-radd="' + w + '">' + IC.plus + '行を足す</button>') + '</div></div>';
+    return h;
+  }
+  // 指導の「よくある手順」：チェックで行を足す・外す
+  function stepsHtml(rows) {
+    var all = rows.map(function (r) { return r.t; }).join('\n');
+    return '<div class="isteps">' + C.SD_STEPS.map(function (t, i) { return '<label class="chk"><input type="checkbox" data-step="' + i + '"' + (all.indexOf(t) >= 0 ? ' checked' : '') + '> ' + esc(t) + '</label>'; }).join('') + '</div>';
+  }
+  // 選んでいる行の下：時間帯のボタン列と、次によく書く文
+  function extraHtml(at) {
+    var q = at.split(':'), w = q[0] + ':' + q[1], r = I.form.rep[q[0]][q[1]][+q[2]]; if (!r) return '';
+    var h = '';
+    var sg = [];
+    if (w === 's1:kk') leads().forEach(function (t) { sg.push({ t: t, nm: true }); });
+    nextPhrases(w, 5).forEach(function (t) { sg.push({ t: t }); });
+    if (sg.length) h += '<div class="iph isg">' + sg.map(function (x) { return '<button type="button" class="' + (x.nm ? 'nm' : '') + '" data-ph="' + esc(x.t) + '">' + esc(x.t) + '</button>'; }).join('') + '</div>';
+    return h;
+  }
+  function showExtra() {
+    Array.prototype.forEach.call(document.querySelectorAll('.irx'), function (el) { el.innerHTML = ''; });
+    Array.prototype.forEach.call(document.querySelectorAll('.irow.cur'), function (el) { el.classList.remove('cur'); });
+    if (!I.form || !I.focus || I.focus === 'kikan') return;
+    var q = I.focus.split(':'), el = App.$('irx-' + q[0] + '-' + q[1] + '-' + q[2]);
+    if (el) { el.innerHTML = extraHtml(I.focus); el.parentNode.classList.add('cur'); }
+  }
+  // その欄で使った定型文の、後に続く文から順に（使った文は出さない）
+  function phrasesOf(w) { return C.PHRASES[phraseKey(w)] || []; }
+  function usedIn(w) {
+    if (w === 'kikan') return I.form.rep.s2.kikan;
+    var q = w.split(':'); return I.form.rep[q[0]][q[1]].map(function (r) { return r.t; }).join('\n');
+  }
+  function nextPhrases(w, n) {
+    // 指導の「よくある手順」はチェックで入れるので、行の下には出さない
+    var ph = phrasesOf(w).filter(function (t) { return w !== 's1:sd' || C.SD_STEPS.indexOf(t) < 0; }), txt = usedIn(w), last = -1;
+    ph.forEach(function (t, i) { if (txt.indexOf(t) >= 0) last = i; });
+    var out = [];
+    for (var k = 1; k <= ph.length && out.length < n; k++) { var t = ph[(last + k) % ph.length]; if (txt.indexOf(t) < 0) out.push(t); }
+    return out;
+  }
+  // 関係図の矢印から「（加害の児童）が（被害の児童）」
+  function leads() {
+    var f = I.form; if (!f || !f.dg) return [];
+    var d = f.dg.d, nameOf = function (end) {
+      var p = end.split(':');
+      if (p[0] === 'k') return kidName(p[1]);
+      var gr = d.groups.filter(function (x) { return x.g === p[1]; })[0];
+      return gr ? gr.members.map(kidName).join('・') : '';
+    };
+    // 助詞は続けて選ぶ文の側が持つ（「に悪口を言った」「を叩いた」）ので、ここでは「Aが B」まで
+    return d.edges.map(function (e) { return nameOf(e.f) + 'が' + nameOf(e.t); });
+  }
+  function autosize(el) { el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px'; }
+  function autosizeAll() { Array.prototype.forEach.call(document.querySelectorAll('.irow textarea'), autosize); }
+
+  function formHtml() {
+    var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
+    var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
+      '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off">' +
+      (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
+    if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
+    else h += '<div id="fDg" class="dg"></div>';
+    if (b) {
+      h += '<fieldset class="irep"><legend>いじめの項目</legend>' +
+        '<label>発見のきっかけ<select id="fFound"><option value="">選ぶ</option>' + C.FOUND_LIST.map(function (t) { return '<option' + (t === rp.found ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></label>' +
+        '<div class="lab">いじめの態様（複数選べます）</div><div class="imodes">' + C.MODES.map(function (m, i) {
+          // 長い補足は「？」の中に畳む（押すと開く）
+          return '<div class="imode"><label class="chk"><input type="checkbox" data-mode="' + i + '"' + (rp.modes[i] ? ' checked' : '') + '> ' + esc(m.t) + '</label>' +
+            (m.note ? '<button type="button" class="imq" data-mq="1" title="例を見る" aria-label="例を見る" aria-expanded="false">？</button><div class="imqt" hidden>' + esc(m.note) + '</div>' : '') + '</div>';
+        }).join('') + '</div>' +
+        '<label>その他の内容<input id="fOther" value="' + esc(rp.other) + '" maxlength="200"' + (rp.modes[C.MODES.length - 1] ? '' : ' disabled') + '></label></fieldset>';
+    }
+    ['hk', 'kk', 'sd'].forEach(function (k) { h += secHtml('s1', k, rp.s1[k]); });
+    h += '<details class="iopt"><summary>文書のURL・題名（任意）</summary><label>文書のURL<input id="fUrl" value="' + esc(f.url || '') + '" placeholder="docs.google.com/… を貼る"></label>' +
+      '<label>題名（空なら「種別の事案」）<input id="fTitle" value="' + esc(f.title || '') + '" maxlength="80" placeholder="児童の氏名は入れない"></label></details>' +
+      (f.detail ? '<label>詳細（以前の記録）<textarea id="fDetail" rows="4" maxlength="5000">' + esc(f.detail) + '</textarea></label>' : '') +
+      '<div class="note">事実を書き、推測や人柄の評価は書きません（保護者から開示を求められることがある記録です）。期間は記録の行の日付から決まります。</div>' +
+      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
+    return h;
+  }
+  function add2Html(x) {
+    var f = I.form, s2 = f.rep.s2;
+    var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）<span class="idraft" id="idraft"></span></h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
+    var vv = realVictims(x);
+    ['sd', 'vi', 'ha'].forEach(function (k) {
+      // 被害の児童が2人以上なら、児童ごとに欄を分ける（Excel も児童ごとに作る）
+      if (k === 'vi' && vv.length > 1) { vv.forEach(function (id) { h += secHtml('s2v', id, f.rep.s2v[id]); }); return; }
+      h += secHtml('s2', k, s2[k]);
+    });
+    h += '<h3 class="ish"><b>関係機関との連携</b><span>相談・連携した機関（無ければ「なし」）</span></h3><input id="fKikan" class="ikikan" data-phs="kikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="右の記入補助から選ぶか、書く">' +
+      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">保存する</button></div></form>';
+    return h;
+  }
+  function mountDg() {
+    var el = App.$('fDg');
+    if (el && I.form && I.form.dg) App.Diagram.mount(el, I.form.dg, function (st) { I.form.dg = st; });
+    var v = App.$('vDg'), x = I.sel != null && incOf(I.sel);
+    // 見るだけ（動かす操作は CSS で止める。「カードで表示」だけ選べる。選び直すと描き直すので、そのたびに切り出す）
+    if (v && x && x.diagram) { App.Diagram.mount(v, App.Diagram.state(x.diagram), function (st) { cropDg(v, st.d); }); cropDg(v, x.diagram); }
+  }
+  // 見る画面の関係図は、児童のいる範囲だけを切り出す（白い余白を出さない）
+  function cropDg(el, d) {
+    var cv = el.querySelector('.dg-canvas'); if (!cv || !d.nodes.length) return;
+    var W = E.DG_W, H = E.DG_H, xs = d.nodes.map(function (n) { return n.x; }), ys = d.nodes.map(function (n) { return n.y; });
+    var x0 = Math.max(0, Math.min.apply(null, xs) - 120), x1 = Math.min(W, Math.max.apply(null, xs) + 120);
+    var y0 = Math.max(0, Math.min.apply(null, ys) - 45), y1 = Math.min(H, Math.max.apply(null, ys) + 45);
+    var cw = cv.getBoundingClientRect().width, k = cw / W;
+    var box = document.createElement('div');
+    box.className = 'dg-crop';
+    box.style.width = Math.round((x1 - x0) * k) + 'px'; box.style.height = Math.round((y1 - y0) * k) + 'px';
+    cv.parentNode.insertBefore(box, cv); box.appendChild(cv);
+    cv.style.width = Math.round(cw) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * k) + 'px';
+  }
+  function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); autosizeAll(); showExtra(); } renderAssist(); }
+
+  // ===== 記入補助（右）：選んでいる欄に合う定型文と、関係する児童の名前。押すか、ドラッグして入れる =====
+  var ASSIST_NAMES = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子', kikan: '関係機関との連携' };
+  function phraseKey(where) { return where === 'kikan' ? 'kikan' : where === 's2:sd' ? 's2sd' : where.split(':')[0] === 's2v' ? 'vi' : where.split(':')[1]; }
+  function assistHtml() {
+    if (FOLD.assist) return '<button class="ifold" id="iasT" title="記入補助を開く" aria-label="記入補助を開く">' + IC.asOpen + '</button><button class="ivlab" id="iasT2" tabindex="-1">記入補助</button>';
+    var h = '<div class="ihead"><b class="ib">' + IC.help + '記入補助</b><button class="ifold" id="iasT" title="記入補助を畳む" aria-label="記入補助を畳む">' + IC.asClose + '</button></div>';
+    var where = I.form && I.focus ? I.focus.split(':').slice(0, 2).join(':') : null;
+    if (I.form && I.focus === 'kikan') where = 'kikan';
+    var vName = where && where.split(':')[0] === 's2v' ? '被害児童・保護者の様子（' + kidName(where.split(':')[1]) + '）' : null;
+    if (!I.form || !where || !(ASSIST_NAMES[where] || vName)) return h + '<p class="note">入力欄を押すと、その欄に合う文がここに出ます。押すか、入力欄へドラッグして入れます。</p>';
+    var names = formKids(), ph = C.PHRASES[phraseKey(where)] || [];
+    h += '<div class="iaw s-' + (vName ? 's2vi' : where.replace(':', '')) + '">' + esc(vName || ASSIST_NAMES[where]) + '</div>';
+    var used = usedIn(where);
+    if (names.length && where !== 'kikan') h += '<div class="lab">児童の名前</div><div class="iph">' + names.map(function (n) { return '<button type="button" class="nm" draggable="true" data-ph="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
+    h += '<div class="lab">定型文（使った文は ✓）</div><div class="iph col">' + ph.map(function (t) { var u = used.indexOf(t) >= 0; return '<button type="button" draggable="true" class="' + (u ? 'used' : '') + '" data-ph="' + esc(t) + '">' + (u ? '✓ ' : '') + esc(t) + '</button>'; }).join('') + '</div>';
+    return h;
+  }
+  function renderAssist() { var a = App.$('iassist'); if (a) a.innerHTML = assistHtml(); }
+  function formKids() {
+    var f = I.form; if (!f) return [];
+    var ids = f.dg ? f.dg.d.nodes.map(function (n) { return n.id; }) : (f.x ? f.x.ids : []);
+    return ids.filter(function (id) { return !E.isUnknown(id); }).map(kidName);
+  }
+  // 入れる：選んでいる行のカーソルの所へ。文の途中でなく末尾なら、句点で終わっていない時は「。」を挟む（名前の後ろは挟まない）
+  function putPhrase(text) {
+    var f = I.form; if (!f || !I.focus) return;
+    if (I.focus === 'kikan') {
+      var k = App.$('fKikan'), cur = f.rep.s2.kikan;
+      f.rep.s2.kikan = cur ? cur.replace(/[、。\s]*$/, '') + '、' + text : text;
+      if (k) { k.value = f.rep.s2.kikan; refocus('fKikan'); }
+      return;
+    }
+    var q = I.focus.split(':'), r = f.rep[q[0]][q[1]][+q[2]];
+    if (!r) return;
+    var el = App.$('rw-' + q[0] + '-' + q[1] + '-' + q[2]), pos = el ? el.selectionStart : r.t.length, end = el ? el.selectionEnd : r.t.length;
+    var before = r.t.slice(0, pos), after = r.t.slice(end), isName = formKids().indexOf(text) >= 0;
+    var lastName = formKids().some(function (n) { return before.slice(-n.length) === n; });
+    // 助詞で始まる文（「に悪口を言った」）や、助詞で終わる途中（「Aが」）にはつなげて入れる
+    var glue = !before || isName || lastName || /[。、\s]$/.test(before) || /[がにをとへでものは]$/.test(before) || /^[にをのがとへでも]/.test(text) || after ? '' : '。';
+    r.t = before + glue + text + after; pos = (before + glue + text).length;
+    if (el) { el.value = r.t; el.focus(); el.setSelectionRange(pos, pos); autosize(el); }
+    afterEdit();
+  }
+  // 入力が変わった後：選んでいる行の補助と右の一覧（✓）を描き直し、書きかけを保存する
+  function afterEdit() { showExtra(); renderAssist(); syncSteps(); saveDraftSoon(); }
+  function syncSteps() {
+    if (!I.form || !I.form.rep.s1) return;
+    var all = I.form.rep.s1.sd.map(function (r) { return r.t; }).join('\n');
+    Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (cb) { cb.checked = all.indexOf(C.SD_STEPS[+cb.dataset.step]) >= 0; });
+  }
+  // ===== 書きかけ（下書き）：入力が止まって1.5秒後にサーバーへ =====
+  var draftT = 0;
+  function draftOf() {
+    var f = I.form; if (!f) return null;
+    return { mode: I.mode, form: { edit: f.edit, type: f.type, url: f.url, title: f.title, detail: f.detail, rep: f.rep, dg: f.dg ? f.dg.d : null } };
+  }
+  function saveDraftSoon() {
+    clearTimeout(draftT);
+    draftT = setTimeout(function () {
+      var d = draftOf(); if (!d) return;
+      App.pf().saveDraft(App.st.grade, d).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存しました'; }, function () { var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存できません（通信）'; });
+    }, 1500);
+  }
+  function dropDraft() { clearTimeout(draftT); I.draft = null; App.pf().saveDraft(App.st.grade, null); }
+  function restoreDraft() {
+    var dr = I.draft && I.draft.draft; if (!dr) return;
+    var f = dr.form;
+    if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; ensureV(x); I.mode = 'add2'; I.sel = x.id; }
+    else { I.form = { edit: f.edit, dg: App.Diagram.state(f.dg), type: f.type || '', url: f.url || '', title: f.title || '', detail: f.detail || '', rep: Rp.norm(f.rep) }; I.mode = 'form'; if (f.edit != null) I.sel = f.edit; }
+    ['hk', 'kk', 'sd'].forEach(function (k) { if (I.mode === 'form' && !I.form.rep.s1[k].length) I.form.rep.s1[k].push({ d: today(), p: '', t: '' }); });
+    ['sd', 'vi', 'ha'].forEach(function (k) { if (I.mode === 'add2' && !I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
+    I.focus = null;
+  }
+  // 最後に触った入力欄を覚え、記入補助を描き直す
+  document.addEventListener('focusin', function (e) {
+    if (App.st.screen !== 'incidents' || !I.form) return;
+    var t = e.target, was = I.focus;
+    if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) {
+      var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2];
+      // 経緯の最初の行が空なら、関係図の矢印から「Aが B」を入れておく
+      var r = I.form.rep[q[0]][q[1]][+q[2]], ld = leads();
+      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length) { r.t = ld[0]; t.value = r.t; t.setSelectionRange(r.t.length, r.t.length); saveDraftSoon(); }
+    } else if (t && t.id === 'fKikan') I.focus = 'kikan';
+    else return;
+    if (was !== I.focus) showExtra();
+    if (!was || was.split(':').slice(0, 2).join() !== I.focus.split(':').slice(0, 2).join()) renderAssist();
+  });
+  // Enter で次の行（Shift+Enter は行の中で改行）。日本語の変換中は何もしない
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229 || !t || t.tagName !== 'TEXTAREA' || !t.dataset.rw || !I.form) return;
+    e.preventDefault();
+    if (!t.value.trim()) return;
+    var q = t.dataset.rw.split(':'), rows = I.form.rep[q[0]][q[1]], i = +q[2], r = rows[i];
+    if (rows[i + 1] && !rows[i + 1].t) { refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); return; }
+    rows.splice(i + 1, 0, nextRow(r));
+    rerenderPane(); refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); saveDraftSoon();
+  });
+  document.addEventListener('dragstart', function (e) {
+    var b = e.target && e.target.closest && e.target.closest('.iassist [data-ph]');
+    if (b) { e.dataTransfer.setData('text/plain', b.dataset.ph); e.dataTransfer.effectAllowed = 'copy'; }
+  });
+  // 入力欄に落とした時：落とした欄の末尾に、押した時と同じ規則で入れる（文の途中に割り込ませない）
+  document.addEventListener('dragover', function (e) { if (e.target && e.target.closest && e.target.closest('textarea[data-rw],#fKikan')) e.preventDefault(); });
+  document.addEventListener('drop', function (e) {
+    var t = e.target && e.target.closest && e.target.closest('textarea[data-rw],#fKikan');
+    if (!t || App.st.screen !== 'incidents' || !I.form) return;
+    var text = e.dataTransfer.getData('text/plain'); if (!text) return;
+    e.preventDefault();
+    t.focus(); if (t.setSelectionRange) t.setSelectionRange(t.value.length, t.value.length);
+    putPhrase(text);
+  });
+  function rowsAt(path) { var p = path.split(':'); return I.form.rep[p[0]][p[1]]; }
+
+  // 期間は記録の行（発覚・経緯・指導）の日付の最初と最後から決める
+  function spanOf(rep, fallback) {
+    var ds = [].concat(rep.s1.hk, rep.s1.kk, rep.s1.sd).map(function (r) { return r.d; }).filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); }).sort();
+    if (!ds.length) return { date: fallback || today(), dateEnd: '' };
+    return { date: ds[0], dateEnd: ds[ds.length - 1] === ds[0] ? '' : ds[ds.length - 1] };
+  }
+  function body(x, f) {
+    var dg = f.dg ? f.dg.d : x.diagram, sp = f.dg ? spanOf(f.rep, x.date) : { date: x.date, dateEnd: x.dateEnd || '' };
+    return { url: f.url != null ? f.url : x.url, title: f.title != null ? f.title : x.title, date: sp.date, dateEnd: sp.dateEnd, detail: f.detail != null ? f.detail : x.detail || '',
+      type: f.type || x.type, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : x.ids, diagram: f.dg && onlyDamage(f.type) ? null : dg, report: f.rep };
+  }
+  function saved(inc, msg) {
+    var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
+    if (i >= 0) list[i] = inc; else list.push(inc);
+    I.sel = inc.id; I.mode = 'view'; I.form = null; I.focus = null; render(); App.toast(msg);
+  }
+
+  function suggHtml(q) {
+    var d = D(), f = I.form;
+    q = (q || '').trim();
+    if (!q) return '';
+    var items = yearOf(d.fy).rows.filter(function (r) {
+      var s = d.kids[r.id];
+      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
+    }).slice(0, 8);
+    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+  }
+
+  // ===== 始める =====
+  function newForm(kid) {
+    var st = App.Diagram.state(null);
+    if (kid) App.Diagram.add(st, kid);
+    var rp = Rp.emptyReport(), d0 = today();
+    ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k].push({ d: d0, p: '', t: '' }); });
+    I.form = { dg: st, type: '', url: '', title: '', detail: '', rep: rp };
+    I.mode = 'form'; I.focus = null;
+  }
+  function editForm(x) {
+    var st = App.Diagram.state(x.diagram);
+    if (!x.diagram) x.ids.forEach(function (id) { App.Diagram.add(st, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
+    I.form = { edit: x.id, dg: st, type: x.type, url: x.url || '', title: x.title || '', detail: x.detail || '', rep: Rp.norm(x.report) };
+    ['hk', 'kk', 'sd'].forEach(function (k) { if (!I.form.rep.s1[k].length) I.form.rep.s1[k].push({ d: x.date, p: '', t: '' }); });
+    I.mode = 'form'; I.sel = x.id; I.focus = null;
+  }
+  function add2Form(x) {
+    I.form = { edit: x.id, rep: Rp.norm(x.report), x: x };
+    ['sd', 'vi', 'ha'].forEach(function (k) { if (!I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
+    ensureV(x);
+    I.mode = 'add2'; I.sel = x.id; I.focus = null;
+  }
+  function ensureV(x) {
+    var vv = realVictims(x);
+    if (vv.length > 1) vv.forEach(function (id) { if (!I.form.rep.s2v[id] || !I.form.rep.s2v[id].length) I.form.rep.s2v[id] = [{ d: today(), p: '', t: '' }]; });
+  }
+
+  // ===== 出力 =====
+  var LABELS = null;
+  function labels() {
+    if (LABELS) return LABELS;
+    var R = C.REPORT, H = R.head, L = {};
+    L[H.school] = '学校名'; L[H.era] = '認知年月日：令和（年）'; L[H.month] = '認知年月日：月'; L[H.day] = '認知年月日：日'; L[H.wday] = '認知年月日：曜日';
+    var row = function (r, who) { L['B' + r] = who + '：学年'; L['D' + r] = who + '：組'; L['G' + r] = who + '：性別'; L['I' + r] = who + '：ふりがな'; L['I' + (r + 1)] = who + '：名前'; };
+    row(H.victim, '被害');
+    R.harmRows.forEach(function (r, i) { row(r, '加害' + (i + 1)); });
+    L[R.harmMore] = '加害：その他の人数'; L[R.found] = '発見のきっかけ'; L[R.modeOther] = '態様：その他の内容';
+    C.MODES.forEach(function (m) { L[m.cell] = '態様：' + m.t; });
+    L[R.f1.gaiyou] = 'いじめの概要（時系列）';
+    L[R.f2.shido] = '指導の経過'; L[R.f2.victim] = '被害児童生徒及び保護者の現在の状況'; L[R.f2.harm] = '加害児童生徒及び保護者の現在の状況'; L[R.f2.kikan] = '関係機関との連携';
+    return (LABELS = L);
+  }
+  function outDialog(x, kind) {
+    // 被害の児童1人に1つの様式。矢印が無ければ最初の児童を被害の側とする
+    var vs = realVictims(x); if (!vs.length) vs = x.ids.slice(0, 1);
+    // どの児童を被害児童とする書類を作るかは、教員が選ぶ（1人だけなら選んだ状態で始める）
+    var st = { victim: vs[0], pick: vs.length === 1 ? vs.slice() : [], made: [] };
+    var cellsOf = function (v) {
+      v = v || st.victim;
+      return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: v, harms: harmsOf(x, v) });
+    };
+    App.openDlg({
+      noEnter: true,
+      html: function () {
+        var cells = cellsOf(), L = labels(), refs = C.REPORT && Rp.allowedCells(kind).filter(function (r) { return cells[r] !== undefined; });
+        var harms = harmsOf(x, st.victim);
+        return '<div class="pop" data-close="1"><div class="dlg iout" role="dialog" aria-modal="true" aria-label="報告書を出力"><h2>' + C.REPORT.names[kind] + 'を出力</h2>' +
+          (vs.length > 1 ? '<div class="ivic"><div class="lab">被害児童とする児童を選ぶ（矢印を向けられている児童。複数選べます）</div>' + vs.map(function (id) {
+              return '<label class="chk"><input type="checkbox" data-ivic="' + id + '"' + (st.pick.indexOf(id) >= 0 ? ' checked' : '') + '> ' + esc(kidName(id)) + '</label>';
+            }).join('') + '<p class="note">選んだ児童1人につき1つの書類を作ります。下のコピー用の表は ' + esc(kidName(st.victim)) + ' の分です。</p></div>' : '') +
+          (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.name) + ' ↗</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
+          '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
+          refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
+          (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
+          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var b;
+        if ((b = t.closest('[data-ivic]'))) {
+          var id = b.dataset.ivic, k = st.pick.indexOf(id);
+          if (b.checked && k < 0) st.pick.push(id); else if (!b.checked && k >= 0) st.pick.splice(k, 1);
+          st.pick.sort(function (a, c) { return vs.indexOf(a) - vs.indexOf(c); });
+          if (b.checked) st.victim = id; else if (st.pick.length) st.victim = st.pick[0];
+          App.refreshDlg(); return true;
+        }
+        if ((b = t.closest('[data-icopy]'))) { copyText(String(cellsOf()[b.dataset.icopy])); return true; }
+        if (t.closest('#ixls') && st.pick.length) {
+          // 被害の児童ごとに1つずつ作る（同時に送らず、順に）
+          st.made = [];
+          App.save(function () {
+            return st.pick.reduce(function (pr, v) {
+              var seq = vs.length > 1 ? vs.indexOf(v) + 1 : 0;
+              return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, seq); }).then(function (r) { r.victim = v; st.made.push(r); });
+            }, Promise.resolve());
+          }).then(function () { App.refreshDlg(); });
+          return true;
+        }
+        return false;
+      }
+    });
+  }
+  // 窓の中から書き込み許可の要らない方法でコピーする（GAS の画面は iframe の中なので clipboard API が使えないことがある）
+  function copyText(s) {
+    var ta = document.createElement('textarea');
+    ta.value = s; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    App.toast(ok ? 'コピーしました' : 'コピーできませんでした。値を選んでコピーしてください');
+  }
+  // その行より後の、まだ書いていない行の日付をそろえる（前日の事案で日付を1つずつ直さなくてよい）
+  function spreadDate(at, d) {
+    var q = at.split(':'); if (q[0] === 's2v') return;
+    var order = q[0] === 's1' ? ['hk', 'kk', 'sd'] : ['sd', 'vi', 'ha'], seen = false;
+    order.forEach(function (k) {
+      I.form.rep[q[0]][k].forEach(function (r, i) {
+        if (k === q[1] && i === +q[2]) { seen = true; return; }
+        if (seen && !r.t) { r.d = d; var el = document.querySelector('[data-rw="' + q[0] + ':' + k + ':' + i + ':d"]'); if (el) { el.value = d; var lb = el.parentNode.querySelector('span'); if (lb) lb.textContent = mdShort(d); } }
+      });
+    });
+  }
+  function toggleStep(i, on) {
+    var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
+    if (on) {
+      if (last && !last.t) last.t = t;
+      else { var nr = nextRow(last); nr.t = t; rows.push(nr); }
+    } else {
+      rows.forEach(function (r) { r.t = r.t.replace(t, '').replace(/^。|。(?=。)|。$/g, ''); });
+      for (var k = rows.length - 1; k >= 0 && rows.length > 1; k--) if (!rows[k].t.trim()) rows.splice(k, 1);
+    }
+    rerenderPane(); saveDraftSoon();
+  }
+  // 足す行の既定：直前の行と同じ日の、次の時間帯（直前に時間帯が無ければ空のまま）
+  function nextRow(prev) {
+    if (!prev) return { d: today(), p: '', t: '' };
+    if (!prev.p) return { d: prev.d, p: '', t: '' };
+    var n = Rp.nextSlot(prev.d, prev.p); return { d: n.d, p: n.p, t: '' };
+  }
+  function closeForm() { I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
+
+  App.screens.incidents = {
+    enter: function () {
+      I.mode = 'view'; I.form = null; I.focus = null; I.draft = null;
+      var f = App.st.incFocus; App.st.incFocus = null;
+      if (f && f.edit != null && incOf(f.edit)) editForm(incOf(f.edit));
+      else if (f && f.sel != null && incOf(f.sel)) I.sel = f.sel;
+      else if (f && f.add) newForm(f.kid || null);
+      else if (I.sel != null && !incOf(I.sel)) I.sel = null;
+      render();
+      // 書きかけがあれば知らせる（入力中でなければ）
+      var grade = App.st.grade;
+      App.pf().loadDraft(grade).then(function (dr) {
+        if (!dr || App.st.screen !== 'incidents' || App.st.grade !== grade) return;
+        I.draft = dr; if (I.mode === 'view') rerenderPane();
+      }, function () { /* 読めなくても入力はできる */ });
+    },
+    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { I.draft = { at: new Date().toISOString(), draft: d }; App.pf().saveDraft(App.st.grade, d); } } },
+    click: function (t) {
+      var x;
+      if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
+      if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
+      if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
+      if (t.closest('#idrGo')) { restoreDraft(); render(); return true; }
+      if (t.closest('#idrDel')) { dropDraft(); rerenderPane(); App.toast('書きかけを捨てました'); return true; }
+      // 書きかけはサーバーに残っているので、別の事案を開いても失わない
+      if (t.closest('#iadd')) { if (I.form) App.screens.incidents.leave(); newForm(null); render(); refocus('fQ'); return true; }
+      if ((x = t.closest('[data-isel]'))) { if (I.form) App.screens.incidents.leave(); I.sel = +x.dataset.isel; closeForm(); render(); return true; }
+      if (t.closest('#iedit')) { editForm(incOf(I.sel)); rerenderPane(); return true; }
+      if (t.closest('#iadd2')) { add2Form(incOf(I.sel)); rerenderPane(); return true; }
+      if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
+      if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
+      if ((x = t.closest('[data-mq]'))) { var nt = x.nextElementSibling, open = nt.hidden; nt.hidden = !open; x.setAttribute('aria-expanded', String(open)); return true; }
+      if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return true; }
+      if ((x = t.closest('[data-ty]'))) {
+        var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);
+        if (k >= 0) ts.splice(k, 1); else ts.push(ty);
+        I.form.type = C.INCIDENT_TYPES.filter(function (t0) { return ts.indexOf(t0) >= 0; }).join('・');
+        rerenderPane(); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
+      if (t.closest('#fUnk')) {
+        var n = 1; while (I.form.dg.d.nodes.some(function (nd) { return nd.id === '?' + n; })) n++;
+        App.Diagram.add(I.form.dg, '?' + n); mountDg(); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-pick]'))) {
+        App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
+        if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
+        renderAssist(); refocus('fQ'); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-rnext]'))) {
+        var nq = x.dataset.rnext.split(':'), nrows = I.form.rep[nq[0]][nq[1]], ni = +nq[2], base = nrows[ni];
+        var nr = nq[3] === 'day' ? { d: Rp.addDays(base.d || today(), 1), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
+        if (nq[3] === 'slot' && !base.p) nr = { d: base.d, p: Rp.slots()[0], t: '' };
+        nrows.splice(ni + 1, 0, nr);
+        rerenderPane(); refocus('rw-' + nq[0] + '-' + nq[1] + '-' + (ni + 1)); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-radd]'))) {
+        var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];
+        rows.push(nextRow(prev));
+        rerenderPane(); var p = x.dataset.radd.split(':'); refocus('rw-' + p[0] + '-' + p[1] + '-' + (rows.length - 1)); return true;
+      }
+      if ((x = t.closest('[data-rdel]'))) { var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); saveDraftSoon(); return true; }
+      return false;
+    },
+    input: function (t) {
+      var f = I.form; if (!f) return;
+      if (t.dataset.step != null) { toggleStep(+t.dataset.step, t.checked); return; }
+      if (t.dataset.rw) {
+        var q = t.dataset.rw.split(':'), r = f.rep[q[0]][q[1]][+q[2]]; if (!r) return;
+        r[q[3]] = t.value;
+        if (q[3] === 'd') { spreadDate(q.slice(0, 3).join(':'), t.value); var lb = t.parentNode.querySelector('span'); if (lb) lb.textContent = mdShort(t.value); t.parentNode.title = Rp.md(t.value); }
+        if (q[3] === 'p') t.classList.toggle('on', !!t.value);
+        if (q[3] === 't') { autosize(t); renderAssist(); syncSteps(); var ex = App.$('irx-' + q[0] + '-' + q[1] + '-' + q[2]); if (ex && I.focus === q.slice(0, 3).join(':')) ex.innerHTML = extraHtml(I.focus); }
+        saveDraftSoon(); return;
+      }
+      if (t.dataset.mode != null) { f.rep.modes[+t.dataset.mode] = t.checked; var o = App.$('fOther'); if (o) o.disabled = !f.rep.modes[C.MODES.length - 1]; saveDraftSoon(); return; }
+      switch (t.id) {
+        case 'fQ': App.$('fSugg').innerHTML = suggHtml(t.value); return;
+        case 'fUrl': f.url = t.value.trim(); break;
+        case 'fTitle': f.title = t.value; break;
+        case 'fDetail': f.detail = t.value; break;
+        case 'fFound': f.rep.found = t.value; break;
+        case 'fOther': f.rep.other = t.value; break;
+        case 'fKikan': f.rep.s2.kikan = t.value; renderAssist(); break;
+        default: return;
+      }
+      saveDraftSoon();
+    },
+    submit: function (form) {
+      var f = I.form; if (!f) return;
+      if (form.id === 'inc2Form') {
+        var x2 = incOf(f.edit);
+        App.save(function () { return App.pf().updateIncident(x2.id, body(x2, { rep: f.rep })); }).then(function (inc) { dropDraft(); saved(inc, 'その後の経緯を保存しました'); });
+        return;
+      }
+      if (form.id !== 'incForm') return;
+      if (!typesOf(f.type).length) { App.toast('事案の種別を選んでください'); return; }
+      if (!f.dg.d.nodes.some(function (n) { return !E.isUnknown(n.id); })) { App.toast('関係する児童を1人以上足してください（「？」だけでは登録できません）'); return; }
+      // 保護者への連絡が書かれていなければ一度だけ知らせる（もう一度押せばそのまま登録）
+      var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
+      if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }
+      var x = f.edit != null ? incOf(f.edit) : {};
+      var b = body(x, f);
+      App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) { dropDraft(); saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました'); });
+    },
+    key: function (e) {
+      if (e.key === 'Escape' && I.mode !== 'view') { App.screens.incidents.leave(); closeForm(); rerenderPane(); App.toast('書きかけは残してあります'); return true; }
+      return false;
+    }
+  };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/ui-incidents.js ここまで ▲ */
 /* ▼ src/ui-split.js から。直すのは src のほう ▼ */
 // クラス分け：全員を1画面に並べ、案をタブに積み、入れ替え・比較・決定する。
 // 計算はすべて Engine。ここは状態と描画と操作だけを持つ。
@@ -3274,12 +4261,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     App.settings = s;
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } at.help = helpOf(at, x); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.slice();
+    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.slice();
   };
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function render() {
     var esc = App.esc, s = T.s;
-    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案の種別'], ['view', '表示'], ['year', '年度替わり']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案と報告書'], ['view', '表示'], ['year', '年度替わり']];
     var h = '<div class="rbar">' + tabs.map(function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') +
       '<span class="sp"></span>' + (T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
     if (T.tab === 'attrs') {
@@ -3306,7 +4294,11 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
         }).join('') + '</tbody></table><div class="rbar" style="margin-top:8px"><button class="btn" id="tadd">＋ 追加</button>' +
         (App.me && !s.teachers.some(function (t) { return t.email === App.me.email; }) ? '<button class="btn" id="tme">＋ 自分（' + esc(App.me.email) + '）</button>' : '') + '</div>';
     } else if (T.tab === 'types') {
-      h += '<p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:20em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea>';
+      h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
+        '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
+        '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
+        '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
+        '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
     } else if (T.tab === 'view') {
       // クラス分けの盤面のアイコンの大きさ。端末の画面の大きさで合う値が違うので、この端末にだけ覚える
       var cur = App.iconScale();
@@ -3395,6 +4387,9 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       else if (t.dataset.tg != null) set(function () { s.teachers[+t.dataset.tg].grade = +t.value; });
       else if (t.dataset.tc != null) set(function () { s.teachers[+t.dataset.tc].cls = +t.value; });
       else if (t.id === 'types') set(function () { s.types = t.value.split('\n'); });
+      else if (t.id === 'slots') set(function () { s.slots = t.value.split('\n'); });
+      else if (t.id === 'school') set(function () { s.school = t.value; });
+      else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;
@@ -3414,7 +4409,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）

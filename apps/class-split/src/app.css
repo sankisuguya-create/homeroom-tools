@@ -380,7 +380,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
 /* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
-.bigs{grid-template-columns:minmax(0,3fr) minmax(0,1fr)}
+.bigs{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
 .bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
 .bigs .big[data-go="roster"] b{font-size:2rem}
 .bigs .big[data-go="roster"] span{font-size:1rem}
@@ -499,6 +499,133 @@ table.r th.sorth{cursor:pointer;user-select:none}
 table.r th.sorth:hover{background:#e3e8ed}
 table.r th.sorth.on{background:var(--fill)}
 table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
+.setcols{display:flex;gap:28px;flex-wrap:wrap}
+.setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
+.setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+/* ===== 事案管理 ===== */
+
+.iwrap{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;padding:10px 12px 24px;align-items:start}
+.iwrap.lc{grid-template-columns:36px minmax(0,1fr) 280px}
+.iwrap.ac{grid-template-columns:300px minmax(0,1fr) 36px}
+.iwrap.lc.ac{grid-template-columns:36px minmax(0,1fr) 36px}
+.ihead{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:4px}
+.ifold{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--ink);flex:none;padding:0}
+.ifold:hover{border-color:var(--link);color:var(--link)}
+.ib{display:inline-flex;align-items:center;gap:5px}
+.ib svg{flex:none}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+.irow .ix:hover{color:#B00020;border-color:#B00020}
+.dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dg-crop .dg-canvas{border:0;border-radius:0}
+.iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
+.iwrap.ac .iassist{border:0;background:none;padding:0}
+.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
+.iassist .lab{font-size:.78rem;color:var(--sub);margin:6px 0 2px}
+.iph.col{flex-direction:column;align-items:stretch}
+.iph.col button{border-radius:6px;text-align:left;padding:5px 8px;cursor:grab}
+.itypes{display:flex;flex-wrap:wrap;gap:6px}
+.ikids{display:flex;flex-wrap:wrap;gap:6px}
+.ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
+.dg.ro .dg-hint,.dg.ro .dg-bar .lvs,.dg.ro .dg-bar .btn{display:none}
+.dg.ro .dg-canvas{pointer-events:none}
+.ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
+.ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}
+.iit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;cursor:pointer;font:inherit;color:var(--ink)}
+.iit.on{border:2px solid var(--link);padding:5px 7px;background:var(--fill)}
+.iit .d{font-size:.78rem;color:var(--sub)}
+.iit .k{font-size:.82rem}
+.iit .k em{font-style:normal;font-size:.75em;margin-left:2px;color:var(--sub)}
+.iit .bd i{font-style:normal;font-size:.72rem;border:1px solid var(--ink);border-radius:3px;padding:0 4px;margin-right:4px}
+.ipane{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:12px 16px;min-height:300px}
+.ipane h2{margin:0 0 4px}
+.ipane section{margin-top:10px}
+.ipane section h3,.iform h3{margin:12px 0 4px;font-size:1rem}
+.i2h{margin-top:18px;border-top:2px solid var(--line);padding-top:8px}
+.iacts{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}
+.iacts .sp{flex:1}
+table.irv{border-collapse:collapse;width:100%}
+table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
+table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
+.irows{display:flex;flex-direction:column;gap:6px}
+.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+.irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
+.irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
+.iaddrow{align-self:flex-start}
+.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
+.irow .ix{padding:2px 8px}
+.irep{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.irep legend{font-weight:700;padding:0 4px}
+.form label.chk,.irep label.chk{flex-direction:row;align-items:center;gap:6px;font-size:.9rem}
+.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px}
+.iopt summary{cursor:pointer;color:var(--sub);font-size:.9rem}
+.dlg.iout{max-width:900px;width:92vw}
+table.icopy{border-collapse:collapse;width:100%;font-size:.88rem}
+table.icopy th,table.icopy td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
+table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overflow:auto}
+@media (max-width:900px){.iwrap,.iwrap.lc,.iwrap.ac,.iwrap.lc.ac{grid-template-columns:1fr}.ilist,.iassist{position:static;max-height:40vh}}
+.dlg.iout{max-height:90vh;overflow:auto}
+table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
+.iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
+.iph button:hover{border-color:var(--link)}
+.iph button.nm{border-style:dashed;font-weight:700}
+.ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
+.dg.ro{max-width:640px}
+.ivlab{writing-mode:vertical-rl;border:0;background:none;color:var(--sub);font:inherit;font-size:.85rem;letter-spacing:.15em;cursor:pointer;padding:8px 0;margin:0 auto}
+.iwrap.lc .ilist,.iwrap.ac .iassist{align-items:center}
+.dg.ro .dg-sum .note{display:none}
+/* 事案の記録の欄：欄ごとの色の帯（右の記入補助の見出しも同じ色）。色だけに頼らず見出しの文字で区別する */
+.isec{--sc:#5B6670;border-left:4px solid var(--sc);padding:2px 0 6px 10px;margin:14px 0 4px}
+.s-s1hk{--sc:#1E6FD9}.s-s1kk{--sc:#C8641A}.s-s1sd{--sc:#2E8A4A}.s-s2sd{--sc:#2E8A4A}.s-s2vi{--sc:#7B3FA0}.s-s2ha{--sc:#B0302A}
+.ish{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
+.ish b{font-size:1.05rem}
+.ish span{font-size:.85rem;color:var(--sub);font-weight:400}
+.iaw{border-left:4px solid var(--sc,#5B6670)}
+.irow.cur{background:var(--fill);outline:2px solid var(--sc)}
+.irow textarea{resize:none;overflow:hidden;line-height:1.5;min-height:2.3em}
+.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.islot.on{border-style:solid;color:var(--ink)}
+.irx{grid-column:1/-1}
+.irx:empty{display:none}
+.islots{display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 4px}
+.islots button{min-width:2.2em;height:2em;font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);border-radius:5px;cursor:pointer;color:var(--ink)}
+.islots button[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+.isg{margin:2px 0 0}
+.isteps{display:flex;flex-direction:column;gap:2px;margin:0 0 6px;padding:6px 8px;background:var(--soft);border-radius:6px}
+.iph.col button.used{color:var(--sub);background:var(--soft)}
+.idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
+.idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+.iq{display:flex;gap:6px}
+.iq input{flex:1}
+.dg-n.card.u{border-left-style:solid}
+.dg-n.unk .nt{font-size:1.15em}
+/* 日付は「月/日」の文字を見せ、日付の入力は透明にして重ねる（押すと暦が開く） */
+.idate{position:relative;display:flex;align-items:center;justify-content:center;height:2.3em;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:.85rem;cursor:pointer;overflow:hidden}
+.idate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0;cursor:pointer}
+.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
+.irow select.islot.on{border-style:solid;color:var(--ink)}
+.imodes{grid-template-columns:1fr !important}
+.imode{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap}
+.imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
+.imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
+.imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
+.ivic{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+.dg-n.lite{border-left:6px solid var(--oc);padding-left:6px}
+.dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
+.dg-n.lite.u{border-left:1.5px dashed var(--ink)}
+.irow .idate,.irow select.islot{height:2.3em;box-sizing:border-box}
+.irow select.islot{padding:0 0 0 2px;font-size:.78rem}
+.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px}
+.inx:hover{color:var(--link);background:var(--fill)}
+.inx svg{width:18px;height:18px}
+.irow .inx:nth-of-type(1){grid-column:1}
+.irx{grid-row:3}
+.irow{row-gap:0}
+.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}
 
 /* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}

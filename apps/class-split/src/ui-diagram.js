@@ -7,7 +7,7 @@
   var MODES = [['move', '動かす'], ['arrow', '矢印（加害）'], ['group', 'グループ'], ['del', '消す']];
 
   function data() { return App.st.data; }
-  function kidOf(id) { return data().kids[id] || { name: id }; }
+  function kidOf(id) { return E.isUnknown(id) ? { name: E.UNKNOWN_NAME, unknown: true } : data().kids[id] || { name: id }; }
   function rowOf(id) {
     var d = data(), y = d.years.filter(function (x) { return x.fy === d.fy; })[0];
     return y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
@@ -30,12 +30,14 @@
   function nodeHtml(st, n) {
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
-    if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
+    if (s.unknown) cls += ' unk';
+    // カードでない時も、男女の形（女子は左が丸い）と左端の旧学級の色は付ける
+    if (!st.card) return '<div class="' + cls + ' lite ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + App.classColor(r ? r.cls : -1).c + '">' + esc(s.name) + '</div>';
     // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
     var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る
     if (!marks) marks = '<span class="ph" aria-hidden="true">' + App.mark(g.CONFIG.ATTRS[0], 1) + '</span>';
-    return '<div class="' + cls + ' card ' + (s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
+    return '<div class="' + cls + ' card ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
       '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
   }
 

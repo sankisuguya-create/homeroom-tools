@@ -183,13 +183,13 @@ def merged_html(name: str) -> str:
     return out
 
 def class_gas_targets():
-    """class-split の GAS 一式。Code.gs は config.js・engine.js・server.gs をこの順につなぐ
+    """class-split の GAS 一式。Code.gs は config.js・engine.js・report.js・server.gs をこの順につなぐ
     （サーバーも画面と同じ計算の正本を使う）。版の印は note-assessment と同じく内容のハッシュ。"""
     parts = []
-    for name in ("config.js", "engine.js", "server.gs"):
+    for name in ("config.js", "engine.js", "report.js", "server.gs"):
         body = (CLASS_SRC / name).read_text(encoding="utf-8").rstrip("\n")
         parts.append("/* ==================== %s ==================== */\n" % name + body)
-    code = ("/* apps/class-split/src/ の config.js・engine.js・server.gs をつないで\n"
+    code = ("/* apps/class-split/src/ の config.js・engine.js・report.js・server.gs をつないで\n"
             "   scripts/build.py が作る。正本を直すこと。 */\n\n" + "\n\n".join(parts) + "\n")
     page = html_doc(render(CLASS_SRC / "Index-gas.html", [CLASS_SRC]))
     hits = external_refs(page)

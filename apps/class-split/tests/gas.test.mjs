@@ -94,6 +94,27 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     let got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
     assert.equal(got.roles['40000011'], 'victim'); assert.equal(got.diagram.edges.length, 1);
     assert.equal(call('apiAddIncident', { url: 'https://docs.google.com/document/d/DG2/edit', date: '2026-10-05', dateEnd: '2026-10-01', diagram: dg }).ok, false, '終わりが始まりより前は不可');
+    // 事案管理：文書のURLは任意。報告書の記録（発覚・経緯・指導）は行ごとに残り、長さと行数に上限がある
+    const rp = { light: false, found: '本人からの訴え', modes: [true, false, false, false, false, false, false, false, false, true], other: '靴', s1: { hk: [{ d: '2026-10-03', p: '朝休み', t: '訴え' }], kk: [{ d: 'x', p: '昼休み', t: 'k'.repeat(3000) }], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' } };
+    const ri = call('apiAddIncident', { url: '', title: '', date: '2026-10-03', type: 'いじめ', diagram: dg, report: rp });
+    assert.ok(ri.ok, ri.err);
+    got = call('apiBoot', 4).v.incidents.find(x => x.id === ri.v.id);
+    assert.equal(got.url, ''); assert.equal(got.report.found, '本人からの訴え'); assert.equal(got.report.s1.hk[0].p, '朝休み');
+    assert.equal(got.report.s1.kk[0].d, '', '日付でない値は空にする'); assert.equal(got.report.s1.kk[0].t.length, 2000);
+    assert.equal(call('apiAddIncident', { date: '2026-10-03', type: 'いじめ', diagram: dg, report: { s1: { hk: Array.from({ length: 81 }, () => ({ t: 'a' })) } } }).ok, false, '1つの欄は80行まで');
+    // 「？」（誰か分からない児童）は関係図にだけ残り、関係する児童・役割には入らない
+    const uk = call('apiAddIncident', { date: '2026-10-04', type: 'いじめ', diagram: { nodes: [{ id: '?1', x: 10, y: 10 }, { id: '40000011', x: 200, y: 10 }], edges: [{ f: 'k:?1', t: 'k:40000011' }] } });
+    assert.ok(uk.ok, uk.err); assert.deepEqual(uk.v.ids, ['40000011']); assert.equal(uk.v.roles['40000011'], 'victim'); assert.equal(uk.v.roles['?1'], undefined);
+    assert.equal(call('apiBoot', 4).v.incidents.find(x => x.id === uk.v.id).diagram.nodes.length, 2);
+    assert.equal(call('apiAddIncident', { date: '2026-10-04', type: 'いじめ', diagram: { nodes: [{ id: '?1', x: 10, y: 10 }], edges: [] } }).ok, false, '「？」だけでは登録できない');
+    // 書きかけ：教員ごと・学年ごとに残り、null で消える
+    assert.ok(call('apiSaveDraft', 4, { mode: 'form', form: { type: 'いじめ' } }).ok);
+    assert.equal(call('apiLoadDraft', 4).v.draft.form.type, 'いじめ');
+    assert.equal(call('apiLoadDraft', 3).v, null, '別の学年には出ない');
+    assert.ok(call('apiSaveDraft', 4, null).ok); assert.equal(call('apiLoadDraft', 4).v, null);
+    const ex = call('apiExportReport', 'f1', { B4: '高木北小' });
+    assert.equal(ex.ok, false); assert.match(ex.err, /様式のファイルが設定されていません/);
+    assert.equal(call('apiExportReport', 'zz', {}).ok, false);
     const up = call('apiUpdateIncident', di.v.id, { url: got.url, title: got.title, date: got.date, dateEnd: '2026-10-20', detail: '=経緯 '.repeat(300), type: got.type, diagram: { nodes: dg.nodes.concat([{ id: '40000013', x: 200, y: 10 }]), edges: [{ f: 'k:40000011', t: 'k:40000012' }, { f: 'k:40000012', t: 'k:40000011' }] } });
     assert.ok(up.ok, up.err);
     got = call('apiBoot', 4).v.incidents.find(x => x.id === di.v.id);
@@ -221,7 +242,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));
     const incRow = db().getSheetByName('incidents').data.find(r => r[0] === inc2.v.id);
     assert.equal(incRow[5], '', '結び付く児童がいない事案は名前を消す'); assert.ok(incRow[8], '削除済み');
-    assert.equal(call('apiBoot', 4).v.incidents.length, 2, '他の事案は残る');
+    assert.equal(call('apiBoot', 4).v.incidents.length, 4, '他の事案は残る');
 
     // 持ち越しの候補：前年度に決定した時の組のうち、2人とも今この学年にいて、未採用のもの
     db().getSheetByName('pairs_carry').data.push([FY - 1, 'far', '40000011', '40000021'], [FY - 1, 'near', '40000021', '40000022'], [FY - 2, 'far', '40000011', '40000022']);

@@ -334,6 +334,8 @@
   // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
   // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
   var DG_W = 640, DG_H = 320;
+  // 誰か分からない児童（加害者が不明など）：関係図にだけ置く「？」のカード。id は ? で始まり、名簿の児童には結び付けない
+  function isUnknown(id) { return String(id).charAt(0) === '?'; }
   function normDiagram(d) {
     d = d || {};
     var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
@@ -401,6 +403,6 @@
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

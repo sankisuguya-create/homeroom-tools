@@ -1,4 +1,4 @@
-/* apps/class-split/src/ の config.js・engine.js・server.gs をつないで
+/* apps/class-split/src/ の config.js・engine.js・report.js・server.gs をつないで
    scripts/build.py が作る。正本を直すこと。 */
 
 /* ==================== config.js ==================== */
@@ -64,6 +64,49 @@
     ],
     AREAS: ['東', '西', '南', '北'],
     INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
+    TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
+    // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
+    // 欄：hk 発覚・kk 経緯・sd 指導・s2sd 指導の経過・vi 被害の様子・ha 加害の様子・kikan 関係機関
+    // 文は各地の教育委員会のいじめ対応の手引き（聴き取りは複数の教員で個別に・食い違いは再確認・双方の保護者への連絡・
+    // 謝罪は被害児童の意向を確かめて・解消は行為が止んで3か月）と、様式Ⅰの記入例をもとにした
+    PHRASES: {
+      hk: ['本人から担任に訴えがあった', '保護者から電話で相談があった', '保護者から連絡帳で訴えがあった', '他の児童から担任に報告があった', '担任が休み時間に現認した', '他の教職員が現認し、担任に伝えた', '生活アンケートの記述から分かった', '教育相談で本人が話した', '養護教諭が保健室で話を聞いて分かった'],
+      kk: ['に悪口を言った', 'をからかった', 'を叩いた', 'を蹴った', 'の持ち物を隠した', 'の持ち物を壊した', 'を仲間外れにした', 'を無視した', 'についてSNSに書き込んだ', 'に金品を要求した', 'に嫌なことをさせた', '以前から同じようなことがあったと話した', '周りの児童も見ていた'],
+      sd: ['複数の教員で、関係する児童から個別に聴き取りをした', '聴き取りの内容を突き合わせ、食い違う点を再度確かめた', 'いじめ対応チームを招集し、対応を協議した', '管理職に報告した', '学年の教員で情報を共有した', '加害児童に、行為の意味と相手の気持ちを考えさせる指導をした', '被害児童に、学校が守ることを伝えた', '被害児童の意向を確かめたうえで、加害児童が謝罪した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた', '家庭でも話をしてもらうよう依頼した', '休み時間の見守りを強めた', '座席や班を配慮した', '今後も見守りを続けることを伝えた'],
+      s2sd: ['被害児童から、その後の様子を聴き取った', '加害児童に、その後の様子を確かめた', 'いじめ対応チームで経過を確かめた', '行為が止んでいることを確かめた', '行為が止んでから3か月、見守りを続けている', '双方の保護者に経過を伝えた', '加害児童に再度指導した'],
+      vi: ['元気に登校している', '学級で落ち着いて過ごしている', '加害児童とも普段どおり関わっている', '心身の苦痛は感じていないと話している', 'まだ不安を感じていると話している', '保護者は学校の対応を了承している', '保護者は今後の見守りを希望している'],
+      ha: ['反省していると話している', '被害児童に謝罪した', '同じことはしないと約束した', 'その後、同じような行為は見られない', '保護者は家庭でも指導したと話している', '保護者が、被害児童の保護者に謝罪の意向を示した'],
+      kikan: ['スクールカウンセラーと面談した', 'スクールソーシャルワーカーと連携した', '子ども家庭センターに相談した', '少年サポートセンターにつないだ', '警察に相談した', '医療機関を受診した', '関係機関との連携はなし']
+    },
+    // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
+    SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
+    // ===== 市教委への報告書（いじめ認知報告書）=====
+    // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
+    FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
+    // いじめの態様（複数選択）。cell は ○ を書くセル
+    MODES: [
+      { t: '冷やかし・からかい・悪口や脅し文句、嫌なことを言われる', cell: 'B22' },
+      { t: '仲間外れ、集団による無視をされる', cell: 'H22' },
+      { t: '軽くぶつかられたり、遊ぶふりをしてたたかれたり、蹴られたりする', cell: 'B23' },
+      { t: 'ひどくぶつかられたりたたかれたり、蹴られたりする', cell: 'H23' },
+      { t: '金品をたかられる', cell: 'B24' },
+      { t: '金品を隠されたり、盗まれたり、壊されたり、捨てられたりする', cell: 'H24' },
+      { t: '嫌なことや恥ずかしいこと、危険なことをされたり、させられたりする', cell: 'B25' },
+      { t: 'パソコンや携帯電話等で、ひぼう・中傷や嫌なことをされる', cell: 'H25' },
+      { t: '性的な嫌がらせや性的な行為をされる', note: '卑猥なことを言われる、身体を触られる、性的な動画・画像を撮影・送信されるなど', cell: 'B26' },
+      { t: 'その他', cell: 'I26' }
+    ],
+    // 様式のシート名と、書くセルの番地。head は3つの様式で共通の頭の部分
+    REPORT: {
+      sheets: { light: '簡易報告書', f1: '様式Ⅰ', f2: '様式Ⅱ' },
+      names: { light: '簡易報告書', f1: '様式Ⅰ', f2: '様式Ⅱ' },
+      head: { school: 'B4', era: 'C5', month: 'E5', day: 'G5', wday: 'I5', victim: 6 }, // victim：被害の児童の行（学年B・組D・性別G・ふりがなI、名前は次の行のI）
+      harmRows: [8, 10, 12, 14, 16, 18], harmMore: 'B20', // 加害の児童（簡易・様式Ⅰ）。7人目からは人数だけ
+      found: 'B21', modeOther: 'K26',
+      f1: { gaiyou: 'B27' },
+      f2: { shido: 'B8', victim: 'B26', harm: 'B32', kikan: 'B38' }
+    },
     TEACHER_DOMAIN: 'edu.nishi.or.jp'
   };
 
@@ -430,6 +473,8 @@
   // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
   // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
   var DG_W = 640, DG_H = 320;
+  // 誰か分からない児童（加害者が不明など）：関係図にだけ置く「？」のカード。id は ? で始まり、名簿の児童には結び付けない
+  function isUnknown(id) { return String(id).charAt(0) === '?'; }
   function normDiagram(d) {
     d = d || {};
     var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
@@ -497,8 +542,195 @@
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+/* ==================== report.js ==================== */
+// 市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）を作る計算。画面（コピペ用の表）とサーバー（Excelの書き換え）が同じものを使う。
+// 事案の report の形：{ light, found, modes:[10], other, s1:{ hk, kk, sd }, s2:{ sd, vi, ha, kikan } }
+//   hk・kk・sd・vi・ha は記録の行の並び [{ d:'YYYY-MM-DD', p:'時間帯', t:'本文' }]
+(function (g) {
+  'use strict';
+  var C = g.CONFIG;
+  var WD = ['日', '月', '火', '水', '木', '金', '土'];
+  var SECTIONS = { hk: '発覚', kk: '経緯', sd: '指導' };
+  var SECTIONS2 = { sd: '指導の経過', vi: '被害児童・保護者の様子', ha: '加害児童・保護者の様子' };
+
+  function emptyReport() {
+    return { light: false, found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
+  }
+  function norm(r) {
+    var e = emptyReport(); r = r || {};
+    var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
+    e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
+    e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
+    ['hk', 'kk', 'sd'].forEach(function (k) { e.s1[k] = rows(r.s1 && r.s1[k]); });
+    ['sd', 'vi', 'ha'].forEach(function (k) { e.s2[k] = rows(r.s2 && r.s2[k]); });
+    e.s2.kikan = String(r.s2 && r.s2.kikan || '');
+    // 被害の児童が複数の時：様式Ⅱの「被害児童・保護者の様子」は児童ごと（id → 行）
+    Object.keys(r.s2v || {}).forEach(function (id) { var a = rows(r.s2v[id]); if (a.length) e.s2v[id] = a; });
+    return e;
+  }
+  function dateParts(iso) {
+    var p = String(iso || '').split('-'), y = +p[0], m = +p[1], d = +p[2];
+    if (!y || !m || !d) return null;
+    return { y: y, m: m, d: d, w: WD[new Date(y, m - 1, d).getDay()] };
+  }
+  function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
+  // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
+  // 選べる時間帯：設定の時程に、続いた2つの授業の間を「N校時後」として足す（例：1校時と2校時の間＝1校時後）
+  function slots() {
+    var b = C.TIME_SLOTS, out = [];
+    b.forEach(function (p, i) {
+      out.push(p);
+      var a = /^(\d+)校時$/.exec(p), n = b[i + 1] && /^(\d+)校時$/.exec(b[i + 1]);
+      if (a && n) out.push(a[1] + '校時後');
+    });
+    return out;
+  }
+  // 次の行の既定：同じ日の次の時間帯。最後（放課後）の次は、次の登校日（土日を飛ばす）の最初の時間帯
+  function addDays(d, n) {
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return d;
+    t.setDate(t.getDate() + n);
+    return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+  }
+  function nextSlot(d, p) {
+    var L = slots(), i = L.indexOf(p);
+    if (i < 0 || i < L.length - 1) return { d: d, p: i < 0 ? p : L[i + 1] };
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return { d: d, p: L[0] };
+    do { t.setDate(t.getDate() + 1); } while (t.getDay() === 0 || t.getDay() === 6);
+    return { d: t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2), p: L[0] };
+  }
+  function lines(rows) {
+    var L = slots(), slot = function (p) { var i = L.indexOf(p); return i < 0 ? 99 : i; };
+    return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
+      return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
+    }).reduce(function (acc, o) {
+      // 同じ日の行は1行につなぎ、日付が変わったら改行する。日付は行の初めにだけ書く
+      var t = tidy(o.x.t); if (!t) return acc;
+      var last = acc[acc.length - 1], head = (o.x.p ? o.x.p + '、' : '');
+      if (last && last.d === o.x.d) last.s += head + t;
+      else acc.push({ d: o.x.d, s: md(o.x.d) + (head || (o.x.d ? '、' : '')) + t });
+      return acc;
+    }, []).map(function (g) { return g.s; }).join('\n');
+  }
+  // 文を整える：空の行と句点の後の空白を消し、終わりに句点が無ければ足す
+  function tidy(t) {
+    t = String(t || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).join('\n');
+    t = t.replace(/。[ 　\t]+/g, '。');
+    if (t && !/[。！？!?」）)]$/.test(t)) t += '。';
+    return t;
+  }
+  function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
+
+  // その様式に書く値：{ 'B4': '高木北小', ... }
+  // kid(id) → { grade, cls(1から), male, name, kana }。victim は被害の児童の id、harms は加害の児童の id の並び
+  function cells(kind, inc, o) {
+    var R = C.REPORT, H = R.head, rep = norm(inc.report), out = {};
+    var put = function (ref, v) { if (v !== '' && v != null) out[ref] = v; };
+    put(H.school, o.school || '');
+    var dp = dateParts(inc.date);
+    if (dp) { var era = dp.y - 2018; put(H.era, era === 1 ? '元' : era); put(H.month, dp.m); put(H.day, dp.d); put(H.wday, '(' + dp.w + ')'); }
+    var kidRow = function (row, id) {
+      var k = o.kid(id); if (!k) return;
+      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), k.name);
+    };
+    if (o.victim) kidRow(H.victim, o.victim);
+    if (kind === 'f2') {
+      put(R.f2.shido, lines(rep.s2.sd));
+      var vi = o.victim && rep.s2v[o.victim] ? rep.s2v[o.victim] : rep.s2.vi;
+      if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
+      if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
+      put(R.f2.kikan, rep.s2.kikan);
+      return out;
+    }
+    var harms = o.harms || [];
+    harms.slice(0, R.harmRows.length).forEach(function (id, i) { kidRow(R.harmRows[i], id); });
+    var more = harms.slice(R.harmRows.length);
+    if (more.length) {
+      var m = more.filter(function (id) { var k = o.kid(id); return k && k.male; }).length;
+      put(R.harmMore, '※その他に男子（　' + m + '　）名、女子（　' + (more.length - m) + '　）名　　　　全体計（　' + harms.length + '　）名');
+    }
+    put(R.found, rep.found);
+    C.MODES.forEach(function (md0, i) { if (rep.modes[i]) put(md0.cell, '○'); });
+    if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
+    // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
+    if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
+    return out;
+  }
+  // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
+  function allowedCells(kind) {
+    var R = C.REPORT, H = R.head, a = [H.school, H.era, H.month, H.day, H.wday], row = function (r) { a.push('B' + r, 'D' + r, 'G' + r, 'I' + r, 'I' + (r + 1)); };
+    row(H.victim);
+    if (kind === 'f2') { a.push(R.f2.shido, R.f2.victim, R.f2.harm, R.f2.kikan); return a; }
+    R.harmRows.forEach(row);
+    a.push(R.harmMore, R.found, R.modeOther);
+    C.MODES.forEach(function (m) { a.push(m.cell); });
+    if (kind === 'f1') a.push(R.f1.gaiyou);
+    return a;
+  }
+
+  // ===== xlsx のシートの XML に値を書く（罫線・結合・入力規則はそのまま） =====
+  function xesc(s) { return String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/\r?\n/g, '&#10;'); } // 改行は文字参照にする（そのままの改行を捨てる表計算ソフトがある）
+  function colNum(c) { var n = 0; for (var i = 0; i < c.length; i++) n = n * 26 + c.charCodeAt(i) - 64; return n; }
+  function cellXml(ref, attrs, v) {
+    attrs = (attrs || '').replace(/\s+t="[^"]*"/, '');
+    if (typeof v === 'number') return '<c r="' + ref + '"' + attrs + '><v>' + v + '</v></c>';
+    return '<c r="' + ref + '"' + attrs + ' t="inlineStr"><is><t xml:space="preserve">' + xesc(v) + '</t></is></c>';
+  }
+  function setCell(xml, ref, v) {
+    var cr = colRow(ref); if (!cr) return xml;
+    var re = new RegExp('<c r="' + ref + '"((?:\\s[^>]*?)?)(?:/>|>[\\s\\S]*?</c>)');
+    if (re.test(xml)) return xml.replace(re, function (_, attrs) { return cellXml(ref, attrs, v); });
+    var rowRe = new RegExp('<row r="' + cr.r + '"([^>]*?)(/>|>([\\s\\S]*?)</row>)');
+    var nc = cellXml(ref, '', v);
+    if (rowRe.test(xml)) {
+      return xml.replace(rowRe, function (_, attrs, end, body) {
+        body = end === '/>' ? '' : body;
+        var cells = body.match(/<c r="[A-Z]+\d+"[\s\S]*?(?:\/>|<\/c>)/g) || [], placed = false, outB = '';
+        cells.forEach(function (c) {
+          var r2 = /<c r="([A-Z]+)\d+"/.exec(c)[1];
+          if (!placed && colNum(r2) > colNum(cr.c)) { outB += nc; placed = true; }
+          outB += c;
+        });
+        if (!placed) outB += nc;
+        return '<row r="' + cr.r + '"' + attrs + '>' + outB + '</row>';
+      });
+    }
+    // 行が無い：番号の順に差し込む
+    var rows = xml.match(/<row r="(\d+)"/g) || [], at = -1;
+    for (var i = 0; i < rows.length; i++) { if (+/\d+/.exec(rows[i])[0] > cr.r) { at = xml.indexOf(rows[i]); break; } }
+    var nr = '<row r="' + cr.r + '">' + nc + '</row>';
+    if (at >= 0) return xml.slice(0, at) + nr + xml.slice(at);
+    if (/<sheetData\s*\/>/.test(xml)) return xml.replace(/<sheetData\s*\/>/, '<sheetData>' + nr + '</sheetData>');
+    return xml.replace('</sheetData>', nr + '</sheetData>');
+  }
+  function fillSheet(xml, values) {
+    Object.keys(values).forEach(function (ref) { xml = setCell(xml, ref, values[ref]); });
+    return xml;
+  }
+  // workbook.xml と その rels から、シート名 → シートのファイルの道筋
+  function sheetPath(workbookXml, relsXml, name) {
+    var m = new RegExp('<sheet\\b[^>]*name="' + xesc(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"[^>]*/>').exec(workbookXml);
+    if (!m) return '';
+    var rid = /r:id="([^"]+)"/.exec(m[0]); if (!rid) return '';
+    var rel = new RegExp('<Relationship\\b[^>]*Id="' + rid[1] + '"[^>]*/>').exec(relsXml); if (!rel) return '';
+    var tgt = /Target="([^"]+)"/.exec(rel[0])[1];
+    return tgt.charAt(0) === '/' ? tgt.slice(1) : 'xl/' + tgt;
+  }
+  // 開いた時にそのシートを出す
+  function activate(workbookXml, name) {
+    var names = (workbookXml.match(/<sheet\b[^>]*\/>/g) || []).map(function (s) { return (/name="([^"]*)"/.exec(s) || [])[1]; });
+    var i = names.indexOf(xesc(name)); if (i < 0) return workbookXml;
+    return workbookXml.replace(/<workbookView\b([^>]*?)\/>/, function (_, a) { a = a.replace(/\s+(activeTab|firstSheet)="\d+"/g, ''); return '<workbookView' + a + ' activeTab="' + i + '"/>'; });
+  }
+  function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
+
+  g.Report = { addDays: addDays, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+    setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 /* ==================== server.gs ==================== */
@@ -506,7 +738,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_241b9e5e6ea8';
+var SERVER_BUILD = 'BUILD_3f5e4eb76aac';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -558,7 +790,7 @@ var TABLES_ = [
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
   { name: 'pairs_carry', head: ['fy', 'type', 'a', 'b', 'memo', 'tags', 'incs', 'since'] },
   // diagram：関係図（児童IDとグループの記号だけ。氏名は入れない）。role：関係図から決めた役割（harm・victim・mutual・related）
-  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram', 'date_end', 'detail'] },
+  { name: 'incidents', head: ['inc_id', 'date', 'type', 'url', 'file_id', 'title', 'by', 'at', 'deleted', 'diagram', 'date_end', 'detail', 'report'] },
   { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] },
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
@@ -841,15 +1073,22 @@ function incidents_() {
   return read_('incidents').rows.filter(function (r) { return !r.deleted && r.inc_id !== ''; }).map(function (r) {
     var dg = null;
     if (r.diagram) { try { dg = Engine.normDiagram(JSON.parse(String(r.diagram))); } catch (e) { dg = null; } }
-    return { id: +r.inc_id, date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg };
+    var rp = null;
+    if (r.report) { try { rp = Report.norm(JSON.parse(String(r.report))); } catch (e) { rp = null; } }
+    return { id: +r.inc_id, date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
   });
 }
 // 事案の入力を確かめる：関係図があれば、関係する児童と役割は関係図から決める
 function incidentInput_(x) {
   if (!x) throw userError_('事案が読めません');
-  if (!/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
+  // 文書のURLは任意（事案管理の入力欄に記録を書くなら要らない）。貼るなら学校のドライブの文書だけ
+  if (x.url && !/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
   var dg = x.diagram ? Engine.normDiagram(x.diagram) : null, ids, roles = {};
-  if (dg && dg.nodes.length) { ids = dg.nodes.map(function (n) { return n.id; }); roles = Engine.diagramRoles(dg); }
+  if (dg && dg.nodes.length) {
+    // 「？」（誰か分からない児童）は関係図にだけ残し、事案と児童の結び付き・役割には入れない
+    ids = dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !Engine.isUnknown(id); });
+    var all = Engine.diagramRoles(dg); ids.forEach(function (id) { if (all[id]) roles[id] = all[id]; });
+  }
   else { ids = (x.ids || []).map(String); dg = null; }
   if (!ids.length) throw userError_('関係する児童を選んでください');
   var json = dg ? JSON.stringify(dg) : '';
@@ -858,7 +1097,22 @@ function incidentInput_(x) {
   var date = String(x.date || ''), end = String(x.dateEnd || '');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw userError_('始まりの日を入れてください');
   if (end && (!/^\d{4}-\d{2}-\d{2}$/.test(end) || end < date)) throw userError_('終わりの日は始まりの日より後にしてください');
-  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: String(x.type), url: String(x.url) };
+  var rp = x.report ? reportInput_(x.report) : null, rjson = rp ? JSON.stringify(rp) : '';
+  if (rjson.length > 45000) throw userError_('記録が長すぎます。分けて書いてください');
+  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: String(x.type), url: String(x.url || ''), report: rp, rjson: rjson };
+}
+// 報告書の記録（発覚・経緯・指導、様式Ⅱの追記）を確かめる。文字数と行数に上限を置く
+function reportInput_(r) {
+  var rp = Report.norm(r), cut = function (a) {
+    if (a.length > 80) throw userError_('記録の行が多すぎます（1つの欄に80行まで）');
+    return a.map(function (x) { return { d: /^\d{4}-\d{2}-\d{2}$/.test(x.d) ? x.d : '', p: String(x.p).slice(0, 20), t: String(x.t).slice(0, 2000) }; });
+  };
+  ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k] = cut(rp.s1[k]); });
+  ['sd', 'vi', 'ha'].forEach(function (k) { rp.s2[k] = cut(rp.s2[k]); });
+  var v2 = {}; Object.keys(rp.s2v).slice(0, 40).forEach(function (id) { if (/^\d{1,20}$|^T\d+$/.test(id)) v2[id] = cut(rp.s2v[id]); }); rp.s2v = v2;
+  rp.s2.kikan = rp.s2.kikan.slice(0, 2000); rp.other = rp.other.slice(0, 200);
+  if (rp.found && CONFIG.FOUND_LIST.indexOf(rp.found) < 0) rp.found = '';
+  return rp;
 }
 function isoDate_(v) {
   if (v instanceof Date) return Utilities.formatDate(v, 'Asia/Tokyo', 'yyyy-MM-dd');
@@ -923,16 +1177,16 @@ var apiFetchTitle = api_(function (url) { requireTeacher_(); return { title: tit
 var apiAddIncident = api_(function (x) {
   var by = requireTeacher_();
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || titleOf_(v.url);
+  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), next = 1;
     t.rows.forEach(function (r) { if (+r.inc_id >= next) next = +r.inc_id + 1; });
-    var inc = { inc_id: next, date: v.date, date_end: v.dateEnd, detail: v.detail, type: v.type, url: v.url, file_id: fileIdOf_(v.url), title: title, by: by, at: new Date(), deleted: '', diagram: v.json };
+    var inc = { inc_id: next, date: v.date, date_end: v.dateEnd, detail: v.detail, type: v.type, url: v.url, file_id: fileIdOf_(v.url), title: title, by: by, at: new Date(), deleted: '', diagram: v.json, report: v.rjson };
     append_('incidents', TABLES_[3].head, [inc]);
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (id) { return { inc_id: next, id8: id, role: v.roles[id] || '' }; }));
     log_(by, 'addIncident', v.ids.length);
-    return { id: next, date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
+    return { id: next, date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
 });
 
@@ -941,17 +1195,74 @@ var apiUpdateIncident = api_(function (id, x) {
   var by = requireTeacher_();
   id = +id;
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || titleOf_(v.url);
+  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
     if (!row) throw userError_('事案が見つかりません');
-    [['date', v.date], ['date_end', v.dateEnd], ['detail', v.detail], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
+    [['date', v.date], ['date_end', v.dateEnd], ['detail', v.detail], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json], ['report', v.rjson]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
     removeRows_('incident_kids', function (r) { return +r.inc_id === id; });
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (k) { return { inc_id: id, id8: k, role: v.roles[k] || '' }; }));
     log_(by, 'updateIncident', v.ids.length);
-    return { id: id, date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram };
+    return { id: id, date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
+});
+
+// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
+// 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
+// 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
+var apiExportReport = api_(function (kind, values, incId, seq) {
+  var by = requireTeacher_(), R = CONFIG.REPORT;
+  if (!R.sheets[kind]) throw userError_('様式が分かりません');
+  var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
+  var vals = {};
+  Object.keys(values || {}).forEach(function (ref) {
+    if (!ok[ref]) return;
+    var v = values[ref];
+    vals[ref] = typeof v === 'number' && isFinite(v) ? v : String(v).slice(0, 8000);
+  });
+  var id = fileIdOf_(settings_().template);
+  if (!id) throw userError_('様式のファイルが設定されていません。設定の「事案と報告書」でURLを貼ってください');
+  var file;
+  try { file = DriveApp.getFileById(id); } catch (e) { throw userError_('様式のファイルを開けません。所有者が開けるドライブに置いてください'); }
+  if (file.getMimeType() !== MimeType.MICROSOFT_EXCEL) throw userError_('様式のファイルはExcel（.xlsx）のまま置いてください（スプレッドシートに変換しない）');
+  var blob = file.getBlob().setContentType('application/zip');
+  var parts = Utilities.unzip(blob), byName = {};
+  parts.forEach(function (b, i) { byName[b.getName()] = i; });
+  var text = function (n) { return parts[byName[n]].getDataAsString('UTF-8'); };
+  var put = function (n, s) { parts[byName[n]] = Utilities.newBlob(s, 'application/xml', n); };
+  if (byName['xl/workbook.xml'] == null || byName['xl/_rels/workbook.xml.rels'] == null) throw userError_('様式のファイルが読めません');
+  var wb = text('xl/workbook.xml'), path = Report.sheetPath(wb, text('xl/_rels/workbook.xml.rels'), R.sheets[kind]);
+  if (!path || byName[path] == null) throw userError_('様式のファイルに「' + R.sheets[kind] + '」のシートがありません');
+  Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
+  put(path, Report.fillSheet(text(path), vals));
+  put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
+  // 被害の児童が複数の時は、1人ずつ番号を付けて別のファイルにする（名前に氏名は入れない）
+  var name = R.names[kind] + '_事案' + (+incId || 0) + (+seq ? '_被害' + (+seq) : '') + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
+  var out = Utilities.zip(parts, name).setContentType(MimeType.MICROSOFT_EXCEL);
+  var folder = null;
+  try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }
+  var copy = folder ? folder.createFile(out) : DriveApp.createFile(out);
+  log_(by, 'exportReport', +incId || 0);
+  return { name: name, url: copy.getUrl() };
+});
+
+// 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
+// 中身は入力中の記録そのもの（氏名が入りうる）。登録するか「やめる」で消える
+function draftKey_(email, grade) { return 'incdraft_' + String(email).toLowerCase() + '_' + (+grade); }
+var apiSaveDraft = api_(function (grade, draft) {
+  var by = requireTeacher_(), key = draftKey_(by, grade);
+  return withLock_(function () {
+    if (!draft) { setSetting_(key, null); return { ok: true }; }
+    var s = JSON.stringify(draft);
+    if (s.length > 45000) throw userError_('書きかけが長すぎて保存できません。登録してから続きを書いてください');
+    setSetting_(key, { at: new Date().toISOString(), draft: draft });
+    return { ok: true };
+  });
+});
+var apiLoadDraft = api_(function (grade) {
+  var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
+  return v && v.draft ? v : null;
 });
 
 var apiSchoolIncidents = api_(function () {
@@ -1076,12 +1387,13 @@ function removeRows_(name, pred) {
 function defaultSettings_() {
   var attrs = {};
   CONFIG.ATTRS.forEach(function (at) { attrs[at.k] = { label: at.label, s: at.s, w: at.w }; });
-  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: CONFIG.KEEP_YEARS_DEFAULT };
+  return { attrs: attrs, types: CONFIG.INCIDENT_TYPES.slice(), teachers: [], keepYears: CONFIG.KEEP_YEARS_DEFAULT, slots: CONFIG.TIME_SLOTS.slice(), school: '', template: '' };
 }
 function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
-    teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0 };
+    teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || '') };
 }
 var apiSettings = api_(function () {
   var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
@@ -1091,7 +1403,11 @@ var apiSettings = api_(function () {
 var apiSaveSettings = api_(function (s) {
   var by = requireTeacher_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
-  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)) };
+  var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
+    slots: (s.slots || []).map(function (t) { return String(t).trim().slice(0, 20); }).filter(Boolean).slice(0, 30),
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300) };
+  if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
+  if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
     var x = s.attrs[at.k] || {};
     var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
@@ -1156,7 +1472,7 @@ var apiPurge = api_(function (ids) {
     read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
     var t = read_('incidents');
     t.rows.forEach(function (r) {
-      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); if (t.head.indexOf('detail') >= 0) writeCell_(t, r, 'detail', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
+      if (!r.deleted && r.inc_id !== '' && !left[r.inc_id]) { writeCell_(t, r, 'title', ''); writeCell_(t, r, 'url', ''); if (t.head.indexOf('detail') >= 0) writeCell_(t, r, 'detail', ''); if (t.head.indexOf('report') >= 0) writeCell_(t, r, 'report', ''); writeCell_(t, r, 'deleted', new Date().toISOString()); }
       // 関係図からも消した児童を外す（残った児童の関係図は、その児童のいない形で残す）
       if (r.diagram) {
         var dg; try { dg = JSON.parse(String(r.diagram)); } catch (e) { dg = null; }

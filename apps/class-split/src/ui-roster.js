@@ -389,7 +389,7 @@
   function kidPop() {
     var d = D();
     if (!R.kid || !d.kids[R.kid]) { if (App.dlg && App.dlg.kid) App.closeDlg(); return; }
-    if (App.dlg && App.dlg.kid) { App.refreshDlg(); mountDg(); return; }
+    if (App.dlg && App.dlg.kid) { App.refreshDlg(); return; }
     if (App.dlg) return; // ほかの枠が開いている間は出さない
     App.openDlg({
       kid: true,
@@ -398,12 +398,6 @@
       input: function (t) { App.screens.roster.input(t); },
       onClose: function () { R.kid = null; R.form = null; render(); }
     });
-    mountDg();
-  }
-  // 関係図は自分の枠だけ描き直す（窓全体を描き直すと入力中の文字が切れるため）
-  function mountDg() {
-    var el = App.$('fDg');
-    if (el && R.form) App.Diagram.mount(el, R.form.dg, function (st) { R.form.dg = st; });
   }
 
   function pane() { return recordHtml(R.kid, R.fy, true); }
@@ -425,14 +419,13 @@
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
     var list = incsOf(kid).sort(function (a, b) { return b.date < a.date ? -1 : 1; });
     h += '<section><h3>事案（全' + list.length + '件）' + (canAdd && !R.form ? '<button class="btn primary" id="addInc">＋事案を登録</button>' : '') + '</h3>';
-    if (canAdd && R.form) h += form();
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];
       var role = x.roles && x.roles[kid];
-      return '<div class="it"><a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a><span class="meta">' + App.span(x) + '・' + esc(x.type) +
+      return '<div class="it">' + (x.url ? '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + esc(x.title || '（名前なし）') + ' ↗</a>' : '<b>' + esc(x.title || x.type + 'の事案') + '</b>') + '<span class="meta">' + App.span(x) + '・' + esc(x.type) +
         (y ? '・' + y.grade + '年の時' : '') + (role ? '・<em class="r-' + role + '">' + E.ROLE_NAMES[role] + '</em>' : '') + (others.length ? '・関係：' + others.map(esc).join('、') : '') + '</span>' + (x.detail ? '<div class="dt">' + esc(x.detail) + '</div>' : '') +
-        (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">関係図・直す</button>' : '') + '</div>';
+        (canAdd && !R.form ? '<button type="button" class="btn ie" data-editinc="' + x.id + '">事案管理で開く</button>' : '') + '</div>';
     }).join('') || '<div class="note">事案はありません</div>') + '</div></section></aside>';
     return h;
   }
@@ -441,36 +434,6 @@
     if (!D().kids[kid]) return;
     App.openDlg({ html: function () { return '<div class="pop" data-close="1">' + recordHtml(kid, D().fy, false) + '</div>'; } });
   };
-
-  function form() {
-    var f = R.form, d = D(), esc = App.esc;
-    var today = new Date(), iso = today.getFullYear() + '-' + ('0' + (today.getMonth() + 1)).slice(-2) + '-' + ('0' + today.getDate()).slice(-2);
-    f.date = f.date || iso;
-    return '<form class="form" id="incForm">' +
-      '<label>文書のURL<input id="fUrl" value="' + esc(f.url || '') + '" placeholder="docs.google.com/… を貼る" required></label>' +
-      '<label>文書の名前' + (f.titleMsg ? '（' + f.titleMsg + '）' : '') + '<input id="fTitle" value="' + esc(f.title || '') + '" placeholder="URLを貼ると自動で入ります"></label>' +
-      '<label>関係する児童と関係図（矢印＝加害）</label>' +
-      '<input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div><div id="fDg" class="dg"></div>' +
-      '<label>詳細（経緯・したこと・言ったこと・対応 など）<textarea id="fDetail" rows="5" maxlength="5000" placeholder="見たこと・聞いたこと・したことを、日時とともに事実で書きます">' + esc(f.detail || '') + '</textarea></label>' +
-      '<div class="note">保護者から開示を求められることがある記録です。事実を書き、推測や人柄の評価は書きません。卒業・転出から' + C.INCIDENT_KEEP_YEARS + '年度は残ります。</div>' +
-      '<div class="row"><label>期間（始まり）<input id="fDate" type="date" value="' + f.date + '"></label><label>終わり（その日だけなら空のまま）<input id="fDateEnd" type="date" min="' + f.date + '" value="' + (f.dateEnd || '') + '"></label></div>' +
-      '<div class="row"><label>種別<select id="fType">' +
-      C.INCIDENT_TYPES.map(function (t) { return '<option' + (t === f.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></label></div>' +
-      '<div class="note">文書の名前に児童の氏名を入れないでください（一覧は全教員が見られます）</div>' +
-      '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">' + (f.edit ? '直す' : '登録する') + '</button></div></form>';
-  }
-
-  // 候補だけを描き直す（入力欄を作り直すと日本語入力の変換が切れるため）
-  function suggHtml(q) {
-    var d = D(), f = R.form, esc = App.esc;
-    q = (q || '').trim();
-    if (!q) return '';
-    var items = yearOf(d.fy).rows.filter(function (r) {
-      var s = d.kids[r.id];
-      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 8);
-    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
-  }
 
   // ===== 名簿を貼る =====
   // 既存の名簿の範囲をコピーして貼る。見出しで列を読み、読めた結果と誤りをその場で見せてから取り込む
@@ -569,52 +532,13 @@
       if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
       if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
       if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
-      if (t.closest('#addInc')) { var st0 = App.Diagram.state(null); App.Diagram.add(st0, R.kid); R.form = { dg: st0 }; render(); refocus('fUrl'); return true; }
-      if ((x = t.closest('[data-editinc]'))) {
-        var inc = d.incidents.filter(function (y) { return y.id === +x.dataset.editinc; })[0];
-        if (!inc) return true;
-        var st1 = App.Diagram.state(inc.diagram);
-        if (!inc.diagram) inc.ids.forEach(function (id) { App.Diagram.add(st1, id); }); // 関係図の無い古い事案は、関係する児童を並べて始める
-        R.form = { edit: inc.id, url: inc.url, title: inc.title, date: inc.date, dateEnd: inc.dateEnd || '', detail: inc.detail || '', type: inc.type, dg: st1 }; render(); return true;
-      }
-      if (t.closest('#cancelInc')) { R.form = null; render(); return true; }
-      if ((x = t.closest('[data-pick]'))) { App.Diagram.add(R.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
+      // 事案の登録・直すは事案管理の画面で行う（開いていた児童を入れておく）
+      if (t.closest('#addInc')) { App.st.incFocus = { add: true, kid: R.kid }; App.go('incidents'); return true; }
+      if ((x = t.closest('[data-editinc]'))) { App.st.incFocus = { sel: +x.dataset.editinc }; App.go('incidents'); return true; }
       return false;
     },
     input: function (t) {
       if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
-      if (!R.form) return;
-      if (t.id === 'fQ') { App.$('fSugg').innerHTML = suggHtml(t.value); }
-      else if (t.id === 'fTitle') R.form.title = t.value;
-      else if (t.id === 'fDate') { R.form.date = t.value; var fe = App.$('fDateEnd'); if (fe) fe.min = t.value; }
-      else if (t.id === 'fDateEnd') R.form.dateEnd = t.value;
-      else if (t.id === 'fDetail') R.form.detail = t.value;
-      else if (t.id === 'fType') R.form.type = t.value;
-      else if (t.id === 'fUrl') {
-        R.form.url = t.value;
-        var url = t.value;
-        clearTimeout(R.form.timer);
-        R.form.timer = setTimeout(function () {
-          App.pf().fetchTitle(url).then(function (r) {
-            if (!R.form || R.form.url !== url) return;
-            if (r.title) { R.form.title = r.title; R.form.titleMsg = '自動で取得しました'; }
-            else R.form.titleMsg = '取得できませんでした。名前を入力してください';
-            render(); refocus(r.title ? 'fType' : 'fTitle');
-          });
-        }, 400);
-      }
-    },
-    submit: function (f) {
-      if (f.id !== 'incForm') return;
-      var x = R.form, dg = x.dg.d;
-      if (!dg.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
-      if (x.dateEnd && x.dateEnd < x.date) { App.toast('終わりの日は始まりの日より後にしてください'); return; }
-      var body = { url: x.url, title: x.title || '', date: x.date, dateEnd: x.dateEnd || '', detail: x.detail || '', type: x.type || C.INCIDENT_TYPES[0], ids: dg.nodes.map(function (n) { return n.id; }), diagram: dg };
-      App.save(function () { return x.edit ? App.pf().updateIncident(x.edit, body) : App.pf().addIncident(body); }).then(function (inc) {
-        var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id);
-        if (i >= 0) list[i] = inc; else list.push(inc);
-        R.form = null; render(); App.toast(x.edit ? '事案を直しました' : '事案を登録しました');
-      });
     },
     key: function (e) {
       if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }

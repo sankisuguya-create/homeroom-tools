@@ -8,7 +8,7 @@
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
