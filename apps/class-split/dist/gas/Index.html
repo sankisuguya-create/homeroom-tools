@@ -550,6 +550,11 @@ table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overf
 @media (max-width:760px){.iwrap{grid-template-columns:1fr}.ilist{position:static;max-height:40vh}}
 .dlg.iout{max-height:90vh;overflow:auto}
 table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
+.iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
+.iph button:hover{border-color:var(--link)}
+.iph button.nm{border-style:dashed;font-weight:700}
+.ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -622,6 +627,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
+    // 記録の欄の定型文（押すと、選んでいる行に入る）。欄：hk 発覚・kk 経緯・sd 指導・s2sd 指導の経過・vi 被害の様子・ha 加害の様子・kikan 関係機関
+    PHRASES: {
+      hk: ['本人から訴えがあった', '保護者から連絡があった', '他の児童から報告があった', '担任が現認した', '他の教職員が現認した', 'アンケートで分かった', '連絡帳に書かれていた'],
+      kk: ['悪口を言った', 'からかった', '叩いた', '蹴った', '押した', '物を隠した', '物を壊した', '仲間外れにした', '無視した', 'SNSに書き込んだ', '言い合いになった', 'つかみ合いになった'],
+      sd: ['双方から聴き取りをした', '本人から聴き取りをした', '周りの児童から聴き取りをした', '加害児童に指導した', '双方に指導した', '謝罪の場を設けた', '互いに謝った', '保護者に電話で伝えた', '保護者に来校してもらい伝えた', '家庭訪問をした', '学年で共有した', '管理職に報告した', 'いじめ対応チームを招集した', '見守りを続けることにした'],
+      s2sd: ['経過を聴き取った', '再度指導した', '保護者に経過を伝えた', 'いじめ対応チームで経過を確認した', '見守りを続けている'],
+      vi: ['元気に過ごしている', '落ち着いて登校している', '加害児童とも普通に関わっている', '不安を訴えている', '保護者は了承している', '保護者は経過の見守りを希望している'],
+      ha: ['反省している', '謝罪した', '同じことはしないと約束した', '保護者も謝罪の意向を示した', '保護者から家庭でも指導したと連絡があった'],
+      kikan: ['スクールカウンセラー', 'スクールソーシャルワーカー', '子ども家庭センター', '少年サポートセンター', '警察', '医療機関', 'なし']
+    },
     // ===== 市教委への報告書（いじめ認知報告書）=====
     // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
     FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
@@ -1115,14 +1130,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return { y: y, m: m, d: d, w: WD[new Date(y, m - 1, d).getDay()] };
   }
   function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
-  // 記録の行を時系列の箇条書きにする（日付・時間帯の順。同じなら入力した順）
+  // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
   function lines(rows) {
     var slot = function (p) { var i = C.TIME_SLOTS.indexOf(p); return i < 0 ? 99 : i; };
     return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
       return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
     }).map(function (o) {
-      var head = [md(o.x.d), o.x.p].filter(Boolean).join(' ');
-      return '・' + (head ? head + '　' : '') + o.x.t.replace(/\s+$/, '');
+      var head = md(o.x.d) + (o.x.p || '');
+      return (head ? head + '、' : '') + o.x.t.replace(/\s+$/, '');
     }).join('\n');
   }
   function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
@@ -1157,7 +1172,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     put(R.found, rep.found);
     C.MODES.forEach(function (md0, i) { if (rep.modes[i]) put(md0.cell, '○'); });
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
-    if (kind === 'f1') put(R.f1.gaiyou, lines([].concat(rep.s1.hk, rep.s1.kk, rep.s1.sd)));
+    // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
+    if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
@@ -1652,7 +1668,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_4bf440d7532e';
+  var PAGE_BUILD = 'BUILD_94c1d1dacab4';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1708,7 +1724,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     addIncident: function (x) { return call('apiAddIncident', x); },
     updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
-    exportReport: function (kind, values) { return call('apiExportReport', kind, values); },
+    exportReport: function (kind, values, incId) { return call('apiExportReport', kind, values, incId); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
@@ -2671,7 +2687,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn" id="iedit">直す</button><button class="btn" id="iadd2">その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span>' +
-      (b ? '<button class="btn primary" data-iout="' + (rp.light ? 'light' : 'f1') + '">' + (rp.light ? '簡易報告書' : '様式Ⅰ') + 'を出力…</button><button class="btn" data-iout="f2">様式Ⅱを出力…</button>' : '') + '</div>' +
+      '<button class="btn primary" data-iout="' + (rp.light ? 'light' : 'f1') + '">' + (rp.light ? '簡易報告書' : '様式Ⅰ') + 'を出力…</button><button class="btn" data-iout="f2">様式Ⅱを出力…</button></div>' +
       '<section><h3>関係する児童</h3><div class="note">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>報告書の項目</h3><table class="irv"><tr><th>報告</th><td>' + (rp.light ? '軽微な事案（簡易報告書）' : '様式Ⅰ') + '</td></tr><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
       (C.MODES.filter(function (m, i) { return rp.modes[i]; }).map(function (m) { return esc(m.t); }).join('<br>') || '（未選択）') + (rp.modes[C.MODES.length - 1] && rp.other ? '：' + esc(rp.other) : '') + '</td></tr></table></section>';
@@ -2687,8 +2703,18 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 記録の行：左に日付と時間帯、右に本文
+  // 定型文と関係する児童の名前のボタン。押すと選んでいる行（無ければ最後の行）に入る
+  function chips(sec, key) {
+    var ph = C.PHRASES[sec === 's2' && key === 'sd' ? 's2sd' : key] || [], names = formKids();
+    return '<div class="iph" data-phs="' + sec + ':' + key + '">' + (key !== 'hk' ? names.map(function (n) { return '<button type="button" class="nm" data-ph="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') : '') +
+      ph.map(function (t) { return '<button type="button" data-ph="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>';
+  }
+  function formKids() {
+    var f = I.form, ids = f.dg ? f.dg.d.nodes.map(function (n) { return n.id; }) : (f.x ? f.x.ids : []);
+    return ids.map(kidName);
+  }
   function rowsEdit(sec, key, rows) {
-    return '<div class="irows">' + rows.map(function (r, i) {
+    return chips(sec, key) + '<div class="irows">' + rows.map(function (r, i) {
       var at = sec + ':' + key + ':' + i;
       return '<div class="irow"><div class="itime"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"><select data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' +
         C.TIME_SLOTS.map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + (r.p && C.TIME_SLOTS.indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select></div>' +
@@ -2721,7 +2747,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var f = I.form, s2 = f.rep.s2;
     var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）</h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
     ['sd', 'vi', 'ha'].forEach(function (k) { h += '<h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsEdit('s2', k, s2[k]); });
-    h += '<label>関係機関との連携<input id="fKikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="例：少年サポートセンターにつなぎ、招致指導を受けた"></label>' +
+    h += '<h3>関係機関との連携</h3><div class="iph" data-phs="kikan">' + C.PHRASES.kikan.map(function (t) { return '<button type="button" data-ph="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<input id="fKikan" class="ikikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="例：少年サポートセンターにつなぎ、招致指導を受けた">' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">保存する</button></div></form>';
     return h;
   }
@@ -2764,6 +2791,33 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     ['sd', 'vi', 'ha'].forEach(function (k) { if (!I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
     I.mode = 'add2'; I.sel = x.id; void last;
   }
+  // 定型文を入れる：その欄で最後に触った行（無ければ最後の行）の末尾に足す。行の文が句点で終わっていなければ「。」を挟む
+  function putPhrase(where, text) {
+    var f = I.form;
+    if (where === 'kikan') {
+      var k = App.$('fKikan'), cur = f.rep.s2.kikan;
+      f.rep.s2.kikan = cur ? cur.replace(/[、。\s]*$/, '') + '、' + text : text;
+      if (k) { k.value = f.rep.s2.kikan; refocus('fKikan'); }
+      return;
+    }
+    var p = where.split(':'), rows = f.rep[p[0]][p[1]];
+    if (!rows.length) rows.push({ d: f.date || today(), p: '', t: '' });
+    var i = I.focus && I.focus.indexOf(where + ':') === 0 ? +I.focus.split(':')[2] : rows.length - 1;
+    if (!rows[i]) i = rows.length - 1;
+    var r = rows[i], isName = formKids().indexOf(text) >= 0;
+    var id = 'rw-' + p[0] + '-' + p[1] + '-' + i, el = App.$(id), pos = -1;
+    if (isName && el && I.focus === where + ':' + i) {
+      // 名前は書いている途中の位置（カーソルの所）に入れる
+      pos = el.selectionStart; r.t = r.t.slice(0, pos) + text + r.t.slice(el.selectionEnd); pos += text.length;
+    } else r.t = !r.t ? text : isName || /[。、]$/.test(r.t) ? r.t + text : r.t + '。' + text;
+    if (el) { el.value = r.t; el.focus(); var c = pos >= 0 ? pos : r.t.length; el.setSelectionRange(c, c); } else rerenderPane();
+    I.focus = where + ':' + i;
+  }
+  // 最後に触った行を覚える（定型文の入れ先）
+  document.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) { var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2]; }
+  });
   function rowsAt(path) { var p = path.split(':'); return I.form.rep[p[0]][p[1]]; }
 
   function body(x, f) {
@@ -2793,7 +2847,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return (LABELS = L);
   }
   function outDialog(x, kind) {
-    var vs = victimsOf(x), st = { victim: vs[0] };
+    var vs = victimsOf(x), st = { victim: vs[0], made: null };
     var cellsOf = function () {
       return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: st.victim, harms: harmsOf(x, st.victim) });
     };
@@ -2805,7 +2859,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return '<div class="pop" data-close="1"><div class="dlg iout" role="dialog" aria-modal="true" aria-label="報告書を出力"><h2>' + C.REPORT.names[kind] + 'を出力</h2>' +
           (vs.length > 1 ? '<div class="rbar"><span class="lab">被害の児童</span>' + vs.map(function (id) { return '<button class="lv" data-ivic="' + id + '" aria-pressed="' + (id === st.victim) + '">' + esc(kidName(id)) + '</button>'; }).join('') + '</div><p class="note">様式は被害の児童1人ごとに作ります。</p>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る（様式のファイルに書き込む）</button><span class="note">' + (App.settings && App.settings.template ? '' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る（様式を複製して書き込む）</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          (st.made ? '<div class="notebox">作りました：<a href="' + esc(st.made.url) + '" target="_blank" rel="noopener">' + esc(st.made.name) + ' ↗</a></div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -2816,7 +2871,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         if ((b = t.closest('[data-ivic]'))) { st.victim = b.dataset.ivic; App.refreshDlg(); return true; }
         if ((b = t.closest('[data-icopy]'))) { copyText(String(cellsOf()[b.dataset.icopy])); return true; }
         if (t.closest('#ixls')) {
-          App.save(function () { return App.pf().exportReport(kind, cellsOf()); }).then(function (r) { download(r.name, r.b64); App.toast(r.name + ' を作りました'); });
+          App.save(function () { return App.pf().exportReport(kind, cellsOf(), x.id); }).then(function (r) { st.made = r; App.refreshDlg(); });
           return true;
         }
         return false;
@@ -2832,14 +2887,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     ta.remove();
     App.toast(ok ? 'コピーしました' : 'コピーできませんでした。値を選んでコピーしてください');
   }
-  function download(name, b64) {
-    var bin = atob(b64), buf = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-    var url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
-  }
-
   App.screens.incidents = {
     enter: function () {
       I.mode = 'view'; I.form = null;
@@ -2859,6 +2906,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
       if (t.closest('#cancelInc')) { I.mode = 'view'; I.form = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; rerenderPane(); return true; }
       if ((x = t.closest('[data-pick]'))) { App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
+      if ((x = t.closest('[data-ph]'))) { putPhrase(x.closest('[data-phs]').dataset.phs, x.dataset.ph); return true; }
       if ((x = t.closest('[data-radd]'))) {
         var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];
         rows.push({ d: prev ? prev.d : (I.form.date || today()), p: '', t: '' });

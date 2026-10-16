@@ -27,14 +27,14 @@
     return { y: y, m: m, d: d, w: WD[new Date(y, m - 1, d).getDay()] };
   }
   function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
-  // 記録の行を時系列の箇条書きにする（日付・時間帯の順。同じなら入力した順）
+  // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
   function lines(rows) {
     var slot = function (p) { var i = C.TIME_SLOTS.indexOf(p); return i < 0 ? 99 : i; };
     return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
       return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
     }).map(function (o) {
-      var head = [md(o.x.d), o.x.p].filter(Boolean).join(' ');
-      return '・' + (head ? head + '　' : '') + o.x.t.replace(/\s+$/, '');
+      var head = md(o.x.d) + (o.x.p || '');
+      return (head ? head + '、' : '') + o.x.t.replace(/\s+$/, '');
     }).join('\n');
   }
   function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
@@ -69,7 +69,8 @@
     put(R.found, rep.found);
     C.MODES.forEach(function (md0, i) { if (rep.modes[i]) put(md0.cell, '○'); });
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
-    if (kind === 'f1') put(R.f1.gaiyou, lines([].concat(rep.s1.hk, rep.s1.kk, rep.s1.sd)));
+    // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
+    if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）

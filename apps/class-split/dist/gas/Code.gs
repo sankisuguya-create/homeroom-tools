@@ -66,6 +66,16 @@
     INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
+    // 記録の欄の定型文（押すと、選んでいる行に入る）。欄：hk 発覚・kk 経緯・sd 指導・s2sd 指導の経過・vi 被害の様子・ha 加害の様子・kikan 関係機関
+    PHRASES: {
+      hk: ['本人から訴えがあった', '保護者から連絡があった', '他の児童から報告があった', '担任が現認した', '他の教職員が現認した', 'アンケートで分かった', '連絡帳に書かれていた'],
+      kk: ['悪口を言った', 'からかった', '叩いた', '蹴った', '押した', '物を隠した', '物を壊した', '仲間外れにした', '無視した', 'SNSに書き込んだ', '言い合いになった', 'つかみ合いになった'],
+      sd: ['双方から聴き取りをした', '本人から聴き取りをした', '周りの児童から聴き取りをした', '加害児童に指導した', '双方に指導した', '謝罪の場を設けた', '互いに謝った', '保護者に電話で伝えた', '保護者に来校してもらい伝えた', '家庭訪問をした', '学年で共有した', '管理職に報告した', 'いじめ対応チームを招集した', '見守りを続けることにした'],
+      s2sd: ['経過を聴き取った', '再度指導した', '保護者に経過を伝えた', 'いじめ対応チームで経過を確認した', '見守りを続けている'],
+      vi: ['元気に過ごしている', '落ち着いて登校している', '加害児童とも普通に関わっている', '不安を訴えている', '保護者は了承している', '保護者は経過の見守りを希望している'],
+      ha: ['反省している', '謝罪した', '同じことはしないと約束した', '保護者も謝罪の意向を示した', '保護者から家庭でも指導したと連絡があった'],
+      kikan: ['スクールカウンセラー', 'スクールソーシャルワーカー', '子ども家庭センター', '少年サポートセンター', '警察', '医療機関', 'なし']
+    },
     // ===== 市教委への報告書（いじめ認知報告書）=====
     // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
     FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
@@ -559,14 +569,14 @@
     return { y: y, m: m, d: d, w: WD[new Date(y, m - 1, d).getDay()] };
   }
   function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
-  // 記録の行を時系列の箇条書きにする（日付・時間帯の順。同じなら入力した順）
+  // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
   function lines(rows) {
     var slot = function (p) { var i = C.TIME_SLOTS.indexOf(p); return i < 0 ? 99 : i; };
     return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
       return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
     }).map(function (o) {
-      var head = [md(o.x.d), o.x.p].filter(Boolean).join(' ');
-      return '・' + (head ? head + '　' : '') + o.x.t.replace(/\s+$/, '');
+      var head = md(o.x.d) + (o.x.p || '');
+      return (head ? head + '、' : '') + o.x.t.replace(/\s+$/, '');
     }).join('\n');
   }
   function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
@@ -601,7 +611,8 @@
     put(R.found, rep.found);
     C.MODES.forEach(function (md0, i) { if (rep.modes[i]) put(md0.cell, '○'); });
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
-    if (kind === 'f1') put(R.f1.gaiyou, lines([].concat(rep.s1.hk, rep.s1.kk, rep.s1.sd)));
+    // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
+    if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
@@ -681,7 +692,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_4bf440d7532e';
+var SERVER_BUILD = 'BUILD_94c1d1dacab4';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1146,9 +1157,10 @@ var apiUpdateIncident = api_(function (id, x) {
   });
 });
 
-// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）の該当するシートのセルにだけ値を書いて返す。
-// xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。ドライブに複製は作らない
-var apiExportReport = api_(function (kind, values) {
+// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
+// 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
+// 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
+var apiExportReport = api_(function (kind, values, incId) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -1174,10 +1186,13 @@ var apiExportReport = api_(function (kind, values) {
   Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
   put(path, Report.fillSheet(text(path), vals));
   put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
-  var name = R.names[kind] + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd') + '.xlsx';
-  var out = Utilities.zip(parts, name);
-  log_(by, 'exportReport', 0);
-  return { name: name, b64: Utilities.base64Encode(out.getBytes()) };
+  var name = R.names[kind] + '_事案' + (+incId || 0) + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
+  var out = Utilities.zip(parts, name).setContentType(MimeType.MICROSOFT_EXCEL);
+  var folder = null;
+  try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }
+  var copy = folder ? folder.createFile(out) : DriveApp.createFile(out);
+  log_(by, 'exportReport', +incId || 0);
+  return { name: name, url: copy.getUrl() };
 });
 
 var apiSchoolIncidents = api_(function () {

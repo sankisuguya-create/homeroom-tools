@@ -233,10 +233,11 @@ test('報告書：様式のセルの値（被害・加害・態様・時系列�
   assert.equal(c.G6, '女'); assert.equal(c.I7, '被害 花'); assert.equal(c.I19, '加害5');
   assert.match(c.B20, /男子（　0　）名、女子（　2　）名.*全体計（　8　）名/);
   assert.equal(c.B22, '○'); assert.equal(c.I26, '○'); assert.equal(c.K26, '靴を隠す'); assert.equal(c.H22, undefined);
-  assert.equal(c.B27, '・5月8日（金） 朝休み　A\n・5月8日（金） 放課後　B\n・C', '日付・時間帯の順。日付の無い行は最後');
+  assert.equal(c.B27, '5月8日（金）放課後、B\n5月8日（金）朝休み、A\nC', '欄ごと（発覚・経緯・指導）に「日付時間帯、内容」を改行でつなぐ');
   assert.equal(RP.cells('light', inc, o).B27, undefined, '簡易報告書に概要の欄は無い');
   const c2 = RP.cells('f2', inc, o);
-  assert.equal(c2.B8, '・5月11日（月） 放課後　聴き取り'); assert.equal(c2.B26, undefined); assert.match(c2.B32, /^（加害児童生徒及び保護者）\n・5月12日（火）　反省$/);
+  assert.equal(c2.B8, '5月11日（月）放課後、聴き取り'); assert.equal(c2.B26, undefined); assert.match(c2.B32, /^（加害児童生徒及び保護者）\n5月12日（火）、反省$/);
+  assert.equal(RP.lines([{ d: '2026-05-08', p: '昼休み', t: 'b' }, { d: '2026-05-08', p: '朝休み', t: 'a' }]), '5月8日（金）朝休み、a\n5月8日（金）昼休み、b', '欄の中は時間の順');
   assert.equal(c2.I9, undefined, '様式Ⅱに加害の欄は無い');
   assert.equal(RP.cells('f1', { date: '2019-05-01', report: {} }, { kid: () => null }).C5, '元');
   Object.keys(c).forEach(r => assert.ok(RP.allowedCells('f1').includes(r), r));

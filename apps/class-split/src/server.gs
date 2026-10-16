@@ -467,9 +467,10 @@ var apiUpdateIncident = api_(function (id, x) {
   });
 });
 
-// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）の該当するシートのセルにだけ値を書いて返す。
-// xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。ドライブに複製は作らない
-var apiExportReport = api_(function (kind, values) {
+// 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
+// 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
+// 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
+var apiExportReport = api_(function (kind, values, incId) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -495,10 +496,13 @@ var apiExportReport = api_(function (kind, values) {
   Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
   put(path, Report.fillSheet(text(path), vals));
   put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
-  var name = R.names[kind] + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd') + '.xlsx';
-  var out = Utilities.zip(parts, name);
-  log_(by, 'exportReport', 0);
-  return { name: name, b64: Utilities.base64Encode(out.getBytes()) };
+  var name = R.names[kind] + '_事案' + (+incId || 0) + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
+  var out = Utilities.zip(parts, name).setContentType(MimeType.MICROSOFT_EXCEL);
+  var folder = null;
+  try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }
+  var copy = folder ? folder.createFile(out) : DriveApp.createFile(out);
+  log_(by, 'exportReport', +incId || 0);
+  return { name: name, url: copy.getUrl() };
 });
 
 var apiSchoolIncidents = api_(function () {

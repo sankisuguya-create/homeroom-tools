@@ -542,3 +542,8 @@ table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overf
 @media (max-width:760px){.iwrap{grid-template-columns:1fr}.ilist{position:static;max-height:40vh}}
 .dlg.iout{max-height:90vh;overflow:auto}
 table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
+.iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
+.iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
+.iph button:hover{border-color:var(--link)}
+.iph button.nm{border-style:dashed;font-weight:700}
+.ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}

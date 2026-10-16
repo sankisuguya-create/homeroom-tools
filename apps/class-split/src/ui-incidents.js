@@ -72,7 +72,7 @@
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn" id="iedit">直す</button><button class="btn" id="iadd2">その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span>' +
-      (b ? '<button class="btn primary" data-iout="' + (rp.light ? 'light' : 'f1') + '">' + (rp.light ? '簡易報告書' : '様式Ⅰ') + 'を出力…</button><button class="btn" data-iout="f2">様式Ⅱを出力…</button>' : '') + '</div>' +
+      '<button class="btn primary" data-iout="' + (rp.light ? 'light' : 'f1') + '">' + (rp.light ? '簡易報告書' : '様式Ⅰ') + 'を出力…</button><button class="btn" data-iout="f2">様式Ⅱを出力…</button></div>' +
       '<section><h3>関係する児童</h3><div class="note">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>報告書の項目</h3><table class="irv"><tr><th>報告</th><td>' + (rp.light ? '軽微な事案（簡易報告書）' : '様式Ⅰ') + '</td></tr><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
       (C.MODES.filter(function (m, i) { return rp.modes[i]; }).map(function (m) { return esc(m.t); }).join('<br>') || '（未選択）') + (rp.modes[C.MODES.length - 1] && rp.other ? '：' + esc(rp.other) : '') + '</td></tr></table></section>';
@@ -88,8 +88,18 @@
   }
 
   // 記録の行：左に日付と時間帯、右に本文
+  // 定型文と関係する児童の名前のボタン。押すと選んでいる行（無ければ最後の行）に入る
+  function chips(sec, key) {
+    var ph = C.PHRASES[sec === 's2' && key === 'sd' ? 's2sd' : key] || [], names = formKids();
+    return '<div class="iph" data-phs="' + sec + ':' + key + '">' + (key !== 'hk' ? names.map(function (n) { return '<button type="button" class="nm" data-ph="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') : '') +
+      ph.map(function (t) { return '<button type="button" data-ph="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>';
+  }
+  function formKids() {
+    var f = I.form, ids = f.dg ? f.dg.d.nodes.map(function (n) { return n.id; }) : (f.x ? f.x.ids : []);
+    return ids.map(kidName);
+  }
   function rowsEdit(sec, key, rows) {
-    return '<div class="irows">' + rows.map(function (r, i) {
+    return chips(sec, key) + '<div class="irows">' + rows.map(function (r, i) {
       var at = sec + ':' + key + ':' + i;
       return '<div class="irow"><div class="itime"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"><select data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' +
         C.TIME_SLOTS.map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + (r.p && C.TIME_SLOTS.indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select></div>' +
@@ -122,7 +132,8 @@
     var f = I.form, s2 = f.rep.s2;
     var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）</h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
     ['sd', 'vi', 'ha'].forEach(function (k) { h += '<h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsEdit('s2', k, s2[k]); });
-    h += '<label>関係機関との連携<input id="fKikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="例：少年サポートセンターにつなぎ、招致指導を受けた"></label>' +
+    h += '<h3>関係機関との連携</h3><div class="iph" data-phs="kikan">' + C.PHRASES.kikan.map(function (t) { return '<button type="button" data-ph="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<input id="fKikan" class="ikikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="例：少年サポートセンターにつなぎ、招致指導を受けた">' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">保存する</button></div></form>';
     return h;
   }
@@ -165,6 +176,33 @@
     ['sd', 'vi', 'ha'].forEach(function (k) { if (!I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
     I.mode = 'add2'; I.sel = x.id; void last;
   }
+  // 定型文を入れる：その欄で最後に触った行（無ければ最後の行）の末尾に足す。行の文が句点で終わっていなければ「。」を挟む
+  function putPhrase(where, text) {
+    var f = I.form;
+    if (where === 'kikan') {
+      var k = App.$('fKikan'), cur = f.rep.s2.kikan;
+      f.rep.s2.kikan = cur ? cur.replace(/[、。\s]*$/, '') + '、' + text : text;
+      if (k) { k.value = f.rep.s2.kikan; refocus('fKikan'); }
+      return;
+    }
+    var p = where.split(':'), rows = f.rep[p[0]][p[1]];
+    if (!rows.length) rows.push({ d: f.date || today(), p: '', t: '' });
+    var i = I.focus && I.focus.indexOf(where + ':') === 0 ? +I.focus.split(':')[2] : rows.length - 1;
+    if (!rows[i]) i = rows.length - 1;
+    var r = rows[i], isName = formKids().indexOf(text) >= 0;
+    var id = 'rw-' + p[0] + '-' + p[1] + '-' + i, el = App.$(id), pos = -1;
+    if (isName && el && I.focus === where + ':' + i) {
+      // 名前は書いている途中の位置（カーソルの所）に入れる
+      pos = el.selectionStart; r.t = r.t.slice(0, pos) + text + r.t.slice(el.selectionEnd); pos += text.length;
+    } else r.t = !r.t ? text : isName || /[。、]$/.test(r.t) ? r.t + text : r.t + '。' + text;
+    if (el) { el.value = r.t; el.focus(); var c = pos >= 0 ? pos : r.t.length; el.setSelectionRange(c, c); } else rerenderPane();
+    I.focus = where + ':' + i;
+  }
+  // 最後に触った行を覚える（定型文の入れ先）
+  document.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) { var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2]; }
+  });
   function rowsAt(path) { var p = path.split(':'); return I.form.rep[p[0]][p[1]]; }
 
   function body(x, f) {
@@ -194,7 +232,7 @@
     return (LABELS = L);
   }
   function outDialog(x, kind) {
-    var vs = victimsOf(x), st = { victim: vs[0] };
+    var vs = victimsOf(x), st = { victim: vs[0], made: null };
     var cellsOf = function () {
       return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: st.victim, harms: harmsOf(x, st.victim) });
     };
@@ -206,7 +244,8 @@
         return '<div class="pop" data-close="1"><div class="dlg iout" role="dialog" aria-modal="true" aria-label="報告書を出力"><h2>' + C.REPORT.names[kind] + 'を出力</h2>' +
           (vs.length > 1 ? '<div class="rbar"><span class="lab">被害の児童</span>' + vs.map(function (id) { return '<button class="lv" data-ivic="' + id + '" aria-pressed="' + (id === st.victim) + '">' + esc(kidName(id)) + '</button>'; }).join('') + '</div><p class="note">様式は被害の児童1人ごとに作ります。</p>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る（様式のファイルに書き込む）</button><span class="note">' + (App.settings && App.settings.template ? '' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る（様式を複製して書き込む）</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          (st.made ? '<div class="notebox">作りました：<a href="' + esc(st.made.url) + '" target="_blank" rel="noopener">' + esc(st.made.name) + ' ↗</a></div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -217,7 +256,7 @@
         if ((b = t.closest('[data-ivic]'))) { st.victim = b.dataset.ivic; App.refreshDlg(); return true; }
         if ((b = t.closest('[data-icopy]'))) { copyText(String(cellsOf()[b.dataset.icopy])); return true; }
         if (t.closest('#ixls')) {
-          App.save(function () { return App.pf().exportReport(kind, cellsOf()); }).then(function (r) { download(r.name, r.b64); App.toast(r.name + ' を作りました'); });
+          App.save(function () { return App.pf().exportReport(kind, cellsOf(), x.id); }).then(function (r) { st.made = r; App.refreshDlg(); });
           return true;
         }
         return false;
@@ -233,14 +272,6 @@
     ta.remove();
     App.toast(ok ? 'コピーしました' : 'コピーできませんでした。値を選んでコピーしてください');
   }
-  function download(name, b64) {
-    var bin = atob(b64), buf = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
-    var url = URL.createObjectURL(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    var a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
-  }
-
   App.screens.incidents = {
     enter: function () {
       I.mode = 'view'; I.form = null;
@@ -260,6 +291,7 @@
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
       if (t.closest('#cancelInc')) { I.mode = 'view'; I.form = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; rerenderPane(); return true; }
       if ((x = t.closest('[data-pick]'))) { App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = ''; mountDg(); refocus('fQ'); return true; }
+      if ((x = t.closest('[data-ph]'))) { putPhrase(x.closest('[data-phs]').dataset.phs, x.dataset.ph); return true; }
       if ((x = t.closest('[data-radd]'))) {
         var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];
         rows.push({ d: prev ? prev.d : (I.form.date || today()), p: '', t: '' });
