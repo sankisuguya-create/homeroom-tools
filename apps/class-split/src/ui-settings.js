@@ -29,7 +29,7 @@
           return '<tr><td style="font-size:20px">' + App.mark(prev, 1) + '</td>' +
             '<td style="text-align:left"><input data-al="' + at.k + '" value="' + esc(x.label) + '" maxlength="20" style="padding:4px 6px;border:1px solid var(--line);border-radius:4px"></td>' +
             '<td><input data-as="' + at.k + '" value="' + esc(x.s) + '" maxlength="1" style="width:2.5em;text-align:center;padding:4px;border:1px solid var(--line);border-radius:4px"></td>' +
-            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>' +
+            '<td style="text-align:left"><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) { return '<button class="lv' + (lv === C.MUST ? ' must' : '') + '" data-aw="' + at.k + ':' + lv + '" aria-pressed="' + (+x.w === lv) + '">' + n + '</button>'; }).join('') + '</div></td></tr>' +
             // 説明文（アイコンにカーソルを合わせると出る）：見出し・アイコン・アイコン＋
             '<tr class="hrow"><td></td><td colspan="3"><div class="hlp">' + helpOf(at, x).map(function (t, i) {
               var lab = i === 0 ? '見出し' : i === 1 ? App.mark(prev, 1) : App.mark(prev, 2);
@@ -108,7 +108,7 @@
       var x, s = T.s;
       if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
-      if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); return true; }
+      if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0 }); }); render(); return true; }
       if (t.closest('#tme')) { set(function () { s.teachers.push({ email: App.me.email, grade: App.st.grade, cls: 1 }); }); render(); return true; }
       if ((x = t.closest('[data-tdel]'))) { set(function () { s.teachers.splice(+x.dataset.tdel, 1); }); render(); return true; }

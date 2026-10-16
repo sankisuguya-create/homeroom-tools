@@ -276,6 +276,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .lvs{display:flex;gap:3px}
 .lv{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 10px;cursor:pointer;min-width:3em}
 .lv[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+/* 「必」：必ず守る条件になる特別な段階。濃い赤紫の地に金の縁 */
+.lv.must{border:2px solid #8B1E5A;color:#8B1E5A;font-weight:700;margin-left:6px}
+.lv.must[aria-pressed="true"]{background:#8B1E5A;color:#fff;border-color:#E0A800;box-shadow:0 0 0 2px #E0A800}
+.mustwarn{border:2px solid #8B1E5A;background:#FBEAF2;color:#5A0E38;border-radius:6px;padding:6px 10px;font-size:.9rem}
 .gencols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:760px){.gencols{grid-template-columns:1fr}}
 .toggles{display:flex;flex-wrap:wrap;gap:6px}

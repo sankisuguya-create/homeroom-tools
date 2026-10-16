@@ -274,7 +274,7 @@
   function renderCmp() {
     var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
-      { lab: '違反（離す・つける・固定・上限）', f: function (p, a) { return a.bad.length; }, bad: true },
+      { lab: '違反（離す・つける・固定・上限・必）', f: function (p, a) { return a.bad.length; }, bad: true },
       { lab: '人数の差', f: function (p, a) { return E.spread(a.c, M); } },
       { lab: '男の数の差', f: function (p, a) { return E.spread(a.c, 0); } }
     ].concat(C.ATTRS.map(function (at, ai) { return { lab: at.label, f: function (p, a) { return E.spread(a.c, ai + 1); } }; })).concat([
@@ -350,7 +350,7 @@
       html: function () {
         var lvRow = function (x) {
           return '<tr><td>' + (x.sh ? App.mark(x, 1) + ' ' : '') + x.label + '</td><td><div class="lvs">' + C.LEVEL_NAMES.map(function (n, lv) {
-            return '<button class="lv" data-w="' + x.k + '" data-lv="' + lv + '" aria-pressed="' + ((gen.w[x.k] | 0) === lv) + '">' + n + '</button>';
+            return '<button class="lv' + (lv === C.MUST ? ' must' : '') + '" data-w="' + x.k + '" data-lv="' + lv + '" aria-pressed="' + ((gen.w[x.k] | 0) === lv) + '">' + n + '</button>';
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
@@ -358,13 +358,14 @@
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
           '<div><b>偏りの重み</b>（強いほど均等に分ける）<div class="gencols" style="margin-top:6px"><table>' + C.ATTRS.map(lvRow).join('') + '</table><table>' + C.EXTRA.map(lvRow).join('') + '</table></div></div>' +
+          (Object.keys(gen.w).some(function (k) { return (gen.w[k] | 0) === C.MUST; }) ? '<div class="mustwarn">⚠ ' + C.MUST_WARN + '</div>' : '') +
           '<div class="notebox">名前：案' + LET[S.letIdx % 26] + '（' + App.esc(E.autoName(gen, keep ? p.locks.size : 0)) + '）' + (keep ? '　今の案で固定した' + p.locks.size + '人はそのままの組に置きます' : '') + '</div>' +
           '<div class="acts"><button class="btn" data-act="reset">既定に戻す</button><span class="sp"></span><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button>' +
           '<button class="btn primary" data-act="ok" id="okbtn">この設定で作る<kbd>Enter</kbd></button></div></div></div>';
       },
       click: function (t) {
         var x;
-        if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); if (+x.dataset.lv === C.MUST) App.toast(C.MUST_WARN); return true; }
         if ((x = t.closest('[data-hard]'))) { gen.hard[x.dataset.hard] = !gen.hard[x.dataset.hard]; App.refreshDlg(); return true; }
         if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); App.refreshDlg(); return true; }
         return false;

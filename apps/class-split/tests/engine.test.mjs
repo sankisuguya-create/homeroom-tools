@@ -42,6 +42,16 @@ test('案を作る：全員がちょうど1つの組に入り、必ず守る条�
   }
 });
 
+test('「必」：その項目の各組の人数を平均±1に収め、外れると違反に数える', () => {
+  const gen = E.defaultGen(); gen.w.k6 = C.MUST; gen.w.area = C.MUST;
+  const ctx = E.prepare(problem(), gen);
+  const asg = E.optimize(ctx, new Map(), 11);
+  const a = E.analyze(ctx, asg);
+  assert.equal(a.bad.length, 0, a.bad.map(b => b.txt).join(' / '));
+  ctx.MU.forEach(mi => { for (let k = 0; k < 4; k++) assert.ok(Math.abs(a.c[k][mi] - ctx.MEAN[mi]) <= 1, ctx.MET[mi].label); });
+  assert.equal(ctx.MU.length, 1 + C.AREAS.length);
+});
+
 test('案を作る：固定した児童は動かない', () => {
   const ctx = E.prepare(problem());
   const locked = new Map([[50, 3], [51, 0], [52, 1]]);
