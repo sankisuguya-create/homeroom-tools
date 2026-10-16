@@ -48,6 +48,8 @@
     var v = x.ids.filter(function (id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; });
     return v.length ? v : x.ids.slice();
   }
+  // 矢印で被害の側に決まった児童（2人以上なら、様式Ⅱの「被害児童・保護者の様子」と Excel を児童ごとに分ける）
+  function realVictims(x) { return x.ids.filter(function (id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; }); }
   function harmsOf(x, victim) {
     // 矢印が1本も無い（加害・被害が決まっていない）時は、被害の児童以外を加害の側として並べる
     var anyRole = x.ids.some(function (id) { var r = x.roles && x.roles[id]; return r === 'harm' || r === 'victim' || r === 'mutual'; });
@@ -69,7 +71,7 @@
       list.forEach(function (x) {
         var fy = C.fiscalYearOfIso(x.date);
         if (fy !== lastFy) { h += '<div class="ify">' + fy + '年度</div>'; lastFy = fy; }
-        var rp = x.report, more = rp && (rp.s2.sd.length || rp.s2.vi.length || rp.s2.ha.length || rp.s2.kikan);
+        var rp = x.report, more = rp && (rp.s2.sd.length || rp.s2.vi.length || rp.s2.ha.length || rp.s2.kikan || Object.keys(rp.s2v || {}).length);
         h += '<button class="iit' + (I.sel === x.id ? ' on' : '') + '" data-isel="' + x.id + '"><span class="d">' + esc(App.span(x)) + '・' + esc(x.type) + '</span><b>' + esc(titleOf(x)) + '</b>' +
           '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '<em class="r-' + r + '">' + E.ROLE_NAMES[r] + '</em>' : ''); }).join('、') + '</span>' +
           (more ? '<span class="bd"><i>追記あり</i></span>' : '') + '</button>';
@@ -108,9 +110,13 @@
       (C.MODES.filter(function (m, i) { return rp.modes[i]; }).map(function (m) { return esc(m.t); }).join('<br>') || '（未選択）') + (rp.modes[C.MODES.length - 1] && rp.other ? '：' + esc(rp.other) : '') + '</td></tr></table></section>';
     ['hk', 'kk', 'sd'].forEach(function (k) { h += '<section><h3>' + Rp.SECTIONS[k] + '</h3>' + rowsView(rp.s1[k]) + '</section>'; });
     var s2 = rp.s2;
-    if (s2.sd.length || s2.vi.length || s2.ha.length || s2.kikan) {
+    var vv = realVictims(x), byV = vv.length > 1;
+    if (s2.sd.length || s2.vi.length || s2.ha.length || s2.kikan || Object.keys(rp.s2v).length) {
       h += '<h3 class="i2h">その後の経緯（様式Ⅱ）</h3>';
-      ['sd', 'vi', 'ha'].forEach(function (k) { h += '<section><h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsView(s2[k]) + '</section>'; });
+      ['sd', 'vi', 'ha'].forEach(function (k) {
+        if (k === 'vi' && byV) { vv.forEach(function (id) { h += '<section><h3>被害児童・保護者の様子（' + esc(kidName(id)) + '）</h3>' + rowsView(rp.s2v[id] || []) + '</section>'; }); return; }
+        h += '<section><h3>' + Rp.SECTIONS2[k] + '</h3>' + rowsView(s2[k]) + '</section>';
+      });
       h += '<section><h3>関係機関との連携</h3><div>' + (esc(s2.kikan) || '<span class="note">（記入なし）</span>') + '</div></section>';
     }
     if (x.detail) h += '<section><h3>詳細（以前の記録）</h3><div class="dt">' + esc(x.detail) + '</div></section>';
@@ -123,8 +129,8 @@
   var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
   function mdShort(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : '日付'; }
   function secHtml(sec, key, rows) {
-    var w = sec + ':' + key;
-    var h = '<div class="isec s-' + sec + key + '" data-sec="' + w + '"><h3 class="ish"><b>' + SEC_NAME[w] + '</b><span>' + ASK[w] + '</span></h3>';
+    var w = sec + ':' + key, isV = sec === 's2v';
+    var h = '<div class="isec s-' + (isV ? 's2vi' : sec + key) + '" data-sec="' + w + '"><h3 class="ish"><b>' + (isV ? '被害児童・保護者の様子（' + esc(kidName(key)) + '）' : SEC_NAME[w]) + '</b><span>' + (isV ? 'この児童と保護者の、今の様子' : ASK[w]) + '</span></h3>';
     if (w === 's1:sd') h += stepsHtml(rows);
     h += '<div class="irows">' + rows.map(function (r, i) {
       var at = w + ':' + i;
@@ -161,7 +167,7 @@
     if (el) { el.innerHTML = extraHtml(I.focus); el.parentNode.classList.add('cur'); }
   }
   // その欄で使った定型文の、後に続く文から順に（使った文は出さない）
-  function phrasesOf(w) { return C.PHRASES[w === 'kikan' ? 'kikan' : w === 's2:sd' ? 's2sd' : w.split(':')[1]] || []; }
+  function phrasesOf(w) { return C.PHRASES[phraseKey(w)] || []; }
   function usedIn(w) {
     if (w === 'kikan') return I.form.rep.s2.kikan;
     var q = w.split(':'); return I.form.rep[q[0]][q[1]].map(function (r) { return r.t; }).join('\n');
@@ -218,7 +224,12 @@
   function add2Html(x) {
     var f = I.form, s2 = f.rep.s2;
     var h = '<form class="form iform" id="inc2Form"><h2>その後の経緯を追記（様式Ⅱ用）<span class="idraft" id="idraft"></span></h2><div class="meta">' + esc(titleOf(x)) + '・' + esc(App.span(x)) + '</div>';
-    ['sd', 'vi', 'ha'].forEach(function (k) { h += secHtml('s2', k, s2[k]); });
+    var vv = realVictims(x);
+    ['sd', 'vi', 'ha'].forEach(function (k) {
+      // 被害の児童が2人以上なら、児童ごとに欄を分ける（Excel も児童ごとに作る）
+      if (k === 'vi' && vv.length > 1) { vv.forEach(function (id) { h += secHtml('s2v', id, f.rep.s2v[id]); }); return; }
+      h += secHtml('s2', k, s2[k]);
+    });
     h += '<h3 class="ish"><b>関係機関との連携</b><span>相談・連携した機関（無ければ「なし」）</span></h3><input id="fKikan" class="ikikan" data-phs="kikan" value="' + esc(s2.kikan) + '" maxlength="2000" placeholder="右の記入補助から選ぶか、書く">' +
       '<div class="row"><button type="button" class="btn" id="cancelInc">やめる</button><button class="btn primary">保存する</button></div></form>';
     return h;
@@ -247,15 +258,16 @@
 
   // ===== 記入補助（右）：選んでいる欄に合う定型文と、関係する児童の名前。押すか、ドラッグして入れる =====
   var ASSIST_NAMES = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子', kikan: '関係機関との連携' };
-  function phraseKey(where) { return where === 'kikan' ? 'kikan' : where === 's2:sd' ? 's2sd' : where.split(':')[1]; }
+  function phraseKey(where) { return where === 'kikan' ? 'kikan' : where === 's2:sd' ? 's2sd' : where.split(':')[0] === 's2v' ? 'vi' : where.split(':')[1]; }
   function assistHtml() {
     if (FOLD.assist) return '<button class="ifold" id="iasT" title="記入補助を開く" aria-label="記入補助を開く">' + IC.asOpen + '</button><button class="ivlab" id="iasT2" tabindex="-1">記入補助</button>';
     var h = '<div class="ihead"><b class="ib">' + IC.help + '記入補助</b><button class="ifold" id="iasT" title="記入補助を畳む" aria-label="記入補助を畳む">' + IC.asClose + '</button></div>';
     var where = I.form && I.focus ? I.focus.split(':').slice(0, 2).join(':') : null;
     if (I.form && I.focus === 'kikan') where = 'kikan';
-    if (!I.form || !where || !ASSIST_NAMES[where]) return h + '<p class="note">入力欄を押すと、その欄に合う文がここに出ます。押すか、入力欄へドラッグして入れます。</p>';
+    var vName = where && where.split(':')[0] === 's2v' ? '被害児童・保護者の様子（' + kidName(where.split(':')[1]) + '）' : null;
+    if (!I.form || !where || !(ASSIST_NAMES[where] || vName)) return h + '<p class="note">入力欄を押すと、その欄に合う文がここに出ます。押すか、入力欄へドラッグして入れます。</p>';
     var names = formKids(), ph = C.PHRASES[phraseKey(where)] || [];
-    h += '<div class="iaw s-' + where.replace(':', '') + '">' + ASSIST_NAMES[where] + '</div>';
+    h += '<div class="iaw s-' + (vName ? 's2vi' : where.replace(':', '')) + '">' + esc(vName || ASSIST_NAMES[where]) + '</div>';
     var used = usedIn(where);
     if (names.length && where !== 'kikan') h += '<div class="lab">児童の名前</div><div class="iph">' + names.map(function (n) { return '<button type="button" class="nm" draggable="true" data-ph="' + esc(n) + '">' + esc(n) + '</button>'; }).join('') + '</div>';
     h += '<div class="lab">定型文（使った文は ✓）</div><div class="iph col">' + ph.map(function (t) { var u = used.indexOf(t) >= 0; return '<button type="button" draggable="true" class="' + (u ? 'used' : '') + '" data-ph="' + esc(t) + '">' + (u ? '✓ ' : '') + esc(t) + '</button>'; }).join('') + '</div>';
@@ -311,7 +323,7 @@
   function restoreDraft() {
     var dr = I.draft && I.draft.draft; if (!dr) return;
     var f = dr.form;
-    if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; I.mode = 'add2'; I.sel = x.id; }
+    if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; ensureV(x); I.mode = 'add2'; I.sel = x.id; }
     else { I.form = { edit: f.edit, dg: App.Diagram.state(f.dg), type: f.type || '', url: f.url || '', title: f.title || '', detail: f.detail || '', rep: Rp.norm(f.rep) }; I.mode = 'form'; if (f.edit != null) I.sel = f.edit; }
     ['hk', 'kk', 'sd'].forEach(function (k) { if (I.mode === 'form' && !I.form.rep.s1[k].length) I.form.rep.s1[k].push({ d: today(), p: '', t: '' }); });
     ['sd', 'vi', 'ha'].forEach(function (k) { if (I.mode === 'add2' && !I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
@@ -405,7 +417,12 @@
   function add2Form(x) {
     I.form = { edit: x.id, rep: Rp.norm(x.report), x: x };
     ['sd', 'vi', 'ha'].forEach(function (k) { if (!I.form.rep.s2[k].length) I.form.rep.s2[k].push({ d: today(), p: '', t: '' }); });
+    ensureV(x);
     I.mode = 'add2'; I.sel = x.id; I.focus = null;
+  }
+  function ensureV(x) {
+    var vv = realVictims(x);
+    if (vv.length > 1) vv.forEach(function (id) { if (!I.form.rep.s2v[id] || !I.form.rep.s2v[id].length) I.form.rep.s2v[id] = [{ d: today(), p: '', t: '' }]; });
   }
 
   // ===== 出力 =====
@@ -424,9 +441,12 @@
     return (LABELS = L);
   }
   function outDialog(x, kind) {
-    var vs = victimsOf(x), st = { victim: vs[0], made: null };
-    var cellsOf = function () {
-      return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: st.victim, harms: harmsOf(x, st.victim) });
+    // 被害の児童1人に1つの様式。矢印が無ければ最初の児童を被害の側とする
+    var vs = realVictims(x); if (!vs.length) vs = x.ids.slice(0, 1);
+    var st = { victim: vs[0], made: [] };
+    var cellsOf = function (v) {
+      v = v || st.victim;
+      return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: v, harms: harmsOf(x, v) });
     };
     App.openDlg({
       noEnter: true,
@@ -434,10 +454,10 @@
         var cells = cellsOf(), L = labels(), refs = C.REPORT && Rp.allowedCells(kind).filter(function (r) { return cells[r] !== undefined; });
         var harms = harmsOf(x, st.victim);
         return '<div class="pop" data-close="1"><div class="dlg iout" role="dialog" aria-modal="true" aria-label="報告書を出力"><h2>' + C.REPORT.names[kind] + 'を出力</h2>' +
-          (vs.length > 1 ? '<div class="rbar"><span class="lab">被害の児童</span>' + vs.map(function (id) { return '<button class="lv" data-ivic="' + id + '" aria-pressed="' + (id === st.victim) + '">' + esc(kidName(id)) + '</button>'; }).join('') + '</div><p class="note">様式は被害の児童1人ごとに作ります。</p>' : '') +
+          (vs.length > 1 ? '<div class="rbar"><span class="lab">被害の児童</span>' + vs.map(function (id) { return '<button class="lv" data-ivic="' + id + '" aria-pressed="' + (id === st.victim) + '">' + esc(kidName(id)) + '</button>'; }).join('') + '</div><p class="note">様式は被害の児童1人ごとに作ります。下の表は選んだ児童の分です。</p>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る（様式を複製して書き込む）</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
-          (st.made ? '<div class="notebox">作りました：<a href="' + esc(st.made.url) + '" target="_blank" rel="noopener">' + esc(st.made.name) + ' ↗</a></div>' : '') +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る' + (vs.length > 1 ? '（被害の児童' + vs.length + '人分・' + vs.length + 'ファイル）' : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.name) + ' ↗</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -448,7 +468,13 @@
         if ((b = t.closest('[data-ivic]'))) { st.victim = b.dataset.ivic; App.refreshDlg(); return true; }
         if ((b = t.closest('[data-icopy]'))) { copyText(String(cellsOf()[b.dataset.icopy])); return true; }
         if (t.closest('#ixls')) {
-          App.save(function () { return App.pf().exportReport(kind, cellsOf(), x.id); }).then(function (r) { st.made = r; App.refreshDlg(); });
+          // 被害の児童ごとに1つずつ作る（同時に送らず、順に）
+          st.made = [];
+          App.save(function () {
+            return vs.reduce(function (pr, v, i) {
+              return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, vs.length > 1 ? i + 1 : 0); }).then(function (r) { r.victim = v; st.made.push(r); });
+            }, Promise.resolve());
+          }).then(function () { App.refreshDlg(); });
           return true;
         }
         return false;
@@ -466,7 +492,8 @@
   }
   // その行より後の、まだ書いていない行の日付をそろえる（前日の事案で日付を1つずつ直さなくてよい）
   function spreadDate(at, d) {
-    var q = at.split(':'), order = q[0] === 's1' ? ['hk', 'kk', 'sd'] : ['sd', 'vi', 'ha'], seen = false;
+    var q = at.split(':'); if (q[0] === 's2v') return;
+    var order = q[0] === 's1' ? ['hk', 'kk', 'sd'] : ['sd', 'vi', 'ha'], seen = false;
     order.forEach(function (k) {
       I.form.rep[q[0]][k].forEach(function (r, i) {
         if (k === q[1] && i === +q[2]) { seen = true; return; }

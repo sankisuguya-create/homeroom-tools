@@ -259,6 +259,19 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
   ok(await p.locator('.icopy td', { hasText: '朝休み、訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
   await p.keyboard.press('Escape');
+  // 被害の児童が2人：様式Ⅱ用の追記は児童ごとの欄、Excel は児童の数だけ
+  await p.click('#iadd'); await p.click('[data-ty="いじめ"]');
+  for (const q of ['さ', 'た', 'い']) { await p.fill('#fQ', q); await p.click('#fSugg [data-pick]'); }
+  await p.click('[data-dm="arrow"]');
+  const dn = p.locator('#fDg .dg-n');
+  await dn.nth(0).click(); await dn.nth(1).click(); await dn.nth(0).click(); await dn.nth(2).click();
+  await p.fill('#rw-s1-sd-0', '保護者に連絡した'); await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
+  await p.click('#iadd2');
+  ok(await p.locator('.isec[data-sec^="s2v:"]').count() === 2, '被害の児童が2人なら、様式Ⅱの「被害児童・保護者の様子」は2つの欄');
+  await p.click('#cancelInc');
+  await p.click('[data-iout="f2"]'); await p.waitForSelector('.iout');
+  ok(await p.locator('#ixls', { hasText: '2人分' }).count() === 1, 'Excel は被害の児童の数だけ作る');
+  await p.keyboard.press('Escape');
   await p.close();
 }
 await browser.close();

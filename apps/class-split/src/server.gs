@@ -373,6 +373,7 @@ function reportInput_(r) {
   };
   ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k] = cut(rp.s1[k]); });
   ['sd', 'vi', 'ha'].forEach(function (k) { rp.s2[k] = cut(rp.s2[k]); });
+  var v2 = {}; Object.keys(rp.s2v).slice(0, 40).forEach(function (id) { if (/^\d{1,20}$|^T\d+$/.test(id)) v2[id] = cut(rp.s2v[id]); }); rp.s2v = v2;
   rp.s2.kikan = rp.s2.kikan.slice(0, 2000); rp.other = rp.other.slice(0, 200);
   if (rp.found && CONFIG.FOUND_LIST.indexOf(rp.found) < 0) rp.found = '';
   return rp;
@@ -474,7 +475,7 @@ var apiUpdateIncident = api_(function (id, x) {
 // 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
 // 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
 // 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
-var apiExportReport = api_(function (kind, values, incId) {
+var apiExportReport = api_(function (kind, values, incId, seq) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -500,7 +501,8 @@ var apiExportReport = api_(function (kind, values, incId) {
   Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
   put(path, Report.fillSheet(text(path), vals));
   put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
-  var name = R.names[kind] + '_事案' + (+incId || 0) + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
+  // 被害の児童が複数の時は、1人ずつ番号を付けて別のファイルにする（名前に氏名は入れない）
+  var name = R.names[kind] + '_事案' + (+incId || 0) + (+seq ? '_被害' + (+seq) : '') + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
   var out = Utilities.zip(parts, name).setContentType(MimeType.MICROSOFT_EXCEL);
   var folder = null;
   try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }

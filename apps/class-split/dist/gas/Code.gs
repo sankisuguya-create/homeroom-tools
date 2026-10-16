@@ -558,7 +558,7 @@
   var SECTIONS2 = { sd: '指導の経過', vi: '被害児童・保護者の様子', ha: '加害児童・保護者の様子' };
 
   function emptyReport() {
-    return { light: false, found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' } };
+    return { light: false, found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
   }
   function norm(r) {
     var e = emptyReport(); r = r || {};
@@ -568,6 +568,8 @@
     ['hk', 'kk', 'sd'].forEach(function (k) { e.s1[k] = rows(r.s1 && r.s1[k]); });
     ['sd', 'vi', 'ha'].forEach(function (k) { e.s2[k] = rows(r.s2 && r.s2[k]); });
     e.s2.kikan = String(r.s2 && r.s2.kikan || '');
+    // 被害の児童が複数の時：様式Ⅱの「被害児童・保護者の様子」は児童ごと（id → 行）
+    Object.keys(r.s2v || {}).forEach(function (id) { var a = rows(r.s2v[id]); if (a.length) e.s2v[id] = a; });
     return e;
   }
   function dateParts(iso) {
@@ -600,10 +602,21 @@
     var L = slots(), slot = function (p) { var i = L.indexOf(p); return i < 0 ? 99 : i; };
     return rows.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
       return (a.x.d || '9999') < (b.x.d || '9999') ? -1 : (a.x.d || '9999') > (b.x.d || '9999') ? 1 : slot(a.x.p) - slot(b.x.p) || a.i - b.i;
-    }).map(function (o) {
-      var head = md(o.x.d) + (o.x.p || '');
-      return (head ? head + '、' : '') + o.x.t.replace(/\s+$/, '');
-    }).join('\n');
+    }).reduce(function (acc, o) {
+      // 同じ日の行は1行につなぎ、日付が変わったら改行する。日付は行の初めにだけ書く
+      var t = tidy(o.x.t); if (!t) return acc;
+      var last = acc[acc.length - 1], head = (o.x.p ? o.x.p + '、' : '');
+      if (last && last.d === o.x.d) last.s += head + t;
+      else acc.push({ d: o.x.d, s: md(o.x.d) + (head || (o.x.d ? '、' : '')) + t });
+      return acc;
+    }, []).map(function (g) { return g.s; }).join('\n');
+  }
+  // 文を整える：空の行と句点の後の空白を消し、終わりに句点が無ければ足す
+  function tidy(t) {
+    t = String(t || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).join('\n');
+    t = t.replace(/。[ 　\t]+/g, '。');
+    if (t && !/[。！？!?」）)]$/.test(t)) t += '。';
+    return t;
   }
   function colRow(ref) { var m = /^([A-Z]+)(\d+)$/.exec(ref); return m ? { c: m[1], r: +m[2] } : null; }
 
@@ -622,7 +635,8 @@
     if (o.victim) kidRow(H.victim, o.victim);
     if (kind === 'f2') {
       put(R.f2.shido, lines(rep.s2.sd));
-      if (rep.s2.vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(rep.s2.vi));
+      var vi = o.victim && rep.s2v[o.victim] ? rep.s2v[o.victim] : rep.s2.vi;
+      if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
       if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
       put(R.f2.kikan, rep.s2.kikan);
       return out;
@@ -709,7 +723,7 @@
   }
   function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
 
-  g.Report = { slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+  g.Report = { tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -718,7 +732,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_8aa18f10276e';
+var SERVER_BUILD = 'BUILD_a432454f1997';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1089,6 +1103,7 @@ function reportInput_(r) {
   };
   ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k] = cut(rp.s1[k]); });
   ['sd', 'vi', 'ha'].forEach(function (k) { rp.s2[k] = cut(rp.s2[k]); });
+  var v2 = {}; Object.keys(rp.s2v).slice(0, 40).forEach(function (id) { if (/^\d{1,20}$|^T\d+$/.test(id)) v2[id] = cut(rp.s2v[id]); }); rp.s2v = v2;
   rp.s2.kikan = rp.s2.kikan.slice(0, 2000); rp.other = rp.other.slice(0, 200);
   if (rp.found && CONFIG.FOUND_LIST.indexOf(rp.found) < 0) rp.found = '';
   return rp;
@@ -1190,7 +1205,7 @@ var apiUpdateIncident = api_(function (id, x) {
 // 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
 // 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
 // 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
-var apiExportReport = api_(function (kind, values, incId) {
+var apiExportReport = api_(function (kind, values, incId, seq) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -1216,7 +1231,8 @@ var apiExportReport = api_(function (kind, values, incId) {
   Object.keys(byName).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Report.untab(text(n), n === path)); });
   put(path, Report.fillSheet(text(path), vals));
   put('xl/workbook.xml', Report.activate(wb, R.sheets[kind]));
-  var name = R.names[kind] + '_事案' + (+incId || 0) + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
+  // 被害の児童が複数の時は、1人ずつ番号を付けて別のファイルにする（名前に氏名は入れない）
+  var name = R.names[kind] + '_事案' + (+incId || 0) + (+seq ? '_被害' + (+seq) : '') + '_' + Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmm') + '.xlsx';
   var out = Utilities.zip(parts, name).setContentType(MimeType.MICROSOFT_EXCEL);
   var folder = null;
   try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }

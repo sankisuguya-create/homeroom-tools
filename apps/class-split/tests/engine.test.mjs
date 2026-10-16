@@ -233,11 +233,14 @@ test('報告書：様式のセルの値（被害・加害・態様・時系列�
   assert.equal(c.G6, '女'); assert.equal(c.I7, '被害 花'); assert.equal(c.I19, '加害5');
   assert.match(c.B20, /男子（　0　）名、女子（　2　）名.*全体計（　8　）名/);
   assert.equal(c.B22, '○'); assert.equal(c.I26, '○'); assert.equal(c.K26, '靴を隠す'); assert.equal(c.H22, undefined);
-  assert.equal(c.B27, '5月8日（金）放課後、B\n5月8日（金）朝休み、A\nC', '欄ごと（発覚・経緯・指導）に「日付時間帯、内容」を改行でつなぐ');
+  assert.equal(c.B27, '5月8日（金）放課後、B。\n5月8日（金）朝休み、A。\nC。', '欄ごと（発覚・経緯・指導）に改行で区切り、終わりに句点を足す');
   assert.equal(RP.cells('light', inc, o).B27, undefined, '簡易報告書に概要の欄は無い');
   const c2 = RP.cells('f2', inc, o);
-  assert.equal(c2.B8, '5月11日（月）放課後、聴き取り'); assert.equal(c2.B26, undefined); assert.match(c2.B32, /^（加害児童生徒及び保護者）\n5月12日（火）、反省$/);
-  assert.equal(RP.lines([{ d: '2026-05-08', p: '昼休み', t: 'b' }, { d: '2026-05-08', p: '朝休み', t: 'a' }]), '5月8日（金）朝休み、a\n5月8日（金）昼休み、b', '欄の中は時間の順');
+  assert.equal(c2.B8, '5月11日（月）放課後、聴き取り。'); assert.equal(c2.B26, undefined); assert.match(c2.B32, /^（加害児童生徒及び保護者）\n5月12日（火）、反省。$/);
+  assert.equal(RP.lines([{ d: '2026-05-08', p: '昼休み', t: 'b' }, { d: '2026-05-08', p: '朝休み', t: 'a。 ' }, { d: '2026-05-09', p: '', t: 'c\n\n d' }]), '5月8日（金）朝休み、a。昼休み、b。\n5月9日（土）、c\nd。', '同じ日は1行につなぎ、日付が変わったら改行。空の行と句点の後の空白を消す');
+  const multi = { date: '2026-05-07', report: { s2: { vi: [{ d: '2026-05-12', t: '全体' }] }, s2v: { v: [{ d: '2026-05-12', t: 'Aの様子' }] } } };
+  assert.match(RP.cells('f2', multi, { kid: id => kids[id], victim: 'v' }).B26, /Aの様子/, '被害の児童ごとの様子を、その児童の様式に書く');
+  assert.match(RP.cells('f2', multi, { kid: id => kids[id], victim: 'h0' }).B26, /全体/, 'その児童の欄が無ければ共通の欄');
   assert.equal(c2.I9, undefined, '様式Ⅱに加害の欄は無い');
   assert.equal(RP.cells('f1', { date: '2019-05-01', report: {} }, { kid: () => null }).C5, '元');
   Object.keys(c).forEach(r => assert.ok(RP.allowedCells('f1').includes(r), r));
@@ -262,5 +265,5 @@ test('時間帯：授業と授業の間を選べ、足す行は次の時間帯�
   assert.ok(L.indexOf('2・3校時の間') < 0, '2校時と3校時の間は中休み');
   assert.deepEqual(RP.nextSlot('2026-10-16', '昼休み'), { d: '2026-10-16', p: L[L.indexOf('昼休み') + 1] });
   assert.deepEqual(RP.nextSlot('2026-10-16', '放課後'), { d: '2026-10-19', p: '朝休み' }, '金曜の放課後の次は月曜の朝');
-  assert.equal(RP.lines([{ d: '2026-10-16', p: '2校時', t: 'b' }, { d: '2026-10-16', p: '1・2校時の間', t: 'a' }]).split('\n')[0].slice(-1), 'a');
+  assert.equal(RP.lines([{ d: '2026-10-16', p: '2校時', t: 'b' }, { d: '2026-10-16', p: '1・2校時の間', t: 'a' }]), '10月16日（金）1・2校時の間、a。2校時、b。');
 });

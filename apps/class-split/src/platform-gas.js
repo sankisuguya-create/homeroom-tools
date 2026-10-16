@@ -62,7 +62,7 @@
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     saveDraft: function (grade, d) { return call('apiSaveDraft', grade, d); },
     loadDraft: function (grade) { return call('apiLoadDraft', grade); },
-    exportReport: function (kind, values, incId) { return call('apiExportReport', kind, values, incId); },
+    exportReport: function (kind, values, incId, seq) { return call('apiExportReport', kind, values, incId, seq); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
