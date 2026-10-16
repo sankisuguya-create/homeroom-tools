@@ -200,7 +200,11 @@
     if (b) {
       h += '<fieldset class="irep"><legend>いじめの項目</legend>' +
         '<label>発見のきっかけ<select id="fFound"><option value="">選ぶ</option>' + C.FOUND_LIST.map(function (t) { return '<option' + (t === rp.found ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></label>' +
-        '<div class="lab">いじめの態様（複数選べます）</div><div class="imodes">' + C.MODES.map(function (m, i) { return '<label class="chk"><input type="checkbox" data-mode="' + i + '"' + (rp.modes[i] ? ' checked' : '') + '> ' + esc(m.t) + '</label>'; }).join('') + '</div>' +
+        '<div class="lab">いじめの態様（複数選べます）</div><div class="imodes">' + C.MODES.map(function (m, i) {
+          // 長い補足は「？」の中に畳む（押すと開く）
+          return '<div class="imode"><label class="chk"><input type="checkbox" data-mode="' + i + '"' + (rp.modes[i] ? ' checked' : '') + '> ' + esc(m.t) + '</label>' +
+            (m.note ? '<button type="button" class="imq" data-mq="1" title="例を見る" aria-label="例を見る" aria-expanded="false">？</button><div class="imqt" hidden>' + esc(m.note) + '</div>' : '') + '</div>';
+        }).join('') + '</div>' +
         '<label>その他の内容<input id="fOther" value="' + esc(rp.other) + '" maxlength="200"' + (rp.modes[C.MODES.length - 1] ? '' : ' disabled') + '></label></fieldset>';
     }
     ['hk', 'kk', 'sd'].forEach(function (k) { h += secHtml('s1', k, rp.s1[k]); });
@@ -520,6 +524,7 @@
       if (t.closest('#iadd2')) { add2Form(incOf(I.sel)); rerenderPane(); return true; }
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
       if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
+      if ((x = t.closest('[data-mq]'))) { var nt = x.nextElementSibling, open = nt.hidden; nt.hidden = !open; x.setAttribute('aria-expanded', String(open)); return true; }
       if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return true; }
       if ((x = t.closest('[data-ty]'))) {
         var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);

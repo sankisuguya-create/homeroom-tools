@@ -607,3 +607,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
 .irow select.islot.on{border-style:solid;color:var(--ink)}
 .imodes{grid-template-columns:1fr !important}
+.imode{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap}
+.imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
+.imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
+.imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
