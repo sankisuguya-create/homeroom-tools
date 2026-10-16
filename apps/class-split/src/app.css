@@ -622,3 +622,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .inx svg{width:18px;height:18px}
 .irow .inx:nth-of-type(1){grid-column:1}
 .irx{grid-row:3}
+.irow{row-gap:0}
+.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}

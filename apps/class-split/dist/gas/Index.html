@@ -630,6 +630,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .inx svg{width:18px;height:18px}
 .irow .inx:nth-of-type(1){grid-column:1}
 .irx{grid-row:3}
+.irow{row-gap:0}
+.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1838,7 +1842,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_d8b73e992f3a';
+  var PAGE_BUILD = 'BUILD_ce92f3e268d3';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
