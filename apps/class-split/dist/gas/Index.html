@@ -517,7 +517,14 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .iwrap.ac{grid-template-columns:300px minmax(0,1fr) 36px}
 .iwrap.lc.ac{grid-template-columns:36px minmax(0,1fr) 36px}
 .ihead{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:4px}
-.ifold{width:32px;height:32px;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;font:inherit;font-weight:700;color:var(--ink);flex:none}
+.ifold{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--ink);flex:none;padding:0}
+.ifold:hover{border-color:var(--link);color:var(--link)}
+.ib{display:inline-flex;align-items:center;gap:5px}
+.ib svg{flex:none}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+.irow .ix:hover{color:#B00020;border-color:#B00020}
+.dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dg-crop .dg-canvas{border:0;border-radius:0}
 .iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
 .iwrap.ac .iassist{border:0;background:none;padding:0}
 .iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
@@ -548,8 +555,9 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:9.2em 6.5em minmax(0,1fr) auto;gap:6px;align-items:start}
-.irow input[type=date],.irow select{font:inherit;font-size:.85rem;padding:4px;height:2.3em;box-sizing:border-box}
+.irow{display:grid;grid-template-columns:7.6em 6.2em minmax(0,1fr) auto;gap:6px;align-items:start}
+.irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
+.irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
 .irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
 .irow .ix{padding:2px 8px}
@@ -571,6 +579,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph button.nm{border-style:dashed;font-weight:700}
 .ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
 .dg.ro{max-width:640px}
+.ivlab{writing-mode:vertical-rl;border:0;background:none;color:var(--sub);font:inherit;font-size:.85rem;letter-spacing:.15em;cursor:pointer;padding:8px 0;margin:0 auto}
+.iwrap.lc .ilist,.iwrap.ac .iassist{align-items:center}
+.dg.ro .dg-sum .note{display:none}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1687,7 +1698,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_fd0e129a4add';
+  var PAGE_BUILD = 'BUILD_fa181d7fa60b';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2643,6 +2654,21 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var FOLD = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incFold') || '{}'); } catch (e) { return {}; } })();
   function saveFold() { try { localStorage.setItem('classSplit.incFold', JSON.stringify(FOLD)); } catch (e) { /* 覚えられなくても今は効く */ } }
 
+  // 画面のアイコン（線の絵。色は文字の色を使う）
+  var SVG = function (body) { return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + body + '</svg>'; };
+  var IC = {
+    // 枠と左（右）の帯。矢印は畳む向き
+    listClose: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M16 9l-3 3 3 3"/>'),
+    listOpen: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M13 9l3 3-3 3"/>'),
+    asClose: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="M8 9l3 3-3 3"/>'),
+    asOpen: SVG('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/><path d="M11 9l-3 3 3 3"/>'),
+    plus: SVG('<path d="M12 5v14M5 12h14"/>'),
+    trash: SVG('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>'),
+    edit: SVG('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13 7l4 4"/>'),
+    addNote: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M12.5 11v6M9.5 14h6"/>'),
+    file: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 13h7M9 17h5"/>'),
+    help: SVG('<path d="M4 6h10M4 10h7M4 14h6"/><path d="M14 20l1-4 6-6-3-3-6 6-1 4z"/>')
+  };
   function D() { return App.st.data; }
   function esc(s) { return App.esc(s); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
@@ -2681,9 +2707,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function render() {
     var d = D(), list = d.incidents.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; });
     var h = '<div class="iwrap' + (FOLD.list ? ' lc' : '') + (FOLD.assist ? ' ac' : '') + '"><div class="ilist">';
-    if (FOLD.list) h += '<button class="ifold" id="ilistT" title="一覧を開く" aria-label="一覧を開く">＞</button>';
+    if (FOLD.list) h += '<button class="ifold" id="ilistT" title="事案の一覧を開く" aria-label="事案の一覧を開く">' + IC.listOpen + '</button><button class="ivlab" id="ilistT2" tabindex="-1">事案の一覧</button>';
     else {
-      h += '<div class="ihead"><button class="btn primary" id="iadd">＋ 事案を登録</button><button class="ifold" id="ilistT" title="一覧を畳む" aria-label="一覧を畳む">＜</button></div><div class="note">' + d.grade + '年の児童が関わる事案（' + list.length + '件）</div>';
+      h += '<div class="ihead"><button class="btn primary ib" id="iadd">' + IC.plus + '事案を登録</button><button class="ifold" id="ilistT" title="事案の一覧を畳む" aria-label="事案の一覧を畳む">' + IC.listClose + '</button></div><div class="note">' + d.grade + '年の児童が関わる事案（' + list.length + '件）</div>';
       var lastFy = null;
       list.forEach(function (x) {
         var fy = C.fiscalYearOfIso(x.date);
@@ -2713,8 +2739,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function viewHtml(x) {
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
-      '<div class="iacts"><button class="btn" id="iedit">直す</button><button class="btn" id="iadd2">その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
-      '<button class="btn" data-iout="light">簡易報告書</button><button class="btn" data-iout="f1">様式Ⅰ</button><button class="btn" data-iout="f2">様式Ⅱ</button></div>';
+      '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
+      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>';
     h += x.diagram && x.diagram.nodes.length ? '<section><h3>関係図</h3><div id="vDg" class="dg ro"></div></section>' :
       '<section><h3>関係する児童</h3><div>' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>いじめの項目</h3><table class="irv"><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
@@ -2737,8 +2763,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return '<div class="irow" data-phs="' + sec + ':' + key + '"><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"><select data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' +
         C.TIME_SLOTS.map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') + (r.p && C.TIME_SLOTS.indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
         '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="2" maxlength="2000" placeholder="右の記入補助から選ぶか、事実を書く">' + esc(r.t) + '</textarea>' +
-        '<button type="button" class="btn ix" data-rdel="' + at + '" aria-label="この行を消す">×</button></div>';
-    }).join('') + '<button type="button" class="btn iaddrow" data-radd="' + sec + ':' + key + '">＋ 行を足す</button></div>';
+        '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button></div>';
+    }).join('') + '<button type="button" class="btn ib iaddrow" data-radd="' + sec + ':' + key + '">' + IC.plus + '行を足す</button></div>';
   }
   function formHtml() {
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
@@ -2773,7 +2799,20 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var el = App.$('fDg');
     if (el && I.form && I.form.dg) App.Diagram.mount(el, I.form.dg, function (st) { I.form.dg = st; });
     var v = App.$('vDg'), x = I.sel != null && incOf(I.sel);
-    if (v && x && x.diagram) App.Diagram.mount(v, App.Diagram.state(x.diagram), function () {}); // 見るだけ（操作は CSS で止める）
+    if (v && x && x.diagram) { App.Diagram.mount(v, App.Diagram.state(x.diagram), function () {}); cropDg(v, x.diagram); } // 見るだけ（操作は CSS で止める）
+  }
+  // 見る画面の関係図は、児童のいる範囲だけを切り出す（白い余白を出さない）
+  function cropDg(el, d) {
+    var cv = el.querySelector('.dg-canvas'); if (!cv || !d.nodes.length) return;
+    var W = E.DG_W, H = E.DG_H, xs = d.nodes.map(function (n) { return n.x; }), ys = d.nodes.map(function (n) { return n.y; });
+    var x0 = Math.max(0, Math.min.apply(null, xs) - 90), x1 = Math.min(W, Math.max.apply(null, xs) + 90);
+    var y0 = Math.max(0, Math.min.apply(null, ys) - 40), y1 = Math.min(H, Math.max.apply(null, ys) + 40);
+    var cw = cv.getBoundingClientRect().width, k = cw / W;
+    var box = document.createElement('div');
+    box.className = 'dg-crop';
+    box.style.width = Math.round((x1 - x0) * k) + 'px'; box.style.height = Math.round((y1 - y0) * k) + 'px';
+    cv.parentNode.insertBefore(box, cv); box.appendChild(cv);
+    cv.style.width = Math.round(cw) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * k) + 'px';
   }
   function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); } renderAssist(); }
 
@@ -2781,8 +2820,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var ASSIST_NAMES = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子', kikan: '関係機関との連携' };
   function phraseKey(where) { return where === 'kikan' ? 'kikan' : where === 's2:sd' ? 's2sd' : where.split(':')[1]; }
   function assistHtml() {
-    if (FOLD.assist) return '<button class="ifold" id="iasT" title="記入補助を開く" aria-label="記入補助を開く">＜</button>';
-    var h = '<div class="ihead"><b>記入補助</b><button class="ifold" id="iasT" title="記入補助を畳む" aria-label="記入補助を畳む">＞</button></div>';
+    if (FOLD.assist) return '<button class="ifold" id="iasT" title="記入補助を開く" aria-label="記入補助を開く">' + IC.asOpen + '</button><button class="ivlab" id="iasT2" tabindex="-1">記入補助</button>';
+    var h = '<div class="ihead"><b class="ib">' + IC.help + '記入補助</b><button class="ifold" id="iasT" title="記入補助を畳む" aria-label="記入補助を畳む">' + IC.asClose + '</button></div>';
     var where = I.form && I.focus ? I.focus.split(':').slice(0, 2).join(':') : null;
     if (I.form && I.focus === 'kikan') where = 'kikan';
     if (!I.form || !where || !ASSIST_NAMES[where]) return h + '<p class="note">入力欄を押すと、その欄に合う文がここに出ます。押すか、入力欄へドラッグして入れます。</p>';
@@ -2959,8 +2998,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     click: function (t) {
       var x;
-      if (t.closest('#ilistT')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
-      if (t.closest('#iasT')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
+      if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
+      if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
       if ((x = t.closest('.iassist [data-ph]'))) { putPhrase(x.dataset.ph); return true; }
       if (t.closest('#iadd')) { if (I.mode !== 'view' && !confirmLeave()) return true; newForm(null); render(); refocus('fQ'); return true; }
       if ((x = t.closest('[data-isel]'))) { if (I.mode !== 'view' && !confirmLeave()) return true; I.sel = +x.dataset.isel; I.mode = 'view'; I.form = null; I.focus = null; render(); return true; }

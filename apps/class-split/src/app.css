@@ -509,7 +509,14 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .iwrap.ac{grid-template-columns:300px minmax(0,1fr) 36px}
 .iwrap.lc.ac{grid-template-columns:36px minmax(0,1fr) 36px}
 .ihead{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:4px}
-.ifold{width:32px;height:32px;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;font:inherit;font-weight:700;color:var(--ink);flex:none}
+.ifold{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--ink);flex:none;padding:0}
+.ifold:hover{border-color:var(--link);color:var(--link)}
+.ib{display:inline-flex;align-items:center;gap:5px}
+.ib svg{flex:none}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+.irow .ix:hover{color:#B00020;border-color:#B00020}
+.dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
+.dg-crop .dg-canvas{border:0;border-radius:0}
 .iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
 .iwrap.ac .iassist{border:0;background:none;padding:0}
 .iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
@@ -540,8 +547,9 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:9.2em 6.5em minmax(0,1fr) auto;gap:6px;align-items:start}
-.irow input[type=date],.irow select{font:inherit;font-size:.85rem;padding:4px;height:2.3em;box-sizing:border-box}
+.irow{display:grid;grid-template-columns:7.6em 6.2em minmax(0,1fr) auto;gap:6px;align-items:start}
+.irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
+.irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
 .irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
 .irow .ix{padding:2px 8px}
@@ -563,3 +571,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph button.nm{border-style:dashed;font-weight:700}
 .ikikan{width:100%;box-sizing:border-box;padding:6px;border:1px solid var(--line);border-radius:6px;font:inherit}
 .dg.ro{max-width:640px}
+.ivlab{writing-mode:vertical-rl;border:0;background:none;color:var(--sub);font:inherit;font-size:.85rem;letter-spacing:.15em;cursor:pointer;padding:8px 0;margin:0 auto}
+.iwrap.lc .ilist,.iwrap.ac .iassist{align-items:center}
+.dg.ro .dg-sum .note{display:none}
