@@ -127,7 +127,7 @@
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
-    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !E.isUnknown(id); }) : (x.ids || []).slice(), roles: dg ? (function (all) { var o = {}; Object.keys(all).forEach(function (id) { if (!E.isUnknown(id)) o[id] = all[id]; }); return o; })(E.diagramRoles(dg)) : {}, diagram: dg };
   }
   // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
   function demoDiagram(ids) {

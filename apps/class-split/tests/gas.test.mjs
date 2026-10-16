@@ -102,6 +102,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(got.url, ''); assert.equal(got.report.found, '本人からの訴え'); assert.equal(got.report.s1.hk[0].p, '朝休み');
     assert.equal(got.report.s1.kk[0].d, '', '日付でない値は空にする'); assert.equal(got.report.s1.kk[0].t.length, 2000);
     assert.equal(call('apiAddIncident', { date: '2026-10-03', type: 'いじめ', diagram: dg, report: { s1: { hk: Array.from({ length: 81 }, () => ({ t: 'a' })) } } }).ok, false, '1つの欄は80行まで');
+    // 「？」（誰か分からない児童）は関係図にだけ残り、関係する児童・役割には入らない
+    const uk = call('apiAddIncident', { date: '2026-10-04', type: 'いじめ', diagram: { nodes: [{ id: '?1', x: 10, y: 10 }, { id: '40000011', x: 200, y: 10 }], edges: [{ f: 'k:?1', t: 'k:40000011' }] } });
+    assert.ok(uk.ok, uk.err); assert.deepEqual(uk.v.ids, ['40000011']); assert.equal(uk.v.roles['40000011'], 'victim'); assert.equal(uk.v.roles['?1'], undefined);
+    assert.equal(call('apiBoot', 4).v.incidents.find(x => x.id === uk.v.id).diagram.nodes.length, 2);
+    assert.equal(call('apiAddIncident', { date: '2026-10-04', type: 'いじめ', diagram: { nodes: [{ id: '?1', x: 10, y: 10 }], edges: [] } }).ok, false, '「？」だけでは登録できない');
     // 書きかけ：教員ごと・学年ごとに残り、null で消える
     assert.ok(call('apiSaveDraft', 4, { mode: 'form', form: { type: 'いじめ' } }).ok);
     assert.equal(call('apiLoadDraft', 4).v.draft.form.type, 'いじめ');
@@ -237,7 +242,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));
     const incRow = db().getSheetByName('incidents').data.find(r => r[0] === inc2.v.id);
     assert.equal(incRow[5], '', '結び付く児童がいない事案は名前を消す'); assert.ok(incRow[8], '削除済み');
-    assert.equal(call('apiBoot', 4).v.incidents.length, 3, '他の事案は残る');
+    assert.equal(call('apiBoot', 4).v.incidents.length, 4, '他の事案は残る');
 
     // 持ち越しの候補：前年度に決定した時の組のうち、2人とも今この学年にいて、未採用のもの
     db().getSheetByName('pairs_carry').data.push([FY - 1, 'far', '40000011', '40000021'], [FY - 1, 'near', '40000021', '40000022'], [FY - 2, 'far', '40000011', '40000022']);

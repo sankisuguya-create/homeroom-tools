@@ -595,3 +595,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph.col button.used{color:var(--sub);background:var(--soft)}
 .idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
 .idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+.iq{display:flex;gap:6px}
+.iq input{flex:1}
+.dg-n.card.u{border-left-style:solid}
+.dg-n.unk .nt{font-size:1.15em}

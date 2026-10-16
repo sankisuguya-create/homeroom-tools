@@ -473,6 +473,8 @@
   // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
   // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
   var DG_W = 640, DG_H = 320;
+  // 誰か分からない児童（加害者が不明など）：関係図にだけ置く「？」のカード。id は ? で始まり、名簿の児童には結び付けない
+  function isUnknown(id) { return String(id).charAt(0) === '?'; }
   function normDiagram(d) {
     d = d || {};
     var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
@@ -540,7 +542,7 @@
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -697,7 +699,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_a488c378f0a8';
+var SERVER_BUILD = 'BUILD_9a174e8b69cc';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1043,7 +1045,11 @@ function incidentInput_(x) {
   // 文書のURLは任意（事案管理の入力欄に記録を書くなら要らない）。貼るなら学校のドライブの文書だけ
   if (x.url && !/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
   var dg = x.diagram ? Engine.normDiagram(x.diagram) : null, ids, roles = {};
-  if (dg && dg.nodes.length) { ids = dg.nodes.map(function (n) { return n.id; }); roles = Engine.diagramRoles(dg); }
+  if (dg && dg.nodes.length) {
+    // 「？」（誰か分からない児童）は関係図にだけ残し、事案と児童の結び付き・役割には入れない
+    ids = dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !Engine.isUnknown(id); });
+    var all = Engine.diagramRoles(dg); ids.forEach(function (id) { if (all[id]) roles[id] = all[id]; });
+  }
   else { ids = (x.ids || []).map(String); dg = null; }
   if (!ids.length) throw userError_('関係する児童を選んでください');
   var json = dg ? JSON.stringify(dg) : '';

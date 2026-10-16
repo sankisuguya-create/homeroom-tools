@@ -348,7 +348,11 @@ function incidentInput_(x) {
   // 文書のURLは任意（事案管理の入力欄に記録を書くなら要らない）。貼るなら学校のドライブの文書だけ
   if (x.url && !/^https:\/\/(docs|drive)\.google\.com\//.test(String(x.url))) throw userError_('学校のドライブの文書のURLを貼ってください');
   var dg = x.diagram ? Engine.normDiagram(x.diagram) : null, ids, roles = {};
-  if (dg && dg.nodes.length) { ids = dg.nodes.map(function (n) { return n.id; }); roles = Engine.diagramRoles(dg); }
+  if (dg && dg.nodes.length) {
+    // 「？」（誰か分からない児童）は関係図にだけ残し、事案と児童の結び付き・役割には入れない
+    ids = dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !Engine.isUnknown(id); });
+    var all = Engine.diagramRoles(dg); ids.forEach(function (id) { if (all[id]) roles[id] = all[id]; });
+  }
   else { ids = (x.ids || []).map(String); dg = null; }
   if (!ids.length) throw userError_('関係する児童を選んでください');
   var json = dg ? JSON.stringify(dg) : '';

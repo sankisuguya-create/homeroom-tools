@@ -603,6 +603,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph.col button.used{color:var(--sub);background:var(--soft)}
 .idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
 .idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+.iq{display:flex;gap:6px}
+.iq input{flex:1}
+.dg-n.card.u{border-left-style:solid}
+.dg-n.unk .nt{font-size:1.15em}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1082,6 +1088,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // d = { v:1, nodes:[{id,x,y}], groups:[{g:'A', members:[id]}], edges:[{f:'k:ID'|'g:A', t:同じ}] }
   // 矢印は「加害」を表す。座標は 640×320 の論理座標。児童は1つのグループにだけ入る
   var DG_W = 640, DG_H = 320;
+  // 誰か分からない児童（加害者が不明など）：関係図にだけ置く「？」のカード。id は ? で始まり、名簿の児童には結び付けない
+  function isUnknown(id) { return String(id).charAt(0) === '?'; }
   function normDiagram(d) {
     d = d || {};
     var ids = {}, nodes = [], gs = {}, groups = [], edges = [], seen = {};
@@ -1149,7 +1157,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/engine.js ここまで ▲ */
@@ -1523,7 +1531,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
-    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+    return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !E.isUnknown(id); }) : (x.ids || []).slice(), roles: dg ? (function (all) { var o = {}; Object.keys(all).forEach(function (id) { if (!E.isUnknown(id)) o[id] = all[id]; }); return o; })(E.diagramRoles(dg)) : {}, diagram: dg };
   }
   // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
   function demoDiagram(ids) {
@@ -1723,7 +1731,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_a488c378f0a8';
+  var PAGE_BUILD = 'BUILD_9a174e8b69cc';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -1949,7 +1957,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var MODES = [['move', '動かす'], ['arrow', '矢印（加害）'], ['group', 'グループ'], ['del', '消す']];
 
   function data() { return App.st.data; }
-  function kidOf(id) { return data().kids[id] || { name: id }; }
+  function kidOf(id) { return E.isUnknown(id) ? { name: E.UNKNOWN_NAME, unknown: true } : data().kids[id] || { name: id }; }
   function rowOf(id) {
     var d = data(), y = d.years.filter(function (x) { return x.fy === d.fy; })[0];
     return y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
@@ -1972,12 +1980,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function nodeHtml(st, n) {
     var esc = App.esc, s = kidOf(n.id), r = rowOf(n.id), cls = 'dg-n' + (st.from === 'k:' + n.id ? ' from' : '') + (st.pick.indexOf(n.id) >= 0 ? ' pick' : '');
     var style = 'left:' + (n.x / W * 100) + '%;top:' + (n.y / H * 100) + '%';
+    if (s.unknown) cls += ' unk';
     if (!st.card) return '<div class="' + cls + '" data-dn="' + esc(n.id) + '" style="' + style + '">' + esc(s.name) + '</div>';
     // アレルギー・身体的配慮は事案に関わりにくいので、この画面では出さない
     var oc = App.classColor(r ? r.cls : -1), marks = r ? g.CONFIG.ATTRS.filter(function (at) { return (r.a[at.k] | 0) && at.k !== 'k5' && at.k !== 'k6'; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る
     if (!marks) marks = '<span class="ph" aria-hidden="true">' + App.mark(g.CONFIG.ATTRS[0], 1) + '</span>';
-    return '<div class="' + cls + ' card ' + (s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
+    return '<div class="' + cls + ' card ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
       '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
   }
 
@@ -2700,7 +2709,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function esc(s) { return App.esc(s); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0]; }
-  function kidName(id) { var s = D().kids[id]; return s ? s.name : id; }
+  function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }
   function today() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
   // 種別は複数選べる（「いじめ・物損」のように「・」でつないで持つ）
   function typesOf(type) { return String(type || '').split('・').filter(Boolean); }
@@ -2863,7 +2872,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
       '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
-      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div>';
+      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off">' +
+      (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
     else h += '<div id="fDg" class="dg"></div>';
     if (b) {
@@ -2930,7 +2940,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function formKids() {
     var f = I.form; if (!f) return [];
     var ids = f.dg ? f.dg.d.nodes.map(function (n) { return n.id; }) : (f.x ? f.x.ids : []);
-    return ids.map(kidName);
+    return ids.filter(function (id) { return !E.isUnknown(id); }).map(kidName);
   }
   // 入れる：選んでいる行のカーソルの所へ。文の途中でなく末尾なら、句点で終わっていない時は「。」を挟む（名前の後ろは挟まない）
   function putPhrase(text) {
@@ -3197,6 +3207,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         rerenderPane(); saveDraftSoon(); return true;
       }
       if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
+      if (t.closest('#fUnk')) {
+        var n = 1; while (I.form.dg.d.nodes.some(function (nd) { return nd.id === '?' + n; })) n++;
+        App.Diagram.add(I.form.dg, '?' + n); mountDg(); saveDraftSoon(); return true;
+      }
       if ((x = t.closest('[data-pick]'))) {
         App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
         if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
@@ -3242,7 +3256,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }
       if (form.id !== 'incForm') return;
       if (!typesOf(f.type).length) { App.toast('事案の種別を選んでください'); return; }
-      if (!f.dg.d.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
+      if (!f.dg.d.nodes.some(function (n) { return !E.isUnknown(n.id); })) { App.toast('関係する児童を1人以上足してください（「？」だけでは登録できません）'); return; }
       // 保護者への連絡が書かれていなければ一度だけ知らせる（もう一度押せばそのまま登録）
       var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
       if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }

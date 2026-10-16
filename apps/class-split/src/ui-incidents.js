@@ -28,7 +28,7 @@
   function esc(s) { return App.esc(s); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0]; }
-  function kidName(id) { var s = D().kids[id]; return s ? s.name : id; }
+  function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }
   function today() { var t = new Date(); return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
   // 種別は複数選べる（「いじめ・物損」のように「・」でつないで持つ）
   function typesOf(type) { return String(type || '').split('・').filter(Boolean); }
@@ -191,7 +191,8 @@
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
       '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
-      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off"><div id="fSugg"></div>';
+      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off">' +
+      (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
     else h += '<div id="fDg" class="dg"></div>';
     if (b) {
@@ -258,7 +259,7 @@
   function formKids() {
     var f = I.form; if (!f) return [];
     var ids = f.dg ? f.dg.d.nodes.map(function (n) { return n.id; }) : (f.x ? f.x.ids : []);
-    return ids.map(kidName);
+    return ids.filter(function (id) { return !E.isUnknown(id); }).map(kidName);
   }
   // 入れる：選んでいる行のカーソルの所へ。文の途中でなく末尾なら、句点で終わっていない時は「。」を挟む（名前の後ろは挟まない）
   function putPhrase(text) {
@@ -525,6 +526,10 @@
         rerenderPane(); saveDraftSoon(); return true;
       }
       if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
+      if (t.closest('#fUnk')) {
+        var n = 1; while (I.form.dg.d.nodes.some(function (nd) { return nd.id === '?' + n; })) n++;
+        App.Diagram.add(I.form.dg, '?' + n); mountDg(); saveDraftSoon(); return true;
+      }
       if ((x = t.closest('[data-pick]'))) {
         App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
         if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
@@ -570,7 +575,7 @@
       }
       if (form.id !== 'incForm') return;
       if (!typesOf(f.type).length) { App.toast('事案の種別を選んでください'); return; }
-      if (!f.dg.d.nodes.length) { App.toast('関係する児童を1人以上足してください'); return; }
+      if (!f.dg.d.nodes.some(function (n) { return !E.isUnknown(n.id); })) { App.toast('関係する児童を1人以上足してください（「？」だけでは登録できません）'); return; }
       // 保護者への連絡が書かれていなければ一度だけ知らせる（もう一度押せばそのまま登録）
       var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
       if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }
