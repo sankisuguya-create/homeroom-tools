@@ -434,8 +434,8 @@
         (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
-        '<div class="pc-l"><div class="pc-ic">' + ic(true) + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
-        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div></div>' +
+        '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
+        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
         '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';
@@ -467,6 +467,11 @@
       el.style.fontSize = pt + 'pt';
       while (el.scrollHeight > el.clientHeight + 1 && pt > PRINT_MIN_PT) { pt -= .5; el.style.fontSize = pt + 'pt'; }
       if (el.scrollHeight > el.clientHeight + 1) { over++; el.classList.add('over'); }
+    });
+    // 長い名前は横幅だけを縮める（縦の大きさはそのまま）
+    box.querySelectorAll('.pc-name').forEach(function (el) {
+      var room = el.parentNode.clientWidth - 2 * parseFloat(getComputedStyle(el.parentNode).paddingLeft), w = el.scrollWidth;
+      if (w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
     });
     if (over) box.querySelector('#pover').textContent = '　⚠ ' + over + 'か所が' + PRINT_MIN_PT + 'ptでも入りきりません（赤い点線の枠）';
     var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); };

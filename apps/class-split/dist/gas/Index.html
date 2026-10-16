@@ -521,9 +521,9 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
-.pc-l{display:grid;grid-template-rows:8.5mm auto auto 8.5mm;align-content:center;justify-items:center;gap:.5mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
+.pc-l{display:grid;grid-template-rows:8.5mm auto auto 8.5mm;grid-template-columns:minmax(0,1fr);align-content:center;justify-items:center;gap:.5mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
 .pc-kana{font-size:8pt;line-height:1}
-.pc-name{font-size:21pt;font-weight:700;white-space:nowrap;line-height:1.1}
+.pc-name{font-size:21pt;font-weight:700;white-space:nowrap;line-height:1.1;display:inline-block;transform-origin:center}
 .pc-ic{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.8mm;font-size:17pt;min-height:8.5mm}
 .pc-sp{border:.3mm solid #000;border-radius:1mm;padding:0 .8mm;font-size:8pt}
 .pc-ic .jn{font-size:9pt}
@@ -1473,7 +1473,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_578393ac56e1';
+  var PAGE_BUILD = 'BUILD_241b9e5e6ea8';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -2928,8 +2928,8 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
         (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
-        '<div class="pc-l"><div class="pc-ic">' + ic(true) + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
-        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div></div>' +
+        '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
+        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
         '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';
@@ -2961,6 +2961,11 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
       el.style.fontSize = pt + 'pt';
       while (el.scrollHeight > el.clientHeight + 1 && pt > PRINT_MIN_PT) { pt -= .5; el.style.fontSize = pt + 'pt'; }
       if (el.scrollHeight > el.clientHeight + 1) { over++; el.classList.add('over'); }
+    });
+    // 長い名前は横幅だけを縮める（縦の大きさはそのまま）
+    box.querySelectorAll('.pc-name').forEach(function (el) {
+      var room = el.parentNode.clientWidth - 2 * parseFloat(getComputedStyle(el.parentNode).paddingLeft), w = el.scrollWidth;
+      if (w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
     });
     if (over) box.querySelector('#pover').textContent = '　⚠ ' + over + 'か所が' + PRINT_MIN_PT + 'ptでも入りきりません（赤い点線の枠）';
     var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); };
