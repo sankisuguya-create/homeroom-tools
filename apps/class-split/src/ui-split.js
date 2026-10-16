@@ -127,7 +127,7 @@
       return out;
     };
     var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件（押すと経年の記録と事案）">' + S.ji[i] + '</span>' : '';
-    return '<div class="chip ' + (s.male ? 'm' : 'f') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
+    return '<div class="chip ' + (s.male ? 'm' : 'f') + (s.tr ? ' trn' : '') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
       '<span class="old" title="' + tt + '">' + (s.tr ? '転' : s.no) + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
       '<span class="jr">' + jn + '</span></div>';
@@ -729,6 +729,11 @@
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       // カードの事案の数を押すと、その児童の経年の記録と事案を窓で見る（児童は選ばない）
       if ((x = t.closest('.board .chip .jr')) && x.querySelector('.jn')) { var kc = S.P.kids[+x.closest('.chip').dataset.i]; if (!kc.tr) App.showRecord(kc.id); return true; }
+      // カードの右下の灰色の角：その児童の経年の記録と事案（名簿の表と同じ印）
+      if ((x = t.closest('.board .chip')) && e) {
+        var q = x.getBoundingClientRect();
+        if (e.clientX >= q.right - 16 && e.clientY >= q.bottom - 16) { var kc2 = S.P.kids[+x.dataset.i]; if (!kc2.tr) App.showRecord(kc2.id); return true; }
+      }
       if ((x = t.closest('.board .chip'))) { tapChip(+x.dataset.i); return true; }
       if ((x = t.closest('[data-hl]'))) { S.hl = S.hl === x.dataset.hl ? null : x.dataset.hl; applyHl(); return true; }
       if ((x = t.closest('.head'))) { tapHead(+x.dataset.k); return true; }
