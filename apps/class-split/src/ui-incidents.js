@@ -22,6 +22,7 @@
     edit: SVG('<path d="M4 20h4L19 9l-4-4L4 16v4z"/><path d="M13 7l4 4"/>'),
     addNote: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M12.5 11v6M9.5 14h6"/>'),
     file: SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 13h7M9 17h5"/>'),
+    down2: SVG('<path d="M7 6l5 5 5-5"/><path d="M7 13l5 5 5-5"/>'),
     help: SVG('<path d="M4 6h10M4 10h7M4 14h6"/><path d="M14 20l1-4 6-6-3-3-6 6-1 4z"/>')
   };
   function D() { return App.st.data; }
@@ -127,7 +128,7 @@
   var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
     's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
   var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
-  function mdShort(iso) { var p = String(iso || '').split('-'); return p.length === 3 ? (+p[1]) + '/' + (+p[2]) : '日付'; }
+  function mdShort(iso) { var p = String(iso || '').split('-'); if (p.length !== 3) return '日付'; var w = '日月火水木金土'.charAt(new Date(+p[0], +p[1] - 1, +p[2]).getDay()); return (+p[1]) + '/' + (+p[2]) + '(' + w + ')'; }
   function secHtml(sec, key, rows) {
     var w = sec + ':' + key, isV = sec === 's2v';
     var h = '<div class="isec s-' + (isV ? 's2vi' : sec + key) + '" data-sec="' + w + '"><h3 class="ish"><b>' + (isV ? '被害児童・保護者の様子（' + esc(kidName(key)) + '）' : SEC_NAME[w]) + '</b><span>' + (isV ? 'この児童と保護者の、今の様子' : ASK[w]) + '</span></h3>';
@@ -140,8 +141,11 @@
         (r.p && Rp.slots().indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
         '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
         '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button>' +
+        // 日付の下：翌日の行を足す。時間帯の下：同じ日の次の時間帯の行を足す
+        '<button type="button" class="inx" data-rnext="' + at + ':day" title="翌日の行を足す" aria-label="翌日の行を足す">' + IC.down2 + '</button>' +
+        '<button type="button" class="inx" data-rnext="' + at + ':slot" title="次の時間帯の行を足す" aria-label="次の時間帯の行を足す">' + IC.down2 + '</button>' +
         '<div class="irx" id="irx-' + sec + '-' + key + '-' + i + '"></div></div>';
-    }).join('') + '<button type="button" class="btn ib iaddrow" data-radd="' + w + '">' + IC.plus + '行を足す</button></div></div>';
+    }).join('') + (rows.length ? '' : '<button type="button" class="btn ib iaddrow" data-radd="' + w + '">' + IC.plus + '行を足す</button>') + '</div></div>';
     return h;
   }
   // 指導の「よくある手順」：チェックで行を足す・外す
@@ -578,6 +582,13 @@
         App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
         if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
         renderAssist(); refocus('fQ'); saveDraftSoon(); return true;
+      }
+      if ((x = t.closest('[data-rnext]'))) {
+        var nq = x.dataset.rnext.split(':'), nrows = I.form.rep[nq[0]][nq[1]], ni = +nq[2], base = nrows[ni];
+        var nr = nq[3] === 'day' ? { d: Rp.addDays(base.d || today(), 1), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
+        if (nq[3] === 'slot' && !base.p) nr = { d: base.d, p: Rp.slots()[0], t: '' };
+        nrows.splice(ni + 1, 0, nr);
+        rerenderPane(); refocus('rw-' + nq[0] + '-' + nq[1] + '-' + (ni + 1)); saveDraftSoon(); return true;
       }
       if ((x = t.closest('[data-radd]'))) {
         var rows = rowsAt(x.dataset.radd), prev = rows[rows.length - 1];

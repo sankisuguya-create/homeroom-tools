@@ -244,10 +244,16 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
   await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
-  await p.selectOption('[data-rw="s1:kk:0:p"]', '1・2校時の間');
+  await p.selectOption('[data-rw="s1:kk:0:p"]', '1校時後');
   await p.click('#rw-s1-kk-0'); await p.keyboard.type('悪口'); await p.keyboard.press('Enter');
   ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, 'Enter で次の行ができる');
   ok(await p.inputValue('[data-rw="s1:kk:1:p"]') === '2校時', '足した行は、直前の行の次の時間帯になる');
+  const kkd = await p.inputValue('[data-rw="s1:kk:1:d"]');
+  await p.click('[data-rnext="s1:kk:1:day"]');
+  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 3 && await p.inputValue('[data-rw="s1:kk:2:d"]') > kkd, '日付の下のボタンで翌日の行ができる');
+  await p.click('[data-rnext="s1:kk:0:slot"]');
+  ok(await p.inputValue('[data-rw="s1:kk:1:p"]') === '2校時', '時間帯の下のボタンで同じ日の次の時間帯の行ができる');
+  await p.click('[data-rdel="s1:kk:1"]'); await p.click('[data-rdel="s1:kk:2"]');
   await p.check('[data-step="1"]');
   ok(await p.inputValue('#rw-s1-sd-0') === C_STEP1, '指導の手順のチェックで行に文が入る');
   await p.click('#incForm button.primary');

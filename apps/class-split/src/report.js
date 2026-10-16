@@ -30,17 +30,23 @@
   }
   function md(iso) { var x = dateParts(iso); return x ? x.m + '月' + x.d + '日（' + x.w + '）' : ''; }
   // 記録の行を「日付 時間帯、内容」にして改行でつなぐ（日付・時間帯の順。同じなら入力した順）
-  // 選べる時間帯：設定の時程に、続いた2つの授業の「間」を足す（例：1校時と2校時の間）
+  // 選べる時間帯：設定の時程に、続いた2つの授業の間を「N校時後」として足す（例：1校時と2校時の間＝1校時後）
   function slots() {
     var b = C.TIME_SLOTS, out = [];
     b.forEach(function (p, i) {
       out.push(p);
       var a = /^(\d+)校時$/.exec(p), n = b[i + 1] && /^(\d+)校時$/.exec(b[i + 1]);
-      if (a && n) out.push(a[1] + '・' + n[1] + '校時の間');
+      if (a && n) out.push(a[1] + '校時後');
     });
     return out;
   }
   // 次の行の既定：同じ日の次の時間帯。最後（放課後）の次は、次の登校日（土日を飛ばす）の最初の時間帯
+  function addDays(d, n) {
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return d;
+    t.setDate(t.getDate() + n);
+    return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
+  }
   function nextSlot(d, p) {
     var L = slots(), i = L.indexOf(p);
     if (i < 0 || i < L.length - 1) return { d: d, p: i < 0 ? p : L[i + 1] };
@@ -174,6 +180,6 @@
   }
   function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
 
-  g.Report = { tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+  g.Report = { addDays: addDays, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

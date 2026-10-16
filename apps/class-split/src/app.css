@@ -547,7 +547,7 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:3.4em 7.4em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
 .irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
 .irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
@@ -615,3 +615,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-n.lite{border-left:6px solid var(--oc);padding-left:6px}
 .dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
 .dg-n.lite.u{border-left:1.5px dashed var(--ink)}
+.irow .idate,.irow select.islot{height:2.3em;box-sizing:border-box}
+.irow select.islot{padding:0 0 0 2px;font-size:.78rem}
+.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px}
+.inx:hover{color:var(--link);background:var(--fill)}
+.inx svg{width:18px;height:18px}
+.irow .inx:nth-of-type(1){grid-column:1}
+.irx{grid-row:3}
