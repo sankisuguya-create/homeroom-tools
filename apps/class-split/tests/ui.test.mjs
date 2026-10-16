@@ -270,7 +270,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.isec[data-sec^="s2v:"]').count() === 2, '被害の児童が2人なら、様式Ⅱの「被害児童・保護者の様子」は2つの欄');
   await p.click('#cancelInc');
   await p.click('[data-iout="f2"]'); await p.waitForSelector('.iout');
-  ok(await p.locator('#ixls', { hasText: '2人分' }).count() === 1, 'Excel は被害の児童の数だけ作る');
+  ok(await p.locator('#ixls[disabled]').count() === 1, '被害児童を選ぶまで Excel は作れない');
+  await p.locator('[data-ivic]').nth(1).check();
+  ok(await p.locator('#ixls', { hasText: '1人分' }).count() === 1 && await p.locator('.ivic .note', { hasText: await p.locator('.ivic label').nth(1).innerText().then(s => s.trim()) }).count() === 1, '選んだ児童の分だけ作り、表もその児童の分になる');
+  await p.locator('[data-ivic]').nth(0).check();
+  ok(await p.locator('#ixls', { hasText: '2人分' }).count() === 1, '2人選べば2つ作る');
   await p.keyboard.press('Escape');
   await p.close();
 }

@@ -443,7 +443,8 @@
   function outDialog(x, kind) {
     // 被害の児童1人に1つの様式。矢印が無ければ最初の児童を被害の側とする
     var vs = realVictims(x); if (!vs.length) vs = x.ids.slice(0, 1);
-    var st = { victim: vs[0], made: [] };
+    // どの児童を被害児童とする書類を作るかは、教員が選ぶ（1人だけなら選んだ状態で始める）
+    var st = { victim: vs[0], pick: vs.length === 1 ? vs.slice() : [], made: [] };
     var cellsOf = function (v) {
       v = v || st.victim;
       return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: v, harms: harmsOf(x, v) });
@@ -454,9 +455,11 @@
         var cells = cellsOf(), L = labels(), refs = C.REPORT && Rp.allowedCells(kind).filter(function (r) { return cells[r] !== undefined; });
         var harms = harmsOf(x, st.victim);
         return '<div class="pop" data-close="1"><div class="dlg iout" role="dialog" aria-modal="true" aria-label="報告書を出力"><h2>' + C.REPORT.names[kind] + 'を出力</h2>' +
-          (vs.length > 1 ? '<div class="rbar"><span class="lab">被害の児童</span>' + vs.map(function (id) { return '<button class="lv" data-ivic="' + id + '" aria-pressed="' + (id === st.victim) + '">' + esc(kidName(id)) + '</button>'; }).join('') + '</div><p class="note">様式は被害の児童1人ごとに作ります。下の表は選んだ児童の分です。</p>' : '') +
+          (vs.length > 1 ? '<div class="ivic"><div class="lab">被害児童とする児童を選ぶ（矢印を向けられている児童。複数選べます）</div>' + vs.map(function (id) {
+              return '<label class="chk"><input type="checkbox" data-ivic="' + id + '"' + (st.pick.indexOf(id) >= 0 ? ' checked' : '') + '> ' + esc(kidName(id)) + '</label>';
+            }).join('') + '<p class="note">選んだ児童1人につき1つの書類を作ります。下のコピー用の表は ' + esc(kidName(st.victim)) + ' の分です。</p></div>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls">Excel を作る' + (vs.length > 1 ? '（被害の児童' + vs.length + '人分・' + vs.length + 'ファイル）' : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
           (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.name) + ' ↗</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
@@ -465,14 +468,21 @@
       },
       click: function (t) {
         var b;
-        if ((b = t.closest('[data-ivic]'))) { st.victim = b.dataset.ivic; App.refreshDlg(); return true; }
+        if ((b = t.closest('[data-ivic]'))) {
+          var id = b.dataset.ivic, k = st.pick.indexOf(id);
+          if (b.checked && k < 0) st.pick.push(id); else if (!b.checked && k >= 0) st.pick.splice(k, 1);
+          st.pick.sort(function (a, c) { return vs.indexOf(a) - vs.indexOf(c); });
+          if (b.checked) st.victim = id; else if (st.pick.length) st.victim = st.pick[0];
+          App.refreshDlg(); return true;
+        }
         if ((b = t.closest('[data-icopy]'))) { copyText(String(cellsOf()[b.dataset.icopy])); return true; }
-        if (t.closest('#ixls')) {
+        if (t.closest('#ixls') && st.pick.length) {
           // 被害の児童ごとに1つずつ作る（同時に送らず、順に）
           st.made = [];
           App.save(function () {
-            return vs.reduce(function (pr, v, i) {
-              return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, vs.length > 1 ? i + 1 : 0); }).then(function (r) { r.victim = v; st.made.push(r); });
+            return st.pick.reduce(function (pr, v) {
+              var seq = vs.length > 1 ? vs.indexOf(v) + 1 : 0;
+              return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, seq); }).then(function (r) { r.victim = v; st.made.push(r); });
             }, Promise.resolve());
           }).then(function () { App.refreshDlg(); });
           return true;

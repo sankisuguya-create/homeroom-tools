@@ -611,3 +611,4 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
 .imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
 .imqt{flex-basis:100%;font-size:.82rem;color:var(--sub);padding-left:1.8em}
+.ivic{display:flex;flex-direction:column;gap:3px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
