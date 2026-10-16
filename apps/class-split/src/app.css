@@ -526,7 +526,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .itypes{display:flex;flex-wrap:wrap;gap:6px}
 .ikids{display:flex;flex-wrap:wrap;gap:6px}
 .ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
-.dg.ro .dg-bar,.dg.ro .dg-hint{display:none}
+.dg.ro .dg-hint,.dg.ro .dg-bar .lvs,.dg.ro .dg-bar .btn{display:none}
 .dg.ro .dg-canvas{pointer-events:none}
 .ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
 .ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}

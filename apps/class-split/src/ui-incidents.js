@@ -154,14 +154,15 @@
     var el = App.$('fDg');
     if (el && I.form && I.form.dg) App.Diagram.mount(el, I.form.dg, function (st) { I.form.dg = st; });
     var v = App.$('vDg'), x = I.sel != null && incOf(I.sel);
-    if (v && x && x.diagram) { App.Diagram.mount(v, App.Diagram.state(x.diagram), function () {}); cropDg(v, x.diagram); } // 見るだけ（操作は CSS で止める）
+    // 見るだけ（動かす操作は CSS で止める。「カードで表示」だけ選べる。選び直すと描き直すので、そのたびに切り出す）
+    if (v && x && x.diagram) { App.Diagram.mount(v, App.Diagram.state(x.diagram), function (st) { cropDg(v, st.d); }); cropDg(v, x.diagram); }
   }
   // 見る画面の関係図は、児童のいる範囲だけを切り出す（白い余白を出さない）
   function cropDg(el, d) {
     var cv = el.querySelector('.dg-canvas'); if (!cv || !d.nodes.length) return;
     var W = E.DG_W, H = E.DG_H, xs = d.nodes.map(function (n) { return n.x; }), ys = d.nodes.map(function (n) { return n.y; });
-    var x0 = Math.max(0, Math.min.apply(null, xs) - 90), x1 = Math.min(W, Math.max.apply(null, xs) + 90);
-    var y0 = Math.max(0, Math.min.apply(null, ys) - 40), y1 = Math.min(H, Math.max.apply(null, ys) + 40);
+    var x0 = Math.max(0, Math.min.apply(null, xs) - 120), x1 = Math.min(W, Math.max.apply(null, xs) + 120);
+    var y0 = Math.max(0, Math.min.apply(null, ys) - 45), y1 = Math.min(H, Math.max.apply(null, ys) + 45);
     var cw = cv.getBoundingClientRect().width, k = cw / W;
     var box = document.createElement('div');
     box.className = 'dg-crop';
