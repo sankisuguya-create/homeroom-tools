@@ -143,7 +143,7 @@
         return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
           (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
             '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
-          '<section><h3>表示</h3><div class="rbar">' + btn('order', '並び順…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
+          '<section><h3>表示</h3><div class="rbar">' + btn('order', '並び順…', '', np) + btn('prt', '個人票を印刷…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
           (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
@@ -410,6 +410,79 @@
   }
 
   // 決定した組の番号。未設定の間は仮（A組＝1組…）
+  // ===== 個人票の印刷 =====
+  // 18×4cm の票を A4 縦に7枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
+  // 左は上に良い項目（緑）、名前、下に負担の4項目と事案数。右上に配慮（紫）と備考、右下に離す・つける。色はアイコンと旧学級の帯（濃い方）だけ。女子は左を半円（画面のカードと同じ形）。字は枠に収まるまで縮める（下限6pt）
+  var PRINT_PER_PAGE = 7, PRINT_MIN_PT = 6;
+  function printCards() {
+    var p = S.plans[S.active], kids = S.P.kids, esc = App.esc;
+    var named = S.decision && S.decision.named, names = namesOf();
+    var clsName = function (k) { return named ? names[k] + '組' : C.newClass(k) + (S.decision ? '' : '（案' + p.letter + '）'); };
+    var rel = kids.map(function () { return { far: [], near: [] }; });
+    S.P.pairs.forEach(function (q) {
+      if (q.t !== 'far' && q.t !== 'near') return;
+      rel[q.i][q.t].push(q.j); rel[q.j][q.t].push(q.i);
+    });
+    var side = C.ATTRS.filter(function (at) { return at.side; });
+    var card = function (i) {
+      var s = kids[i], a = s.a || {}, oc = App.classColor(s.old);
+      // 項目ごとに決まった位置に出す（無い項目は見えないアイコンで場所を取る）
+      var ic = function (good) { return C.ATTRS.filter(function (at) { return !at.side && !at.good === !good; }).map(function (at) { var v = a[at.k] | 0; return v ? App.mark(at, v) : '<span class="ph" aria-hidden="true">' + App.mark(at, 1) + '</span>'; }).join(''); };
+      var who = function (js) { return js.map(function (j) { return esc(kids[j].name); }).join('・'); };
+      var bot = (rel[i].far.length ? '<div><b>離</b> ' + who(rel[i].far) + '</div>' : '') + (rel[i].near.length ? '<div><b>つ</b> ' + who(rel[i].near) + '</div>' : '');
+      var top = side.filter(function (at) { return a[at.k] | 0; }).map(function (at) { return '<div>' + App.mark(at, 1) + ' ' + esc(a[at.k + '_t'] || '') + '</div>'; }).join('') +
+        (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
+      return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
+        '<div class="pc-band" style="background:' + oc.c + '"></div>' +
+        '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
+        '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
+        '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
+        '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
+        '</div></div>';
+    };
+    var pages = [], total = 0;
+    for (var k = 0; k < S.P.nc; k++) {
+      var ids = [];
+      kids.forEach(function (s, i) { if (p.asg[i] === k) ids.push(i); });
+      ids.sort(function (x, y) { return String(kids[x].kana).localeCompare(String(kids[y].kana), 'ja'); });
+      var np = Math.ceil(ids.length / PRINT_PER_PAGE) || 1;
+      for (var pg = 0; pg < np; pg++) {
+        var part = ids.slice(pg * PRINT_PER_PAGE, (pg + 1) * PRINT_PER_PAGE);
+        total += part.length;
+        pages.push('<div class="pp"><div class="pp-h">' + App.st.grade + '年 ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
+          '<div class="pp-f"><span class="pp-ruler"></span>この線が10cmなら実寸（倍率100%・余白なしで印刷）</div></div>');
+      }
+    }
+    var box = document.createElement('div');
+    box.id = 'printbox';
+    box.innerHTML = '<div class="pbar"><b>個人票の印刷（' + total + '枚・' + pages.length + 'ページ）</b><span id="pover"></span><span class="sp"></span>' +
+      '<button class="btn primary" id="pgo">印刷する</button><button class="btn" id="pclose">閉じる<kbd>Esc</kbd></button></div>' +
+      '<div class="pages">' + pages.join('') + '</div>';
+    document.body.appendChild(box);
+    document.body.classList.add('printing');
+    // 字を枠に収まるまで縮める。下限でも収まらない票は数えて知らせる
+    var over = 0;
+    box.querySelectorAll('.fit').forEach(function (el) {
+      var pt = 9;
+      el.style.fontSize = pt + 'pt';
+      while (el.scrollHeight > el.clientHeight + 1 && pt > PRINT_MIN_PT) { pt -= .5; el.style.fontSize = pt + 'pt'; }
+      if (el.scrollHeight > el.clientHeight + 1) { over++; el.classList.add('over'); }
+    });
+    // 長い名前は横幅だけを縮める（縦の大きさはそのまま）
+    box.querySelectorAll('.pc-name').forEach(function (el) {
+      var room = el.parentNode.clientWidth - 2 * parseFloat(getComputedStyle(el.parentNode).paddingLeft), w = el.scrollWidth;
+      if (w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
+    });
+    if (over) box.querySelector('#pover').textContent = '　⚠ ' + over + 'か所が' + PRINT_MIN_PT + 'ptでも入りきりません（赤い点線の枠）';
+    var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); };
+    var onKey = function (e) { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); } };
+    document.addEventListener('keydown', onKey, true);
+    box.addEventListener('click', function (e) {
+      if (e.target.closest('#pclose')) close();
+      else if (e.target.closest('#pgo')) window.print();
+    });
+  }
+
   function namesOf() { var d = S.decision, n = d && d.names; return n && n.length ? n : Array.from({ length: S.P.nc }, function (_, k) { return k + 1; }); }
   function namesText() {
     return namesOf().map(function (v, k) { return C.newClass(k) + '＝' + v + '組'; }).join('・') + (S.decision.named ? '' : '（仮）');
@@ -727,6 +800,7 @@
       if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }
+      if (t.closest('#prt')) { printCards(); return true; }
       if (t.closest('#decide')) { decideDialog(); return true; }
       if (t.closest('#undoDecide')) { undoDecideDialog(); return true; }
       // カードの事案の数を押すと、その児童の経年の記録と事案を窓で見る（児童は選ばない）
