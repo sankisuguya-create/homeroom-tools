@@ -481,3 +481,8 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 .jn.jn2 b{font-weight:700}
 .jn.jn2 i{font-style:normal;font-size:.78em}
 table.r th.jh small{font-weight:400}
+/* 名簿の見出し：押すと並べ替え */
+table.r th.sorth{cursor:pointer;user-select:none}
+table.r th.sorth:hover{background:#e3e8ed}
+table.r th.sorth.on{background:var(--fill)}
+table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}

@@ -3,7 +3,7 @@
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG, E = g.Engine;
-  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null };
+  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null, col: null };
 
   function D() { return App.st.data; }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
@@ -239,6 +239,11 @@
     });
   }
 
+  // 押すと並べ替える見出し
+  function sth(k, cls, label, title) {
+    var on = R.col && R.col.k === k;
+    return '<th class="' + cls + ' sorth' + (on ? ' on' : '') + '" data-csort="' + k + '" title="' + (title ? title + '：' : '') + '押すとこの列で並べる">' + label + (on ? '<span class="sa">' + (R.col.dir > 0 ? '▼' : '▲') + '</span>' : '') + '</th>';
+  }
   function table(Y, edit) {
     var d = D(), esc = App.esc, showPairs = R.fy === d.fy, pe = pairEdit();
     var rows = Y.rows.filter(function (r) { return R.scope === 'grade' || r.cls === R.cls; }).map(function (r) {
@@ -246,9 +251,14 @@
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
-    rows.sort(function (a, b) { return App.byKeys(SORT_KEYS, ORDER, a, b); });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="spc" title="特別支援学級">特支</th>' +
-      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th class="jh">事案数<br><small>(被害)</small></th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
+    // 見出しを押した列で並べる（もう一度押すと逆順、3回目で元の並び順）。同じ値の中は並び順の窓の順
+    var colVal = function (x) {
+      var k = R.col.k;
+      return k === 'ji' ? x.n : k === 'pr' ? pairsOf(x.id).length : k === 'memo' ? (x.a.memo ? 1 : 0) : k === 'sp' ? (x.a.sp ? 1 : 0) : x.a[k] | 0;
+    };
+    rows.sort(function (a, b) { return (R.col ? (colVal(b) - colVal(a)) * R.col.dir : 0) || App.byKeys(SORT_KEYS, ORDER, a, b); });
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th>' + sth('sp', 'spc', '特支', '特別支援学級') +
+      C.ATTRS.map(function (at) { return sth(at.k, 'an', App.esc(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考') + '</tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
@@ -519,6 +529,11 @@
       var td = t.closest('td.cc');
       // 事案・つける離す・備考は、欄のどこを押しても同じ窓
       if (td && ((e && inCorner(td, e)) || td.matches('.ji,.pr,.memo'))) { cornerDialog(td); return true; }
+      if ((x = t.closest('[data-csort]'))) {
+        var ck = x.dataset.csort;
+        R.col = !R.col || R.col.k !== ck ? { k: ck, dir: 1 } : R.col.dir > 0 ? { k: ck, dir: -1 } : null; // 多い順→少ない順→元の並び
+        render(); return true;
+      }
       if ((x = t.closest('[data-fy]'))) { R.fy = +x.dataset.fy; render(); return true; }
       if ((x = t.closest('[data-cls]'))) { R.scope = 'cls'; R.cls = +x.dataset.cls; render(); return true; }
       if ((x = t.closest('[data-scope]'))) { R.scope = x.dataset.scope; if (R.scope === 'school') R.school = null; render(); return true; }
