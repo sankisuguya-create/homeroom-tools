@@ -513,11 +513,12 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
-.pc-l{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
-.pc-kana{font-size:7pt}
-.pc-name{font-size:16pt;font-weight:700;white-space:nowrap;line-height:1.1}
-.pc-ic{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.6mm;font-size:9pt}
-.pc-sp{border:.3mm solid #000;border-radius:1mm;padding:0 .8mm;font-size:7pt}
+.pc-l{display:grid;grid-template-rows:7mm auto auto 7mm;align-content:center;justify-items:center;gap:.5mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
+.pc-kana{font-size:8pt;line-height:1}
+.pc-name{font-size:21pt;font-weight:700;white-space:nowrap;line-height:1.1}
+.pc-ic{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:.8mm;font-size:13pt;min-height:5.5mm}
+.pc-sp{border:.3mm solid #000;border-radius:1mm;padding:0 .8mm;font-size:8pt}
+.pc-ic .jn{font-size:9pt}
 .pc-r{display:grid;grid-template-rows:1fr 1fr;min-width:0}
 .pc-t,.pc-b{overflow:hidden;padding:.8mm 1.5mm;line-height:1.25;min-height:0}
 .pc-t{border-bottom:.3mm solid #000}
