@@ -248,7 +248,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .pop{position:fixed;inset:0;background:#1a1a1a66;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .dlg{background:var(--panel);border-radius:10px;padding:18px 20px;max-width:min(920px,100%);width:100%;box-shadow:0 10px 30px #0004;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto;box-sizing:border-box}
 .dlg h2{margin:0;font-size:1.3rem}
-.swap{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center}
+.swap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}
 .side{display:flex;flex-direction:column;gap:6px;min-width:0}
 .side .lab{font-size:.9rem;color:var(--sub);font-variant-numeric:tabular-nums}
 .side .lab b{color:var(--ink);font-size:1.05rem}
@@ -470,3 +470,19 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 .mpicks select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
 .ctxl{display:flex;flex-direction:column;gap:3px}
 .ctxl textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical}
+/* クラス分けのカード：右下の灰色の角（押すと経年の記録）。女子のカードも男子と同じ位置（丸い縁からはみ出してよい） */
+.board .chip:not(.trn)::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;background:linear-gradient(135deg,transparent 50%,#9aa1a8 50%);pointer-events:none;z-index:3}
+.board .chip.f:not(.trn)::after{right:-1px;bottom:-1px}
+/* 入れ替えの確認：カードの大きさをそろえる */
+.side .chip{width:min(100%,340px);box-sizing:border-box}
+.side .chip .l2>.bs:first-child{--slot:1.9em}
+/* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
+.jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
+.jn.jn2 b{font-weight:700}
+.jn.jn2 i{font-style:normal;font-size:.78em}
+table.r th.jh small{font-weight:400}
+/* 名簿の見出し：押すと並べ替え */
+table.r th.sorth{cursor:pointer;user-select:none}
+table.r th.sorth:hover{background:#e3e8ed}
+table.r th.sorth.on{background:var(--fill)}
+table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
