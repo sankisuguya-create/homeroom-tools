@@ -37,6 +37,7 @@
       // ア・身・通の内容の見本
       var NOTE = { k5: ['卵', '小麦・そば', 'ピーナッツ。エピペンあり', '乳製品', ''], k6: ['右耳が聞こえにくい。前の席', 'ぜんそく', '視力が弱い。前の席', ''], k10: ['週1回 ことばの教室', '週2回 通級（LD）', '支援員が国語に入る', ''] };
       var R = E.rngOf(1000 + grade), pick = function (a) { return a[Math.floor(R() * a.length)]; };
+      var R2 = E.rngOf(7000 + grade), pick2 = function (a) { return a[Math.floor(R2() * a.length)]; };
       // 5年は上限（4学級×36人＝144人）、3年は3学級
       var nc = grade === 3 ? 3 : grade === 7 ? 2 : 4, n = nc === 3 ? 103 : grade === 7 ? 24 : grade === 5 ? 144 : 138, ny = Math.min(grade, 6), entry = FY - grade + 1, ids = [], base = {};
       for (var i = 0; i < n; i++) {
@@ -75,9 +76,25 @@
         if (R() < .12) { var o2 = pick(ids); if (kids.indexOf(o2) < 0) kids.push(o2); }
         var date = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2), dateEnd = '';
         if (R() < .2) { var d2 = new Date(yr, mo - 1, day + 2 + Math.floor(R() * 10)); dateEnd = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2); }
-        var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: pick(C.INCIDENT_TYPES), title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: '#demo-' + S.nextInc, ids: kids, diagram: demoDiagram(kids) });
+        // 種別はときどき2つ（いじめ・物損 など）。いじめには報告書の項目と、発覚・経緯・指導の記録を付ける
+        // 記録の見本は別の乱数で作る（名簿・事案の数など、ほかの見本の並びを変えないため）
+        var type = pick(C.INCIDENT_TYPES); if (type === 'いじめ' && R2() < .25) type = 'いじめ・物損';
+        var dg = demoDiagram(kids, R2);
+        // 加害者が分からないいじめ（「？」のカード）
+        if (/いじめ/.test(type) && kids.length === 1 && R2() < .5) dg = { nodes: [{ id: '?1', x: 100, y: 110 }, { id: kids[0], x: 330, y: 110 }], groups: [], edges: [{ f: 'k:?1', t: 'k:' + kids[0] }] };
+        var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: type, title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: R2() < .4 ? '#demo-' + S.nextInc : '', ids: kids, diagram: dg,
+          report: demoReport(type, date, dg, R2, pick2) });
         x.id = S.nextInc++; incFy[x.id] = fyI;
         S.inc.push(x);
+      }
+      // どの学年にも、被害の児童が2人のいじめを1件（様式を児童ごとに作る見本）。今年度の最近の日付
+      if (grade <= 6) {
+        var t3 = [ids[3], ids[7], ids[11]], nowD = new Date(), dd = new Date(nowD.getFullYear(), nowD.getMonth(), Math.max(1, nowD.getDate() - 5));
+        var iso3 = dd.getFullYear() + '-' + ('0' + (dd.getMonth() + 1)).slice(-2) + '-' + ('0' + dd.getDate()).slice(-2);
+        var dg3 = { nodes: t3.map(function (id, i) { return { id: id, x: 110 + i * 200, y: 110 + (i % 2) * 70 }; }), groups: [], edges: [{ f: 'k:' + t3[0], t: 'k:' + t3[1] }, { f: 'k:' + t3[0], t: 'k:' + t3[2] }] };
+        var rp3 = demoReport('いじめ', iso3, dg3, function () { return .2; }, pick2);
+        var x3 = demoIncident({ date: iso3, type: 'いじめ', title: '', url: '', ids: t3, diagram: dg3, report: rp3 });
+        x3.id = S.nextInc++; incFy[x3.id] = FY; S.inc.push(x3);
       }
       // 学・欠・問・保：経緯の文と、その年度までの本人の事案の紐付け（問は事案があれば紐付ける）
       var incBy = {};
@@ -130,11 +147,41 @@
     return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url || '', report: x.report ? E_REPORT().norm(x.report) : null, ids: dg ? dg.nodes.map(function (n) { return n.id; }).filter(function (id) { return !E.isUnknown(id); }) : (x.ids || []).slice(), roles: dg ? (function (all) { var o = {}; Object.keys(all).forEach(function (id) { if (!E.isUnknown(id)) o[id] = all[id]; }); return o; })(E.diagramRoles(dg)) : {}, diagram: dg };
   }
   // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
-  function demoDiagram(ids) {
+  function demoDiagram(ids, R) {
     if (ids.length < 2) return null;
     var nodes = ids.map(function (id, i) { return { id: id, x: 120 + i * 200, y: 120 + (i % 2) * 80 }; });
+    // 3人：半分は「1人が2人に」（被害の児童が2人＝様式は2つ）、残りは2人をまとまりにする
+    if (ids.length === 3 && R && R() < .5) return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }, { f: 'k:' + ids[0], t: 'k:' + ids[2] }] };
     if (ids.length === 3) return { nodes: nodes, groups: [{ g: 'A', members: [ids[1], ids[2]] }], edges: [{ f: 'k:' + ids[0], t: 'g:A' }] };
     return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }] };
+  }
+  // 事案の記録の見本：定型文と時間帯で、発覚→経緯→指導の行を作る。いじめには発見のきっかけ・態様、半分に様式Ⅱ用の追記
+  function demoReport(type, date, dg, R, pick) {
+    var Rp = g.Report, rp = Rp.emptyReport(), L = Rp.slots(), si = Math.floor(R() * 8), d = date;
+    var row = function (t) { var r = { d: d, p: L[si % L.length], t: t }; var n = Rp.nextSlot(d, r.p); si = L.indexOf(n.p); d = n.d; return r; };
+    var P = C.PHRASES, names = dg ? dg.nodes.filter(function (n) { return !E.isUnknown(n.id); }).map(function (n) { return S.kids[n.id] ? S.kids[n.id].name : ''; }) : [];
+    var lead = dg && dg.edges.length ? (function (e) {
+      var nm = function (end) { var q = end.split(':'); if (q[0] === 'g') return dg.groups.filter(function (x) { return x.g === q[1]; })[0].members.map(function (id) { return S.kids[id].name; }).join('・'); return E.isUnknown(q[1]) ? '（不明の児童）' : S.kids[q[1]].name; };
+      return nm(e.f) + 'が' + nm(e.t);
+    })(dg.edges[0]) : (names[0] || '') + 'が';
+    rp.s1.hk.push(row(pick(P.hk)));
+    rp.s1.kk.push(row(lead + pick(P.kk.slice(0, 11))));
+    if (R() < .5) rp.s1.kk.push(row(pick(P.kk.slice(11))));
+    rp.s1.sd.push(row(C.SD_STEPS[0]));
+    rp.s1.sd.push(row(C.SD_STEPS[1]));
+    rp.s1.sd.push(row(R() < .7 ? C.SD_STEPS[3] : pick(P.sd)));
+    if (/いじめ/.test(type)) {
+      rp.found = pick(C.FOUND_LIST);
+      rp.modes[Math.floor(R() * 8)] = true; if (R() < .3) rp.modes[Math.floor(R() * 8)] = true;
+      if (R() < .5) {
+        d = Rp.addDays(date, 7 + Math.floor(R() * 14)); si = 1;
+        rp.s2.sd.push(row(pick(P.s2sd))); rp.s2.ha.push(row(pick(P.ha)));
+        var vic = dg ? Object.keys(E.diagramRoles(dg)).filter(function (id) { var r = E.diagramRoles(dg)[id]; return !E.isUnknown(id) && (r === 'victim' || r === 'mutual'); }) : [];
+        if (vic.length > 1) vic.forEach(function (id) { rp.s2v[id] = [row(pick(P.vi))]; }); else rp.s2.vi.push(row(pick(P.vi)));
+        rp.s2.kikan = pick(P.kikan);
+      }
+    }
+    return rp;
   }
   function E_REPORT() { return g.Report; }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
