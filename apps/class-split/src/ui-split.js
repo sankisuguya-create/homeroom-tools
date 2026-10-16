@@ -564,7 +564,7 @@
           F = { t: F.t, a: null, b: null, k: F.k, memo: '' }; App.refreshDlg(); return true;
         }
         if ((x = t.closest('[data-pdel]'))) { list.splice(+x.dataset.pdel, 1); App.refreshDlg(); return true; }
-        if ((x = t.closest('[data-pcar]'))) { var c = carry.splice(+x.dataset.pcar, 1)[0]; list.push({ t: c.t, a: c.a, b: c.b, memo: '' }); App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-pcar]'))) { var c = carry.splice(+x.dataset.pcar, 1)[0]; list.push(JSON.parse(JSON.stringify(c))); App.refreshDlg(); return true; } // 経緯・理由・何年生からも引き継ぐ
         return false;
       },
       onOk: function () {

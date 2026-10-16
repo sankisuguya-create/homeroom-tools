@@ -333,11 +333,12 @@ body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
 body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
 /* つける・離す：数だけ。相手はカーソルで出す */
 body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
-table.r td.pr{min-width:3.4em}
+table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
 table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
 table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
 .prm{display:inline-flex;gap:3px}
-.prm b{font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid}
+:is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
+.prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
 .prm .pf{color:var(--alert);border-color:var(--alert)}
 .prm .pn{color:var(--link);border-color:var(--link)}
 .prm .px{color:var(--sub);border-color:var(--sub)}
@@ -419,3 +420,53 @@ table.h td.gcn .no{display:inline-block;min-width:2ch;text-align:right}
 /* 事案の詳細（関係図の下） */
 .form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
 .inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
+/* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
+.prm{display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
+.prm .pl{display:flex;gap:2px;align-items:center;white-space:nowrap;min-height:1.35em}
+.prm .pk{cursor:help}
+.prm .pk:hover{text-decoration:underline}
+.prm .pmore{color:var(--sub);margin-left:3px}
+.prd{display:flex;flex-direction:column;gap:10px}
+.prd h3{margin:0 0 4px;font-size:.95rem}
+.kcards{display:flex;flex-wrap:wrap;gap:6px}
+/* 児童カード */
+.kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
+.kcard.f{border-radius:999px 14px 14px 999px}
+.kcard .nb{font-size:.7em;color:var(--sub)}
+.kcard .mk{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.tip .kcard{border-color:transparent;border-left-color:var(--oc)}
+/* つける・離すの窓 */
+.kbtn{border:2px solid transparent;background:none;padding:2px;border-radius:10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;font:inherit}
+.kbtn.on{border-color:var(--link)}
+.kbtn .ksince{font-size:.75rem;color:var(--sub);padding-left:4px}
+.prd h3{display:flex;gap:8px;align-items:center}
+.prd h3 .btn{font-size:.8rem;padding:2px 8px;font-weight:400}
+.pdet{margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--soft)}
+.pmemo{white-space:pre-wrap}
+.pinc,.pinclist{display:flex;flex-direction:column;gap:3px;font-size:.9rem}
+.pinc a,.pinclist a{margin-right:6px}
+.pform{border:2px solid var(--link);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.pform h3{margin:0}
+.pform input#pq,.pform textarea{font:inherit;padding:5px 7px;border:1px solid var(--line);border-radius:6px}
+.pform label{display:flex;flex-direction:column;gap:3px}
+.pform label.chk{flex-direction:row;align-items:center}
+.ptags{display:flex;flex-wrap:wrap;gap:4px}
+.ptag{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;font-size:.85rem;cursor:pointer;color:var(--ink)}
+.ptag.on{background:var(--link);border-color:var(--link);color:#fff}
+span.ptag{cursor:default;margin-right:3px}
+/* 名簿の欄：右下の灰色の角＝設定の窓。真ん中＝値を変える */
+table.r td.cc{position:relative}
+table.r td.cc::after{content:"";position:absolute;right:0;bottom:0;width:12px;height:12px;background:linear-gradient(135deg,transparent 50%,#b4bac1 50%);pointer-events:none}
+table.r td.cc:hover::after{background:linear-gradient(135deg,transparent 50%,#6e767e 50%)}
+table.r td.pr.cc,table.r td.memo.cc,table.r td.ji.cc{cursor:pointer}
+table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{background:var(--soft)}
+/* 程度を選ぶ窓 */
+.lvpick{display:flex;flex-direction:column;gap:6px}
+.lvopt{display:flex;gap:12px;align-items:center;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit;color:var(--ink)}
+.lvopt[aria-pressed="true"]{border-color:var(--link);background:var(--fill)}
+.lvopt .ic{min-width:3em;font-size:20px;font-weight:700}
+/* 備考の定型の言葉 */
+.mpicks{display:flex;flex-wrap:wrap;gap:6px}
+.mpicks select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.ctxl{display:flex;flex-direction:column;gap:3px}
+.ctxl textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical}

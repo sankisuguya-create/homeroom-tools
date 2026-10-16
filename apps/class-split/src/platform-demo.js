@@ -70,12 +70,13 @@
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
       var two = function () { var a, b; do { a = pick(cur); b = pick(cur); } while (a === b || used[a] || used[b]); used[a] = used[b] = 1; return [a, b]; };
-      for (var f = 0; f < 6; f++) { var ab = two(); pairs.push({ t: 'far', a: ab[0], b: ab[1] }); }
+      var MEMO = ['低学年の時からトラブルが続いている', '保護者から申し出があった', '休み時間に一緒になると落ち着かない', ''];
+      for (var f = 0; f < 6; f++) { var ab = two(); pairs.push({ t: 'far', a: ab[0], b: ab[1], since: Math.max(1, grade - Math.floor(R() * 3)), tags: [pick(C.PAIR_TAGS)], memo: pick(MEMO), incs: [] }); }
       for (var nr = 0; nr < 2; nr++) { var cd = two(); pairs.push({ t: 'near', a: cd[0], b: cd[1] }); }
       var fx = pick(cur); if (!used[fx]) pairs.push({ t: 'fix', a: fx, k: 0, memo: '教室が1階' });
       S.pairs[grade] = pairs;
       // 前年度から持ち越した「つける・離す」の候補（見本）
-      S.carry[grade] = grade >= 2 ? [0, 1, 2].map(function () { var ab = two(); return { t: R() < .7 ? 'far' : 'near', a: ab[0], b: ab[1] }; }) : [];
+      S.carry[grade] = grade >= 2 ? [0, 1, 2].map(function () { var ab = two(); return { t: R() < .7 ? 'far' : 'near', a: ab[0], b: ab[1], memo: '', tags: ['前担任から'], incs: [], since: Math.max(1, grade - 1 - Math.floor(R() * 2)) }; }) : [];
       S.plans[grade] = [];
     }
     // 4年の1人は今年度に転出した（今年度の名簿にいない）
@@ -159,12 +160,13 @@
       S.transfers[grade] = (S.transfers[grade] || []).filter(function (t) { return t.id !== id; });
       return later({ ok: true });
     },
-    setAttr: function (fy, grade, id, k, v, text) { gen();
+    setAttr: function (fy, grade, id, k, v, text, incs) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
-      if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 200); else delete r.a.memo; return later({ ok: true }); }
+      if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 400); else delete r.a.memo; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
-      if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 200); else delete r.a[k + '_t']; }
+      if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 1000); else delete r.a[k + '_t']; }
+      if (incs !== undefined) { if (v && incs.length) r.a[k + '_i'] = incs.slice(); else delete r.a[k + '_i']; }
       return later({ ok: true });
     },
     savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
@@ -209,7 +211,7 @@
       var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
       S.years[FY + 1] = S.years[FY + 1] || {};
       S.years[FY + 1][grade + 1] = E.nextYearRows(kids, asg, nc);
-      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), names: Array.from({ length: nc }, function (_, k) { return k + 1; }), named: false, carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b }; }) };
+      S.decisions[grade] = { plan: plan.name, at: new Date().toISOString(), names: Array.from({ length: nc }, function (_, k) { return k + 1; }), named: false, carry: (S.pairs[grade] || []).filter(function (p) { return p.t !== 'fix'; }).map(function (p) { return { t: p.t, a: p.a, b: p.b, memo: p.memo || '', tags: (p.tags || []).slice(), incs: (p.incs || []).slice(), since: p.since || grade }; }) };
       return later(S.decisions[grade]);
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
