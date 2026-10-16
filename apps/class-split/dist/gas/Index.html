@@ -1116,6 +1116,14 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   var toHira = function (k) { return k.replace(/[ァ-ヶ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); }); };
   var GM = ANIMALS.map(function (x) { return [x, toHira(x)]; }), GF = GM;
   var PLACES = ['休み時間', '給食', '登校', '体育', '清掃'];
+  // 学・欠・問・保の経緯の見本（角の窓で書く文）
+  var CTX_NOTE = {
+    k1: ['九九があやしい。放課後に補充', '文章を読むのに時間がかかる', '計算は早いが文章題が苦手', '個別に声をかけると取りかかれる'],
+    k2: ['月曜に休みが多い', '朝起きられず遅刻が続く', '2学期から登校しぶり。別室登校あり', '家庭の事情で欠席が多い'],
+    k3: ['かっとなると手が出る', '友達への言葉がきつい', '授業中に立ち歩く', '持ち物のトラブルが続いた'],
+    k4: ['連絡帳でのやりとりが多い', '電話での相談が月に数回', '学校への要望が強い', '連絡がつきにくい']
+  };
+  var DETAIL = ['当事者それぞれから聞き取り、互いに謝った。', '保護者に電話で経過を伝えた。', '学年で共有し、休み時間の見守りを増やした。', '管理職に報告。後日、再度聞き取りをした。', ''];
   var P_ATTR = { k1: .13, k2: .03, k3: .08, k4: .06, k5: .08, k6: .04, k7: .15, k8: .12, k9: .18, k10: .06 };
 
   // ===== 架空データ（学年ごとに入学から今年度まで） =====
@@ -1127,6 +1135,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
   function gen() {
     if (made) return;
     made = true;
+    var incFy = {}; // 事案の年度（経緯への紐付けで、その年度までの事案だけを選ぶ）
     // grade 7 は昨年度に卒業した学年（年度替わりの削除の候補の見本）
     for (var grade = 1; grade <= 7; grade++) {
       // ア・身・通の内容の見本
@@ -1168,15 +1177,41 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
         var kids = [pick(ids)];
         if (R() < .5) { var o = pick(ids); if (kids.indexOf(o) < 0) kids.push(o); }
         if (R() < .12) { var o2 = pick(ids); if (kids.indexOf(o2) < 0) kids.push(o2); }
-        S.inc.push({ id: S.nextInc++, date: yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2),
-          type: pick(C.INCIDENT_TYPES), title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: '#demo-' + S.nextInc, ids: kids });
+        var date = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2), dateEnd = '';
+        if (R() < .2) { var d2 = new Date(yr, mo - 1, day + 2 + Math.floor(R() * 10)); dateEnd = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2); }
+        var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: pick(C.INCIDENT_TYPES), title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: '#demo-' + S.nextInc, ids: kids, diagram: demoDiagram(kids) });
+        x.id = S.nextInc++; incFy[x.id] = fyI;
+        S.inc.push(x);
       }
+      // 学・欠・問・保：経緯の文と、その年度までの本人の事案の紐付け（問は事案があれば紐付ける）
+      var incBy = {};
+      S.inc.forEach(function (x) { x.ids.forEach(function (id) { (incBy[id] = incBy[id] || []).push(x); }); });
+      for (var y2 = 0; y2 < ny; y2++) yearRows(entry + y2, y2 + 1).forEach(function (r) {
+        C.ATTRS.forEach(function (at) {
+          if (!at.ctx || !r.a[at.k]) return;
+          if (R() < .7) r.a[at.k + '_t'] = pick(CTX_NOTE[at.k]);
+          var mine = (incBy[r.id] || []).filter(function (x) { return incFy[x.id] <= entry + y2; });
+          if (mine.length && (at.k === 'k3' || R() < .3)) r.a[at.k + '_i'] = mine.slice(-2).map(function (x) { return x.id; });
+        });
+        // 備考：定型の言葉を1〜2個
+        if (R() < .15) {
+          var w = [], gp = pick(C.MEMO_PICKS); w.push(pick(gp.items));
+          if (R() < .4) w.push(pick(pick(C.MEMO_PICKS).items));
+          r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
+        }
+      });
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
       var two = function () { var a, b; do { a = pick(cur); b = pick(cur); } while (a === b || used[a] || used[b]); used[a] = used[b] = 1; return [a, b]; };
       var MEMO = ['低学年の時からトラブルが続いている', '保護者から申し出があった', '休み時間に一緒になると落ち着かない', ''];
-      for (var f = 0; f < 6; f++) { var ab = two(); pairs.push({ t: 'far', a: ab[0], b: ab[1], since: Math.max(1, grade - Math.floor(R() * 3)), tags: [pick(C.PAIR_TAGS)], memo: pick(MEMO), incs: [] }); }
-      for (var nr = 0; nr < 2; nr++) { var cd = two(); pairs.push({ t: 'near', a: cd[0], b: cd[1] }); }
+      // 事案で一緒になった2人を、離すの初めの3組にする（経緯と事案の紐付けの見本）
+      S.inc.filter(function (x) { return x.ids.length >= 2 && cur.indexOf(x.ids[0]) >= 0 && cur.indexOf(x.ids[1]) >= 0 && !used[x.ids[0]] && !used[x.ids[1]]; }).slice(0, 3).forEach(function (x) {
+        used[x.ids[0]] = used[x.ids[1]] = 1;
+        pairs.push({ t: 'far', a: x.ids[0], b: x.ids[1], since: Math.max(1, grade - Math.floor(R() * 2)), tags: ['事案による'], memo: x.title + 'から', incs: [x.id] });
+      });
+      for (var f = pairs.length; f < 6; f++) { var ab = two(); pairs.push({ t: 'far', a: ab[0], b: ab[1], since: Math.max(1, grade - Math.floor(R() * 3)), tags: [pick(C.PAIR_TAGS)], memo: pick(MEMO), incs: [] }); }
+      var NEAR_MEMO = ['一緒だと落ち着いて過ごせる', '登校をいつも一緒にしている', '新しい環境が苦手で、支えになる友達', ''];
+      for (var nr = 0; nr < 2; nr++) { var cd = two(); pairs.push({ t: 'near', a: cd[0], b: cd[1], since: grade, tags: [pick(['家庭希望', '担任判断'])], memo: pick(NEAR_MEMO), incs: [] }); }
       var fx = pick(cur); if (!used[fx]) pairs.push({ t: 'fix', a: fx, k: 0, memo: '教室が1階' });
       S.pairs[grade] = pairs;
       // 前年度から持ち越した「つける・離す」の候補（見本）
@@ -1197,6 +1232,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
     return { date: x.date, dateEnd: x.dateEnd || '', detail: String(x.detail || '').slice(0, 5000), type: x.type, title: x.title || '', url: x.url, ids: dg ? dg.nodes.map(function (n) { return n.id; }) : (x.ids || []).slice(), roles: dg ? E.diagramRoles(dg) : {}, diagram: dg };
+  }
+  // 事案の関係図の見本：2人以上なら、1人目→2人目の加害の矢印。3人なら2人目と3人目を1つのまとまりにする
+  function demoDiagram(ids) {
+    if (ids.length < 2) return null;
+    var nodes = ids.map(function (id, i) { return { id: id, x: 120 + i * 200, y: 120 + (i % 2) * 80 }; });
+    if (ids.length === 3) return { nodes: nodes, groups: [{ g: 'A', members: [ids[1], ids[2]] }], edges: [{ f: 'k:' + ids[0], t: 'g:A' }] };
+    return { nodes: nodes, groups: [], edges: [{ f: 'k:' + ids[0], t: 'k:' + ids[1] }] };
   }
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function later(v) { return new Promise(function (res) { setTimeout(function () { res(clone(v)); }, 30); }); }
@@ -1384,7 +1426,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_7a17076dc558';
+  var PAGE_BUILD = 'BUILD_b4d40a8bf850';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
