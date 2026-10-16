@@ -476,3 +476,8 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 /* 入れ替えの確認：カードの大きさをそろえる */
 .side .chip{width:min(100%,340px);box-sizing:border-box}
 .side .chip .l2>.bs:first-child{--slot:1.9em}
+/* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
+.jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
+.jn.jn2 b{font-weight:700}
+.jn.jn2 i{font-style:normal;font-size:.78em}
+table.r th.jh small{font-weight:400}

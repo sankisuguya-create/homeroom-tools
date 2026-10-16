@@ -85,6 +85,12 @@
     return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
       (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
   };
+  // 事案の数と、そのうち被害の側（被害・相互）の数。関係図の役割から数える
+  App.isVictim = function (x, id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; };
+  App.incBox = function (n, v, title) {
+    if (!n) return '';
+    return '<span class="jn jn2"' + (title ? ' title="' + App.esc(title) + '"' : '') + '><b>' + n + '</b><i>(' + v + ')</i></span>';
+  };
   App.surname = function (name) { return String(name || '').split(/[ 　]/)[0]; };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 

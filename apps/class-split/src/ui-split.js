@@ -27,14 +27,15 @@
       else if (p.b in idx) pairs.push({ t: p.t, i: idx[p.a], j: idx[p.b] });
     });
     // 事案数は在籍中の全期間で数える（同じ事案は1件）
-    var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }) }; })
+    var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }), src: x }; })
       .filter(function (x) { return x.kids.length; });
     var oldN = 0; kids.forEach(function (s) { if (s.old + 1 > oldN) oldN = s.old + 1; });
     var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN));
     var P = { kids: kids, pairs: pairs, inc: inc, nc: nc, cap: C.CAP };
-    var ji = kids.map(function () { return 0; });
-    inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; }); });
-    S = { P: P, idx: idx, ji: ji, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
+    var ji = kids.map(function () { return 0; }), jv = kids.map(function () { return 0; });
+    inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; if (App.isVictim(x.src, kids[i].id)) jv[i]++; }); });
+    inc.forEach(function (x) { delete x.src; });
+    S = { P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
       decision: d.decision };
     S.ctx = E.prepare(P, S.lastGen);
     // 保存済みの案を戻す
@@ -126,7 +127,7 @@
       });
       return out;
     };
-    var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件（押すと経年の記録と事案）">' + S.ji[i] + '</span>' : '';
+    var jn = App.incBox(S.ji[i], S.jv[i], '事案' + S.ji[i] + '件・そのうち被害' + S.jv[i] + '件（押すと経年の記録と事案）');
     return '<div class="chip ' + (s.male ? 'm' : 'f') + (s.tr ? ' trn' : '') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
       '<span class="old" title="' + tt + '">' + (s.tr ? '転' : s.no) + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +

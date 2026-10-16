@@ -484,6 +484,11 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 /* 入れ替えの確認：カードの大きさをそろえる */
 .side .chip{width:min(100%,340px);box-sizing:border-box}
 .side .chip .l2>.bs:first-child{--slot:1.9em}
+/* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
+.jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
+.jn.jn2 b{font-weight:700}
+.jn.jn2 i{font-style:normal;font-size:.78em}
+table.r th.jh small{font-weight:400}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -1438,6 +1443,12 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
     return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
       (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
   };
+  // 事案の数と、そのうち被害の側（被害・相互）の数。関係図の役割から数える
+  App.isVictim = function (x, id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; };
+  App.incBox = function (n, v, title) {
+    if (!n) return '';
+    return '<span class="jn jn2"' + (title ? ' title="' + App.esc(title) + '"' : '') + '><b>' + n + '</b><i>(' + v + ')</i></span>';
+  };
   App.surname = function (name) { return String(name || '').split(/[ 　]/)[0]; };
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
@@ -1912,14 +1923,14 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
     rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
     rows.sort(function (a, b) { return App.byKeys(SORT_KEYS, ORDER, a, b); });
     var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th><th class="spc" title="特別支援学級">特支</th>' +
-      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th>事案</th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
+      C.ATTRS.map(function (at) { return '<th class="an">' + App.esc(at.label) + '</th>'; }).join('') + '<th class="jh">事案数<br><small>(被害)</small></th>' + (showPairs ? '<th class="pr">つける<br>離す</th>' : '') + '<th class="memo">備考</th></tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span>' + App.nameBox(s.name) + '</td>' +
         '<td class="cell spc' + (edit ? ' cc' : '') + '" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
-        '<td class="ji cc" data-kid="' + r.id + '">' + (x.n ? '<span class="jn">' + x.n + '</span>' : '') + '</td>' +
+        '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）') + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
         '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
     });
@@ -2068,15 +2079,15 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
     var s = d.kids[kid];
     var h = '<aside class="dlg pane kidpop" role="dialog" aria-modal="true" aria-label="' + esc(s.name) + 'の記録"><button class="btn kx" data-act="close" aria-label="閉じる">閉じる<kbd>Esc</kbd></button><h2>' + esc(s.name) + ' <span class="id">' + s.id + '・' + (s.male ? '男' : '女') + '</span></h2>' +
       '<section><h3>経年の記録</h3><table class="h"><thead><tr><th>年度</th><th>学年-組-番</th>' +
-      C.ATTRS.map(function (at) { return '<th>' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案</th></tr></thead><tbody>';
+      C.ATTRS.map(function (at) { return '<th>' + App.mark(at, 1) + '</th>'; }).join('') + '<th>事案<br><small>(被害)</small></th></tr></thead><tbody>';
     d.years.slice().sort(function (a, b) { return a.fy - b.fy; }).forEach(function (y) {
       var r = y.rows.filter(function (x) { return x.id === kid; })[0];
       if (!r) return;
-      var n = incsOf(kid, y.fy).length;
+      var yl = incsOf(kid, y.fy), n = yl.length, nv = yl.filter(function (x) { return App.isVictim(x, kid); }).length;
       h += '<tr class="' + (y.fy === curFy ? 'cur' : '') + '"><td>' + String(y.fy).slice(2) + (y.fy > d.fy ? '準' : '') + '</td><td class="gcn"><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + y.grade + '-' + (r.cls + 1) + '-<span class="no">' + r.no + '</span></td>' +
-        C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n || '') + '</td></tr>';
+        C.ATTRS.map(function (at) { return '<td>' + ((r.a[at.k] | 0) || '') + '</td>'; }).join('') + '<td>' + (n ? n + '<small>(' + nv + ')</small>' : '') + '</td></tr>';
     });
-    h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。「準」は決定後の準備中の年度。</div></section>';
+    h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
     var list = incsOf(kid).sort(function (a, b) { return b.date < a.date ? -1 : 1; });
     h += '<section><h3>事案（全' + list.length + '件）' + (canAdd && !R.form ? '<button class="btn primary" id="addInc">＋事案を登録</button>' : '') + '</h3>';
     if (canAdd && R.form) h += form();
@@ -2302,14 +2313,15 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
       else if (p.b in idx) pairs.push({ t: p.t, i: idx[p.a], j: idx[p.b] });
     });
     // 事案数は在籍中の全期間で数える（同じ事案は1件）
-    var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }) }; })
+    var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }), src: x }; })
       .filter(function (x) { return x.kids.length; });
     var oldN = 0; kids.forEach(function (s) { if (s.old + 1 > oldN) oldN = s.old + 1; });
     var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN));
     var P = { kids: kids, pairs: pairs, inc: inc, nc: nc, cap: C.CAP };
-    var ji = kids.map(function () { return 0; });
-    inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; }); });
-    S = { P: P, idx: idx, ji: ji, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
+    var ji = kids.map(function () { return 0; }), jv = kids.map(function () { return 0; });
+    inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; if (App.isVictim(x.src, kids[i].id)) jv[i]++; }); });
+    inc.forEach(function (x) { delete x.src; });
+    S = { P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
       decision: d.decision };
     S.ctx = E.prepare(P, S.lastGen);
     // 保存済みの案を戻す
@@ -2401,7 +2413,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
       });
       return out;
     };
-    var jn = S.ji[i] ? '<span class="jn" title="事案' + S.ji[i] + '件（押すと経年の記録と事案）">' + S.ji[i] + '</span>' : '';
+    var jn = App.incBox(S.ji[i], S.jv[i], '事案' + S.ji[i] + '件・そのうち被害' + S.jv[i] + '件（押すと経年の記録と事案）');
     return '<div class="chip ' + (s.male ? 'm' : 'f') + (s.tr ? ' trn' : '') + ' ' + (cls || '') + '" style="--oc:' + oc.c + ';--ot:' + oc.t + ';--ol:' + bg + '" data-i="' + i + '" role="button" tabindex="0" aria-label="' + tt + '">' +
       '<span class="old" title="' + tt + '">' + (s.tr ? '転' : s.no) + '</span><span class="l1"><span class="nm" title="' + tt + '">' + esc(Array.from(s.name).slice(0, C.NAME_CHARS).join('')) + '</span>' + (extra || '') + '<span class="bs gd">' + slot(function (at) { return at.good; }) + '</span></span>' +
       '<span class="l2"><span class="bs">' + slot(function (at) { return !at.good && !at.side; }) + '</span><span class="bs gd">' + slot(function (at) { return at.side; }) + '</span></span>' +
