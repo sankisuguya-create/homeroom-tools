@@ -108,6 +108,13 @@
     STUDENT_DOMAIN: 'kyoiku.edu.nishi.or.jp'
   };
 
+  // 定型文と指導の手順は、文の終わりに句点を付けて持つ（入れたまま文として終わる）
+  (function () {
+    var end = function (t) { return /[。！？]$/.test(t) ? t : t + '。'; };
+    Object.keys(CONFIG.PHRASES).forEach(function (k) { if (k !== 'kikan') CONFIG.PHRASES[k] = CONFIG.PHRASES[k].map(end); });
+    CONFIG.SD_STEPS = CONFIG.SD_STEPS.map(end);
+  })();
+
   // 年度の境目は4/1。年度に関わる値はすべてこの関数から出す（principles/roster-year-transition.md §1）
   CONFIG.fiscalYear = function (date) {
     var d = date || new Date();

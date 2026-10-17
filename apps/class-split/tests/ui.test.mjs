@@ -19,7 +19,7 @@ try {
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);
 let fails = 0;
-const C_STEP1 = '管理職に報告した';
+const C_STEP1 = '管理職に報告した。';
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {

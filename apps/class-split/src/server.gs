@@ -532,6 +532,12 @@ var apiLoadDraft = api_(function (grade) {
   return v && v.draft ? v : null;
 });
 
+// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組だけ）
+var apiSchoolKids = api_(function () {
+  requireTeacher_();
+  return rosterRows_(CONFIG.fiscalYear()).map(function (r) { return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls }; });
+});
+
 var apiSchoolIncidents = api_(function () {
   requireTeacher_();
   var cur = {};

@@ -87,7 +87,7 @@
     if (dp) { var era = dp.y - 2018; put(H.era, era === 1 ? '元' : era); put(H.month, dp.m); put(H.day, dp.d); put(H.wday, '(' + dp.w + ')'); }
     var kidRow = function (row, id) {
       var k = o.kid(id); if (!k) return;
-      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), k.name);
+      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), nospace(k.name));
     };
     if (o.victim) kidRow(H.victim, o.victim);
     if (kind === 'f2') {
@@ -96,7 +96,7 @@
       if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
       if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
       put(R.f2.kikan, rep.s2.kikan);
-      return out;
+      return withNames(out, [R.f2.shido, R.f2.victim, R.f2.harm, R.f2.kikan], o.people);
     }
     var harms = o.harms || [];
     harms.slice(0, R.harmRows.length).forEach(function (id, i) { kidRow(R.harmRows[i], id); });
@@ -110,6 +110,31 @@
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
     // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
     if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
+    return withNames(out, [R.f1.gaiyou], o.people);
+  }
+  function nospace(n) { return String(n || '').replace(/[ 　]+/g, ''); }
+  // 文の中の児童の名前：姓と名の間の空白を消し、書類の中で最初に出る所だけ学年と組を括弧で付ける
+  // 関係する児童が全員同じ学年なら組だけ（例：田中ハト(2組)）、違えば学年も（例：田中ハト(6年2組)）
+  function withNames(out, refs, people) {
+    people = (people || []).filter(function (p) { return p && p.name; });
+    if (!people.length) return out;
+    var one = people.every(function (p) { return p.grade === people[0].grade; }), seen = {};
+    var esc = function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+    // 長い名前から当てる（「田中ハト」と「田中ハトコ」のような重なりで短い方が先に当たらないように）
+    var list = people.slice().sort(function (a, b) { return nospace(b.name).length - nospace(a.name).length; });
+    refs.forEach(function (ref) {
+      if (typeof out[ref] !== 'string') return;
+      var t = out[ref];
+      list.forEach(function (p) {
+        var n = nospace(p.name), re = new RegExp(esc(n).split('').join('[ 　]?'), 'g');
+        t = t.replace(re, function () {
+          if (seen[n]) return n;
+          seen[n] = 1;
+          return n + '(' + (one ? '' : p.grade + '年') + p.cls + '組)';
+        });
+      });
+      out[ref] = t;
+    });
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）

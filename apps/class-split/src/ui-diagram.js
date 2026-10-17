@@ -8,10 +8,17 @@
 
   function data() { return App.st.data; }
   function kidOf(id) { return E.isUnknown(id) ? { name: E.UNKNOWN_NAME, unknown: true } : data().kids[id] || { name: id }; }
+  // 今年度の名簿の行。ほかの学年の児童（事案管理で全校から足した児童）は、全校の名簿から（学年・組だけ）
   function rowOf(id) {
     var d = data(), y = d.years.filter(function (x) { return x.fy === d.fy; })[0];
-    return y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
+    var r = y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
+    if (r) return { cls: r.cls, no: r.no, a: r.a, grade: d.grade };
+    var x = d.xk && d.xk[id];
+    return x ? { cls: x.cls, a: {}, grade: x.grade } : null;
   }
+  // 関係図の枠の高さ（この端末に覚える）。既定は幅の1/6（前の1/3の高さ）
+  function loadH() { try { return +localStorage.getItem('classSplit.dgH') || 0; } catch (e) { return 0; } }
+  function saveH(v) { try { localStorage.setItem('classSplit.dgH', String(v)); } catch (e) { /* 覚えられなくても今は効く */ } }
 
   // st = { d: 関係図, mode, from: 矢印の元, pick: グループにする児童, card: カードで出すか }
   App.Diagram = {
@@ -20,7 +27,7 @@
     add: function (st, id) {
       if (st.d.nodes.some(function (n) { return n.id === id; })) return;
       var i = st.d.nodes.length, cols = 4;
-      st.d.nodes.push({ id: id, x: 90 + (i % cols) * 150, y: 50 + Math.floor(i / cols) % 4 * 75 });
+      st.d.nodes.push({ id: id, x: 90 + (i % cols) * 150, y: 80 + Math.floor(i / cols) % 2 * 160 }); // 枠が低くても重ならないよう2段まで
     },
     mount: mount
   };
@@ -38,7 +45,7 @@
     // アイコンの無い児童も同じ高さにする：見えないアイコンを1つ置いて段の高さを取る
     if (!marks) marks = '<span class="ph" aria-hidden="true">' + App.mark(g.CONFIG.ATTRS[0], 1) + '</span>';
     return '<div class="' + cls + ' card ' + (s.unknown ? 'u' : s.male ? 'm' : 'f') + '" data-dn="' + esc(n.id) + '" style="' + style + ';--oc:' + oc.c + ';--ol:' + oc.l + '">' +
-      '<span class="nb">' + (r ? (r.cls + 1) + '-' + r.no : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
+      '<span class="nb">' + (r ? r.grade + '-' + (r.cls + 1) : '') + '</span><span class="nt">' + esc(s.name) + '</span>' + '<span class="nm2">' + marks + '</span></div>';
   }
 
   function mount(el, st, onChange) {
@@ -52,11 +59,20 @@
       '<label class="chk"><input type="checkbox" data-dcard="1"' + (st.card ? ' checked' : '') + '>カードで表示</label></div>' +
       '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
       '<div class="dg-canvas"><svg class="dg-svg" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"></svg>' +
-      d.nodes.map(function (n) { return nodeHtml(st, n); }).join('') + '</div>' +
+      d.nodes.map(function (n) { return nodeHtml(st, n); }).join('') + '</div><div class="dg-rs" title="ドラッグで枠の高さを変える" aria-hidden="true"></div>' +
       '<div class="dg-sum">' + (d.edges.length ? '' : '<span class="note">矢印を引くと、加害・被害が決まります。</span>') +
       ['harm', 'victim', 'mutual', 'related'].filter(function (k) { return by[k].length; }).map(function (k) { return '<span><em class="r-' + k + '">' + E.ROLE_NAMES[k] + '</em>' + by[k].map(esc).join('・') + '</span>'; }).join('') + '</div>';
     var cv = el.querySelector('.dg-canvas'), svg = el.querySelector('.dg-svg');
+    var h0 = loadH(); if (h0) cv.style.height = h0 + 'px';
     draw(cv, svg, st);
+    // 枠の下の縁をドラッグして高さを変える
+    var rs = el.querySelector('.dg-rs');
+    if (rs) rs.onpointerdown = function (e) {
+      var sy = e.clientY, sh = cv.getBoundingClientRect().height;
+      rs.setPointerCapture(e.pointerId); e.preventDefault();
+      rs.onpointermove = function (ev) { cv.style.height = Math.max(70, Math.min(700, sh + ev.clientY - sy)) + 'px'; };
+      rs.onpointerup = rs.onpointercancel = function () { rs.onpointermove = null; saveH(Math.round(cv.getBoundingClientRect().height)); };
+    };
 
     // 押す・ドラッグする（タッチとペンも同じ）
     var drag = null;

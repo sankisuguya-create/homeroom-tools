@@ -43,7 +43,49 @@
     var d = D(), s = d.kids[id]; if (!s) return null;
     var fy = C.fiscalYearOfIso(iso || today()), y = yearOf(fy) || yearOf(d.fy), r = y && y.rows.filter(function (x) { return x.id === id; })[0];
     if (!r) { y = yearOf(d.fy); r = y && y.rows.filter(function (x) { return x.id === id; })[0]; }
+    // ほかの学年の児童は、全校の今年度の名簿から
+    if (!r && d.xk && d.xk[id]) return { grade: d.xk[id].grade, cls: d.xk[id].cls + 1, male: s.male, name: s.name, kana: s.kana };
     return { grade: y ? y.grade : '', cls: r ? r.cls + 1 : '', male: s.male, name: s.name, kana: s.kana };
+  }
+  // 全校の今年度の名簿を1回だけ読み、ほかの学年の児童の名前と学年・組を足す（ほかの学年を検索する時・ほかの学年の児童が関わる事案を見る時）
+  var SCHOOL = null;
+  function loadSchool() {
+    if (SCHOOL) return Promise.resolve(SCHOOL);
+    return App.pf().schoolKids().then(function (list) { SCHOOL = list; mergeSchool(); return list; });
+  }
+  function mergeSchool() {
+    var d = D(); if (!SCHOOL || !d) return;
+    d.xk = d.xk || {};
+    SCHOOL.forEach(function (k) { if (!d.kids[k.id]) d.kids[k.id] = { id: k.id, name: k.name, kana: k.kana, male: k.male }; d.xk[k.id] = { grade: k.grade, cls: k.cls }; });
+  }
+  // 関係する児童の検索の設定（この端末に覚える）：探す学年（空＝この学年だけ）と、候補の書き方
+  var SRCH = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
+  function saveSrch() { try { localStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
+  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
+  var FMTS = [['gc', '3-2 田中 ハト'], ['name', '田中 ハト（3年2組）'], ['kana', '田中 ハト（たなか はと）3-2']];
+  function srchDialog() {
+    App.openDlg({
+      html: function () {
+        var gs = srchGrades(), fmt = SRCH.fmt || 'gc';
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="検索の設定" style="max-width:460px"><h2>関係する児童の検索</h2>' +
+          '<div class="lab">探す学年</div><div class="lvs">' + [1, 2, 3, 4, 5, 6].map(function (g0) { return '<button class="lv" data-sg="' + g0 + '" aria-pressed="' + (gs.indexOf(g0) >= 0) + '">' + g0 + '年</button>'; }).join('') + '</div>' +
+          '<p class="note">ほかの学年を選ぶと、全校の今年度の名簿から探します。</p>' +
+          '<div class="lab">候補の書き方</div><div class="ivic">' + FMTS.map(function (f) { return '<label class="chk"><input type="radio" name="sfmt" data-sf="' + f[0] + '"' + (fmt === f[0] ? ' checked' : '') + '> ' + esc(f[1]) + '</label>'; }).join('') + '</div>' +
+          '<div class="acts"><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var b;
+        if ((b = t.closest('[data-sg]'))) {
+          var g0 = +b.dataset.sg, gs = srchGrades().slice(), i = gs.indexOf(g0);
+          if (i >= 0) { if (gs.length > 1) gs.splice(i, 1); } else gs.push(g0);
+          SRCH.grades = gs.sort(); saveSrch(); if (gs.some(function (x) { return x !== D().grade; })) loadSchool();
+          App.refreshDlg(); return true;
+        }
+        if ((b = t.closest('[data-sf]'))) { SRCH.fmt = b.dataset.sf; saveSrch(); return true; }
+        return false;
+      },
+      onClose: function () { var q = App.$('fQ'); if (q) { App.$('fSugg').innerHTML = suggHtml(q.value); q.focus(); } }
+    });
   }
   function victimsOf(x) {
     var v = x.ids.filter(function (id) { var r = x.roles && x.roles[id]; return r === 'victim' || r === 'mutual'; });
@@ -203,7 +245,7 @@
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
       '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
-      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><input id="fQ" value="" placeholder="名前・よみ・番号で児童を足す" autocomplete="off">' +
+      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><span class="iqw"><input id="fQ" value="" placeholder="名前・よみで児童を足す（' + esc(srchGrades().map(function (g0) { return g0 + '年'; }).join('・')) + '）" autocomplete="off"><button type="button" class="iqc" id="fQset" title="検索の設定（探す学年・候補の書き方）" aria-label="検索の設定"></button></span>' +
       (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
     else h += '<div id="fDg" class="dg"></div>';
@@ -251,12 +293,12 @@
     var W = E.DG_W, H = E.DG_H, xs = d.nodes.map(function (n) { return n.x; }), ys = d.nodes.map(function (n) { return n.y; });
     var x0 = Math.max(0, Math.min.apply(null, xs) - 120), x1 = Math.min(W, Math.max.apply(null, xs) + 120);
     var y0 = Math.max(0, Math.min.apply(null, ys) - 45), y1 = Math.min(H, Math.max.apply(null, ys) + 45);
-    var cw = cv.getBoundingClientRect().width, k = cw / W;
+    var rc = cv.getBoundingClientRect(), cw = rc.width, k = cw / W, ky = rc.height / H;
     var box = document.createElement('div');
     box.className = 'dg-crop';
-    box.style.width = Math.round((x1 - x0) * k) + 'px'; box.style.height = Math.round((y1 - y0) * k) + 'px';
+    box.style.width = Math.round((x1 - x0) * k) + 'px'; box.style.height = Math.round((y1 - y0) * ky) + 'px';
     cv.parentNode.insertBefore(box, cv); box.appendChild(cv);
-    cv.style.width = Math.round(cw) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * k) + 'px';
+    cv.style.width = Math.round(cw) + 'px'; cv.style.height = Math.round(rc.height) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * ky) + 'px';
   }
   function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); autosizeAll(); showExtra(); } renderAssist(); }
 
@@ -287,9 +329,8 @@
   function putPhrase(text) {
     var f = I.form; if (!f || !I.focus) return;
     if (I.focus === 'kikan') {
-      var k = App.$('fKikan'), cur = f.rep.s2.kikan;
-      f.rep.s2.kikan = cur ? cur.replace(/[、。\s]*$/, '') + '、' + text : text;
-      if (k) { k.value = f.rep.s2.kikan; refocus('fKikan'); }
+      var k = App.$('fKikan'), cur = f.rep.s2.kikan.replace(/[、。\s]*$/, '');
+      if (k) { k.focus(); k.setSelectionRange(cur.length, k.value.length); typeIn(k, (cur ? '、' : '') + text); }
       return;
     }
     var q = I.focus.split(':'), r = f.rep[q[0]][q[1]][+q[2]];
@@ -299,9 +340,15 @@
     var lastName = formKids().some(function (n) { return before.slice(-n.length) === n; });
     // 助詞で始まる文（「に悪口を言った」）や、助詞で終わる途中（「Aが」）にはつなげて入れる
     var glue = !before || isName || lastName || /[。、\s]$/.test(before) || /[がにをとへでものは]$/.test(before) || /^[にをのがとへでも]/.test(text) || after ? '' : '。';
-    r.t = before + glue + text + after; pos = (before + glue + text).length;
-    if (el) { el.value = r.t; el.focus(); el.setSelectionRange(pos, pos); autosize(el); }
+    if (el) { el.focus(); el.setSelectionRange(pos, end); typeIn(el, glue + text); }
+    else { r.t = before + glue + text + after; }
     afterEdit();
+  }
+  // 入力欄に文字を入れる：ブラウザの「入力」として入れるので、Ctrl+Z（元に戻す）・Ctrl+Y（やり直す）が効く
+  function typeIn(el, text) {
+    var ok = false;
+    try { ok = document.execCommand('insertText', false, text); } catch (e) { ok = false; }
+    if (!ok) { var a = el.selectionStart, b = el.selectionEnd; el.value = el.value.slice(0, a) + text + el.value.slice(b); el.setSelectionRange(a + text.length, a + text.length); el.dispatchEvent(new Event('input', { bubbles: true })); }
   }
   // 入力が変わった後：選んでいる行の補助と右の一覧（✓）を描き直し、書きかけを保存する
   function afterEdit() { showExtra(); renderAssist(); syncSteps(); saveDraftSoon(); }
@@ -341,11 +388,17 @@
       var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2];
       // 経緯の最初の行が空なら、関係図の矢印から「Aが B」を入れておく
       var r = I.form.rep[q[0]][q[1]][+q[2]], ld = leads();
-      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length) { r.t = ld[0]; t.value = r.t; t.setSelectionRange(r.t.length, r.t.length); saveDraftSoon(); }
+      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length) typeIn(t, ld[0]);
     } else if (t && t.id === 'fKikan') I.focus = 'kikan';
     else return;
     if (was !== I.focus) showExtra();
     if (!was || was.split(':').slice(0, 2).join() !== I.focus.split(':').slice(0, 2).join()) renderAssist();
+  });
+  // 空の入力欄で Ctrl+Z：文字の取り消しが無いので、行を足すなどの操作を戻す
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (App.st.screen !== 'incidents' || !I.form || !(e.ctrlKey || e.metaKey) || e.shiftKey || (e.key !== 'z' && e.key !== 'Z')) return;
+    if (t && /^(TEXTAREA|INPUT)$/.test(t.tagName) && t.type !== 'checkbox' && t.value === '' && undo()) e.preventDefault();
   });
   // Enter で次の行（Shift+Enter は行の中で改行）。日本語の変換中は何もしない
   document.addEventListener('keydown', function (e) {
@@ -355,7 +408,7 @@
     if (!t.value.trim()) return;
     var q = t.dataset.rw.split(':'), rows = I.form.rep[q[0]][q[1]], i = +q[2], r = rows[i];
     if (rows[i + 1] && !rows[i + 1].t) { refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); return; }
-    rows.splice(i + 1, 0, nextRow(r));
+    snap(); rows.splice(i + 1, 0, nextRow(r));
     rerenderPane(); refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); saveDraftSoon();
   });
   document.addEventListener('dragstart', function (e) {
@@ -392,14 +445,23 @@
   }
 
   function suggHtml(q) {
-    var d = D(), f = I.form;
+    var d = D(), f = I.form, gs = srchGrades(), fmt = SRCH.fmt || 'gc';
     q = (q || '').trim();
     if (!q) return '';
-    var items = yearOf(d.fy).rows.filter(function (r) {
-      var s = d.kids[r.id];
-      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 8);
-    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + (r.cls + 1) + '組' + r.no + '番 ' + esc(d.kids[r.id].name) + '</button>'; }).join('') + '</div>' : '<div class="note">見つかりません</div>';
+    var pool = [];
+    if (gs.indexOf(d.grade) >= 0) yearOf(d.fy).rows.forEach(function (r) { pool.push({ id: r.id, grade: d.grade, cls: r.cls, no: r.no }); });
+    var others = gs.filter(function (g0) { return g0 !== d.grade; });
+    if (others.length && !SCHOOL) { loadSchool().then(function () { var el = App.$('fQ'); if (el && App.$('fSugg')) App.$('fSugg').innerHTML = suggHtml(el.value); }); }
+    (SCHOOL || []).forEach(function (k) { if (others.indexOf(k.grade) >= 0) pool.push({ id: k.id, grade: k.grade, cls: k.cls }); });
+    var items = pool.filter(function (r) {
+      var s = d.kids[r.id]; if (!s) return false;
+      return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.name.replace(/\s/g, '').indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
+    }).slice(0, 10);
+    var label = function (r) {
+      var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
+      return fmt === 'name' ? esc(s.name) + '（' + r.grade + '年' + (r.cls + 1) + '組）' : fmt === 'kana' ? esc(s.name) + '（' + esc(s.kana) + '）' + gc : gc + ' ' + esc(s.name);
+    };
+    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読んでいます…' : '見つかりません') + '</div>';
   }
 
   // ===== 始める =====
@@ -451,7 +513,8 @@
     var st = { victim: vs[0], pick: vs.length === 1 ? vs.slice() : [], made: [] };
     var cellsOf = function (v) {
       v = v || st.victim;
-      return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: v, harms: harmsOf(x, v) });
+      return Rp.cells(kind, x, { school: (App.settings && App.settings.school) || '', kid: function (id) { return kidAt(id, x.date); }, victim: v, harms: harmsOf(x, v),
+        people: x.ids.map(function (id) { return kidAt(id, x.date); }).filter(function (k) { return k && k.grade; }) });
     };
     App.openDlg({
       noEnter: true,
@@ -516,6 +579,7 @@
     });
   }
   function toggleStep(i, on) {
+    snap();
     var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
     if (on) {
       if (last && !last.t) last.t = t;
@@ -532,7 +596,16 @@
     if (!prev.p) return { d: prev.d, p: '', t: '' };
     var n = Rp.nextSlot(prev.d, prev.p); return { d: n.d, p: n.p, t: '' };
   }
-  function closeForm() { I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
+  // 行を足す・消す、種別・児童・手順のチェックなどの操作を戻す（Ctrl+Z。文字の入力の取り消しはブラウザに任せる）
+  var HIST = [];
+  function snap() { if (!I.form) return; HIST.push(JSON.stringify({ rep: I.form.rep, type: I.form.type, d: I.form.dg ? I.form.dg.d : null })); if (HIST.length > 50) HIST.shift(); }
+  function undo() {
+    if (!I.form || !HIST.length) return false;
+    var v = JSON.parse(HIST.pop()); I.form.rep = v.rep; I.form.type = v.type;
+    if (v.d && I.form.dg) I.form.dg.d = v.d;
+    I.focus = null; rerenderPane(); saveDraftSoon(); App.toast('1つ前に戻しました'); return true;
+  }
+  function closeForm() { HIST = []; I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
 
   App.screens.incidents = {
     enter: function () {
@@ -542,7 +615,12 @@
       else if (f && f.sel != null && incOf(f.sel)) I.sel = f.sel;
       else if (f && f.add) newForm(f.kid || null);
       else if (I.sel != null && !incOf(I.sel)) I.sel = null;
+      mergeSchool();
       render();
+      // ほかの学年の児童が関わる事案があれば、全校の名簿を読んで名前を出す
+      var dd = D();
+      if (!SCHOOL && dd.incidents.some(function (x) { return x.ids.some(function (id) { return !dd.kids[id]; }) || (x.diagram && x.diagram.nodes.some(function (n) { return !E.isUnknown(n.id) && !dd.kids[n.id]; })); }))
+        loadSchool().then(function () { if (App.st.screen === 'incidents') render(); });
       // 書きかけがあれば知らせる（入力中でなければ）
       var grade = App.st.grade;
       App.pf().loadDraft(grade).then(function (dr) {
@@ -567,23 +645,24 @@
       if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
       if ((x = t.closest('[data-mq]'))) { var nt = x.nextElementSibling, open = nt.hidden; nt.hidden = !open; x.setAttribute('aria-expanded', String(open)); return true; }
       if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return true; }
-      if ((x = t.closest('[data-ty]'))) {
+      if ((x = t.closest('[data-ty]'))) { snap();
         var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);
         if (k >= 0) ts.splice(k, 1); else ts.push(ty);
         I.form.type = C.INCIDENT_TYPES.filter(function (t0) { return ts.indexOf(t0) >= 0; }).join('・');
         rerenderPane(); saveDraftSoon(); return true;
       }
-      if ((x = t.closest('[data-kdel]'))) { I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
-      if (t.closest('#fUnk')) {
+      if ((x = t.closest('[data-kdel]'))) { snap(); I.form.dg.d.nodes = I.form.dg.d.nodes.filter(function (n) { return n.id !== x.dataset.kdel; }); rerenderPane(); saveDraftSoon(); return true; }
+      if (t.closest('#fQset')) { srchDialog(); return true; }
+      if (t.closest('#fUnk')) { snap();
         var n = 1; while (I.form.dg.d.nodes.some(function (nd) { return nd.id === '?' + n; })) n++;
         App.Diagram.add(I.form.dg, '?' + n); mountDg(); saveDraftSoon(); return true;
       }
-      if ((x = t.closest('[data-pick]'))) {
+      if ((x = t.closest('[data-pick]'))) { snap();
         App.Diagram.add(I.form.dg, x.dataset.pick); App.$('fQ').value = ''; App.$('fSugg').innerHTML = '';
         if (onlyDamage(I.form.type)) rerenderPane(); else mountDg();
         renderAssist(); refocus('fQ'); saveDraftSoon(); return true;
       }
-      if ((x = t.closest('[data-rnext]'))) {
+      if ((x = t.closest('[data-rnext]'))) { snap();
         var nq = x.dataset.rnext.split(':'), nrows = I.form.rep[nq[0]][nq[1]], ni = +nq[2], base = nrows[ni];
         var nr = nq[3] === 'day' ? { d: Rp.addDays(base.d || today(), 1), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
         if (nq[3] === 'slot' && !base.p) nr = { d: base.d, p: Rp.slots()[0], t: '' };
@@ -595,7 +674,7 @@
         rows.push(nextRow(prev));
         rerenderPane(); var p = x.dataset.radd.split(':'); refocus('rw-' + p[0] + '-' + p[1] + '-' + (rows.length - 1)); return true;
       }
-      if ((x = t.closest('[data-rdel]'))) { var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); saveDraftSoon(); return true; }
+      if ((x = t.closest('[data-rdel]'))) { snap(); var q = x.dataset.rdel.split(':'); I.form.rep[q[0]][q[1]].splice(+q[2], 1); I.focus = null; rerenderPane(); saveDraftSoon(); return true; }
       return false;
     },
     input: function (t) {
@@ -640,6 +719,7 @@
       App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) { dropDraft(); saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました'); });
     },
     key: function (e) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && I.mode !== 'view' && undo()) { e.preventDefault(); return true; }
       if (e.key === 'Escape' && I.mode !== 'view') { App.screens.incidents.leave(); closeForm(); rerenderPane(); App.toast('書きかけは残してあります'); return true; }
       return false;
     }

@@ -112,6 +112,13 @@
     STUDENT_DOMAIN: 'kyoiku.edu.nishi.or.jp'
   };
 
+  // 定型文と指導の手順は、文の終わりに句点を付けて持つ（入れたまま文として終わる）
+  (function () {
+    var end = function (t) { return /[。！？]$/.test(t) ? t : t + '。'; };
+    Object.keys(CONFIG.PHRASES).forEach(function (k) { if (k !== 'kikan') CONFIG.PHRASES[k] = CONFIG.PHRASES[k].map(end); });
+    CONFIG.SD_STEPS = CONFIG.SD_STEPS.map(end);
+  })();
+
   // 年度の境目は4/1。年度に関わる値はすべてこの関数から出す（principles/roster-year-transition.md §1）
   CONFIG.fiscalYear = function (date) {
     var d = date || new Date();
@@ -638,7 +645,7 @@
     if (dp) { var era = dp.y - 2018; put(H.era, era === 1 ? '元' : era); put(H.month, dp.m); put(H.day, dp.d); put(H.wday, '(' + dp.w + ')'); }
     var kidRow = function (row, id) {
       var k = o.kid(id); if (!k) return;
-      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), k.name);
+      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), nospace(k.name));
     };
     if (o.victim) kidRow(H.victim, o.victim);
     if (kind === 'f2') {
@@ -647,7 +654,7 @@
       if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
       if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
       put(R.f2.kikan, rep.s2.kikan);
-      return out;
+      return withNames(out, [R.f2.shido, R.f2.victim, R.f2.harm, R.f2.kikan], o.people);
     }
     var harms = o.harms || [];
     harms.slice(0, R.harmRows.length).forEach(function (id, i) { kidRow(R.harmRows[i], id); });
@@ -661,6 +668,31 @@
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
     // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
     if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
+    return withNames(out, [R.f1.gaiyou], o.people);
+  }
+  function nospace(n) { return String(n || '').replace(/[ 　]+/g, ''); }
+  // 文の中の児童の名前：姓と名の間の空白を消し、書類の中で最初に出る所だけ学年と組を括弧で付ける
+  // 関係する児童が全員同じ学年なら組だけ（例：田中ハト(2組)）、違えば学年も（例：田中ハト(6年2組)）
+  function withNames(out, refs, people) {
+    people = (people || []).filter(function (p) { return p && p.name; });
+    if (!people.length) return out;
+    var one = people.every(function (p) { return p.grade === people[0].grade; }), seen = {};
+    var esc = function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+    // 長い名前から当てる（「田中ハト」と「田中ハトコ」のような重なりで短い方が先に当たらないように）
+    var list = people.slice().sort(function (a, b) { return nospace(b.name).length - nospace(a.name).length; });
+    refs.forEach(function (ref) {
+      if (typeof out[ref] !== 'string') return;
+      var t = out[ref];
+      list.forEach(function (p) {
+        var n = nospace(p.name), re = new RegExp(esc(n).split('').join('[ 　]?'), 'g');
+        t = t.replace(re, function () {
+          if (seen[n]) return n;
+          seen[n] = 1;
+          return n + '(' + (one ? '' : p.grade + '年') + p.cls + '組)';
+        });
+      });
+      out[ref] = t;
+    });
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
@@ -740,7 +772,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_81f5a141a919';
+var SERVER_BUILD = 'BUILD_0b8fe6a7296b';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1268,6 +1300,12 @@ var apiSaveDraft = api_(function (grade, draft) {
 var apiLoadDraft = api_(function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
+});
+
+// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組だけ）
+var apiSchoolKids = api_(function () {
+  requireTeacher_();
+  return rosterRows_(CONFIG.fiscalYear()).map(function (r) { return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls }; });
 });
 
 var apiSchoolIncidents = api_(function () {
