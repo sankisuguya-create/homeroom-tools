@@ -283,3 +283,23 @@ test('祝日：土日・祝日（振替休日・国民の休日を含む）を�
   assert.equal(RP.nextSchoolDay('2026-05-01'), '2026-05-07', '連休を飛ばす');
   assert.deepEqual(RP.nextSlot('2026-09-18', '放課後'), { d: '2026-09-24', p: '朝休み' }, 'シルバーウィークを飛ばす');
 });
+
+test('関係図の整理：同じ矢印の児童をまとめ、ほぼ水平の線を揃え、縦の空きを詰める', () => {
+  const d = E.tidyDiagram({ nodes: [{ id: 'a', x: 100, y: 60 }, { id: 'b', x: 400, y: 70 }, { id: 'c', x: 400, y: 300 }, { id: 'd', x: 100, y: 300 }], edges: [{ f: 'k:a', t: 'k:b' }, { f: 'k:a', t: 'k:c' }] });
+  assert.equal(d.groups.length, 1); assert.deepEqual(d.groups[0].members.sort(), ['b', 'c']);
+  assert.deepEqual(d.edges, [{ f: 'k:a', t: 'g:' + d.groups[0].g }]);
+  const y = Object.fromEntries(d.nodes.map(n => [n.id, n.y]));
+  assert.ok(Math.max(...Object.values(y)) <= 220, '縦の空きを詰める');
+  const e2 = E.tidyDiagram({ nodes: [{ id: 'a', x: 100, y: 60 }, { id: 'b', x: 400, y: 80 }, { id: 'c', x: 250, y: 250 }], edges: [{ f: 'k:a', t: 'k:b' }, { f: 'k:b', t: 'k:c' }] });
+  const n2 = Object.fromEntries(e2.nodes.map(n => [n.id, n]));
+  assert.equal(n2.a.y, n2.b.y, 'ほぼ水平の線は水平に'); assert.notEqual(n2.c.x, n2.b.x, 'はっきり斜めの線は残す');
+});
+
+test('関係図の整理：矢印の交差・別の児童を通る線を無くす', () => {
+  // a→c が b を通る（一列）
+  const d1 = E.tidyDiagram({ nodes: [{ id: 'a', x: 100, y: 100 }, { id: 'b', x: 300, y: 100 }, { id: 'c', x: 500, y: 100 }], edges: [{ f: 'k:a', t: 'k:c' }, { f: 'k:a', t: 'k:b' }] });
+  assert.equal(E.diagramProblems(d1), 0);
+  // a→d と b→c が交差する
+  const d2 = E.tidyDiagram({ nodes: [{ id: 'a', x: 100, y: 60 }, { id: 'b', x: 100, y: 250 }, { id: 'c', x: 500, y: 60 }, { id: 'd', x: 500, y: 250 }], edges: [{ f: 'k:a', t: 'k:d' }, { f: 'k:b', t: 'k:c' }] });
+  assert.equal(E.diagramProblems(d2), 0);
+});

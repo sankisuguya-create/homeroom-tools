@@ -239,8 +239,18 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(true, '決定を取り消せる');
   // 事案管理：登録（発覚・経緯・指導の行、いじめの報告書の項目）→ 追記 → 出力のコピー用の表
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.iwrap');
-  const n0 = await p.locator('.iit').count();
-  await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
+  const n0 = await p.locator('.icard').count();
+  ok(n0 > 0 && await p.locator('.ilist').count() === 0 && await p.locator('.iassist').count() === 0 && await p.locator('#iadd2nd').count() === 1 && await p.locator('#iq').count() === 1, '初めの画面は新規作成・検索と事案カードだけ（左右の欄は出さない）');
+  await p.fill('#iq', 'いじめ');
+  ok(await p.locator('.icard').count() < n0 && await p.locator('.icard .itg', { hasText: 'いじめ' }).count() > 0, '検索でカードが絞られ、種別のタグにいじめが出る');
+  await p.fill('#iq', '');
+  await p.click('#ihset'); await p.click('[data-hga]'); await p.waitForFunction(n => document.querySelectorAll('.icard').length > n, n0);
+  ok(/全学年/.test(await p.textContent('#inote')), '事案の検索の設定で全学年にすると、ほかの学年の事案も出る');
+  await p.click('[data-hgr]'); await p.keyboard.press('Escape');
+  ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
+  await p.click('#iadd2nd');
+  ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
+  await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
   await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
@@ -261,19 +271,20 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#incForm button.primary');
   ok(await p.locator('#toast', { hasText: '保護者への連絡' }).count() === 1, '保護者への連絡が無いと一度だけ知らせる');
   await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
-  ok(await p.locator('.iit').count() === n0 + 1, '事案が一覧に足される');
+  await p.click('#ihome'); ok(await p.locator('.icard').count() === n0 + 1, '事案が一覧に足される'); await p.click('.icard');
   await p.click('#iadd2'); await p.fill('#rw-s2-vi-0', '元気に過ごしている'); await p.click('#inc2Form button.primary'); await p.waitForSelector('#iadd2');
   ok(await p.locator('.ipane', { hasText: '元気に過ごしている' }).count() === 1, '様式Ⅱ用の追記が残る');
   await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
   ok(await p.locator('.icopy td', { hasText: '朝休み、訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
   await p.keyboard.press('Escape');
   // 被害の児童が2人：様式Ⅱ用の追記は児童ごとの欄、Excel は児童の数だけ
-  await p.click('#iadd'); await p.click('[data-ty="いじめ"]');
+  await p.click('#ihome'); await p.click('#iadd2nd'); await p.click('[data-ty="いじめ"]');
   for (const q of ['さ', 'た', 'い']) { await p.fill('#fQ', q); await p.click('#fSugg [data-pick]'); }
   await p.click('[data-dm="arrow"]');
   const dn = p.locator('#fDg .dg-n');
   await dn.nth(0).click(); await dn.nth(1).click(); await dn.nth(0).click(); await dn.nth(2).click();
   await p.fill('#rw-s1-sd-0', '保護者に連絡した'); await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
+  ok(await p.locator('#toast', { hasText: '関係図を整理しました' }).count() === 1 && await p.locator('#vDg .dg-gl').count() === 1, '保存の時、矢印の出入りが同じ2人はグループにまとめる');
   await p.click('#iadd2');
   ok(await p.locator('.isec[data-sec^="s2v:"]').count() === 2, '被害の児童が2人なら、様式Ⅱの「被害児童・保護者の様子」は2つの欄');
   await p.click('#cancelInc');

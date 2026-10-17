@@ -164,6 +164,9 @@
       var nm = function (end) { var q = end.split(':'); if (q[0] === 'g') return dg.groups.filter(function (x) { return x.g === q[1]; })[0].members.map(function (id) { return S.kids[id].name; }).join('・'); return E.isUnknown(q[1]) ? '（不明の児童）' : S.kids[q[1]].name; };
       return nm(e.f) + 'が' + nm(e.t);
     })(dg.edges[0]) : (names[0] || '') + 'が';
+    // 対応の状況：古い事案ほど解消・指導済みが多い
+    var age = (Date.now() - new Date(date).getTime()) / 864e5;
+    rp.status = age < 14 ? pick(['open', 'open', 'done']) : age < 90 ? pick(['done', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'done', 'watch']);
     rp.s1.hk.push(row(pick(P.hk)));
     rp.s1.kk.push(row(lead + pick(P.kk.slice(0, 11))));
     if (R() < .5) rp.s1.kk.push(row(pick(P.kk.slice(11))));
@@ -282,6 +285,7 @@
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
+    allIncidents: function () { gen(); return later(clone(S.inc)); },
     schoolKids: function () { gen();
       var out = [];
       for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; var a = {}; C.ATTRS.forEach(function (at) { if (r.a[at.k]) a[at.k] = r.a[at.k]; if (r.a[at.k + '_t']) a[at.k + '_t'] = r.a[at.k + '_t']; }); out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls, a: a }); });

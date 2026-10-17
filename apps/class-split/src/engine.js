@@ -386,6 +386,158 @@
     if (mutual) return '相互加害' + (grp ? '（グループ）' : '');
     return '一方的加害（' + (grp && multi ? 'グループ・複線' : grp ? 'グループ' : multi ? '複線' : '個人') + '）';
   }
+  // 保存時の整理（利用者の置いた位置を元に、動かす量を少なく）：
+  // 1) 矢印の出入りがまったく同じ児童（グループに入っていない、矢印のある児童）が2人以上いれば、グループにまとめて矢印を1本にする
+  // 2) 矢印で結ばれ、ほぼ水平・ほぼ垂直の組は、高さ・横位置を揃える（はっきり斜めの線は残す）
+  // 3) 段と段の空きを詰めて、縦幅を無駄に大きくしない（上下の並び順は変えない）
+  // 整理で使う、論理座標でのおおよその大きさ（児童の札・グループの枠）
+  var DG_HW = 50, DG_HH = 28;
+  function dgBox(d, end) {
+    var p = String(end).split(':'), ns;
+    if (p[0] === 'k') ns = d.nodes.filter(function (n) { return n.id === p[1]; });
+    else { var gr = d.groups.filter(function (x) { return x.g === p[1]; })[0]; ns = gr ? d.nodes.filter(function (n) { return gr.members.indexOf(n.id) >= 0; }) : []; }
+    if (!ns.length) return null;
+    var pad = p[0] === 'g' ? 12 : 0, b = { x1: Infinity, y1: Infinity, x2: -Infinity, y2: -Infinity };
+    ns.forEach(function (n) { b.x1 = Math.min(b.x1, n.x - DG_HW - pad); b.x2 = Math.max(b.x2, n.x + DG_HW + pad); b.y1 = Math.min(b.y1, n.y - DG_HH - pad); b.y2 = Math.max(b.y2, n.y + DG_HH + pad); });
+    b.cx = (b.x1 + b.x2) / 2; b.cy = (b.y1 + b.y2) / 2; b.ids = ns.map(function (n) { return n.id; });
+    return b;
+  }
+  function segCross(a, b, c, e) {
+    var o = function (p, q, r) { var v = (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]); return Math.abs(v) < 1e-6 ? 0 : v > 0 ? 1 : -1; };
+    var o1 = o(a, b, c), o2 = o(a, b, e), o3 = o(c, e, a), o4 = o(c, e, b);
+    if (o1 && o2 && o3 && o4) return o1 !== o2 && o3 !== o4;
+    if (!o1 && !o2) { // 同じ直線上：重なっていれば重なり
+      var ax = Math.abs(a[0] - b[0]) > Math.abs(a[1] - b[1]) ? 0 : 1;
+      var lo = Math.max(Math.min(a[ax], b[ax]), Math.min(c[ax], e[ax])), hi = Math.min(Math.max(a[ax], b[ax]), Math.max(c[ax], e[ax]));
+      return hi - lo > 1;
+    }
+    return false;
+  }
+  function segHitsBox(p, q, b) {
+    var t0 = 0, t1 = 1, dx = q[0] - p[0], dy = q[1] - p[1];
+    var cl = function (pp, qq) { if (!pp) return qq >= 0; var r = qq / pp; if (pp < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } return true; };
+    return cl(-dx, p[0] - b.x1) && cl(dx, b.x2 - p[0]) && cl(-dy, p[1] - b.y1) && cl(dy, b.y2 - p[1]) && t1 - t0 > 1e-6;
+  }
+  // 交差・重なりの数：矢印どうしの交差（端を共にしない）・同じ線上の重なり・矢印が関係しない児童を通る・児童の札どうしの重なり
+  function dgProblems(d) {
+    var segs = d.edges.map(function (e) { var a = dgBox(d, e.f), b = dgBox(d, e.t); return a && b ? { e: e, a: a, b: b, p: [a.cx, a.cy], q: [b.cx, b.cy] } : null; }).filter(Boolean), n = 0;
+    for (var i = 0; i < segs.length; i++) {
+      for (var j = i + 1; j < segs.length; j++) {
+        var s1 = segs[i], s2 = segs[j];
+        var share = s1.e.f === s2.e.f || s1.e.f === s2.e.t || s1.e.t === s2.e.f || s1.e.t === s2.e.t;
+        if (share) { if (segCross(s1.p, s1.q, s2.p, s2.q) && !(s1.e.f === s2.e.t && s1.e.t === s2.e.f)) { // 端を共にして同じ向きに重なる
+          var u1 = [s1.q[0] - s1.p[0], s1.q[1] - s1.p[1]], u2 = [s2.q[0] - s2.p[0], s2.q[1] - s2.p[1]];
+          if (Math.abs(u1[0] * u2[1] - u1[1] * u2[0]) < 1e-6) n++;
+        } } else if (segCross(s1.p, s1.q, s2.p, s2.q)) n++;
+      }
+      d.nodes.forEach(function (nd) {
+        var s0 = segs[i]; if (s0.a.ids.indexOf(nd.id) >= 0 || s0.b.ids.indexOf(nd.id) >= 0) return;
+        if (segHitsBox(s0.p, s0.q, { x1: nd.x - DG_HW + 6, x2: nd.x + DG_HW - 6, y1: nd.y - DG_HH + 6, y2: nd.y + DG_HH - 6 })) n++;
+      });
+    }
+    for (var a = 0; a < d.nodes.length; a++) for (var b = a + 1; b < d.nodes.length; b++) {
+      var p1 = d.nodes[a], p2 = d.nodes[b];
+      if (Math.abs(p1.x - p2.x) < DG_HW * 2 - 4 && Math.abs(p1.y - p2.y) < DG_HH * 2 - 4) n++;
+    }
+    return n;
+  }
+  var TIDY_SNAP = 40, TIDY_GAP = 100, TIDY_TOP = 45;
+  function tidyDiagram(d0) {
+    var d = normDiagram(JSON.parse(JSON.stringify(d0 || {})));
+    var inG = {}; d.groups.forEach(function (gr) { gr.members.forEach(function (id) { inG[id] = gr.g; }); });
+    var sig = {};
+    d.nodes.forEach(function (n) {
+      if (inG[n.id]) return;
+      var k = 'k:' + n.id, o = [], i = [];
+      d.edges.forEach(function (e) { if (e.f === k) o.push(e.t); if (e.t === k) i.push(e.f); });
+      if (!o.length && !i.length) return;
+      var key = o.sort().join(',') + '|' + i.sort().join(',');
+      (sig[key] = sig[key] || []).push(n.id);
+    });
+    var LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    Object.keys(sig).forEach(function (key) {
+      var ms = sig[key]; if (ms.length < 2) return;
+      var used = d.groups.map(function (gr) { return gr.g; }), gname = LET.split('').filter(function (c) { return used.indexOf(c) < 0; })[0];
+      if (!gname) return;
+      d.groups.push({ g: gname, members: ms.slice() });
+      var ks = {}; ms.forEach(function (id) { ks['k:' + id] = 1; });
+      var seen = {}, edges = [];
+      d.edges.forEach(function (e) {
+        var f = ks[e.f] ? 'g:' + gname : e.f, t = ks[e.t] ? 'g:' + gname : e.t, k2 = f + '>' + t;
+        if (f === t || seen[k2]) return; seen[k2] = 1; edges.push({ f: f, t: t });
+      });
+      d.edges = edges;
+      // まとめた児童は、いちばん上の児童の下に縦に寄せる（横は平均）
+      var ns = d.nodes.filter(function (n) { return ks['k:' + n.id]; }).sort(function (a, b) { return a.y - b.y; });
+      var cx = ns.reduce(function (s0, n) { return s0 + n.x; }, 0) / ns.length;
+      ns.forEach(function (n, j) { n.x = Math.round(cx); n.y = ns[0].y + j * (DG_HH * 2 + 4); });
+    });
+    // 動かす単位：グループ（中の児童ごと）と、グループに入っていない児童
+    var byId = {}; d.nodes.forEach(function (n) { byId[n.id] = n; });
+    var unit = {};
+    d.groups.forEach(function (gr) { unit['g:' + gr.g] = gr.members.map(function (id) { return byId[id]; }).filter(Boolean); });
+    d.nodes.forEach(function (n) { var g0 = d.groups.filter(function (gr) { return gr.members.indexOf(n.id) >= 0; })[0]; if (!g0) unit['k:' + n.id] = [n]; });
+    var ctr = function (u) { var ns = unit[u] || []; return ns.length ? [ns.reduce(function (s0, n) { return s0 + n.x; }, 0) / ns.length, ns.reduce(function (s0, n) { return s0 + n.y; }, 0) / ns.length] : null; };
+    var shift = function (u, dx, dy) { (unit[u] || []).forEach(function (n) { n.x += dx; n.y += dy; }); };
+    // ほぼ水平（ほぼ垂直）の線で結ばれた単位を束ね、束ごとに平均の高さ（横位置）に揃える
+    [1, 0].forEach(function (ax) {
+      var par = {}, find = function (u) { while (par[u] && par[u] !== u) u = par[u]; return u; };
+      Object.keys(unit).forEach(function (u) { par[u] = u; });
+      d.edges.forEach(function (e) {
+        var a = ctr(e.f), b = ctr(e.t); if (!a || !b) return;
+        var along = Math.abs(a[1 - ax] - b[1 - ax]), across = Math.abs(a[ax] - b[ax]);
+        if (across > 0 && across <= TIDY_SNAP && along > across * 2) par[find(e.f)] = find(e.t);
+      });
+      var sets = {}; Object.keys(unit).forEach(function (u) { (sets[find(u)] = sets[find(u)] || []).push(u); });
+      Object.keys(sets).forEach(function (r) {
+        var us = sets[r]; if (us.length < 2) return;
+        var m = us.reduce(function (s0, u) { return s0 + ctr(u)[ax]; }, 0) / us.length;
+        us.forEach(function (u) { var c = ctr(u)[ax]; shift(u, ax ? 0 : m - c, ax ? m - c : 0); });
+      });
+    });
+    // 矢印の交差・重なり（線が別の児童を通る・同じ線上に重なる・児童どうしが重なる）を、少ない移動で無くす
+    var orig = {}; d.nodes.forEach(function (n) { orig[n.id] = [n.x, n.y]; });
+    var bad = function () { return dgProblems(d); };
+    var cost = function () {
+      var c = bad() * 1000;
+      d.edges.forEach(function (e) { var a = dgBox(d, e.f), b = dgBox(d, e.t); if (a && b && Math.abs(a.cx - b.cx) > 1 && Math.abs(a.cy - b.cy) > 1) c += 3; });
+      d.nodes.forEach(function (n) { c += (Math.abs(n.x - orig[n.id][0]) + Math.abs(n.y - orig[n.id][1])) / 10; });
+      return c;
+    };
+    var MOVES = [[0, 50], [0, -50], [0, 100], [0, -100], [0, 150], [0, -150], [0, 200], [0, -200], [80, 0], [-80, 0], [160, 0], [-160, 0], [80, 50], [-80, 50], [80, -50], [-80, -50]];
+    var inside = function (u) { return (unit[u] || []).every(function (n) { return n.x >= 30 && n.x <= DG_W - 30 && n.y >= 20 && n.y <= DG_H - 20; }); };
+    for (var it = 0; it < 40 && bad(); it++) {
+      var c0 = cost(), best = null;
+      Object.keys(unit).forEach(function (u) {
+        MOVES.forEach(function (m) {
+          shift(u, m[0], m[1]);
+          if (inside(u)) { var c1 = cost(); if (c1 < c0 - 0.5 && (!best || c1 < best.c)) best = { u: u, m: m, c: c1 }; }
+          shift(u, -m[0], -m[1]);
+        });
+      });
+      // 2つの単位の位置を入れ替える（交差は1つずつの移動では解けないことが多い）
+      var us = Object.keys(unit);
+      for (var i1 = 0; i1 < us.length; i1++) for (var i2 = i1 + 1; i2 < us.length; i2++) {
+        var p1 = ctr(us[i1]), p2 = ctr(us[i2]), m = [p2[0] - p1[0], p2[1] - p1[1]];
+        shift(us[i1], m[0], m[1]); shift(us[i2], -m[0], -m[1]);
+        var c2 = cost(); if (c2 < c0 - 0.5 && (!best || c2 < best.c)) best = { u: us[i1], u2: us[i2], m: m, c: c2 };
+        shift(us[i1], -m[0], -m[1]); shift(us[i2], m[0], m[1]);
+      }
+      if (!best) break;
+      shift(best.u, best.m[0], best.m[1]); if (best.u2) shift(best.u2, -best.m[0], -best.m[1]);
+    }
+    // 段の空きを詰める（詰めて交差・重なりが増えるなら詰めない）
+    var b0 = bad(), keep = d.nodes.map(function (n) { return [n.x, n.y]; });
+    var ys = d.nodes.map(function (n) { return n.y; }).sort(function (a, b) { return a - b; }), map = {}, cur = TIDY_TOP;
+    ys.forEach(function (y, i) { if (i) cur += Math.min(y - ys[i - 1], TIDY_GAP); map[y] = cur; });
+    d.nodes.forEach(function (n) { n.y = map[n.y]; });
+    if (bad() > b0) d.nodes.forEach(function (n, i) { n.x = keep[i][0]; n.y = keep[i][1]; });
+    d.nodes.forEach(function (n) {
+      n.y = Math.round(Math.max(0, Math.min(DG_H, n.y)));
+      n.x = Math.round(Math.max(0, Math.min(DG_W, n.x)));
+    });
+    return d;
+  }
   var ROLE_NAMES = { harm: '加害', victim: '被害', mutual: '相互', related: '関係者' };
 
   // ===== 不変条件 =====
@@ -403,6 +555,6 @@
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, tidyDiagram: tidyDiagram, diagramProblems: dgProblems, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
