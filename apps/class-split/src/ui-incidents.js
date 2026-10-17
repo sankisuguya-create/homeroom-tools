@@ -159,23 +159,18 @@
   }
 
   // ===== 描く =====
+  // 左（事案の一覧）と右（記入補助）は、作る・直す・追記の時だけ出す。一覧は事案の一覧の画面の検索設定（学年・言葉）に合わせる
+  function sided() { return I.mode === 'form' || I.mode === 'add2'; }
+  function sideList() {
+    var q = (I.q || '').trim(), list = homeList().filter(function (x) { return matchQ(x, q); });
+    return '<div class="ihead"><button class="ifold" id="ilistT" title="事案の一覧を畳む" aria-label="事案の一覧を畳む">' + IC.listClose + '</button></div>' +
+      '<div class="note">' + esc(homeNote(homeList(), list, q)) + '</div><div class="icards one" id="icards">' + cardsHtml(list) + '</div>';
+  }
   function render() {
-    var d = D(), list = d.incidents.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; });
+    if (!sided()) { App.$('main').innerHTML = '<div class="iwrap solo"><div class="ipane" id="ipane">' + pane() + '</div></div>'; mountDg(); autosizeAll(); showExtra(); return; }
     var h = '<div class="iwrap' + (FOLD.list ? ' lc' : '') + (FOLD.assist ? ' ac' : '') + '"><div class="ilist">';
     if (FOLD.list) h += '<button class="ifold" id="ilistT" title="事案の一覧を開く" aria-label="事案の一覧を開く">' + IC.listOpen + '</button><button class="ivlab" id="ilistT2" tabindex="-1">事案の一覧</button>';
-    else {
-      h += '<div class="ihead"><button class="btn primary ib" id="iadd">' + IC.plus + '事案を登録</button><button class="ifold" id="ilistT" title="事案の一覧を畳む" aria-label="事案の一覧を畳む">' + IC.listClose + '</button></div><div class="note">' + d.grade + '年の児童が関わる事案（' + list.length + '件）</div>';
-      var lastFy = null;
-      list.forEach(function (x) {
-        var fy = C.fiscalYearOfIso(x.date);
-        if (fy !== lastFy) { h += '<div class="ify">' + fy + '年度</div>'; lastFy = fy; }
-        var rp = x.report, more = rp && (rp.s2.sd.length || rp.s2.vi.length || rp.s2.ha.length || rp.s2.kikan || Object.keys(rp.s2v || {}).length);
-        h += '<button class="iit' + (I.sel === x.id ? ' on' : '') + '" data-isel="' + x.id + '"><span class="d">' + esc(App.span(x)) + '・' + esc(x.type) + '</span><b>' + esc(titleOf(x)) + '</b>' +
-          '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '<em class="r-' + r + '">' + E.ROLE_NAMES[r] + '</em>' : ''); }).join('、') + '</span>' +
-          (more ? '<span class="bd"><i>追記あり</i></span>' : '') + '</button>';
-      });
-      if (!list.length) h += '<div class="empty">事案はありません</div>';
-    }
+    else h += sideList();
     h += '</div><div class="ipane" id="ipane">' + pane() + '</div><aside class="iassist" id="iassist">' + assistHtml() + '</aside></div>';
     App.$('main').innerHTML = h;
     mountDg(); autosizeAll(); showExtra();
@@ -423,7 +418,7 @@
     cv.parentNode.insertBefore(box, cv); box.appendChild(cv);
     cv.style.width = Math.round(cw) + 'px'; cv.style.height = Math.round(rc.height) + 'px'; cv.style.marginLeft = -Math.round(x0 * k) + 'px'; cv.style.marginTop = -Math.round(y0 * ky) + 'px';
   }
-  function rerenderPane() { var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); autosizeAll(); showExtra(); } renderAssist(); }
+  function rerenderPane() { var w = document.querySelector('.iwrap'); if (w && w.classList.contains('solo') === sided()) return render(); var p = App.$('ipane'); if (p) { p.innerHTML = pane(); mountDg(); autosizeAll(); showExtra(); } renderAssist(); }
 
   // ===== 記入補助（右）：選んでいる欄に合う定型文と、関係する児童の名前。押すか、ドラッグして入れる =====
   var ASSIST_NAMES = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子', kikan: '関係機関との連携' };
@@ -854,8 +849,17 @@
       var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
       if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }
       var x = f.edit != null ? incOf(f.edit) : {};
-      var b = body(x, f);
-      App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) { dropDraft(); saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました'); });
+      var b = body(x, f), orig = b.diagram;
+      // 関係図は保存の時に整理する（同じ矢印の児童をグループに・ほぼ水平垂直の線を揃える・縦の空きを詰める）。通知の「戻す」で置いた通りに戻せる
+      if (orig) b.diagram = E.tidyDiagram(orig);
+      var moved = orig && JSON.stringify(E.normDiagram(orig)) !== JSON.stringify(b.diagram);
+      App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) {
+        dropDraft(); saved(inc, (f.edit != null ? '事案を直しました' : '事案を登録しました') + (moved ? '（関係図を整理しました）' : ''));
+        if (moved) App.toast((f.edit != null ? '事案を直しました' : '事案を登録しました') + '（関係図を整理しました）', function () {
+          var b2 = Object.assign({}, body(inc, { rep: inc.report }), { diagram: orig });
+          App.save(function () { return App.pf().updateIncident(inc.id, b2); }).then(function (inc2) { saved(inc2, '関係図を置いた通りに戻しました'); });
+        });
+      });
     },
     key: function (e) {
       if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z') && I.mode !== 'view' && undo()) { e.preventDefault(); return true; }

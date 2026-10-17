@@ -386,6 +386,73 @@
     if (mutual) return '相互加害' + (grp ? '（グループ）' : '');
     return '一方的加害（' + (grp && multi ? 'グループ・複線' : grp ? 'グループ' : multi ? '複線' : '個人') + '）';
   }
+  // 保存時の整理（利用者の置いた位置を元に、動かす量を少なく）：
+  // 1) 矢印の出入りがまったく同じ児童（グループに入っていない、矢印のある児童）が2人以上いれば、グループにまとめて矢印を1本にする
+  // 2) 矢印で結ばれ、ほぼ水平・ほぼ垂直の組は、高さ・横位置を揃える（はっきり斜めの線は残す）
+  // 3) 段と段の空きを詰めて、縦幅を無駄に大きくしない（上下の並び順は変えない）
+  var TIDY_SNAP = 40, TIDY_GAP = 100, TIDY_TOP = 45;
+  function tidyDiagram(d0) {
+    var d = normDiagram(JSON.parse(JSON.stringify(d0 || {})));
+    var inG = {}; d.groups.forEach(function (gr) { gr.members.forEach(function (id) { inG[id] = gr.g; }); });
+    var sig = {};
+    d.nodes.forEach(function (n) {
+      if (inG[n.id]) return;
+      var k = 'k:' + n.id, o = [], i = [];
+      d.edges.forEach(function (e) { if (e.f === k) o.push(e.t); if (e.t === k) i.push(e.f); });
+      if (!o.length && !i.length) return;
+      var key = o.sort().join(',') + '|' + i.sort().join(',');
+      (sig[key] = sig[key] || []).push(n.id);
+    });
+    var LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    Object.keys(sig).forEach(function (key) {
+      var ms = sig[key]; if (ms.length < 2) return;
+      var used = d.groups.map(function (gr) { return gr.g; }), gname = LET.split('').filter(function (c) { return used.indexOf(c) < 0; })[0];
+      if (!gname) return;
+      d.groups.push({ g: gname, members: ms.slice() });
+      var ks = {}; ms.forEach(function (id) { ks['k:' + id] = 1; });
+      var seen = {}, edges = [];
+      d.edges.forEach(function (e) {
+        var f = ks[e.f] ? 'g:' + gname : e.f, t = ks[e.t] ? 'g:' + gname : e.t, k2 = f + '>' + t;
+        if (f === t || seen[k2]) return; seen[k2] = 1; edges.push({ f: f, t: t });
+      });
+      d.edges = edges;
+      // まとめた児童は、いちばん上の児童の下に縦に寄せる（横は平均）
+      var ns = d.nodes.filter(function (n) { return ks['k:' + n.id]; }).sort(function (a, b) { return a.y - b.y; });
+      var cx = ns.reduce(function (s0, n) { return s0 + n.x; }, 0) / ns.length;
+      ns.forEach(function (n, j) { n.x = Math.round(cx); n.y = ns[0].y + j * 45; });
+    });
+    // 動かす単位：グループ（中の児童ごと）と、グループに入っていない児童
+    var byId = {}; d.nodes.forEach(function (n) { byId[n.id] = n; });
+    var unit = {};
+    d.groups.forEach(function (gr) { unit['g:' + gr.g] = gr.members.map(function (id) { return byId[id]; }).filter(Boolean); });
+    d.nodes.forEach(function (n) { var g0 = d.groups.filter(function (gr) { return gr.members.indexOf(n.id) >= 0; })[0]; if (!g0) unit['k:' + n.id] = [n]; });
+    var ctr = function (u) { var ns = unit[u] || []; return ns.length ? [ns.reduce(function (s0, n) { return s0 + n.x; }, 0) / ns.length, ns.reduce(function (s0, n) { return s0 + n.y; }, 0) / ns.length] : null; };
+    var shift = function (u, dx, dy) { (unit[u] || []).forEach(function (n) { n.x += dx; n.y += dy; }); };
+    // ほぼ水平（ほぼ垂直）の線で結ばれた単位を束ね、束ごとに平均の高さ（横位置）に揃える
+    [1, 0].forEach(function (ax) {
+      var par = {}, find = function (u) { while (par[u] && par[u] !== u) u = par[u]; return u; };
+      Object.keys(unit).forEach(function (u) { par[u] = u; });
+      d.edges.forEach(function (e) {
+        var a = ctr(e.f), b = ctr(e.t); if (!a || !b) return;
+        var along = Math.abs(a[1 - ax] - b[1 - ax]), across = Math.abs(a[ax] - b[ax]);
+        if (across > 0 && across <= TIDY_SNAP && along > across * 2) par[find(e.f)] = find(e.t);
+      });
+      var sets = {}; Object.keys(unit).forEach(function (u) { (sets[find(u)] = sets[find(u)] || []).push(u); });
+      Object.keys(sets).forEach(function (r) {
+        var us = sets[r]; if (us.length < 2) return;
+        var m = us.reduce(function (s0, u) { return s0 + ctr(u)[ax]; }, 0) / us.length;
+        us.forEach(function (u) { var c = ctr(u)[ax]; shift(u, ax ? 0 : m - c, ax ? m - c : 0); });
+      });
+    });
+    // 段の空きを詰める
+    var ys = d.nodes.map(function (n) { return n.y; }).sort(function (a, b) { return a - b; }), map = {}, cur = TIDY_TOP;
+    ys.forEach(function (y, i) { if (i) cur += Math.min(y - ys[i - 1], TIDY_GAP); map[y] = cur; });
+    d.nodes.forEach(function (n) {
+      n.y = Math.round(Math.max(0, Math.min(DG_H, map[n.y])));
+      n.x = Math.round(Math.max(0, Math.min(DG_W, n.x)));
+    });
+    return d;
+  }
   var ROLE_NAMES = { harm: '加害', victim: '被害', mutual: '相互', related: '関係者' };
 
   // ===== 不変条件 =====
@@ -403,6 +470,6 @@
     sizeOf: sizeOf, buildSwap: buildSwap, swapChanges: swapChanges, nextCandidate: nextCandidate,
     buildMove: buildMove, autoName: autoName, genSummary: genSummary, assignNumbers: assignNumbers,
     nextYearRows: nextYearRows, checkInvariants: checkInvariants,
-    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
+    normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, tidyDiagram: tidyDiagram, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

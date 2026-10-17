@@ -709,3 +709,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .istat .lab:first-child{margin-left:0}
 .iback{margin-bottom:6px}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
+.iwrap.solo{grid-template-columns:minmax(0,1fr)}
+.icards.one{grid-template-columns:1fr;margin-top:4px}
+.icards.one .icard{grid-template-columns:1fr}
+.icards.one .itags{flex-direction:row;flex-wrap:wrap;width:auto;flex:none}
+.icards.one .itg{width:auto}
