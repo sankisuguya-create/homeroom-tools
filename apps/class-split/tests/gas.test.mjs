@@ -25,6 +25,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(ctx.importRoster(FY, rows), 8);
 
     // 教員でないアカウントは拒否
+    // 児童のアカウント・似せたドメイン・数字8桁の名前は、教員と見なさない
+    for (const u of ['12345678@kyoiku.edu.nishi.or.jp', 'taro@kyoiku.edu.nishi.or.jp', '12345678@edu.nishi.or.jp', 'tanaka@sub.edu.nishi.or.jp', 'tanaka@edu.nishi.or.jp.example.com', 'tanaka@xedu.nishi.or.jp']) {
+      env.user = u; assert.equal(call('apiListGrades').ok, false, u);
+    }
+    env.user = 'Tanaka@EDU.NISHI.OR.JP'; assert.equal(call('apiListGrades').ok, true, '大文字でも教員');
     env.user = '12345678@kyoiku.edu.nishi.or.jp';
     const denied = call('apiBoot', 4);
     assert.equal(denied.ok, false); assert.equal(denied.user, true);

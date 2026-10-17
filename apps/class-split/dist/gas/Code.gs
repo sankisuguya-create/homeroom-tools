@@ -107,7 +107,9 @@
       f1: { gaiyou: 'B27' },
       f2: { shido: 'B8', victim: 'B26', harm: 'B32', kikan: 'B38' }
     },
-    TEACHER_DOMAIN: 'edu.nishi.or.jp'
+    TEACHER_DOMAIN: 'edu.nishi.or.jp',
+    // 児童のアカウント（数字8桁@kyoiku.edu.nishi.or.jp）。教員のドメインの末尾と重なるので、別に名指しして必ず断る
+    STUDENT_DOMAIN: 'kyoiku.edu.nishi.or.jp'
   };
 
   // 年度の境目は4/1。年度に関わる値はすべてこの関数から出す（principles/roster-year-transition.md §1）
@@ -738,7 +740,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_3f5e4eb76aac';
+var SERVER_BUILD = 'BUILD_81f5a141a919';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -759,7 +761,10 @@ function doGet() {
 function currentTeacher_() {
   var email = '';
   try { email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { email = ''; }
-  var ok = !!email && email.slice(-(CONFIG.TEACHER_DOMAIN.length + 1)) === '@' + CONFIG.TEACHER_DOMAIN;
+  // 教員は「…@edu.nishi.or.jp」ちょうど（サブドメインは不可）。児童のドメインと、数字8桁の名前は、どのドメインでも断る
+  var at = email.lastIndexOf('@'), local = email.slice(0, at), domain = email.slice(at + 1);
+  var student = domain === CONFIG.STUDENT_DOMAIN || /\.kyoiku\./.test('.' + domain) || /^\d{8}$/.test(local);
+  var ok = at > 0 && domain === CONFIG.TEACHER_DOMAIN && !student;
   return { ok: ok, email: email };
 }
 function requireTeacher_() {

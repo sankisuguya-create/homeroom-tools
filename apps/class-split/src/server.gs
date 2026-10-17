@@ -23,7 +23,10 @@ function doGet() {
 function currentTeacher_() {
   var email = '';
   try { email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { email = ''; }
-  var ok = !!email && email.slice(-(CONFIG.TEACHER_DOMAIN.length + 1)) === '@' + CONFIG.TEACHER_DOMAIN;
+  // 教員は「…@edu.nishi.or.jp」ちょうど（サブドメインは不可）。児童のドメインと、数字8桁の名前は、どのドメインでも断る
+  var at = email.lastIndexOf('@'), local = email.slice(0, at), domain = email.slice(at + 1);
+  var student = domain === CONFIG.STUDENT_DOMAIN || /\.kyoiku\./.test('.' + domain) || /^\d{8}$/.test(local);
+  var ok = at > 0 && domain === CONFIG.TEACHER_DOMAIN && !student;
   return { ok: ok, email: email };
 }
 function requireTeacher_() {

@@ -103,7 +103,9 @@
       f1: { gaiyou: 'B27' },
       f2: { shido: 'B8', victim: 'B26', harm: 'B32', kikan: 'B38' }
     },
-    TEACHER_DOMAIN: 'edu.nishi.or.jp'
+    TEACHER_DOMAIN: 'edu.nishi.or.jp',
+    // 児童のアカウント（数字8桁@kyoiku.edu.nishi.or.jp）。教員のドメインの末尾と重なるので、別に名指しして必ず断る
+    STUDENT_DOMAIN: 'kyoiku.edu.nishi.or.jp'
   };
 
   // 年度の境目は4/1。年度に関わる値はすべてこの関数から出す（principles/roster-year-transition.md §1）
