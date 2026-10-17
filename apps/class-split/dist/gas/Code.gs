@@ -814,7 +814,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_6654dc50e879';
+var SERVER_BUILD = 'BUILD_29c16b3033f1';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1344,10 +1344,17 @@ var apiLoadDraft = api_(function (grade) {
   return v && v.draft ? v : null;
 });
 
-// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組だけ）
+// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
+// 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
 var apiSchoolKids = api_(function () {
   requireTeacher_();
-  return rosterRows_(CONFIG.fiscalYear()).map(function (r) { return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls }; });
+  var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
+  return rosterRows_(FY).map(function (r) {
+    var a = {}, src = am[r.id] || {};
+    CONFIG.ATTRS.forEach(function (at) { if (src[at.k]) a[at.k] = src[at.k]; if (src[at.k + '_t']) a[at.k + '_t'] = src[at.k + '_t']; });
+    if (src.sp) a.sp = 1;
+    return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls, a: a };
+  });
 });
 
 var apiSchoolIncidents = api_(function () {

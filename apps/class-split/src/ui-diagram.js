@@ -14,7 +14,7 @@
     var r = y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
     if (r) return { cls: r.cls, no: r.no, a: r.a, grade: d.grade };
     var x = d.xk && d.xk[id];
-    return x ? { cls: x.cls, a: {}, grade: x.grade } : null;
+    return x ? { cls: x.cls, a: x.a || {}, grade: x.grade } : null;
   }
   // 関係図の枠の高さ（この端末に覚える）。既定は幅の1/6（前の1/3の高さ）
   function loadH() { try { return +localStorage.getItem('classSplit.dgH') || 0; } catch (e) { return 0; } }

@@ -284,7 +284,7 @@
     },
     schoolKids: function () { gen();
       var out = [];
-      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls }); });
+      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; var a = {}; C.ATTRS.forEach(function (at) { if (r.a[at.k]) a[at.k] = r.a[at.k]; if (r.a[at.k + '_t']) a[at.k + '_t'] = r.a[at.k + '_t']; }); out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls, a: a }); });
       return later(out);
     },
     schoolIncidents: function () { gen();

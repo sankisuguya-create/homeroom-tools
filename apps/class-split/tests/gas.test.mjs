@@ -112,6 +112,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(uk.ok, uk.err); assert.deepEqual(uk.v.ids, ['40000011']); assert.equal(uk.v.roles['40000011'], 'victim'); assert.equal(uk.v.roles['?1'], undefined);
     assert.equal(call('apiBoot', 4).v.incidents.find(x => x.id === uk.v.id).diagram.nodes.length, 2);
     assert.equal(call('apiAddIncident', { date: '2026-10-04', type: 'いじめ', diagram: { nodes: [{ id: '?1', x: 10, y: 10 }], edges: [] } }).ok, false, '「？」だけでは登録できない');
+    // 全校の名簿：ほかの学年の児童を関係図に足すため。配慮項目の程度も付く
+    const sk = call('apiSchoolKids'); assert.ok(sk.ok, sk.err); assert.equal(sk.v.length, 8); assert.equal(typeof sk.v[0].a, 'object'); assert.equal(sk.v[0].grade, 4);
     // 書きかけ：教員ごと・学年ごとに残り、null で消える
     assert.ok(call('apiSaveDraft', 4, { mode: 'form', form: { type: 'いじめ' } }).ok);
     assert.equal(call('apiLoadDraft', 4).v.draft.form.type, 'いじめ');

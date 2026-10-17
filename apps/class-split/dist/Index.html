@@ -1882,7 +1882,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     schoolKids: function () { gen();
       var out = [];
-      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls }); });
+      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; var a = {}; C.ATTRS.forEach(function (at) { if (r.a[at.k]) a[at.k] = r.a[at.k]; if (r.a[at.k + '_t']) a[at.k + '_t'] = r.a[at.k + '_t']; }); out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls, a: a }); });
       return later(out);
     },
     schoolIncidents: function () { gen();
@@ -2129,7 +2129,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var r = y ? y.rows.filter(function (r) { return r.id === id; })[0] : null;
     if (r) return { cls: r.cls, no: r.no, a: r.a, grade: d.grade };
     var x = d.xk && d.xk[id];
-    return x ? { cls: x.cls, a: {}, grade: x.grade } : null;
+    return x ? { cls: x.cls, a: x.a || {}, grade: x.grade } : null;
   }
   // 関係図の枠の高さ（この端末に覚える）。既定は幅の1/6（前の1/3の高さ）
   function loadH() { try { return +localStorage.getItem('classSplit.dgH') || 0; } catch (e) { return 0; } }
@@ -2919,7 +2919,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function mergeSchool() {
     var d = D(); if (!SCHOOL || !d) return;
     d.xk = d.xk || {};
-    SCHOOL.forEach(function (k) { if (!d.kids[k.id]) d.kids[k.id] = { id: k.id, name: k.name, kana: k.kana, male: k.male }; d.xk[k.id] = { grade: k.grade, cls: k.cls }; });
+    SCHOOL.forEach(function (k) { if (!d.kids[k.id]) d.kids[k.id] = { id: k.id, name: k.name, kana: k.kana, male: k.male }; d.xk[k.id] = { grade: k.grade, cls: k.cls, a: k.a || {} }; });
   }
   // 関係する児童の検索の設定（この端末に覚える）：探す学年（空＝この学年だけ）と、候補の書き方
   var SRCH = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
