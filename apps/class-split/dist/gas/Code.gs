@@ -107,8 +107,17 @@
       f1: { gaiyou: 'B27' },
       f2: { shido: 'B8', victim: 'B26', harm: 'B32', kikan: 'B38' }
     },
-    TEACHER_DOMAIN: 'edu.nishi.or.jp'
+    TEACHER_DOMAIN: 'edu.nishi.or.jp',
+    // 児童のアカウント（数字8桁@kyoiku.edu.nishi.or.jp）。教員のドメインの末尾と重なるので、別に名指しして必ず断る
+    STUDENT_DOMAIN: 'kyoiku.edu.nishi.or.jp'
   };
+
+  // 定型文と指導の手順は、文の終わりに句点を付けて持つ（入れたまま文として終わる）
+  (function () {
+    var end = function (t) { return /[。！？]$/.test(t) ? t : t + '。'; };
+    Object.keys(CONFIG.PHRASES).forEach(function (k) { if (k !== 'kikan') CONFIG.PHRASES[k] = CONFIG.PHRASES[k].map(end); });
+    CONFIG.SD_STEPS = CONFIG.SD_STEPS.map(end);
+  })();
 
   // 年度の境目は4/1。年度に関わる値はすべてこの関数から出す（principles/roster-year-transition.md §1）
   CONFIG.fiscalYear = function (date) {
@@ -596,13 +605,55 @@
     t.setDate(t.getDate() + n);
     return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
   }
+  // ===== 国民の祝日（内閣府の祝日法の決まりから計算する。2000年以降） =====
+  // 固定の日・ハッピーマンデー・春分と秋分（近似式）・振替休日・国民の休日（祝日に挟まれた平日）
+  function ymd(t) { return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+  function nthMonday(y, m, n) { var t = new Date(y, m - 1, 1), off = (8 - t.getDay()) % 7; return 1 + off + (n - 1) * 7; }
+  var HOL = {};
+  function baseHolidays(y) {
+    var h = {}, add = function (m, d) { h[ymd(new Date(y, m - 1, d))] = 1; };
+    add(1, 1); add(1, nthMonday(y, 1, 2)); add(2, 11); if (y >= 2020) add(2, 23);
+    add(3, Math.floor(20.8431 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)));
+    add(4, 29); add(5, 3); add(5, 4); add(5, 5);
+    if (y === 2020) add(7, 23); else if (y === 2021) add(7, 22); else add(7, nthMonday(y, 7, 3));
+    if (y === 2020) add(7, 24); else if (y === 2021) add(7, 23); else if (y !== 2020 && y !== 2021) add(10, nthMonday(y, 10, 2));
+    if (y === 2020) add(8, 10); else if (y === 2021) add(8, 8); else add(8, 11);
+    add(9, nthMonday(y, 9, 3));
+    add(9, Math.floor(23.2488 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)));
+    add(11, 3); add(11, 23);
+    return h;
+  }
+  function holidaysOf(y) {
+    if (HOL[y]) return HOL[y];
+    var h = baseHolidays(y), out = {};
+    Object.keys(h).forEach(function (k) { out[k] = 1; });
+    // 振替休日：祝日が日曜なら、その後の最初の祝日でない日
+    Object.keys(h).forEach(function (k) {
+      var p = k.split('-'), t = new Date(+p[0], +p[1] - 1, +p[2]);
+      if (t.getDay() !== 0) return;
+      do { t.setDate(t.getDate() + 1); } while (out[ymd(t)]);
+      out[ymd(t)] = 1;
+    });
+    // 国民の休日：前日と翌日が祝日の平日
+    for (var t = new Date(y, 0, 2); t.getFullYear() === y; t.setDate(t.getDate() + 1)) {
+      var a = new Date(t), b = new Date(t); a.setDate(a.getDate() - 1); b.setDate(b.getDate() + 1);
+      if (!out[ymd(t)] && t.getDay() !== 0 && h[ymd(a)] && h[ymd(b)]) out[ymd(t)] = 1;
+    }
+    return (HOL[y] = out);
+  }
+  function isHoliday(iso) { var y = +String(iso).slice(0, 4); return !!(y && holidaysOf(y)[iso]); }
+  function isOff(t) { return t.getDay() === 0 || t.getDay() === 6 || isHoliday(ymd(t)); }
+  // 次の登校日（土日・祝日を飛ばす。夏休みなどの学校の休みは分からないので飛ばさない）
+  function nextSchoolDay(d) {
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return d;
+    do { t.setDate(t.getDate() + 1); } while (isOff(t));
+    return ymd(t);
+  }
   function nextSlot(d, p) {
     var L = slots(), i = L.indexOf(p);
     if (i < 0 || i < L.length - 1) return { d: d, p: i < 0 ? p : L[i + 1] };
-    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
-    if (isNaN(t)) return { d: d, p: L[0] };
-    do { t.setDate(t.getDate() + 1); } while (t.getDay() === 0 || t.getDay() === 6);
-    return { d: t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2), p: L[0] };
+    return { d: nextSchoolDay(d), p: L[0] };
   }
   function lines(rows) {
     var L = slots(), slot = function (p) { var i = L.indexOf(p); return i < 0 ? 99 : i; };
@@ -636,7 +687,7 @@
     if (dp) { var era = dp.y - 2018; put(H.era, era === 1 ? '元' : era); put(H.month, dp.m); put(H.day, dp.d); put(H.wday, '(' + dp.w + ')'); }
     var kidRow = function (row, id) {
       var k = o.kid(id); if (!k) return;
-      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), k.name);
+      put('B' + row, k.grade); put('D' + row, k.cls); put('G' + row, k.male ? '男' : '女'); put('I' + row, k.kana || ''); put('I' + (row + 1), nospace(k.name));
     };
     if (o.victim) kidRow(H.victim, o.victim);
     if (kind === 'f2') {
@@ -645,7 +696,7 @@
       if (vi.length) put(R.f2.victim, '（被害児童生徒及び保護者）\n' + lines(vi));
       if (rep.s2.ha.length) put(R.f2.harm, '（加害児童生徒及び保護者）\n' + lines(rep.s2.ha));
       put(R.f2.kikan, rep.s2.kikan);
-      return out;
+      return withNames(out, [R.f2.shido, R.f2.victim, R.f2.harm, R.f2.kikan], o.people);
     }
     var harms = o.harms || [];
     harms.slice(0, R.harmRows.length).forEach(function (id, i) { kidRow(R.harmRows[i], id); });
@@ -659,6 +710,31 @@
     if (rep.modes[C.MODES.length - 1]) put(R.modeOther, rep.other);
     // 発覚・経緯（内容）と指導は、欄ごとにまとめて改行で区切る
     if (kind === 'f1') put(R.f1.gaiyou, ['hk', 'kk', 'sd'].map(function (k) { return lines(rep.s1[k]); }).filter(Boolean).join('\n'));
+    return withNames(out, [R.f1.gaiyou], o.people);
+  }
+  function nospace(n) { return String(n || '').replace(/[ 　]+/g, ''); }
+  // 文の中の児童の名前：姓と名の間の空白を消し、書類の中で最初に出る所だけ学年と組を括弧で付ける
+  // 関係する児童が全員同じ学年なら組だけ（例：田中ハト(2組)）、違えば学年も（例：田中ハト(6年2組)）
+  function withNames(out, refs, people) {
+    people = (people || []).filter(function (p) { return p && p.name; });
+    if (!people.length) return out;
+    var one = people.every(function (p) { return p.grade === people[0].grade; }), seen = {};
+    var esc = function (t) { return t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); };
+    // 長い名前から当てる（「田中ハト」と「田中ハトコ」のような重なりで短い方が先に当たらないように）
+    var list = people.slice().sort(function (a, b) { return nospace(b.name).length - nospace(a.name).length; });
+    refs.forEach(function (ref) {
+      if (typeof out[ref] !== 'string') return;
+      var t = out[ref];
+      list.forEach(function (p) {
+        var n = nospace(p.name), re = new RegExp(esc(n).split('').join('[ 　]?'), 'g');
+        t = t.replace(re, function () {
+          if (seen[n]) return n;
+          seen[n] = 1;
+          return n + '(' + (one ? '' : p.grade + '年') + p.cls + '組)';
+        });
+      });
+      out[ref] = t;
+    });
     return out;
   }
   // 様式ごとに書いてよいセル（サーバーが受け取る値を確かめる）
@@ -729,7 +805,7 @@
   }
   function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
 
-  g.Report = { addDays: addDays, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+  g.Report = { addDays: addDays, isHoliday: isHoliday, nextSchoolDay: nextSchoolDay, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -738,7 +814,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_3f5e4eb76aac';
+var SERVER_BUILD = 'BUILD_29c16b3033f1';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -759,7 +835,10 @@ function doGet() {
 function currentTeacher_() {
   var email = '';
   try { email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { email = ''; }
-  var ok = !!email && email.slice(-(CONFIG.TEACHER_DOMAIN.length + 1)) === '@' + CONFIG.TEACHER_DOMAIN;
+  // 教員は「…@edu.nishi.or.jp」ちょうど（サブドメインは不可）。児童のドメインと、数字8桁の名前は、どのドメインでも断る
+  var at = email.lastIndexOf('@'), local = email.slice(0, at), domain = email.slice(at + 1);
+  var student = domain === CONFIG.STUDENT_DOMAIN || /\.kyoiku\./.test('.' + domain) || /^\d{8}$/.test(local);
+  var ok = at > 0 && domain === CONFIG.TEACHER_DOMAIN && !student;
   return { ok: ok, email: email };
 }
 function requireTeacher_() {
@@ -1263,6 +1342,19 @@ var apiSaveDraft = api_(function (grade, draft) {
 var apiLoadDraft = api_(function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
+});
+
+// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
+// 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
+var apiSchoolKids = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
+  return rosterRows_(FY).map(function (r) {
+    var a = {}, src = am[r.id] || {};
+    CONFIG.ATTRS.forEach(function (at) { if (src[at.k]) a[at.k] = src[at.k]; if (src[at.k + '_t']) a[at.k + '_t'] = src[at.k + '_t']; });
+    if (src.sp) a.sp = 1;
+    return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls, a: a };
+  });
 });
 
 var apiSchoolIncidents = api_(function () {

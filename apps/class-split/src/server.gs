@@ -23,7 +23,10 @@ function doGet() {
 function currentTeacher_() {
   var email = '';
   try { email = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { email = ''; }
-  var ok = !!email && email.slice(-(CONFIG.TEACHER_DOMAIN.length + 1)) === '@' + CONFIG.TEACHER_DOMAIN;
+  // 教員は「…@edu.nishi.or.jp」ちょうど（サブドメインは不可）。児童のドメインと、数字8桁の名前は、どのドメインでも断る
+  var at = email.lastIndexOf('@'), local = email.slice(0, at), domain = email.slice(at + 1);
+  var student = domain === CONFIG.STUDENT_DOMAIN || /\.kyoiku\./.test('.' + domain) || /^\d{8}$/.test(local);
+  var ok = at > 0 && domain === CONFIG.TEACHER_DOMAIN && !student;
   return { ok: ok, email: email };
 }
 function requireTeacher_() {
@@ -527,6 +530,19 @@ var apiSaveDraft = api_(function (grade, draft) {
 var apiLoadDraft = api_(function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
+});
+
+// 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
+// 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
+var apiSchoolKids = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
+  return rosterRows_(FY).map(function (r) {
+    var a = {}, src = am[r.id] || {};
+    CONFIG.ATTRS.forEach(function (at) { if (src[at.k]) a[at.k] = src[at.k]; if (src[at.k + '_t']) a[at.k + '_t'] = src[at.k + '_t']; });
+    if (src.sp) a.sp = 1;
+    return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls, a: a };
+  });
 });
 
 var apiSchoolIncidents = api_(function () {

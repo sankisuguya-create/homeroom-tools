@@ -230,7 +230,7 @@ test('報告書：様式のセルの値（被害・加害・態様・時系列�
   const o = { school: '高木北小', kid: id => kids[id], victim: 'v', harms: Object.keys(kids).filter(k => k !== 'v') };
   const c = RP.cells('f1', inc, o);
   assert.equal(c.B4, '高木北小'); assert.equal(c.C5, 8); assert.equal(c.E5, 5); assert.equal(c.G5, 7); assert.equal(c.I5, '(木)');
-  assert.equal(c.G6, '女'); assert.equal(c.I7, '被害 花'); assert.equal(c.I19, '加害5');
+  assert.equal(c.G6, '女'); assert.equal(c.I7, '被害花', '名前の姓と名の間の空白は消す'); assert.equal(c.I19, '加害5');
   assert.match(c.B20, /男子（　0　）名、女子（　2　）名.*全体計（　8　）名/);
   assert.equal(c.B22, '○'); assert.equal(c.I26, '○'); assert.equal(c.K26, '靴を隠す'); assert.equal(c.H22, undefined);
   assert.equal(c.B27, '5月8日（金）放課後、B。\n5月8日（金）朝休み、A。\nC。', '欄ごと（発覚・経緯・指導）に改行で区切り、終わりに句点を足す');
@@ -266,4 +266,20 @@ test('時間帯：授業と授業の間を選べ、足す行は次の時間帯�
   assert.deepEqual(RP.nextSlot('2026-10-16', '昼休み'), { d: '2026-10-16', p: L[L.indexOf('昼休み') + 1] });
   assert.deepEqual(RP.nextSlot('2026-10-16', '放課後'), { d: '2026-10-19', p: '朝休み' }, '金曜の放課後の次は月曜の朝');
   assert.equal(RP.lines([{ d: '2026-10-16', p: '2校時', t: 'b' }, { d: '2026-10-16', p: '1校時後', t: 'a' }]), '10月16日（金）1校時後、a。2校時、b。');
+});
+
+test('報告書：文の中の名前は空白を消し、最初に出る所に学年・組（全員同じ学年なら組だけ）', () => {
+  const K = { a: { grade: 6, cls: 2, male: true, name: '田中 ハト' }, b: { grade: 6, cls: 1, male: false, name: '山田 イヌ' } };
+  const inc = { date: '2026-05-07', report: { s1: { hk: [{ d: '2026-05-08', p: '朝休み', t: '田中 ハトが山田 イヌに悪口を言った。' }], kk: [{ d: '2026-05-08', p: '昼休み', t: '田中ハトは謝った' }], sd: [] } } };
+  const o = { kid: id => K[id], victim: 'b', harms: ['a'] };
+  assert.equal(RP.cells('f1', inc, { ...o, people: [K.a, K.b] }).B27, '5月8日（金）朝休み、田中ハト(2組)が山田イヌ(1組)に悪口を言った。\n5月8日（金）昼休み、田中ハトは謝った。');
+  assert.match(RP.cells('f1', inc, { ...o, people: [K.a, { ...K.b, grade: 5 }] }).B27, /田中ハト\(6年2組\)が山田イヌ\(5年1組\)/);
+});
+
+test('祝日：土日・祝日（振替休日・国民の休日を含む）を飛ばして次の登校日にする', () => {
+  for (const d of ['2026-01-12', '2026-03-20', '2026-05-06', '2026-09-22', '2026-10-12', '2025-11-24']) assert.ok(RP.isHoliday(d), d);
+  assert.ok(!RP.isHoliday('2026-10-16'));
+  assert.equal(RP.nextSchoolDay('2026-10-09'), '2026-10-13', '金曜の次は、スポーツの日（月）を飛ばして火曜');
+  assert.equal(RP.nextSchoolDay('2026-05-01'), '2026-05-07', '連休を飛ばす');
+  assert.deepEqual(RP.nextSlot('2026-09-18', '放課後'), { d: '2026-09-24', p: '朝休み' }, 'シルバーウィークを飛ばす');
 });

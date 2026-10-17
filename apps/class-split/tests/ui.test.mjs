@@ -19,7 +19,7 @@ try {
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);
 let fails = 0;
-const C_STEP1 = '管理職に報告した';
+const C_STEP1 = '管理職に報告した。';
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {
@@ -256,6 +256,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-rdel="s1:kk:1"]'); await p.click('[data-rdel="s1:kk:2"]');
   await p.check('[data-step="1"]');
   ok(await p.inputValue('#rw-s1-sd-0') === C_STEP1, '指導の手順のチェックで行に文が入る');
+  await p.check('[data-step="0"]');
+  ok(await p.locator('[data-rw^="s1:sd:"][data-rw$=":t"]').count() === 1 && (await p.inputValue('#rw-s1-sd-0')).startsWith(C_STEP1), '2つ目の手順も同じ行の続きに入り、新しい行には進まない');
   await p.click('#incForm button.primary');
   ok(await p.locator('#toast', { hasText: '保護者への連絡' }).count() === 1, '保護者への連絡が無いと一度だけ知らせる');
   await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
