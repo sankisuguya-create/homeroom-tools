@@ -240,6 +240,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 事案管理：登録（発覚・経緯・指導の行、いじめの報告書の項目）→ 追記 → 出力のコピー用の表
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.iwrap');
   const n0 = await p.locator('.iit').count();
+  ok(await p.locator('.icard').count() === n0 && await p.locator('#iadd2nd').count() === 1 && await p.locator('#iq').count() === 1, '初めの画面に新規作成・検索と、事案カードが全件');
+  await p.fill('#iq', 'いじめ');
+  ok(await p.locator('.icard').count() < n0 && await p.locator('.icard .itg', { hasText: 'いじめ' }).count() > 0, '検索でカードが絞られ、種別のタグにいじめが出る');
+  await p.fill('#iq', '');
   await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');

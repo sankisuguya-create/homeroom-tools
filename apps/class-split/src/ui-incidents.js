@@ -135,8 +135,70 @@
   }
   function paneView() {
     var x = I.sel != null && incOf(I.sel);
-    if (!x) return '<div class="empty">左の一覧から事案を選ぶか、「＋ 事案を登録」を押します</div>';
-    return viewHtml(x);
+    if (!x) return homeHtml();
+    return '<button class="btn ib iback" id="ihome">' + IC.listClose + '事案の一覧へ</button>' + viewHtml(x);
+  }
+
+  // ===== 初めの画面：新規作成と検索、その下に事案カード（新しい順） =====
+  var TYPE_IC = {
+    '対人': SVG('<circle cx="8" cy="8" r="3"/><circle cx="16" cy="8" r="3"/><path d="M3 20c0-3 2-5 5-5s5 2 5 5M11 20c0-3 2-5 5-5s5 2 5 5"/>'),
+    '物損': SVG('<path d="M4 6h7l-2 5 3 2-1 5H4zM14 6h6v12h-7l1-4-3-2z"/>'),
+    'いじめ': SVG('<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>'),
+    'けが': SVG('<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M11 11l2 2M13 11l-2 2"/>'),
+    'その他': SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12h.5M12 12h.5M16 12h.5"/>')
+  };
+  var ST_IC = {
+    open: SVG('<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'),
+    done: SVG('<path d="M5 12l4 4 10-10"/>'),
+    watch: SVG('<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
+    closed: SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>')
+  };
+  // いじめの報告の段階：決めていなければ、様式Ⅱ用の追記があれば様式Ⅱ、なければ様式Ⅰ
+  function levelOf(x) {
+    var rp = x.report || Rp.emptyReport();
+    if (rp.level) return rp.level;
+    return rp.s2.sd.length || rp.s2.vi.length || rp.s2.ha.length || Object.keys(rp.s2v || {}).length ? 'f2' : 'f1';
+  }
+  function gradesOf(x) {
+    var gs = [];
+    x.ids.forEach(function (id) { var k = kidAt(id, x.date); if (k && k.grade && gs.indexOf(k.grade) < 0) gs.push(k.grade); });
+    return gs.sort();
+  }
+  function tagsHtml(x) {
+    var rp = x.report || Rp.emptyReport(), h = '<div class="itags">';
+    var gs = gradesOf(x); if (gs.length) h += '<span class="itg ig">' + gs.join('・') + '年</span>';
+    typesOf(x.type).forEach(function (t) {
+      if (t === 'いじめ') {
+        var lv = C.BULLY_LEVELS.filter(function (b) { return b.k === levelOf(x); })[0];
+        h += '<span class="itg ib2" style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '">' + TYPE_IC['いじめ'] + 'いじめ・' + esc(lv.label) + '</span>';
+      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + esc(t) + '</span>';
+    });
+    var st = C.STATUS.filter(function (s0) { return s0.k === rp.status; })[0] || C.STATUS[0];
+    h += '<span class="itg ist st-' + st.k + '">' + ST_IC[st.k] + esc(st.label) + '</span>';
+    return h + '</div>';
+  }
+  function matchQ(x, q) {
+    if (!q) return true;
+    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail].concat(x.ids.map(kidName));
+    ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k].forEach(function (r) { txt.push(r.t); }); });
+    var all = txt.join(' ').replace(/[ 　]/g, '');
+    return q.split(/[ 　]+/).filter(Boolean).every(function (w) { return all.indexOf(w) >= 0; });
+  }
+  function homeHtml() {
+    var list = D().incidents.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; });
+    var q = (I.q || '').trim(), shown = list.filter(function (x) { return matchQ(x, q); });
+    var h = '<div class="ihome"><button class="big ihb" id="iadd2nd">' + IC.plus + '<b>事案を新規作成</b></button>' +
+      '<label class="big ihb ihs">' + SVG('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>') + '<input id="iq" value="' + esc(I.q || '') + '" placeholder="事案を検索（名前・種別・内容）" autocomplete="off"></label></div>';
+    h += '<div class="note">' + (q ? '「' + esc(q) + '」に合う事案 ' + shown.length + '件' : D().grade + '年の児童が関わる事案 ' + list.length + '件（新しい順）') + '</div>';
+    h += '<div class="icards" id="icards">' + cardsHtml(shown) + '</div>';
+    return h;
+  }
+  function cardsHtml(list) {
+    if (!list.length) return '<div class="empty">事案はありません</div>';
+    return list.map(function (x) {
+      return '<button class="icard" data-isel="' + x.id + '"><div class="icm"><span class="d">' + esc(App.span(x)) + '</span><b>' + esc(titleOf(x)) + '</b>' +
+        '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '<em class="r-' + r + '">' + E.ROLE_NAMES[r] + '</em>' : ''); }).join('、') + '</span></div>' + tagsHtml(x) + '</button>';
+    }).join('');
   }
   function rowsView(rows) {
     if (!rows.length) return '<div class="note">（記入なし）</div>';
@@ -146,7 +208,10 @@
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
-      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>';
+      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
+      // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
+      '<div class="istat"><span class="lab">対応</span>' + C.STATUS.map(function (s0) { return '<button class="lv ib st-' + s0.k + '" data-ist="' + s0.k + '" aria-pressed="' + (rp.status === s0.k) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') +
+      (b ? '<span class="lab">報告</span>' + C.BULLY_LEVELS.map(function (lv) { return '<button class="lv" data-ilv="' + lv.k + '" aria-pressed="' + (levelOf(x) === lv.k) + '"' + (levelOf(x) === lv.k ? ' style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '"' : '') + '>' + esc(lv.label) + '</button>'; }).join('') : '') + '</div>';
     h += x.diagram && x.diagram.nodes.length ? '<section><h3>関係図</h3><div id="vDg" class="dg ro"></div></section>' :
       '<section><h3>関係する児童</h3><div>' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>いじめの項目</h3><table class="irv"><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
@@ -635,6 +700,16 @@
       if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
       if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
       if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
+      if (t.closest('#ihome')) { I.sel = null; render(); return true; }
+      if (t.closest('#iadd2nd')) { newForm(null); render(); refocus('fQ'); return true; }
+      if ((x = t.closest('[data-ist],[data-ilv]'))) {
+        var xi = incOf(I.sel), rp0 = Rp.norm(xi.report);
+        if (x.dataset.ist) rp0.status = x.dataset.ist; else rp0.level = x.dataset.ilv;
+        App.save(function () { return App.pf().updateIncident(xi.id, body(xi, { rep: rp0 })); }).then(function (inc) {
+          var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id); if (i >= 0) list[i] = inc; render();
+        });
+        return true;
+      }
       if (t.closest('#idrGo')) { restoreDraft(); render(); return true; }
       if (t.closest('#idrDel')) { dropDraft(); rerenderPane(); App.toast('書きかけを捨てました'); return true; }
       // 書きかけはサーバーに残っているので、別の事案を開いても失わない
@@ -680,6 +755,8 @@
       return false;
     },
     input: function (t) {
+      // 事案の検索：カードだけを描き直す（入力欄を作り直すと日本語の変換が切れる）
+      if (t.id === 'iq') { I.q = t.value; var cs = App.$('icards'); if (cs) { var q = I.q.trim(); cs.innerHTML = cardsHtml(D().incidents.slice().sort(function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; }).filter(function (x) { return matchQ(x, q); })); } return; }
       var f = I.form; if (!f) return;
       if (t.dataset.step != null) { toggleStep(+t.dataset.step, t.checked); return; }
       if (t.dataset.rw) {
@@ -692,6 +769,7 @@
       }
       if (t.dataset.mode != null) { f.rep.modes[+t.dataset.mode] = t.checked; var o = App.$('fOther'); if (o) o.disabled = !f.rep.modes[C.MODES.length - 1]; saveDraftSoon(); return; }
       switch (t.id) {
+        case 'iq': return;
         case 'fQ': App.$('fSugg').innerHTML = suggHtml(t.value); return;
         case 'fUrl': f.url = t.value.trim(); break;
         case 'fTitle': f.title = t.value; break;

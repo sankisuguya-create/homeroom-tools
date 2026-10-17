@@ -81,6 +81,15 @@
     },
     // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
     SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
+    // 事案の対応の状況（事案カードの右に出す）。既定は「対応中」
+    STATUS: [{ k: 'open', label: '対応中' }, { k: 'done', label: '指導済み' }, { k: 'watch', label: '経過観察' }, { k: 'closed', label: '解消' }],
+    // いじめの報告の段階。簡易→様式Ⅰ→様式Ⅱ→重大事態の順に、同じ色相で濃くする（文字でも段階を書く）
+    BULLY_LEVELS: [
+      { k: 'light', label: '簡易', c: '#F6D3CC', t: '#5A1A10' },
+      { k: 'f1', label: '様式Ⅰ', c: '#E58A76', t: '#3A0E06' },
+      { k: 'f2', label: '様式Ⅱ', c: '#C0392B', t: '#FFFFFF' },
+      { k: 'grave', label: '重大事態', c: '#6E1208', t: '#FFFFFF' }
+    ],
     // ===== 市教委への報告書（いじめ認知報告書）=====
     // 選択肢と文言は様式（R08）の入力規則と同じ。様式が変わったらここと REPORT のセルの番地を直す
     FOUND_LIST: ['学級担任が発見した', '学級担任以外の教職員が発見した', '養護教諭が発見した', 'スクールカウンセラー等の相談員が発見した', 'アンケート調査など学校の取組により発見した', '本人からの訴え', '当該児童生徒（本人）の保護者からの訴え', '児童生徒（本人を除く。）からの情報', '保護者（本人の保護者を除く。）からの情報', '地域の住民からの情報', '学校以外の関係機関（相談機関を含む。）からの情報', 'その他（匿名の投書など）'],
@@ -567,11 +576,13 @@
   var SECTIONS2 = { sd: '指導の経過', vi: '被害児童・保護者の様子', ha: '加害児童・保護者の様子' };
 
   function emptyReport() {
-    return { light: false, found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
+    return { light: false, level: '', status: 'open', found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
   }
   function norm(r) {
     var e = emptyReport(); r = r || {};
     var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
+    e.level = C.BULLY_LEVELS.some(function (x) { return x.k === r.level; }) ? r.level : '';
+    e.status = C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
     e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
     e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
     ['hk', 'kk', 'sd'].forEach(function (k) { e.s1[k] = rows(r.s1 && r.s1[k]); });
@@ -814,7 +825,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_29c16b3033f1';
+var SERVER_BUILD = 'BUILD_492204159f7a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

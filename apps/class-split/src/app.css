@@ -680,3 +680,30 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iqw input{flex:1;padding-right:18px}
 .iqc{position:absolute;right:1px;bottom:1px;width:0;height:0;padding:0;border:0;border-style:solid;border-width:0 0 12px 12px;border-color:transparent transparent #9AA3AB transparent;background:none;cursor:pointer}
 .iqc:hover{border-bottom-color:var(--link)}
+/* 事案管理の初めの画面：新規作成・検索と事案カード */
+.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px}
+.ihb{display:flex;align-items:center;gap:10px;padding:14px 18px;flex-direction:row}
+.ihb b{font-size:1.1rem}
+.ihb svg{width:24px;height:24px;flex:none}
+.ihs input{flex:1;border:0;background:none;font:inherit;font-size:1rem;outline:none;min-width:0}
+.ihs:focus-within{border-color:var(--link)}
+.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
+.icard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
+.icard:hover{border-color:var(--link)}
+.icm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.icm .d{font-size:.78rem;color:var(--sub)}
+.icm .k{font-size:.82rem}
+.icm .k em{font-style:normal;font-size:.75em;margin-left:2px;color:var(--sub)}
+.itags{display:flex;flex-direction:column;align-items:stretch;gap:3px;min-width:6.5em}
+.itg{display:inline-flex;align-items:center;gap:3px;font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;background:var(--panel)}
+.itg svg{width:13px;height:13px;flex:none}
+.itg.ig{font-weight:700;justify-content:center}
+.ist.st-open{border-color:#C8641A;color:#8A3F06;font-weight:700}
+.ist.st-done{border-color:#2E8A4A;color:#1F5E33}
+.ist.st-watch{border-color:#1E6FD9;color:#14498F}
+.ist.st-closed{color:var(--sub)}
+.istat{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0}
+.istat .lab{margin:0 4px 0 8px;color:var(--sub);font-size:.85rem}
+.istat .lab:first-child{margin-left:0}
+.iback{margin-bottom:6px}
+@media (max-width:900px){.ihome{grid-template-columns:1fr}}
