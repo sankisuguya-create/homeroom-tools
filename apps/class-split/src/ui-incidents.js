@@ -580,10 +580,11 @@
   }
   function toggleStep(i, on) {
     snap();
+    // チェックした手順は、指導の欄の最後の行の続きに入れる（新しい行・次の時間帯には進めない）
     var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
     if (on) {
-      if (last && !last.t) last.t = t;
-      else { var nr = nextRow(last); nr.t = t; rows.push(nr); }
+      if (!last) rows.push({ d: today(), p: '', t: t });
+      else last.t = !last.t ? t : last.t + (/[。！？]$/.test(last.t) ? '' : '。') + t;
     } else {
       rows.forEach(function (r) { r.t = r.t.replace(t, '').replace(/^。|。(?=。)|。$/g, ''); });
       for (var k = rows.length - 1; k >= 0 && rows.length > 1; k--) if (!rows[k].t.trim()) rows.splice(k, 1);
@@ -664,7 +665,8 @@
       }
       if ((x = t.closest('[data-rnext]'))) { snap();
         var nq = x.dataset.rnext.split(':'), nrows = I.form.rep[nq[0]][nq[1]], ni = +nq[2], base = nrows[ni];
-        var nr = nq[3] === 'day' ? { d: Rp.addDays(base.d || today(), 1), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
+        // 自動で入れる日付は土日・祝日を飛ばす（その日にしたい時は日付の欄で選び直せる）
+        var nr = nq[3] === 'day' ? { d: Rp.nextSchoolDay(base.d || today()), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
         if (nq[3] === 'slot' && !base.p) nr = { d: base.d, p: Rp.slots()[0], t: '' };
         nrows.splice(ni + 1, 0, nr);
         rerenderPane(); refocus('rw-' + nq[0] + '-' + nq[1] + '-' + (ni + 1)); saveDraftSoon(); return true;

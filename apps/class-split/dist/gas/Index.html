@@ -1299,13 +1299,55 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     t.setDate(t.getDate() + n);
     return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2);
   }
+  // ===== 国民の祝日（内閣府の祝日法の決まりから計算する。2000年以降） =====
+  // 固定の日・ハッピーマンデー・春分と秋分（近似式）・振替休日・国民の休日（祝日に挟まれた平日）
+  function ymd(t) { return t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2); }
+  function nthMonday(y, m, n) { var t = new Date(y, m - 1, 1), off = (8 - t.getDay()) % 7; return 1 + off + (n - 1) * 7; }
+  var HOL = {};
+  function baseHolidays(y) {
+    var h = {}, add = function (m, d) { h[ymd(new Date(y, m - 1, d))] = 1; };
+    add(1, 1); add(1, nthMonday(y, 1, 2)); add(2, 11); if (y >= 2020) add(2, 23);
+    add(3, Math.floor(20.8431 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)));
+    add(4, 29); add(5, 3); add(5, 4); add(5, 5);
+    if (y === 2020) add(7, 23); else if (y === 2021) add(7, 22); else add(7, nthMonday(y, 7, 3));
+    if (y === 2020) add(7, 24); else if (y === 2021) add(7, 23); else if (y !== 2020 && y !== 2021) add(10, nthMonday(y, 10, 2));
+    if (y === 2020) add(8, 10); else if (y === 2021) add(8, 8); else add(8, 11);
+    add(9, nthMonday(y, 9, 3));
+    add(9, Math.floor(23.2488 + 0.242194 * (y - 1980) - Math.floor((y - 1980) / 4)));
+    add(11, 3); add(11, 23);
+    return h;
+  }
+  function holidaysOf(y) {
+    if (HOL[y]) return HOL[y];
+    var h = baseHolidays(y), out = {};
+    Object.keys(h).forEach(function (k) { out[k] = 1; });
+    // 振替休日：祝日が日曜なら、その後の最初の祝日でない日
+    Object.keys(h).forEach(function (k) {
+      var p = k.split('-'), t = new Date(+p[0], +p[1] - 1, +p[2]);
+      if (t.getDay() !== 0) return;
+      do { t.setDate(t.getDate() + 1); } while (out[ymd(t)]);
+      out[ymd(t)] = 1;
+    });
+    // 国民の休日：前日と翌日が祝日の平日
+    for (var t = new Date(y, 0, 2); t.getFullYear() === y; t.setDate(t.getDate() + 1)) {
+      var a = new Date(t), b = new Date(t); a.setDate(a.getDate() - 1); b.setDate(b.getDate() + 1);
+      if (!out[ymd(t)] && t.getDay() !== 0 && h[ymd(a)] && h[ymd(b)]) out[ymd(t)] = 1;
+    }
+    return (HOL[y] = out);
+  }
+  function isHoliday(iso) { var y = +String(iso).slice(0, 4); return !!(y && holidaysOf(y)[iso]); }
+  function isOff(t) { return t.getDay() === 0 || t.getDay() === 6 || isHoliday(ymd(t)); }
+  // 次の登校日（土日・祝日を飛ばす。夏休みなどの学校の休みは分からないので飛ばさない）
+  function nextSchoolDay(d) {
+    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
+    if (isNaN(t)) return d;
+    do { t.setDate(t.getDate() + 1); } while (isOff(t));
+    return ymd(t);
+  }
   function nextSlot(d, p) {
     var L = slots(), i = L.indexOf(p);
     if (i < 0 || i < L.length - 1) return { d: d, p: i < 0 ? p : L[i + 1] };
-    var x = String(d).split('-'), t = new Date(+x[0], +x[1] - 1, +x[2]);
-    if (isNaN(t)) return { d: d, p: L[0] };
-    do { t.setDate(t.getDate() + 1); } while (t.getDay() === 0 || t.getDay() === 6);
-    return { d: t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2) + '-' + ('0' + t.getDate()).slice(-2), p: L[0] };
+    return { d: nextSchoolDay(d), p: L[0] };
   }
   function lines(rows) {
     var L = slots(), slot = function (p) { var i = L.indexOf(p); return i < 0 ? 99 : i; };
@@ -1457,7 +1499,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function untab(sheetXml, on) { sheetXml = sheetXml.replace(/\s+tabSelected="\d"/g, ''); return on ? sheetXml.replace(/<sheetView\b/, '<sheetView tabSelected="1"') : sheetXml; }
 
-  g.Report = { addDays: addDays, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
+  g.Report = { addDays: addDays, isHoliday: isHoliday, nextSchoolDay: nextSchoolDay, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/report.js ここまで ▲ */
@@ -1935,7 +1977,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_0b8fe6a7296b';
+  var PAGE_BUILD = 'BUILD_6654dc50e879';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -3483,10 +3525,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function toggleStep(i, on) {
     snap();
+    // チェックした手順は、指導の欄の最後の行の続きに入れる（新しい行・次の時間帯には進めない）
     var rows = I.form.rep.s1.sd, t = C.SD_STEPS[i], last = rows[rows.length - 1];
     if (on) {
-      if (last && !last.t) last.t = t;
-      else { var nr = nextRow(last); nr.t = t; rows.push(nr); }
+      if (!last) rows.push({ d: today(), p: '', t: t });
+      else last.t = !last.t ? t : last.t + (/[。！？]$/.test(last.t) ? '' : '。') + t;
     } else {
       rows.forEach(function (r) { r.t = r.t.replace(t, '').replace(/^。|。(?=。)|。$/g, ''); });
       for (var k = rows.length - 1; k >= 0 && rows.length > 1; k--) if (!rows[k].t.trim()) rows.splice(k, 1);
@@ -3567,7 +3610,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }
       if ((x = t.closest('[data-rnext]'))) { snap();
         var nq = x.dataset.rnext.split(':'), nrows = I.form.rep[nq[0]][nq[1]], ni = +nq[2], base = nrows[ni];
-        var nr = nq[3] === 'day' ? { d: Rp.addDays(base.d || today(), 1), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
+        // 自動で入れる日付は土日・祝日を飛ばす（その日にしたい時は日付の欄で選び直せる）
+        var nr = nq[3] === 'day' ? { d: Rp.nextSchoolDay(base.d || today()), p: Rp.slots()[0], t: '' } : nextRow(base.p ? base : { d: base.d, p: Rp.slots()[0], t: '' });
         if (nq[3] === 'slot' && !base.p) nr = { d: base.d, p: Rp.slots()[0], t: '' };
         nrows.splice(ni + 1, 0, nr);
         rerenderPane(); refocus('rw-' + nq[0] + '-' + nq[1] + '-' + (ni + 1)); saveDraftSoon(); return true;
