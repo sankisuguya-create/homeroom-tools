@@ -244,6 +244,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#iq', 'いじめ');
   ok(await p.locator('.icard').count() < n0 && await p.locator('.icard .itg', { hasText: 'いじめ' }).count() > 0, '検索でカードが絞られ、種別のタグにいじめが出る');
   await p.fill('#iq', '');
+  await p.click('#ihset'); await p.click('[data-hga]'); await p.waitForFunction(n => document.querySelectorAll('.icard').length > n, n0);
+  ok(/全学年/.test(await p.textContent('#inote')), '事案の検索の設定で全学年にすると、ほかの学年の事案も出る');
+  await p.click('[data-hgr]'); await p.keyboard.press('Escape');
+  ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
   await p.click('#iadd'); await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');

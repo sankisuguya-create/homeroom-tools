@@ -825,7 +825,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_492204159f7a';
+var SERVER_BUILD = 'BUILD_401902d48042';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1353,6 +1353,12 @@ var apiSaveDraft = api_(function (grade, draft) {
 var apiLoadDraft = api_(function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
+});
+
+// 全校の事案（事案の一覧で、ほかの学年を探す時）
+var apiAllIncidents = api_(function () {
+  requireTeacher_();
+  return incidents_();
 });
 
 // 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）

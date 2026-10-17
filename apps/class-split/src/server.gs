@@ -532,6 +532,12 @@ var apiLoadDraft = api_(function (grade) {
   return v && v.draft ? v : null;
 });
 
+// 全校の事案（事案の一覧で、ほかの学年を探す時）
+var apiAllIncidents = api_(function () {
+  requireTeacher_();
+  return incidents_();
+});
+
 // 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
 // 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
 var apiSchoolKids = api_(function () {

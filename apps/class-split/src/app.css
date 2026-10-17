@@ -694,8 +694,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .icm .d{font-size:.78rem;color:var(--sub)}
 .icm .k{font-size:.82rem}
 .icm .k em{font-style:normal;font-size:.75em;margin-left:2px;color:var(--sub)}
-.itags{display:flex;flex-direction:column;align-items:stretch;gap:3px;min-width:6.5em}
-.itg{display:inline-flex;align-items:center;gap:3px;font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;background:var(--panel)}
+.itags{display:flex;flex-direction:column;align-items:stretch;gap:3px;flex:0 0 9.5em;width:9.5em}
+.ihs{position:relative}
+.iqc.on{border-bottom-color:var(--link)}
+.itg{display:inline-flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;background:var(--panel)}
 .itg svg{width:13px;height:13px;flex:none}
 .itg.ig{font-weight:700;justify-content:center}
 .ist.st-open{border-color:#C8641A;color:#8A3F06;font-weight:700}
