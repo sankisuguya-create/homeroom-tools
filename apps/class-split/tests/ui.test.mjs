@@ -123,6 +123,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('table.r.ro').count() === 0, `${w}x${h} 戻るで編集できる年度に戻る`);
   await p.locator('td.nm').first().click();
   ok(await p.locator('.kidpop table.h tbody tr').count() === 6, `${w}x${h} 名前を押すと窓が開き、経年の記録が6行`);
+  ok(await p.locator('.kidpop table.h th.hm').count() === 1, `${w}x${h} 経年の記録に備考の列`);
   await p.keyboard.press('Escape');
   ok(await p.locator('.kidpop').count() === 0, `${w}x${h} Escで窓を閉じる`);
   const cell = p.locator('td.cell').first();

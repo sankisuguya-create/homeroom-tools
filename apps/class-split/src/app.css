@@ -714,3 +714,4 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .icards.one .icard{grid-template-columns:1fr}
 .icards.one .itags{flex-direction:row;flex-wrap:wrap;width:auto;flex:none}
 .icards.one .itg{width:auto}
+.kidpop table.h td.hm,.kidpop table.h th.hm{text-align:left;white-space:pre-wrap;min-width:12em;max-width:28em;font-size:.85rem}
