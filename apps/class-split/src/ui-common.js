@@ -52,6 +52,25 @@
       onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
     });
   };
+  // クラス分けテストの点数から「賢い」を足す：学年で点数の上位（割合は年度ごと）。手動の印（k7m）は残し、どちらかで賢い。
+  // a.k7s＝点数で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
+  App.topIds = function (sc) {
+    var ids = Object.keys((sc && sc.s) || {}); if (!ids.length) return {};
+    ids.sort(function (x, y) { return sc.s[y] - sc.s[x]; });
+    var n = Math.max(1, Math.round(ids.length * (sc.top || g.CONFIG.SCORE_DEF.top))), cut = sc.s[ids[n - 1]], out = {};
+    ids.forEach(function (id) { if (sc.s[id] >= cut) out[id] = 1; }); // 同点は境目の点まで全員
+    return out;
+  };
+  App.applyScores = function (d) {
+    d.scores = d.scores || {};
+    (d.years || []).forEach(function (y) {
+      var top = App.topIds(d.scores[y.fy]);
+      y.rows.forEach(function (r) {
+        var a = r.a; if (!('k7m' in a)) a.k7m = a.k7 | 0;
+        if (top[r.id] && !a.k7m) { a.k7 = 1; a.k7s = 1; } else { a.k7 = a.k7m; delete a.k7s; }
+      });
+    });
+  };
   // 第一〜第三優先で比べる。keys の f が無いものは よみ で比べる。最後は よみ・ID
   App.byKeys = function (keys, order, a, b) {
     for (var i = 0; i < order.length; i++) {

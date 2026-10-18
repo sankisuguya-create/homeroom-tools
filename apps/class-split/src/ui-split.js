@@ -49,7 +49,7 @@
       S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
     });
-    if (!S.plans.length) { addGenerated(E.defaultGen(), new Map(), null); persist(); } // 最初の案もすぐ保存する
+    // 案がまだ無い時は、いきなり作らず、重み付けと並び順を決めてから作る（enter で設定の窓を開く）
   }
 
   function ctxFor(gen) { return E.prepare(S.P, gen); }
@@ -94,8 +94,11 @@
     { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
     { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
     { k: 'no', label: '旧出席番号', f: function (s) { return s.old < 0 ? 999 : s.no; } },
-    { k: 'kana', label: 'よみ（五十音）', f: null }
+    { k: 'kana', label: 'よみ（五十音）', f: null },
+    { k: 'plus', label: '＋付きが先', f: function (s) { return hasPlus(s) ? 0 : 1; } }
   ];
+  // 負担の＋（担任の負担が明確に増える印）が1つでもある児童
+  function hasPlus(s) { return C.ATTRS.some(function (at) { return at.heavy && (s.a[at.k] | 0) >= 2; }); }
   var DEF_ORDER = ['old', 'no', ''];
   function loadOrder() { try { var v = JSON.parse(localStorage.getItem('classSplit.order')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); }
   var ORDER = loadOrder();
@@ -143,7 +146,7 @@
         return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
           (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
             '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
-          '<section><h3>表示</h3><div class="rbar">' + btn('order', '並び順…', '', np) + btn('prt', '個人票を印刷…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
+          '<section><h3>表示</h3><div class="rbar">' + btn('prt', '個人票を印刷…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
           (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
@@ -170,13 +173,19 @@
     else h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
       '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>';
     // 編集中に毎回は使わない操作は「その他…」の窓へ（キーの近道はそのまま効く）
-    h += '<button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
+    h += '<button class="btn ordbtn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>⇅ 並び順…</button><button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
     if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
     return '<div class="bar">' + h + '</div>';
   }
 
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
+  // 案がまだ無い時の画面：設定の窓を開くボタンだけ
+  function renderSetup() {
+    App.$('main').innerHTML = '<div class="menu"><section><h2>' + App.st.grade + '年のクラス分け</h2><p>偏りの重み付けと、組の中の並び順を決めてから、案を作ります。</p>' +
+      '<button class="btn primary big" id="gen">重み付けと並び順を決めて、案を作る…</button> <button class="btn" data-go="menu">メニューに戻る</button></section></div>';
+  }
   function render() {
+    if (!S.plans.length) { renderSetup(); return; }
     App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
     App.saveState(); App.paintTrial();
     if (S.view === 'cmp') { renderCmp(); return; }
@@ -343,8 +352,8 @@
   }
 
   function genDialog() {
-    var gen = JSON.parse(JSON.stringify(S.lastGen)), p = S.plans[S.active];
-    var keep = S.view === 'plan' && p.locks.size;
+    var gen = JSON.parse(JSON.stringify(S.lastGen)), p = S.plans[S.active], O = ORDER.slice();
+    var keep = !!(p && S.view === 'plan' && p.locks.size);
     App.openDlg({
       focus: 'okbtn',
       html: function () {
@@ -359,6 +368,12 @@
           }).join('') + '</div></div>' +
           '<div><b>偏りの重み</b>（強いほど均等に分ける）<div class="gencols" style="margin-top:6px"><table>' + C.ATTRS.map(lvRow).join('') + '</table><table>' + C.EXTRA.map(lvRow).join('') + '</table></div></div>' +
           (Object.keys(gen.w).some(function (k) { return (gen.w[k] | 0) === C.MUST; }) ? '<div class="mustwarn">⚠ ' + C.MUST_WARN + '</div>' : '') +
+          // 組の中の並び順（カードを並べる順）。目立つ枠で、ここで決めてから作る
+          '<div class="ordbox"><b>組の中の並び順</b>（カードを並べる順。この端末に覚える）' + ['第一', '第二', '第三'].map(function (lab, i) {
+            return '<div class="ordrow"><b>' + lab + '</b><div class="lvs">' + SORT_KEYS.concat([{ k: '', label: 'なし' }]).map(function (q) {
+              return '<button class="lv" data-gord="' + i + ':' + q.k + '" aria-pressed="' + (O[i] === q.k) + '">' + q.label + '</button>';
+            }).join('') + '</div></div>';
+          }).join('') + '</div>' +
           '<div class="notebox">名前：案' + LET[S.letIdx % 26] + '（' + App.esc(E.autoName(gen, keep ? p.locks.size : 0)) + '）' + (keep ? '　今の案で固定した' + p.locks.size + '人はそのままの組に置きます' : '') + '</div>' +
           '<div class="acts"><button class="btn" data-act="reset">既定に戻す</button><span class="sp"></span><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button>' +
           '<button class="btn primary" data-act="ok" id="okbtn">この設定で作る<kbd>Enter</kbd></button></div></div></div>';
@@ -366,19 +381,43 @@
       click: function (t) {
         var x;
         if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); if (+x.dataset.lv === C.MUST) App.toast(C.MUST_WARN); return true; }
+        if ((x = t.closest('[data-gord]'))) { var gp = x.dataset.gord.split(':'); O[+gp[0]] = gp[1]; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-hard]'))) { gen.hard[x.dataset.hard] = !gen.hard[x.dataset.hard]; App.refreshDlg(); return true; }
         if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); App.refreshDlg(); return true; }
         return false;
       },
       onOk: function () {
         App.closeDlg();
-        S.lastGen = gen;
+        S.lastGen = gen; ORDER = O;
+        try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
         var locked = keep ? (function () { var m = new Map(); p.locks.forEach(function (i) { m.set(i, p.asg[i]); }); return m; })() : new Map();
         var r = addGenerated(gen, locked, keep ? '案' + p.letter + 'の固定' : null);
-        render(); persist();
+        render(); persist(); deal();
         App.toast(planName(r.p) + 'を作りました（' + r.ms + 'ms）');
       }
     });
+  }
+
+  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードは画面を揺らして目立たせる。押すかキーで最後まで飛ばす
+  var DEAL = null;
+  function deal() {
+    var board = App.$('board'); if (!board) return;
+    var chips = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { chips.push(c); }); });
+    if (!chips.length) return;
+    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches, i = 0;
+    board.classList.add('dealing');
+    var done = function () { if (!DEAL) return; clearTimeout(DEAL.t); chips.forEach(function (c) { c.classList.add('dealt'); }); board.classList.remove('dealing'); document.removeEventListener('pointerdown', done, true); document.removeEventListener('keydown', done, true); DEAL = null; };
+    var step = function () {
+      if (!DEAL) return;
+      if (i >= chips.length) { done(); return; }
+      var c = chips[i++], plus = hasPlus(S.P.kids[+c.dataset.i]);
+      c.classList.add('dealt');
+      if (plus) { c.classList.add('plusin'); if (!calm) { var m = App.$('main'); m.classList.remove('shake'); void m.offsetWidth; m.classList.add('shake'); } }
+      DEAL.t = setTimeout(step, plus ? 420 : 28);
+    };
+    DEAL = { t: 0 };
+    document.addEventListener('pointerdown', done, true); document.addEventListener('keydown', done, true);
+    step();
   }
 
   function renameDialog(pi) {
@@ -775,7 +814,9 @@
           '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
         return;
       }
-      build(); document.body.classList.add('fit'); render();
+      build(); document.body.classList.add('fit');
+      if (!S.plans.length) { renderSetup(); genDialog(); return; }
+      render();
     },
     leave: function () { document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },

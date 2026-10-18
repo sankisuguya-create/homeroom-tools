@@ -715,3 +715,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .icards.one .itags{flex-direction:row;flex-wrap:wrap;width:auto;flex:none}
 .icards.one .itg{width:auto}
 .kidpop table.h td.hm,.kidpop table.h th.hm{text-align:left;white-space:pre-wrap;min-width:12em;max-width:28em;font-size:.85rem}
+.cell.auto>*{opacity:.45}
+.scset{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:6px}
+.scset input{width:5.5em}
+.sctab{max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.sctab input.scin{width:5.5em}
+.ordbox{border:2px solid var(--link);border-radius:8px;padding:8px 10px;background:var(--fill)}
+.ordbox .ordrow{margin-top:4px}
+.btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
+.board.dealing .chip:not(.dealt){visibility:hidden}
+.board.dealing .chip.dealt{animation:dealin .18s ease-out}
+.chip.plusin{animation:plusin .6s ease-out}
+@keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@keyframes plusin{0%{transform:scale(1.35);box-shadow:0 0 0 6px #D7263D}100%{transform:none;box-shadow:none}}
+#main.shake{animation:shake .32s linear}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
+@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt,.chip.plusin{animation:none;outline:3px solid #D7263D}}
