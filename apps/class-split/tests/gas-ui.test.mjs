@@ -28,6 +28,12 @@ gas.ctx.importRoster(FY, rows);
 
 let fails = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
+// クラス分けに入る：案がまだ無ければ、設定の窓で作り、並べる動きを飛ばす
+const intoSplit = async (p) => {
+  await p.waitForSelector('.board .chip, #okbtn');
+  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); await p.keyboard.press('Shift'); }
+  await p.waitForFunction(() => !document.querySelector('.board.dealing'));
+};
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);
 const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
@@ -48,7 +54,7 @@ await p.waitForFunction(() => document.getElementById('save').textContent === '�
 const row = gas.db().getSheetByName('attrs_' + FY).data.find(r => r[0] === '50000101');
 ok(row && row[3] === 1, '配慮項目がシートに保存された');
 
-await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
 ok(await p.locator('.board .chip').count() === 90, 'クラス分け：90人');
 await p.waitForFunction(() => document.getElementById('save2') && document.getElementById('save2').textContent === '保存済み', null, { timeout: 5000 });
 ok(gas.call('apiBoot', 5).v.plans.ver >= 1 && gas.call('apiBoot', 5).v.plans.plans.length === 1, '最初の案がシートに保存された');
@@ -67,7 +73,7 @@ await p.waitForFunction(() => document.body.classList.contains('trying'));
 ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
 await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
 await p.locator('td.cell').first().click();
-await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
 ok(await p.locator('.bar .trial[aria-pressed="true"]').count() === 1, '試行：クラス分けの帯にも試行中の表示');
 ok(JSON.stringify(gas.db().sheets) === before, '試行中の操作はサーバーに送らない');
 await p.click('.bar .trial');
@@ -87,7 +93,7 @@ ok(gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), 
 ok(await p.locator('table.r tbody tr').count() === 31, '1組が31人に');
 
 // つける・離す（本番）：追加して保存すると、読み込み直して違反の判定に入る
-await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
 await p.keyboard.press('p'); await p.waitForSelector('#qa');
 await p.fill('#qa', '児童1-1'); await p.click('[data-pk="a:50000101"]');
 await p.fill('#qb', '児童1-3'); await p.click('[data-pk="b:50000103"]');

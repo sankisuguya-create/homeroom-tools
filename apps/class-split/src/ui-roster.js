@@ -42,17 +42,21 @@
   }
   // 程度を選ぶ窓（説明つき）
   function levelDialog(Y, r, at, cell) {
-    var s = D().kids[r.id], cur = at.k === 'sp' ? (r.a.sp ? 1 : 0) : r.a[at.k] | 0, fy = R.fy, grade = Y.grade, esc = App.esc;
+    var s = D().kids[r.id], cur = at.k === 'sp' ? (r.a.sp ? 1 : 0) : at.k === 'k7' ? r.a.k7m | 0 : r.a[at.k] | 0, fy = R.fy, grade = Y.grade, esc = App.esc;
     var opts = [[0, '無', '']].concat([[1, at.k === 'sp' ? 'あり' : App.mark(at, 1), (at.help || [])[1] || '']]).concat(at.max > 1 ? [[2, App.mark(at, 2), (at.help || [])[2] || '']] : []);
     App.openDlg({
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(at.label) + '" style="max-width:520px"><h2>' + esc(s.name) + 'の' + esc(at.label) + '</h2>' +
           '<div class="lvpick">' + opts.map(function (o) { return '<button type="button" class="lvopt" data-lvset="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '"><span class="ic">' + o[1] + '</span><span>' + esc(o[2]) + '</span></button>'; }).join('') + '</div>' +
+          (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? 'クラス分けテストの点数で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数の上位にも「賢い」が付きます。') +
+            '<div style="margin-top:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button></div></div>' : '') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
+        if (t.closest('[data-score]')) { App.closeDlg(); scoreDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
+        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }); return true; }
         if (at.k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; cell.innerHTML = v ? '<span class="spb">支</span>' : ''; }
         else { r.a[at.k] = v; cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : ''; }
         App.closeDlg();
@@ -93,6 +97,58 @@
         App.closeDlg();
         cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); });
+      }
+    });
+  }
+
+  // クラス分けテストの点数：出席番号順の表に手で入れるか、Excel などの列（点数だけ、または 番号・名前・点数）を貼る。
+  // 満点と上位の割合も決める。学年で上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
+  function scoreDialog(Y) {
+    var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
+    var F = { max: sc0.max || C.SCORE_DEF.max, top: sc0.top || C.SCORE_DEF.top, s: Object.assign({}, sc0.s || {}) };
+    var rows = Y.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
+    var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }); };
+    App.openDlg({
+      noEnter: true, focus: 'scPaste',
+      html: function () {
+        var tp = tops(), n = Object.keys(F.s).length;
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="クラス分けテストの点数" style="max-width:760px"><h2>クラス分けテストの点数（' + fy + '年度 ' + grade + '年）</h2>' +
+          '<div class="scset"><label>満点 <input type="number" id="scMax" min="1" max="10000" value="' + F.max + '"> 点</label>' +
+          '<label>学年で上位 <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％を「賢い」にする</label>' +
+          '<span class="note">入力 ' + n + '人・上位 ' + Object.keys(tp).length + '人（同点は含める）</span></div>' +
+          '<label class="ctxl">まとめて貼る（Excel などから。1行に1人：点数だけなら下の表の順、または「組・番号・点数」「名前・点数」）<textarea id="scPaste" rows="3" placeholder="例）1	1	85"></textarea></label>' +
+          '<div class="acts" style="margin-top:4px;justify-content:flex-start"><button type="button" class="btn" data-scpaste="1">貼った値を表に入れる</button></div>' +
+          '<div class="sctab"><table class="h"><thead><tr><th>組-番</th><th>名前</th><th>点数</th><th></th></tr></thead><tbody>' + rows.map(function (r) {
+            var v = F.s[r.id];
+            return '<tr><td>' + (r.cls + 1) + '-' + r.no + '</td><td>' + esc(d.kids[r.id].name) + '</td><td><input type="number" class="scin" data-sc="' + r.id + '" min="0" max="' + F.max + '" value="' + (v == null ? '' : v) + '"></td><td>' + (tp[r.id] ? App.mark(C.ATTRS.filter(function (a) { return a.k === 'k7'; })[0], 1) : '') + '</td></tr>';
+          }).join('') + '</tbody></table></div>' +
+          '<div class="note">空欄は点数なし（順位に入れない）。学力しんどさの印は変わりません。</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存</button></div></div></div>';
+      },
+      input: function (t) {
+        if (t.id === 'scMax') { var m = +t.value; if (m > 0) F.max = m; return; }
+        if (t.id === 'scTop') { var p = +t.value; if (p >= 1 && p <= 99) F.top = p / 100; return; }
+        if (t.dataset.sc) { if (t.value === '') delete F.s[t.dataset.sc]; else F.s[t.dataset.sc] = Math.max(0, Math.min(F.max, +t.value)); }
+      },
+      click: function (t) {
+        if (!t.closest('[data-scpaste]')) return false;
+        var lines = App.$('scPaste').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), bad = 0;
+        var byName = {}; rows.forEach(function (r) { byName[d.kids[r.id].name.replace(/[\s　]/g, '')] = r; });
+        lines.forEach(function (l, i) {
+          var c = l.split(/\t|,|\s+/).filter(Boolean), num = +c[c.length - 1], r = null;
+          if (!(num >= 0) || num > F.max) { bad++; return; }
+          if (c.length === 1) r = rows[i];
+          else if (c.length >= 3 && /^\d+$/.test(c[0]) && /^\d+$/.test(c[1])) r = rows.filter(function (x) { return x.cls + 1 === +c[0] && x.no === +c[1]; })[0];
+          else r = byName[c.slice(0, -1).join('').replace(/[\s　]/g, '')];
+          if (r) F.s[r.id] = num; else bad++;
+        });
+        App.refreshDlg(); App.toast(lines.length - bad + '人を入れました' + (bad ? '（' + bad + '行は読めませんでした）' : ''));
+        return true;
+      },
+      onOk: function () {
+        var v = { max: F.max, top: F.top, s: F.s };
+        d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
+        App.save(function () { return App.pf().setScores(fy, grade, v); });
       }
     });
   }
@@ -264,7 +320,7 @@
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span>' + App.nameBox(s.name) + '</td>' +
         '<td class="cell spc" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
-        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
+        C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
         '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
@@ -516,9 +572,10 @@
           return true;
         }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
-        r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
-        var v = r.a[k], fy = R.fy, grade = Y.grade;
-        x.innerHTML = v ? App.mark(at, v) : ''; // そのマスだけ書き換える（表を作り直さない）
+        if (k === 'k7') { r.a.k7m = r.a.k7m ? 0 : 1; App.applyScores(D()); } // 賢い：手動の印だけを切り替える（点数の印は残る）
+        else r.a[k] = (r.a[k] | 0) >= at.max ? 0 : (r.a[k] | 0) + 1; // 押すたびに 無→アイコン→アイコン＋→無
+        var v = k === 'k7' ? r.a.k7m : r.a[k], fy = R.fy, grade = Y.grade;
+        x.innerHTML = r.a[k] ? App.mark(at, r.a[k]) : ''; x.classList.toggle('auto', !!(k === 'k7' && r.a.k7s)); // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
         return true;

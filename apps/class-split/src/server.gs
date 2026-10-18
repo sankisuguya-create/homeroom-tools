@@ -219,6 +219,7 @@ var apiBoot = api_(function (grade) {
     carry: carry_(FY, grade, idset),
     transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
+    scores: scoresOf_(years),
     decision: dec ? { plan: String(dec.plan), at: String(dec.at), names: namesOf_(dec, FY, grade), named: !!String(dec.names || '') } : null
   };
 });
@@ -387,6 +388,25 @@ function isoDate_(v) {
 }
 
 // 配慮項目は編集できる年度だけ（決定前＝今年度、決定後＝来年度）。決定後の今年度は凍結
+// クラス分けテストの点数（年度・学年ごと）。{ max, top, s: { 児童ID: 点数 } }。上位の「賢い」は画面で決める（手動の賢いは消さない）
+function scoresOf_(years) {
+  var out = {};
+  years.forEach(function (y) { var v = getSetting_('scores_' + y.fy + '_' + y.grade, null); if (v) out[y.fy] = v; });
+  return out;
+}
+var apiSetScores = api_(function (fy, grade, v) {
+  requireTeacher_();
+  fy = +fy; grade = +grade;
+  var FY = CONFIG.fiscalYear(), dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
+  if (fy !== editable) throw userError_('この年度の点数は直せません');
+  var max = +v.max, top = +v.top, s = {};
+  if (!(max > 0 && max <= 10000)) throw userError_('満点が違います');
+  if (!(top > 0 && top < 1)) throw userError_('上位の割合が違います');
+  var ids = {}; rosterRows_(fy).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
+  Object.keys(v.s || {}).forEach(function (id) { var n = +v.s[id]; if (ids[id] && n >= 0 && n <= max) s[id] = n; });
+  return withLock_(function () { setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s }); return { ok: true }; });
+});
+
 var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
