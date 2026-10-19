@@ -327,7 +327,7 @@
       return '<div class="irow" data-row="' + at + '"><label class="idate" title="' + esc(Rp.md(r.d)) + '"><span>' + esc(mdShort(r.d)) + '</span><input type="date" data-rw="' + at + ':d" value="' + esc(r.d) + '" aria-label="日付"></label>' +
         '<select class="islot' + (r.p ? ' on' : '') + '" data-rw="' + at + ':p" aria-label="時間帯"><option value="">時間帯</option>' + Rp.slots().map(function (p) { return '<option' + (p === r.p ? ' selected' : '') + '>' + esc(p) + '</option>'; }).join('') +
         (r.p && Rp.slots().indexOf(r.p) < 0 ? '<option selected>' + esc(r.p) + '</option>' : '') + '</select>' +
-        '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
+        '<textarea data-rw="' + at + ':t" id="rw-' + sec + '-' + key + '-' + i + '" rows="1" maxlength="2000" placeholder="' + (i ? 'Shift+Enter で次の行' : '下の文を押すか、書く') + '">' + esc(r.t) + '</textarea>' +
         '<button type="button" class="ix" data-rdel="' + at + '" title="この行を消す" aria-label="この行を消す">' + IC.trash + '</button>' +
         // 日付の下：翌日の行を足す。時間帯の下：同じ日の次の時間帯の行を足す
         '<button type="button" class="inx" data-rnext="' + at + ':day" title="翌日の行を足す" aria-label="翌日の行を足す">' + IC.down2 + '</button>' +
@@ -557,10 +557,10 @@
     if (App.st.screen !== 'incidents' || !I.form || !(e.ctrlKey || e.metaKey) || e.shiftKey || (e.key !== 'z' && e.key !== 'Z')) return;
     if (t && /^(TEXTAREA|INPUT)$/.test(t.tagName) && t.type !== 'checkbox' && t.value === '' && undo()) e.preventDefault();
   });
-  // Enter で次の行（Shift+Enter は行の中で改行）。日本語の変換中は何もしない
+  // Shift+Enter で次の行（次の時間帯）を作る。Enter は欄の中で改行（ブラウザのまま）。日本語の変換中は何もしない
   document.addEventListener('keydown', function (e) {
     var t = e.target;
-    if (e.key !== 'Enter' || e.shiftKey || e.isComposing || e.keyCode === 229 || !t || t.tagName !== 'TEXTAREA' || !t.dataset.rw || !I.form) return;
+    if (e.key !== 'Enter' || !e.shiftKey || e.isComposing || e.keyCode === 229 || !t || t.tagName !== 'TEXTAREA' || !t.dataset.rw || !I.form) return;
     e.preventDefault();
     if (!t.value.trim()) return;
     var q = t.dataset.rw.split(':'), rows = I.form.rep[q[0]][q[1]], i = +q[2], r = rows[i];
@@ -568,6 +568,35 @@
     snap(); rows.splice(i + 1, 0, nextRow(r));
     rerenderPane(); refocus('rw-' + q[0] + '-' + q[1] + '-' + (i + 1)); saveDraftSoon();
   });
+  // ↑↓：欄の中では行を移り、いちばん上の行で↑なら前の欄（末尾）へ、いちばん下の行で↓なら次の欄（先頭）へ。欄は作らない。
+  // 折り返しの行も見分けるため、ブラウザに先に動かさせ、端の行にいた（カーソルが先頭・末尾に飛んだ）かで決める
+  document.addEventListener('keydown', function (e) {
+    var t = e.target, up = e.key === 'ArrowUp';
+    if ((!up && e.key !== 'ArrowDown') || e.shiftKey || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || !t || t.tagName !== 'TEXTAREA' || !t.dataset.rw || !I.form) return;
+    if (t.selectionStart !== t.selectionEnd) return;
+    var before = t.selectionStart, len = t.value.length;
+    var go = function () {
+      var all = Array.prototype.slice.call(document.querySelectorAll('#incForm textarea[data-rw],#inc2Form textarea[data-rw]')), j = all.indexOf(t) + (up ? -1 : 1), n = all[j];
+      if (!n) return;
+      n.focus(); var pos = up ? n.value.length : 0; n.setSelectionRange(pos, pos);
+    };
+    if (up ? before === 0 : before === len) { e.preventDefault(); go(); return; }
+    setTimeout(function () {
+      if (document.activeElement !== t) return;
+      var after = t.selectionStart;
+      if (up ? after === 0 && t.value.lastIndexOf('\n', before - 1) < 0 && !onLaterLine(t, before) : after === t.value.length && t.value.indexOf('\n', before) < 0 && !onEarlierLine(t, before)) go();
+    }, 0);
+  });
+  // カーソルの位置が、折り返しで2行目以降・最後の行より前にあるか（見えない写しの div で測る）
+  function caretTop(t, pos) {
+    var cs = getComputedStyle(t), m = document.createElement('div');
+    ['font', 'letterSpacing', 'lineHeight', 'padding', 'border', 'boxSizing', 'whiteSpace', 'wordBreak', 'overflowWrap'].forEach(function (k) { m.style[k] = cs[k]; });
+    m.style.position = 'absolute'; m.style.visibility = 'hidden'; m.style.whiteSpace = 'pre-wrap'; m.style.width = t.clientWidth + 'px';
+    m.textContent = t.value.slice(0, pos); var sp = document.createElement('span'); sp.textContent = '\u200b'; m.appendChild(sp);
+    document.body.appendChild(m); var y = sp.offsetTop; m.remove(); return y;
+  }
+  function onLaterLine(t, pos) { return caretTop(t, pos) > caretTop(t, 0) + 2; }
+  function onEarlierLine(t, pos) { return caretTop(t, pos) < caretTop(t, t.value.length) - 2; }
   document.addEventListener('dragstart', function (e) {
     var b = e.target && e.target.closest && e.target.closest('.iassist [data-ph]');
     if (b) { e.dataTransfer.setData('text/plain', b.dataset.ph); e.dataTransfer.effectAllowed = 'copy'; }

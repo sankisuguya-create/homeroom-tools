@@ -275,7 +275,13 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
   await p.selectOption('[data-rw="s1:kk:0:p"]', '1校時後');
   await p.click('#rw-s1-kk-0'); await p.keyboard.type('悪口'); await p.keyboard.press('Enter');
-  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, 'Enter で次の行ができる');
+  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 1 && (await p.inputValue('#rw-s1-kk-0')).includes('\n'), 'Enter は欄の中で改行');
+  await p.keyboard.press('Backspace'); await p.keyboard.press('ArrowDown');
+  ok(await p.evaluate(() => document.activeElement.id) === 'rw-s1-sd-0' && await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 1, '最後の行で↓を押すと次の欄へ移る（欄は作らない）');
+  await p.keyboard.press('ArrowUp');
+  ok(await p.evaluate(() => document.activeElement.id) === 'rw-s1-kk-0', '最初の行で↑を押すと前の欄へ戻る');
+  await p.keyboard.press('Shift+Enter');
+  ok(await p.locator('[data-rw^="s1:kk:"][data-rw$=":t"]').count() === 2, 'Shift+Enter で次の行ができる');
   ok(await p.inputValue('[data-rw="s1:kk:1:p"]') === '2校時', '足した行は、直前の行の次の時間帯になる');
   const kkd = await p.inputValue('[data-rw="s1:kk:1:d"]');
   await p.click('[data-rnext="s1:kk:1:day"]');
