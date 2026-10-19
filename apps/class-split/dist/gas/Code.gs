@@ -11,11 +11,14 @@
     CAP: 36,          // 1学級の人数の上限
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
+    // クラス分けテストの点数：満点と、学年で上位何割を「賢い」にするかの既定（年度・学年ごとに直せる）
+    SCORE_DEF: { max: 100, top: 0.1 },
     // 備考の定型の言葉（選ぶと備考の入力欄に入る）
     MEMO_PICKS: [
       { label: '発達特性', items: ['自閉症', '自閉傾向', 'ADHD傾向', 'LD傾向', '感覚過敏', 'こだわりが強い', '切り替えが苦手'] },
       { label: '性分', items: ['ぼーっとしている', '優しい', '世話焼き', 'おとなしい', '活発', '負けず嫌い', '気分の波がある', '人見知り', 'まじめ'] },
       { label: '身辺整理', items: ['忘れ物が多い', '提出物△', '整理整頓が苦手', '時間を守るのが苦手', '身支度に時間がかかる'] },
+      { label: '家庭環境', items: ['母子家庭', '父子家庭', '祖父母が養育', '離婚調停中', '別居中', '再婚家庭', '里親・施設から通学', '保護者が多忙', '保護者と連絡が取りにくい', '保護者が日本語に不慣れ'] },
       { label: '対人', items: ['友達が少ない', '一人でいることが多い', '手が出やすい', '言葉がきつい', 'リーダー格', '頼まれると断れない'] }
     ],
     MAX_LEVEL: 2,     // 配慮項目の程度：0＝なし、1＝アイコン、2＝アイコン＋。max: 1 の項目（ア・身・通・賢・リ・運）は有無だけ
@@ -977,7 +980,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_43e9846679a4';
+var SERVER_BUILD = 'BUILD_7a36e1c8d446';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1194,6 +1197,7 @@ var apiBoot = api_(function (grade) {
     carry: carry_(FY, grade, idset),
     transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
+    scores: scoresOf_(years),
     decision: dec ? { plan: String(dec.plan), at: String(dec.at), names: namesOf_(dec, FY, grade), named: !!String(dec.names || '') } : null
   };
 });
@@ -1362,6 +1366,25 @@ function isoDate_(v) {
 }
 
 // 配慮項目は編集できる年度だけ（決定前＝今年度、決定後＝来年度）。決定後の今年度は凍結
+// クラス分けテストの点数（年度・学年ごと）。{ max, top, s: { 児童ID: 点数 } }。上位の「賢い」は画面で決める（手動の賢いは消さない）
+function scoresOf_(years) {
+  var out = {};
+  years.forEach(function (y) { var v = getSetting_('scores_' + y.fy + '_' + y.grade, null); if (v) out[y.fy] = v; });
+  return out;
+}
+var apiSetScores = api_(function (fy, grade, v) {
+  requireTeacher_();
+  fy = +fy; grade = +grade;
+  var FY = CONFIG.fiscalYear(), dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
+  if (fy !== editable) throw userError_('この年度の点数は直せません');
+  var max = +v.max, top = +v.top, s = {};
+  if (!(max > 0 && max <= 10000)) throw userError_('満点が違います');
+  if (!(top > 0 && top < 1)) throw userError_('上位の割合が違います');
+  var ids = {}; rosterRows_(fy).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
+  Object.keys(v.s || {}).forEach(function (id) { var n = +v.s[id]; if (ids[id] && n >= 0 && n <= max) s[id] = n; });
+  return withLock_(function () { setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s }); return { ok: true }; });
+});
+
 var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;

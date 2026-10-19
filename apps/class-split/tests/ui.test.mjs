@@ -21,6 +21,12 @@ const browser = await chromium.launch(exe);
 let fails = 0;
 const C_STEP1 = '管理職に報告した。';
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
+// クラス分けに入る：案がまだ無ければ、設定の窓で作り、並べる動きを飛ばす
+const intoSplit = async (p) => {
+  await p.waitForSelector('.board .chip, #okbtn');
+  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); await p.keyboard.press('Shift'); }
+  await p.waitForFunction(() => !document.querySelector('.board.dealing'));
+};
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: w, height: h } });
@@ -34,7 +40,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 
   // クラス分け：全員が1画面に収まる
   await p.click('[data-go="split"]');
-  await p.waitForSelector('.board .chip');
+  await intoSplit(p);
   const fit = await p.evaluate(() => {
     const ch = [...document.querySelectorAll('.board .chip')];
     return { n: ch.length, vis: ch.filter(c => { const r = c.getBoundingClientRect(); return r.bottom <= innerHeight + 0.5 && r.right <= innerWidth + 0.5; }).length };
@@ -123,6 +129,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('table.r.ro').count() === 0, `${w}x${h} 戻るで編集できる年度に戻る`);
   await p.locator('td.nm').first().click();
   ok(await p.locator('.kidpop table.h tbody tr').count() === 6, `${w}x${h} 名前を押すと窓が開き、経年の記録が6行`);
+  ok(await p.locator('.kidpop table.h th.hm').count() === 1, `${w}x${h} 経年の記録に備考の列`);
   await p.keyboard.press('Escape');
   ok(await p.locator('.kidpop').count() === 0, `${w}x${h} Escで窓を閉じる`);
   const cell = p.locator('td.cell').first();
@@ -180,7 +187,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+  await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
   const r = await p.evaluate(() => { const ch = [...document.querySelectorAll('.board .chip')]; return [ch.length, ch.filter(c => c.getBoundingClientRect().bottom <= innerHeight + .5).length]; });
   ok(r[0] === 144 && r[1] === 144, `144人がすべて1画面に収まる（${r[1]}/${r[0]}）`);
   if (process.env.SHOT_DIR) await p.screenshot({ path: process.env.SHOT_DIR + '/split144.png' });
@@ -196,7 +203,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('[data-al="k1"]', '学習の支援'); await p.fill('[data-as="k1"]', '援');
   await p.click('#ssave');
   await p.waitForFunction(() => /設定を保存/.test(document.getElementById('toast').textContent));
-  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.legend');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
   ok((await p.locator('.legend').textContent()).includes('学習の支援'), '設定した項目の名前が凡例に出る');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="year"]');
   await p.click('[data-stab="year"]'); await p.waitForSelector('.empty:has-text("候補はありません")');
@@ -218,7 +225,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await p.waitForSelector('.board .chip');
+  await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
   await p.click('#smore'); await p.click('#decide');
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
@@ -295,6 +302,32 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.locator('[data-ivic]').nth(0).check();
   ok(await p.locator('#ixls', { hasText: '2人分' }).count() === 1, '2人選べば2つ作る');
   await p.keyboard.press('Escape');
+  await p.close();
+}
+// クラス分けテストの点数：賢いの角の窓から入れると、学年の上位に「賢い」が付く（手動の印・学力しんどさは変わらない）。案は設定してから作る
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="2"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k7"]');
+  const td = p.locator('td.cell[data-k="k7"]').first(), bb = await td.boundingBox();
+  const k1Before = await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count();
+  const autoBefore = await p.locator('td.cell.auto[data-k="k7"]').count();
+  await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-score]'); await p.waitForSelector('.sctab');
+  const n = await p.locator('.scin').count();
+  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String(i)).join('\n')); await p.click('[data-scpaste]');
+  await p.fill('#scTop', '10'); await p.locator('#scTop').dispatchEvent('input');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
+  const nAuto = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0]; return y.rows.filter(r => r.a.k7s).length; });
+  ok(nAuto >= 1 && nAuto <= Math.round(n * 0.1), `点数の上位1割に「賢い」が付く（${nAuto}人／${n}人。手動で付いている児童は数えない）`);
+  ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
+  ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
+  await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board.dealing');
+  ok(true, '作るとカードを1枚ずつ並べる');
+  await p.keyboard.press('Shift'); await p.waitForFunction(() => !document.querySelector('.board.dealing'));
+  ok(await p.locator('.board .chip').count() > 0 && await p.locator('#order.ordbtn').count() === 1, 'キーで並べる動きを飛ばせ、並び順のボタンは上の帯に出る');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
 await browser.close();

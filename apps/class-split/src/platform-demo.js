@@ -233,7 +233,8 @@
         fy: FY, grade: grade, years: years, kids: kids,
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
         pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
-        transfers: clone(S.transfers[grade] || [])
+        transfers: clone(S.transfers[grade] || []),
+        scores: clone((S.scores || {})[grade] || {})
       });
     },
     addTransfer: function (grade, x) { gen();
@@ -285,6 +286,7 @@
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
+    setScores: function (fy, grade, v) { S.scores = S.scores || {}; var g0 = grade - (fy - FY); (S.scores[g0] = S.scores[g0] || {})[fy] = clone(v); return later({ ok: true }); },
     allIncidents: function () { gen(); return later(clone(S.inc)); },
     schoolKids: function () { gen();
       var out = [];

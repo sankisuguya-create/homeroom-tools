@@ -31,7 +31,7 @@
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.screens[screen].enter(); });
+    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); });
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
