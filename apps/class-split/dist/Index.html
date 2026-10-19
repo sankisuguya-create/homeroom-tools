@@ -319,7 +319,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
 body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
 body[data-screen="split"] .hint{color:#ECECEC}
-:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
+body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
 .col{background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
