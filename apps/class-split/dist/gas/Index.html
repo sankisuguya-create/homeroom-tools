@@ -733,12 +733,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
 .board.dealing .chip:not(.dealt){visibility:hidden}
 .board.dealing .chip.dealt{animation:dealin .18s ease-out}
-.chip.plusin{animation:plusin .6s ease-out}
 @keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@keyframes plusin{0%{transform:scale(1.35);box-shadow:0 0 0 6px #D7263D}100%{transform:none;box-shadow:none}}
-#main.shake{animation:shake .32s linear}
-@keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
-@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt,.chip.plusin{animation:none;outline:3px solid #D7263D}}
+@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt{animation:none}}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -2200,7 +2196,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_7a36e1c8d446';
+  var PAGE_BUILD = 'BUILD_f769775ffe1c';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var warned = false;
 
@@ -4516,22 +4512,20 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     });
   }
 
-  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードは画面を揺らして目立たせる。押すかキーで最後まで飛ばす
+  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードを先に並べる。押すかキーで最後まで飛ばす
   var DEAL = null;
   function deal() {
     var board = App.$('board'); if (!board) return;
-    var chips = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { chips.push(c); }); });
+    var plus = [], rest = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { (hasPlus(S.P.kids[+c.dataset.i]) ? plus : rest).push(c); }); });
+    var chips = plus.concat(rest), i = 0;
     if (!chips.length) return;
-    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches, i = 0;
     board.classList.add('dealing');
     var done = function () { if (!DEAL) return; clearTimeout(DEAL.t); chips.forEach(function (c) { c.classList.add('dealt'); }); board.classList.remove('dealing'); document.removeEventListener('pointerdown', done, true); document.removeEventListener('keydown', done, true); DEAL = null; };
     var step = function () {
       if (!DEAL) return;
       if (i >= chips.length) { done(); return; }
-      var c = chips[i++], plus = hasPlus(S.P.kids[+c.dataset.i]);
-      c.classList.add('dealt');
-      if (plus) { c.classList.add('plusin'); if (!calm) { var m = App.$('main'); m.classList.remove('shake'); void m.offsetWidth; m.classList.add('shake'); } }
-      DEAL.t = setTimeout(step, plus ? 420 : 28);
+      chips[i++].classList.add('dealt');
+      DEAL.t = setTimeout(step, 28);
     };
     DEAL = { t: 0 };
     document.addEventListener('pointerdown', done, true); document.addEventListener('keydown', done, true);

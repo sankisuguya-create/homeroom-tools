@@ -398,22 +398,20 @@
     });
   }
 
-  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードは画面を揺らして目立たせる。押すかキーで最後まで飛ばす
+  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードを先に並べる。押すかキーで最後まで飛ばす
   var DEAL = null;
   function deal() {
     var board = App.$('board'); if (!board) return;
-    var chips = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { chips.push(c); }); });
+    var plus = [], rest = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { (hasPlus(S.P.kids[+c.dataset.i]) ? plus : rest).push(c); }); });
+    var chips = plus.concat(rest), i = 0;
     if (!chips.length) return;
-    var calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches, i = 0;
     board.classList.add('dealing');
     var done = function () { if (!DEAL) return; clearTimeout(DEAL.t); chips.forEach(function (c) { c.classList.add('dealt'); }); board.classList.remove('dealing'); document.removeEventListener('pointerdown', done, true); document.removeEventListener('keydown', done, true); DEAL = null; };
     var step = function () {
       if (!DEAL) return;
       if (i >= chips.length) { done(); return; }
-      var c = chips[i++], plus = hasPlus(S.P.kids[+c.dataset.i]);
-      c.classList.add('dealt');
-      if (plus) { c.classList.add('plusin'); if (!calm) { var m = App.$('main'); m.classList.remove('shake'); void m.offsetWidth; m.classList.add('shake'); } }
-      DEAL.t = setTimeout(step, plus ? 420 : 28);
+      chips[i++].classList.add('dealt');
+      DEAL.t = setTimeout(step, 28);
     };
     DEAL = { t: 0 };
     document.addEventListener('pointerdown', done, true); document.addEventListener('keydown', done, true);
