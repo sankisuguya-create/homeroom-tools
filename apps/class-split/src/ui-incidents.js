@@ -527,19 +527,30 @@
     I.focus = null;
   }
   // 最後に触った入力欄を覚え、記入補助を描き直す
+  // 押している間に補助の欄を描き直すと、欄の位置がずれて、離した時に別の欄（や補助の文）を押したことになる。
+  // 押している間に入った時は、離してから描き直す
+  var PDOWN = false, PEND = null;
+  document.addEventListener('pointerdown', function () { PDOWN = true; }, true);
+  document.addEventListener('pointerup', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
+  document.addEventListener('pointercancel', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
   document.addEventListener('focusin', function (e) {
     if (App.st.screen !== 'incidents' || !I.form) return;
+    if (PDOWN) { var ev = e; PEND = function () { if (document.activeElement === ev.target) onFocus(ev); }; return; }
+    onFocus(e);
+  });
+  function onFocus(e) {
+    if (!I.form) return;
     var t = e.target, was = I.focus;
     if (t && t.tagName === 'TEXTAREA' && t.dataset && t.dataset.rw) {
       var q = t.dataset.rw.split(':'); I.focus = q[0] + ':' + q[1] + ':' + q[2];
       // 経緯の最初の行が空なら、関係図の矢印から「Aが B」を入れておく
       var r = I.form.rep[q[0]][q[1]][+q[2]], ld = leads();
-      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length) typeIn(t, ld[0]);
+      if (q[0] === 's1' && q[1] === 'kk' && +q[2] === 0 && r && !r.t && ld.length && document.activeElement === t) typeIn(t, ld[0]);
     } else if (t && t.id === 'fKikan') I.focus = 'kikan';
     else return;
     if (was !== I.focus) showExtra();
     if (!was || was.split(':').slice(0, 2).join() !== I.focus.split(':').slice(0, 2).join()) renderAssist();
-  });
+  }
   // 空の入力欄で Ctrl+Z：文字の取り消しが無いので、行を足すなどの操作を戻す
   document.addEventListener('keydown', function (e) {
     var t = e.target;
@@ -801,7 +812,8 @@
       if ((x = t.closest('[data-iout]'))) { outDialog(incOf(I.sel), x.dataset.iout); return true; }
       if (t.closest('#cancelInc')) { dropDraft(); closeForm(); rerenderPane(); return true; }
       if ((x = t.closest('[data-mq]'))) { var nt = x.nextElementSibling, open = nt.hidden; nt.hidden = !open; x.setAttribute('aria-expanded', String(open)); return true; }
-      if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return true; }
+      // 日付：透明の入力欄の暦の印が枠いっぱいに広がっているので、押せばブラウザが暦を開く（GAS の枠の中では showPicker が使えないことがある）
+      if ((x = t.closest('.idate'))) { var di = x.querySelector('input'); if (t !== di && di && di.showPicker) { try { di.showPicker(); } catch (e) { di.focus(); } } return false; }
       if ((x = t.closest('[data-ty]'))) { snap();
         var ts = typesOf(I.form.type), ty = x.dataset.ty, k = ts.indexOf(ty);
         if (k >= 0) ts.splice(k, 1); else ts.push(ty);

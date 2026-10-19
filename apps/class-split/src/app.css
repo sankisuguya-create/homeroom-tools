@@ -740,3 +740,4 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .icm .k em.r-harm{color:#C0330A}.icm .k em.r-victim{color:#0F5EA8}.icm .k em.r-mutual{color:#7B3FA0}
 .ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
+.idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}

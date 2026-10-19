@@ -269,6 +269,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
+  await p.click('#rw-s1-hk-0'); { const bb = await p.locator('#rw-s1-kk-0').boundingBox(); await p.mouse.click(bb.x + 20, bb.y + 10); }
+  ok(await p.evaluate(() => document.activeElement.id) === 'rw-s1-kk-0' && await p.inputValue('#rw-s1-hk-0') === '', '発覚の次に経緯の欄を押すと経緯に入れる（発覚の欄に文が入らない）');
+  await p.fill('#rw-s1-kk-0', '');
   await p.fill('#rw-s1-hk-0', '訴えがあった'); await p.selectOption('[data-rw="s1:hk:0:p"]', '朝休み');
   await p.selectOption('[data-rw="s1:kk:0:p"]', '1校時後');
   await p.click('#rw-s1-kk-0'); await p.keyboard.type('悪口'); await p.keyboard.press('Enter');
