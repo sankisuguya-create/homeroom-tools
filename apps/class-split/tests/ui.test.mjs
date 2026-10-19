@@ -253,7 +253,16 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#iq', '');
   await p.click('#ihset'); await p.click('[data-hga]'); await p.waitForFunction(n => document.querySelectorAll('.icard').length > n, n0);
   ok(/全学年/.test(await p.textContent('#inote')), '事案の検索の設定で全学年にすると、ほかの学年の事案も出る');
+  await p.click('[data-hgr]');
+  await p.click('[data-hf="status:open"]');
+  ok(await p.locator('.icard').count() > 0 && await p.locator('.icard:not(.ic-open)').count() === 0, '対応の状況で絞れ、カードの枠は状況の色');
+  await p.click('[data-hf="status:open"]'); await p.click('[data-hf="levels:f2"]');
+  ok(await p.locator('.icard .ib2').count() === await p.locator('.icard').count(), 'いじめの段階を選ぶと、いじめの事案だけに絞る');
   await p.click('[data-hgr]'); await p.keyboard.press('Escape');
+  await p.selectOption('#isort', 'imp');
+  ok(await p.locator('.icard').first().evaluate(e => e.classList.contains('ic-open')), '重要度で並べると対応中が先');
+  ok(await p.locator('.icard em.rc').count() > 0, '加・被の1字を名前の前に出す');
+  await p.selectOption('#isort', 'new');
   ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
   await p.click('#iadd2nd');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');

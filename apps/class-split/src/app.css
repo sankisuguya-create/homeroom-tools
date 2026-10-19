@@ -728,3 +728,15 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .board.dealing .chip.dealt{animation:dealin .18s ease-out}
 @keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt{animation:none}}
+.icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
+.icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
+.icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
+.icard.ic-closed{border:2px solid #9AA3AB;padding:7px 9px}
+.icard em.rc{font-style:normal;font-weight:700;margin-right:1px}
+.ihsort{gap:6px}
+.ihsort span{white-space:nowrap;font-weight:700}
+.ihsort select{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:4px;padding:2px 4px;max-width:16em;background:var(--panel);color:var(--ink)}
+.icm .k em.rc{margin:0 1px 0 0;font-weight:700}
+.icm .k em.r-harm{color:#C0330A}.icm .k em.r-victim{color:#0F5EA8}.icm .k em.r-mutual{color:#7B3FA0}
+.ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
+@media (max-width:900px){.ihome{grid-template-columns:1fr}}
