@@ -311,7 +311,8 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
 body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
 body[data-screen="split"] .hint{color:#ECECEC}
-:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip){color:var(--ink);--sub:#616870}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
+body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
 .col{background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
@@ -725,9 +726,5 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
 .board.dealing .chip:not(.dealt){visibility:hidden}
 .board.dealing .chip.dealt{animation:dealin .18s ease-out}
-.chip.plusin{animation:plusin .6s ease-out}
 @keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@keyframes plusin{0%{transform:scale(1.35);box-shadow:0 0 0 6px #D7263D}100%{transform:none;box-shadow:none}}
-#main.shake{animation:shake .32s linear}
-@keyframes shake{0%,100%{transform:none}20%{transform:translate(-5px,2px)}40%{transform:translate(5px,-2px)}60%{transform:translate(-3px,1px)}80%{transform:translate(3px,-1px)}}
-@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt,.chip.plusin{animation:none;outline:3px solid #D7263D}}
+@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt{animation:none}}
