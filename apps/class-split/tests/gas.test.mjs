@@ -129,6 +129,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(got.roles['40000011'], 'mutual'); assert.equal(got.roles['40000013'], 'related');
     assert.equal(got.dateEnd, '2026-10-20', '期間の終わり'); assert.ok(got.detail.length > 1000 && got.detail.charAt(0) === "'", '詳細は長くても切らず、式にしない');
     assert.equal(call('apiUpdateIncident', 999, { url: got.url, diagram: dg }).ok, false);
+    assert.ok(got.rev, '事案に版が付く');
+    assert.equal(call('apiUpdateIncident', got.id, { url: got.url, date: got.date, type: got.type, diagram: got.diagram }, '2000-01-01T00:00:00.000Z').v.conflict, true, 'ほかの先生が先に直していたら上書きしない');
+    const up2 = call('apiUpdateIncident', got.id, { url: got.url, date: got.date, dateEnd: got.dateEnd, detail: got.detail, type: got.type, diagram: got.diagram }, got.rev);
+    assert.ok(up2.ok && !up2.v.conflict && up2.v.rev, '読んだ版のままなら直せる');
 
     // 特別支援学級の印：有無だけ
     assert.ok(call('apiSetAttr', FY, 4, '40000012', 'sp', 1).ok);
@@ -147,6 +151,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const assign = {}; rows.forEach((r, i) => { assign[r[0]] = i % 2; });
     assert.equal(call('apiDecide', 4, { name: 'x', assign }).ok, false, '転入生の組が無ければ決定しない');
     assign[tr.v.id] = 1;
+    ctx.append_('roster_' + (FY + 1), ctx.ROSTER_HEAD, [{ id8: '40000011', name: '途中で止まった行', kana: '', sex: '男', grade: 5, 'class': 1, no: 1 }]); // 前の決定が途中で止まった
     const d = call('apiDecide', 4, { name: '案A（標準）', assign });
     assert.ok(d.ok, d.err);
     assert.equal(call('apiAddTransfer', 4, { name: 'y' }).ok, false, '決定後は足せない');
@@ -203,6 +208,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     b = call('apiBoot', 4).v;
     assert.deepEqual(b.pairs.map(p => [p.t, p.a, p.b ?? p.k]), [['far', '40000011', '40000012'], ['fix', '40000013', 1]]);
     assert.ok(call('apiSavePairs', 4, [{ t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
+    assert.equal(call('apiSavePairs', 4, [], 0).v.conflict, true, 'つける・離すも、読んだ版より新しければ上書きしない');
     assert.equal(call('apiBoot', 4).v.pairs.length, 1, '置き換わる');
     // 経緯・定型の理由・添えた事案・何年生からを持つ（何年生からが無ければ今の学年）
     assert.ok(call('apiSavePairs', 4, [{ t: 'far', a: '40000011', b: '40000012', memo: '=前から', tags: ['家庭希望', '担任判断'], incs: [3, 5], since: 2 }, { t: 'near', a: '40000021', b: '40000022', memo: '' }]).ok);
@@ -251,7 +257,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     ctx.setSetting_('incdraft_b@edu.nishi.or.jp_4', { at: 'x', draft: { ids: ['40000011'] } });
     const pg = call('apiPurge', ['60000001', '60000009']);
     assert.deepEqual(Object.keys(ctx.getSetting_('scores_' + (FY - 1) + '_6', {}).s), ['60000002'], '点数から消した児童を外す');
-    assert.equal(ctx.getSetting_('incdraft_a@edu.nishi.or.jp_6', 1), null, '消した児童の入った書きかけは捨てる');
+    assert.equal(ctx.getSetting_('incdraft_a@edu.nishi.or.jp_6', 'なし'), 'なし', '消した児童の入った書きかけは行ごと捨てる');
     assert.ok(ctx.getSetting_('incdraft_b@edu.nishi.or.jp_4', null), 'ほかの書きかけは残す');
     assert.ok(pg.ok, pg.err);
     assert.equal(call('apiLeaveCandidates').v.length, 0);

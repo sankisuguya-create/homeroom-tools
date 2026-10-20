@@ -365,6 +365,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 名簿：マスの長押しでも、右下の角と同じ窓が開く（値は変えない）
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cc[data-k="k3"]');
+  const td = p.locator('td.cc[data-k="k3"]').first(), before = await td.innerHTML(), bb = await td.boundingBox();
+  await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); await p.waitForTimeout(700); await p.mouse.up();
+  ok(await p.locator('#layer .dlg').count() === 1 && await td.innerHTML() === before, 'マスを長押しすると窓が開き、値は変わらない');
+  await p.keyboard.press('Escape');
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

@@ -6,6 +6,9 @@
   var C = g.CONFIG;
   var PAGE_BUILD = '@@BUILD@@';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
+  var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
+  var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
+  var keepRev = function (x) { if (x && x.id != null && x.rev) incRev[x.id] = x.rev; return x; };
   var warned = false;
 
   function warnBuild(server) {
@@ -40,7 +43,8 @@
     listGrades: function () { return call('apiListGrades'); },
     boot: function (grade) {
       return call('apiBoot', grade).then(function (d) {
-        planVer[grade] = d.plans.ver || 0;
+        planVer[grade] = d.plans.ver || 0; pairsVer[grade] = d.pairsVer || 0;
+        (d.incidents || []).forEach(keepRev);
         d.plans = d.plans.plans || [];
         return d;
       });
@@ -57,8 +61,8 @@
         return r;
       });
     },
-    addIncident: function (x) { return call('apiAddIncident', x); },
-    updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
+    addIncident: function (x) { return call('apiAddIncident', x).then(keepRev); },
+    updateIncident: function (id, x) { return call('apiUpdateIncident', id, x, incRev[id] || '').then(function (r) { if (r.conflict) throw conflict(r.by, 'この事案'); return keepRev(r); }); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     saveDraft: function (grade, d) { return call('apiSaveDraft', grade, d); },
     loadDraft: function (grade) { return call('apiLoadDraft', grade); },
@@ -66,13 +70,13 @@
     build: PAGE_BUILD,
     schoolKids: function () { return call('apiSchoolKids'); },
     setScores: function (fy, grade, v) { return call('apiSetScores', fy, grade, v); },
-    allIncidents: function () { return call('apiAllIncidents'); },
+    allIncidents: function () { return call('apiAllIncidents').then(function (l) { l.forEach(keepRev); return l; }); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
     removeTransfer: function (grade, id) { return call('apiRemoveTransfer', grade, id); },
     importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
-    savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
+    savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs, pairsVer[grade] || 0).then(function (r) { if (r.conflict) throw conflict(r.by, 'つける・離す'); pairsVer[grade] = r.ver; return r; }); },
     undoDecide: function (grade) { return call('apiUndoDecide', grade); },
     setClassNames: function (grade, names) { return call('apiSetClassNames', grade, names); },
     settings: function () { return call('apiSettings'); },

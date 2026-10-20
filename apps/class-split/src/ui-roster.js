@@ -26,6 +26,20 @@
 
   // 備考：児童ごと・年度ごとの自由記述。決定で来年度に写る
   // 右下の角か（指でも押せるよう、角の三角より少し広くとる）
+  // 長押し（約0.5秒）でも角と同じ窓を開く。指やペンで角を狙わなくてよいように。開いたら、離した時の「押す」（値を変える）は捨てる
+  var LP = { t: 0, fired: false };
+  document.addEventListener('pointerdown', function (e) {
+    if (App.st.screen !== 'roster' || App.dlg) return;
+    var td = e.target.closest && e.target.closest('td.cc'); if (!td) return;
+    clearTimeout(LP.t); LP.fired = false;
+    var x0 = e.clientX, y0 = e.clientY;
+    LP.move = function (ev) { if (Math.abs(ev.clientX - x0) > 8 || Math.abs(ev.clientY - y0) > 8) clearTimeout(LP.t); };
+    document.addEventListener('pointermove', LP.move);
+    LP.t = setTimeout(function () { LP.fired = true; if (navigator.vibrate) { try { navigator.vibrate(15); } catch (er) { /* 無くてよい */ } } cornerDialog(td); }, 500);
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) { document.addEventListener(ev, function () { clearTimeout(LP.t); if (LP.move) document.removeEventListener('pointermove', LP.move); }); });
+  document.addEventListener('click', function (e) { if (LP.fired) { LP.fired = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('contextmenu', function (e) { if (App.st.screen === 'roster' && e.target.closest && e.target.closest('td.cc')) e.preventDefault(); }); // 長押しで出るメニューを止める
   function inCorner(td, e) { var q = td.getBoundingClientRect(), z = 18; return e.clientX >= q.right - z && e.clientY >= q.bottom - z; }
   // 角を押した時の窓：欄の種類ごとに、文字の入力・相手の選択・事案などをここに集める
   function cornerDialog(td) {
@@ -218,7 +232,7 @@
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
-          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押す：説明・経緯・事案などの窓（自動保存）。<br>' +
+          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押すか、マスを長押しする：説明・経緯・事案などの窓（文字を書く窓は「保存」で保存）。<br>' +
           '事案・つける離す・備考の欄は、どこを押しても窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },

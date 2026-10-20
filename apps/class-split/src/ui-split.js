@@ -403,7 +403,7 @@
   }
 
   // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードを先に並べる。押すかキーで最後まで飛ばす
-  var DEAL = null;
+  var DEAL = null, PRT_CLOSE = null;
   function deal() {
     var board = App.$('board'); if (!board) return;
     var plus = [], rest = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { (hasPlus(S.P.kids[+c.dataset.i]) ? plus : rest).push(c); }); });
@@ -515,7 +515,8 @@
       if (w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
     });
     if (over) box.querySelector('#pover').textContent = '　⚠ ' + over + 'か所が' + PRINT_MIN_PT + 'ptでも入りきりません（赤い点線の枠）';
-    var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); };
+    var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); PRT_CLOSE = null; };
+    PRT_CLOSE = close; // 画面を離れる時にも閉じる（Esc を握ったまま残さない）
     var onKey = function (e) { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); } };
     document.addEventListener('keydown', onKey, true);
     box.addEventListener('click', function (e) {
@@ -820,7 +821,7 @@
       if (!S.plans.length) { renderSetup(); genDialog(); return; }
       render();
     },
-    leave: function () { flush(); document.body.classList.remove('fit'); },
+    leave: function () { flush(); if (PRT_CLOSE) PRT_CLOSE(); if (DEAL) { clearTimeout(DEAL.t); DEAL = null; } document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
     click: function (t, e) {

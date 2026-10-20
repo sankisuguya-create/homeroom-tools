@@ -2117,7 +2117,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     allIncidents: function () { gen(); return later(clone(S.inc)); },
     schoolKids: function () { gen();
       var out = [];
-      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; var a = {}; C.ATTRS.forEach(function (at) { if (r.a[at.k]) a[at.k] = r.a[at.k]; if (r.a[at.k + '_t']) a[at.k + '_t'] = r.a[at.k + '_t']; }); out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls, a: a }); });
+      for (var gr = 1; gr <= 6; gr++) yearRows(FY, gr).forEach(function (r) { var s = S.kids[r.id]; var a = {}; C.ATTRS.forEach(function (at) { if (r.a[at.k]) a[at.k] = r.a[at.k]; }); out.push({ id: r.id, name: s.name, kana: s.kana, male: s.male, grade: gr, cls: r.cls, a: a }); });
       return later(out);
     },
     schoolIncidents: function () { gen();
@@ -2212,8 +2212,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_df0f309a67d2';
+  var PAGE_BUILD = 'BUILD_a23b04cc0286';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
+  var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
+  var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
+  var keepRev = function (x) { if (x && x.id != null && x.rev) incRev[x.id] = x.rev; return x; };
   var warned = false;
 
   function warnBuild(server) {
@@ -2248,7 +2251,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     listGrades: function () { return call('apiListGrades'); },
     boot: function (grade) {
       return call('apiBoot', grade).then(function (d) {
-        planVer[grade] = d.plans.ver || 0;
+        planVer[grade] = d.plans.ver || 0; pairsVer[grade] = d.pairsVer || 0;
+        (d.incidents || []).forEach(keepRev);
         d.plans = d.plans.plans || [];
         return d;
       });
@@ -2265,8 +2269,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return r;
       });
     },
-    addIncident: function (x) { return call('apiAddIncident', x); },
-    updateIncident: function (id, x) { return call('apiUpdateIncident', id, x); },
+    addIncident: function (x) { return call('apiAddIncident', x).then(keepRev); },
+    updateIncident: function (id, x) { return call('apiUpdateIncident', id, x, incRev[id] || '').then(function (r) { if (r.conflict) throw conflict(r.by, 'この事案'); return keepRev(r); }); },
     fetchTitle: function (url) { return call('apiFetchTitle', url); },
     saveDraft: function (grade, d) { return call('apiSaveDraft', grade, d); },
     loadDraft: function (grade) { return call('apiLoadDraft', grade); },
@@ -2274,13 +2278,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     build: PAGE_BUILD,
     schoolKids: function () { return call('apiSchoolKids'); },
     setScores: function (fy, grade, v) { return call('apiSetScores', fy, grade, v); },
-    allIncidents: function () { return call('apiAllIncidents'); },
+    allIncidents: function () { return call('apiAllIncidents').then(function (l) { l.forEach(keepRev); return l; }); },
     schoolIncidents: function () { return call('apiSchoolIncidents'); },
     decide: function (grade, plan) { return call('apiDecide', grade, plan); },
     addTransfer: function (grade, x) { return call('apiAddTransfer', grade, x); },
     removeTransfer: function (grade, id) { return call('apiRemoveTransfer', grade, id); },
     importRoster: function (fy, grade, rows) { return call('apiImportRoster', fy, grade, rows); },
-    savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs); },
+    savePairs: function (grade, pairs) { return call('apiSavePairs', grade, pairs, pairsVer[grade] || 0).then(function (r) { if (r.conflict) throw conflict(r.by, 'つける・離す'); pairsVer[grade] = r.ver; return r; }); },
     undoDecide: function (grade) { return call('apiUndoDecide', grade); },
     setClassNames: function (grade, names) { return call('apiSetClassNames', grade, names); },
     settings: function () { return call('apiSettings'); },
@@ -2697,6 +2701,20 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // 備考：児童ごと・年度ごとの自由記述。決定で来年度に写る
   // 右下の角か（指でも押せるよう、角の三角より少し広くとる）
+  // 長押し（約0.5秒）でも角と同じ窓を開く。指やペンで角を狙わなくてよいように。開いたら、離した時の「押す」（値を変える）は捨てる
+  var LP = { t: 0, fired: false };
+  document.addEventListener('pointerdown', function (e) {
+    if (App.st.screen !== 'roster' || App.dlg) return;
+    var td = e.target.closest && e.target.closest('td.cc'); if (!td) return;
+    clearTimeout(LP.t); LP.fired = false;
+    var x0 = e.clientX, y0 = e.clientY;
+    LP.move = function (ev) { if (Math.abs(ev.clientX - x0) > 8 || Math.abs(ev.clientY - y0) > 8) clearTimeout(LP.t); };
+    document.addEventListener('pointermove', LP.move);
+    LP.t = setTimeout(function () { LP.fired = true; if (navigator.vibrate) { try { navigator.vibrate(15); } catch (er) { /* 無くてよい */ } } cornerDialog(td); }, 500);
+  });
+  ['pointerup', 'pointercancel'].forEach(function (ev) { document.addEventListener(ev, function () { clearTimeout(LP.t); if (LP.move) document.removeEventListener('pointermove', LP.move); }); });
+  document.addEventListener('click', function (e) { if (LP.fired) { LP.fired = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  document.addEventListener('contextmenu', function (e) { if (App.st.screen === 'roster' && e.target.closest && e.target.closest('td.cc')) e.preventDefault(); }); // 長押しで出るメニューを止める
   function inCorner(td, e) { var q = td.getBoundingClientRect(), z = 18; return e.clientX >= q.right - z && e.clientY >= q.bottom - z; }
   // 角を押した時の窓：欄の種類ごとに、文字の入力・相手の選択・事案などをここに集める
   function cornerDialog(td) {
@@ -2889,7 +2907,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           (edit ? '<button class="btn" id="paste">名簿を貼る…</button>' : '') + '</div></section>' +
-          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押す：説明・経緯・事案などの窓（自動保存）。<br>' +
+          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押すか、マスを長押しする：説明・経緯・事案などの窓（文字を書く窓は「保存」で保存）。<br>' +
           '事案・つける離す・備考の欄は、どこを押しても窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
@@ -3342,8 +3360,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     if (ALLINC) return Promise.resolve(ALLINC);
     return Promise.all([App.pf().allIncidents(), loadSchool()]).then(function (r) { ALLINC = r[0]; return ALLINC; });
   }
-  // 事案の一覧で探す学年（この端末に覚える。空＝この学年だけ）
-  var HOME = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
+  // 事案の一覧で探す学年と絞り込み（開いている間だけ覚える。校務PCは共用なので、次の先生の画面に残さない。空＝この学年だけ）
+  var HOME = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
   function homeGrades() { return HOME.grades && HOME.grades.length ? HOME.grades : [D().grade]; }
   function homeOthers() { return homeGrades().some(function (g0) { return g0 !== D().grade; }); }
   function homeList() {
@@ -3376,7 +3394,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     { k: 'stale', label: '記録が止まっている順（解消を除き、最後の記録が古い順）', f: function (a, b) { var ca = ((a.report || {}).status === 'closed'), cb = ((b.report || {}).status === 'closed'); return (ca - cb) || (lastRec(a) < lastRec(b) ? -1 : lastRec(a) > lastRec(b) ? 1 : 0) || byNew(a, b); } },
     { k: 'grade', label: '学年（低い順）', f: function (a, b) { return ((gradesOf(a)[0] || 9) - (gradesOf(b)[0] || 9)) || byNew(a, b); } }
   ];
-  function saveHome() { try { localStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
+  function saveHome() { try { sessionStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
   function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length; }
   function refreshCards() {
     var cs = App.$('icards'); if (!cs) return;
@@ -3415,9 +3433,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }
     });
   }
-  // 関係する児童の検索の設定（この端末に覚える）：探す学年（空＝この学年だけ）と、候補の書き方
-  var SRCH = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
-  function saveSrch() { try { localStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
+  // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）と、候補の書き方
+  var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
+  function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
   function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
   var FMTS = [['gc', '3-2 田中 ハト'], ['name', '田中 ハト（3年2組）'], ['kana', '田中 ハト（たなか はと）3-2']];
   function srchDialog() {
@@ -3796,6 +3814,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function dropDraft() { clearTimeout(draftT); I.draft = null; var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, null); }, 'draft:' + gr); }
   function restoreDraft() {
+    HIST = []; // 前の記入の「戻す」を、書きかけに当てない
     var dr = I.draft && I.draft.draft; if (!dr) return;
     var f = dr.form;
     if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; ensureV(x); I.mode = 'add2'; I.sel = x.id; }
@@ -3810,6 +3829,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var PDOWN = false, PEND = null;
   document.addEventListener('pointerdown', function () { PDOWN = true; }, true);
   document.addEventListener('pointerup', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
+  // 指を離した知らせが届かない時（枠の外で離した・タブを切り替えた）に、押している印が残らないように
+  ['blur', 'visibilitychange'].forEach(function (ev) { (ev === 'blur' ? window : document).addEventListener(ev, function () { PDOWN = false; PEND = null; }); });
   document.addEventListener('pointercancel', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
   document.addEventListener('focusin', function (e) {
     if (App.st.screen !== 'incidents' || !I.form) return;
@@ -3930,6 +3951,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // ===== 始める =====
   function newForm(kid) {
+    HIST = [];
     var st = App.Diagram.state(null);
     if (kid) App.Diagram.add(st, kid);
     var rp = Rp.emptyReport(), d0 = today();
@@ -4623,7 +4645,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードを先に並べる。押すかキーで最後まで飛ばす
-  var DEAL = null;
+  var DEAL = null, PRT_CLOSE = null;
   function deal() {
     var board = App.$('board'); if (!board) return;
     var plus = [], rest = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { (hasPlus(S.P.kids[+c.dataset.i]) ? plus : rest).push(c); }); });
@@ -4735,7 +4757,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (w > room) el.style.transform = 'scaleX(' + (room / w).toFixed(3) + ')';
     });
     if (over) box.querySelector('#pover').textContent = '　⚠ ' + over + 'か所が' + PRINT_MIN_PT + 'ptでも入りきりません（赤い点線の枠）';
-    var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); };
+    var close = function () { document.removeEventListener('keydown', onKey, true); box.remove(); document.body.classList.remove('printing'); PRT_CLOSE = null; };
+    PRT_CLOSE = close; // 画面を離れる時にも閉じる（Esc を握ったまま残さない）
     var onKey = function (e) { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); close(); } };
     document.addEventListener('keydown', onKey, true);
     box.addEventListener('click', function (e) {
@@ -5040,7 +5063,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (!S.plans.length) { renderSetup(); genDialog(); return; }
       render();
     },
-    leave: function () { flush(); document.body.classList.remove('fit'); },
+    leave: function () { flush(); if (PRT_CLOSE) PRT_CLOSE(); if (DEAL) { clearTimeout(DEAL.t); DEAL = null; } document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
     click: function (t, e) {
