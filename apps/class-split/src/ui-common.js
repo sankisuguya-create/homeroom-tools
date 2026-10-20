@@ -55,6 +55,15 @@
   // クラス分けテストの点数から「賢い」を足す：学年で点数の上位（割合は年度ごと）。手動の印（k7m）は残し、どちらかで賢い。
   // a.k7s＝点数で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
   App.topIds = function (sc) {
+    // 順位で決める時：順位の付いた人数の上位（割合）まで。同じ順位は全員
+    if (sc && sc.use === 'rank') {
+      var rk = Object.keys(sc.r || {}); if (!rk.length) return {};
+      var nr = Math.max(1, Math.round(rk.length * (sc.top || g.CONFIG.SCORE_DEF.top))), o2 = {};
+      rk.sort(function (x, y) { return sc.r[x] - sc.r[y]; });
+      var cutR = sc.r[rk[nr - 1]];
+      rk.forEach(function (id) { if (sc.r[id] <= cutR) o2[id] = 1; });
+      return o2;
+    }
     var ids = Object.keys((sc && sc.s) || {}); if (!ids.length) return {};
     ids.sort(function (x, y) { return sc.s[y] - sc.s[x]; });
     var n = Math.max(1, Math.round(ids.length * (sc.top || g.CONFIG.SCORE_DEF.top))), cut = sc.s[ids[n - 1]], out = {};

@@ -419,6 +419,29 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 学力の順位：数字を打つとその位置へ、名前をドラッグして入れ替え。保存すると順位の上位に「賢い」
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="2"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k7"]');
+  const td = p.locator('td.cell[data-k="k7"]').first(), bb = await td.boundingBox();
+  await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-rank]'); await p.waitForSelector('#rklist');
+  const ids = () => p.locator('[data-rk]').evaluateAll(es => es.map(e => e.dataset.rk));
+  const n = (await ids()).length, last = (await ids())[n - 1];
+  await p.fill('[data-rkn="' + last + '"]', '1'); await p.keyboard.press('Enter');
+  ok((await ids())[0] === last, '順位の数字を打つと、その位置へ動く');
+  const before = await ids(), h1 = await p.locator('[data-rkh="' + before[1] + '"]').boundingBox(), h0 = await p.locator('[data-rk="' + before[0] + '"]').boundingBox();
+  await p.mouse.move(h1.x + 10, h1.y + h1.height / 2); await p.mouse.down(); await p.mouse.move(h1.x + 10, h0.y + 3, { steps: 6 }); await p.mouse.up();
+  const after = await ids();
+  ok(after[0] === before[1] && after[1] === before[0], '名前をドラッグして入れ替えられる');
+  await p.fill('#rkTop', '10'); await p.locator('#rkTop').dispatchEvent('input');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('#rklist'));
+  const res = await p.evaluate(top => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], sc = d.scores[d.fy]; return { use: sc.use, first: sc.r[top], auto: y.rows.filter(r => r.a.k7s).map(r => r.id) }; }, after[0]);
+  ok(res.use === 'rank' && res.first === 1 && (res.auto.includes(after[0]) || (await p.evaluate(id => App.st.data.years.filter(y => y.fy === App.st.data.fy)[0].rows.find(r => r.id === id).a.k7m, after[0]))), '保存すると順位で決め、1位の児童は「賢い」');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);
