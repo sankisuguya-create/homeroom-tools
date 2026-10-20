@@ -1,0 +1,67 @@
+/* 後から足した規則（事案の一覧・点数・知らせなど） */
+/* 本文の欄は、日付・時間帯の枠と下の二重の矢印を合わせた高さにそろえる */
+.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%;resize:none;overflow:hidden;line-height:1.5;min-height:2.3em;grid-row:1/3;grid-column:3;min-height:calc(2.3em + 1.15em);font-size:.92rem;line-height:1.45}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0;padding:2px 8px;grid-row:1;grid-column:4}
+.iqw{position:relative;flex:1;display:flex}
+.iqw input{flex:1;padding-right:18px}
+.iqc{position:absolute;right:1px;bottom:1px;width:0;height:0;padding:0;border:0;border-style:solid;border-width:0 0 12px 12px;border-color:transparent transparent #9AA3AB transparent;background:none;cursor:pointer}
+.iqc:hover{border-bottom-color:var(--link)}
+/* 事案管理の初めの画面：新規作成・検索と事案カード */
+
+.ihb{display:flex;align-items:center;gap:10px;padding:14px 18px;flex-direction:row}
+.ihb b{font-size:1.1rem}
+.ihb svg{width:24px;height:24px;flex:none}
+.ihs input{flex:1;border:0;background:none;font:inherit;font-size:1rem;outline:none;min-width:0}
+.ihs:focus-within{border-color:var(--link)}
+.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
+.icard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
+.icard:hover{border-color:var(--link)}
+.icm{display:flex;flex-direction:column;gap:2px;min-width:0}
+.icm .d{font-size:.78rem;color:var(--sub)}
+.icm .k{font-size:.82rem}
+.icm .k em{font-style:normal;font-size:.75em;margin-left:2px;color:var(--sub)}
+.itags{display:flex;flex-direction:column;align-items:stretch;gap:3px;flex:0 0 9.5em;width:9.5em}
+.ihs{position:relative}
+.iqc.on{border-bottom-color:var(--link)}
+.itg{display:inline-flex;align-items:center;gap:3px;overflow:hidden;text-overflow:ellipsis;font-size:.75rem;border:1px solid var(--line);border-radius:4px;padding:1px 6px;white-space:nowrap;background:var(--panel)}
+.itg svg{width:13px;height:13px;flex:none}
+.itg.ig{font-weight:700;justify-content:center}
+.ist.st-open{border-color:#C8641A;color:#8A3F06;font-weight:700}
+.ist.st-done{border-color:#2E8A4A;color:#1F5E33}
+.ist.st-watch{border-color:#1E6FD9;color:#14498F}
+.ist.st-closed{color:var(--sub)}
+.istat{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0}
+.istat .lab{margin:0 4px 0 8px;color:var(--sub);font-size:.85rem}
+.istat .lab:first-child{margin-left:0}
+.iback{margin-bottom:6px}
+@media (max-width:900px){.ihome{grid-template-columns:1fr}}
+.iwrap.solo{grid-template-columns:minmax(0,1fr)}
+.icards.one{grid-template-columns:1fr;margin-top:4px}
+.icards.one .icard{grid-template-columns:1fr}
+.icards.one .itags{flex-direction:row;flex-wrap:wrap;width:auto;flex:none}
+.icards.one .itg{width:auto}
+.kidpop table.h td.hm,.kidpop table.h th.hm{text-align:left;white-space:pre-wrap;min-width:12em;max-width:28em;font-size:.85rem}
+.cell.auto>*{opacity:.45}
+.scset{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:6px}
+.scset input{width:5.5em}
+.sctab{max-height:44vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
+.sctab input.scin{width:5.5em}
+.ordbox{border:2px solid var(--link);border-radius:8px;padding:8px 10px;background:var(--fill)}
+.ordbox .ordrow{margin-top:4px}
+.btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
+.chip.plusin{outline:3px solid #D7263D;outline-offset:1px}
+.icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
+.icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
+.icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
+.icard.ic-closed{border:2px solid #9AA3AB;padding:7px 9px}
+.icard em.rc{font-style:normal;font-weight:700;margin-right:1px}
+.ihsort{gap:6px}
+.ihsort span{white-space:nowrap;font-weight:700}
+.ihsort select{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:4px;padding:2px 4px;max-width:16em;background:var(--panel);color:var(--ink)}
+.icm .k em.rc{margin:0 1px 0 0;font-weight:700}
+.icm .k em.r-harm{color:#C0330A}.icm .k em.r-victim{color:#0F5EA8}.icm .k em.r-mutual{color:#7B3FA0}
+.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
+@media (max-width:900px){.ihome{grid-template-columns:1fr}}
+.idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
+#toast.stay{border:2px solid #B00020}
+#toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}

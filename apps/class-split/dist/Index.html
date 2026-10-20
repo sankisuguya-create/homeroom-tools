@@ -6,6 +6,10 @@
 <title>クラス替え</title>
 <style>
 /* ▼ src/app.css から。直すのは src のほう ▼ */
+/* class-split の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
+ * 規則を足す時は、その画面のファイルに足す。同じセレクタを2か所に書かない（build.py が確かめる）。 */
+/* ▼ css/01-base.css から ▼ */
+/* 土台（色の名前・文字・ボタン）とメニュー */
 /* 配置: メニュー → 名簿（年度・組・範囲の切替＋右に児童の記録）／クラス分け（全員を1画面に並べる盤面）。
    色分けは投影と色覚検証を白地で行ったため、明るい配色1種に固定する（docs/design.md §5） */
 :root{
@@ -57,13 +61,15 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .gbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:14px 0;font-size:1.3rem;font-weight:700;cursor:pointer}
 .gbtn[aria-pressed="true"]{border:3px solid var(--link);background:var(--fill);padding:12px 0}
 .gbtn small{display:block;font-size:.7rem;font-weight:400;color:var(--sub)}
-.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
 .big{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:22px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
 .big b{font-size:1.4rem}
 .big span{color:var(--sub);font-size:.9rem}
 .big:hover{border-color:var(--link)}
 @media (max-width:560px){.grades{grid-template-columns:repeat(3,1fr)}.bigs{grid-template-columns:1fr}}
-
+/* ▲ css/01-base.css ここまで ▲ */
+/* ▼ css/02-marks.css から ▼ */
+/* 配慮項目の印（アイコンの形） */
 /* ===== 印（頭文字＋色＋形。＋で程度） ===== */
 .b{position:relative;display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;font-size:.78em;font-weight:700;line-height:1;flex:none;vertical-align:middle;filter:drop-shadow(0 0 .6px #1A1A1A)}
 .b>i{position:absolute;inset:0;background:var(--c)}
@@ -106,19 +112,20 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .pentagon>em{top:.1em}
 .b.pill{width:2em}.pill>i{clip-path:inset(12% 0 round 999px)}
 .b.para{width:1.9em}.para>i{clip-path:polygon(25% 6%,100% 6%,75% 94%,0 94%)}
-.b.shell{width:2.15em}
-.bs>.b.shell{width:1.8em}
+
 /* 通：貝殻の形（上下がふくらんだ横長の形。左右の小さなとげは無し） */
 .shell>i{clip-path:polygon(2.0% 50.0%,6.0% 40.4%,10.0% 34.0%,14.0% 28.6%,18.0% 23.8%,22.0% 19.7%,26.0% 16.1%,30.0% 13.0%,34.0% 10.5%,38.0% 8.5%,42.0% 7.1%,46.0% 6.3%,50.0% 6.0%,54.0% 6.3%,58.0% 7.1%,62.0% 8.5%,66.0% 10.5%,70.0% 13.0%,74.0% 16.1%,78.0% 19.7%,82.0% 23.8%,86.0% 28.6%,90.0% 34.0%,94.0% 40.4%,98.0% 50.0%,94.0% 59.1%,90.0% 65.2%,86.0% 70.4%,82.0% 75.0%,78.0% 78.9%,74.0% 82.4%,70.0% 85.3%,66.0% 87.7%,62.0% 89.6%,58.0% 90.9%,54.0% 91.7%,50.0% 92.0%,46.0% 91.7%,42.0% 90.9%,38.0% 89.6%,34.0% 87.7%,30.0% 85.3%,26.0% 82.4%,22.0% 78.9%,18.0% 75.0%,14.0% 70.4%,10.0% 65.2%,6.0% 59.1%)}
-.b.shell{height:1.7em;margin:-.1em 0}
-.bs>.b.shell{height:1.45em;margin:0}
+.b.shell{width:2.15em;height:1.7em;margin:-.1em 0}
+.bs>.b.shell{width:1.8em;height:1.45em;margin:0}
 .octagon>i{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
 .shield>i{clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%)}
 .shield>em{top:-.1em}
 /* 事案の数字：点線の枠の上下左右の中央に置く */
 .jn{display:inline-flex;align-items:center;justify-content:center;min-width:1.25em;height:1.25em;border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 .15em;font-size:.82em;line-height:1;box-sizing:border-box;font-variant-numeric:tabular-nums;text-align:center}
 .band{display:inline-block;width:5px;height:1.2em;vertical-align:middle;margin-right:6px;border-radius:1px}
-
+/* ▲ css/02-marks.css ここまで ▲ */
+/* ▼ css/03-roster.css から ▼ */
+/* 名簿 */
 /* ===== 名簿 ===== */
 .rbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
 .tab{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
@@ -166,7 +173,9 @@ table.h tr.cur td{font-weight:700}
 .sugg{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:150px;overflow:auto}
 .sugg button{border:0;background:none;text-align:left;padding:3px 8px;cursor:pointer}
 .sugg button:hover{background:var(--fill)}
-
+/* ▲ css/03-roster.css ここまで ▲ */
+/* ▼ css/04-split.css から ▼ */
+/* クラス分けの盤面と児童カード */
 /* ===== クラス分け ===== */
 .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-bottom:6px}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
@@ -183,7 +192,7 @@ table.h tr.cur td{font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
 .board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
-.col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
+
 .head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .head.target{background:var(--fill)}
 .h1{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -222,7 +231,7 @@ table.h tr.cur td{font-weight:700}
 .nm{font-weight:700;white-space:nowrap;overflow:hidden;font-size:calc(var(--rowh)*.38);letter-spacing:-.02em}
 .side .chip .nm{font-size:20px}
 .bs{position:relative;font-size:var(--ic);margin:0 4px}
-.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
+
 /* 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は男女で同じ位置。縦に並ぶ児童でそろう */
 .bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
 .l2{display:flex;min-width:0;padding:0 4px 0 0}
@@ -232,7 +241,7 @@ table.h tr.cur td{font-weight:700}
 /* ＋のアイコン（学・欠・問・保）は大きくし、下へはみ出してよい */
 .chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3);transform-origin:50% 10%}
 .jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
-.bs>.b{width:1.25em;height:1.25em}
+.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%);width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
 /* 横幅はいちばん広い形（貝）にそろえ、ほかの形も横に広げる（縦はそのまま） */
 .b.b{width:2.15em}
@@ -251,7 +260,9 @@ table.cmp td.bad{color:var(--alert);font-weight:700}
 table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:left}
 .legend{font-size:.78rem;color:var(--sub);padding-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
 .legend .c{display:inline-flex;gap:3px;align-items:center}
-
+/* ▲ css/04-split.css ここまで ▲ */
+/* ▼ css/05-dialogs.css から ▼ */
+/* 浮く枠（窓）・設定 */
 /* ===== 浮く枠 ===== */
 .pop{position:fixed;inset:0;background:#1a1a1a66;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .dlg{background:var(--panel);border-radius:10px;padding:18px 20px;max-width:min(920px,100%);width:100%;box-shadow:0 10px 30px #0004;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto;box-sizing:border-box}
@@ -260,7 +271,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .side{display:flex;flex-direction:column;gap:6px;min-width:0}
 .side .lab{font-size:.9rem;color:var(--sub);font-variant-numeric:tabular-nums}
 .side .lab b{color:var(--ink);font-size:1.05rem}
-.side .chip{--rowh:52px;height:52px;cursor:default}
+
 .side .chip .bs{font-size:17px;--slot:1.7em}
 .side .chip .old{font-size:.8em}
 .side .chip.extra{border:2px dashed #A85800}
@@ -314,7 +325,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
 .hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
-
+/* ▲ css/05-dialogs.css ここまで ▲ */
+/* ▼ css/06-dark.css から ▼ */
+/* 名簿・クラス分けの黒い背景 */
 /* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
 body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
 body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
@@ -322,20 +335,22 @@ body[data-screen="split"] .hint{color:#ECECEC}
 :is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
 body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
-.col{background:#F7F8FA}
+.col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0;background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
 .col.nc1{background:#D9DFE6}
 .ncl{display:inline-block;background:#1A1A1A;color:#fff;border-radius:4px;padding:0 8px;letter-spacing:.05em}
 /* 名簿の表：横線に加えて縦線も薄く引く */
-body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
+
 body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}
 /* 黒地の凡例では、黒いアイコン（欠）が沈まないよう白い縁を付ける */
 body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 .5px #fff)}
-
+/* ▲ css/06-dark.css ここまで ▲ */
+/* ▼ css/07-roster-wide.css から ▼ */
+/* 名簿の表の大きさ・児童の窓・並び順 */
 /* ===== 名簿：表を広く・大きく。＋のアイコンは大きく、ふつうのアイコンは少しだけ小さく ===== */
 body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
 body[data-screen="roster"] table.r{font-size:17px}
-body[data-screen="roster"] table.r :is(th,td){padding:5px 6px}
+body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED;padding:5px 6px}
 /* マスの幅と高さを固定し、＋のアイコンは描くときだけ拡大する（行の高さ・列の幅を変えない） */
 body[data-screen="roster"] table.r td.cell{width:2.6em;min-width:2.6em;max-width:2.6em;height:38px;padding:0;box-sizing:border-box;overflow:visible}
 body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
@@ -349,7 +364,7 @@ body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertica
 table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
 table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
 table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
-.prm{display:inline-flex;gap:3px}
+
 :is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
 .prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
 .prm .pf{color:var(--alert);border-color:var(--alert)}
@@ -389,7 +404,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
 /* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
-.bigs{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
 .bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
 .bigs .big[data-go="roster"] b{font-size:2rem}
 .bigs .big[data-go="roster"] span{font-size:1rem}
@@ -397,6 +412,9 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .bigs .big[data-go="split"] b{font-size:1.1rem}
 .bigs .big[data-go="split"] span{font-size:.8rem}
 .bigs .big:only-child{grid-column:1/-1}
+/* ▲ css/07-roster-wide.css ここまで ▲ */
+/* ▼ css/08-diagram.css から ▼ */
+/* 事案の関係図と、名簿・カードの細部 */
 /* ===== 事案の関係図 ===== */
 .dg{display:flex;flex-direction:column;gap:6px}
 .dg-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -411,11 +429,11 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .dg-n{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:3px 8px;font-weight:700;white-space:nowrap;cursor:grab;font-size:15px;z-index:2}
 .dg-n.from{outline:3px solid #C0330A}
 .dg-n.pick{outline:3px solid var(--link);background:var(--fill)}
-.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px}
+
 .dg-n.card.f{border-radius:999px 14px 14px 999px}
 .dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
 .dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
-.dg-n.card{min-width:8em;box-sizing:border-box}
+.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px;min-width:8em;box-sizing:border-box}
 .dg-n.card .nm2 .ph{visibility:hidden}
 .dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
 .dg-gl.from{background:#C0330A}
@@ -440,13 +458,13 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
 .inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
 /* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
-.prm{display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
+.prm{display:inline-flex;gap:3px;display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
 .prm .pl{display:flex;gap:2px;align-items:center;white-space:nowrap;min-height:1.35em}
 .prm .pk{cursor:help}
 .prm .pk:hover{text-decoration:underline}
 .prm .pmore{color:var(--sub);margin-left:3px}
 .prd{display:flex;flex-direction:column;gap:10px}
-.prd h3{margin:0 0 4px;font-size:.95rem}
+
 .kcards{display:flex;flex-wrap:wrap;gap:6px}
 /* 児童カード */
 .kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
@@ -458,7 +476,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .kbtn{border:2px solid transparent;background:none;padding:2px;border-radius:10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;font:inherit}
 .kbtn.on{border-color:var(--link)}
 .kbtn .ksince{font-size:.75rem;color:var(--sub);padding-left:4px}
-.prd h3{display:flex;gap:8px;align-items:center}
+.prd h3{margin:0 0 4px;font-size:.95rem;display:flex;gap:8px;align-items:center}
 .prd h3 .btn{font-size:.8rem;padding:2px 8px;font-weight:400}
 .pdet{margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--soft)}
 .pmemo{white-space:pre-wrap}
@@ -493,7 +511,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 .board .chip:not(.trn)::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;background:linear-gradient(135deg,transparent 50%,#9aa1a8 50%);pointer-events:none;z-index:3}
 .board .chip.f:not(.trn)::after{right:-1px;bottom:-1px}
 /* 入れ替えの確認：カードの大きさをそろえる */
-.side .chip{width:min(100%,340px);box-sizing:border-box}
+.side .chip{--rowh:52px;height:52px;cursor:default;width:min(100%,340px);box-sizing:border-box}
 .side .chip .l2>.bs:first-child{--slot:1.9em}
 /* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
 .jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
@@ -511,6 +529,9 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .setcols{display:flex;gap:28px;flex-wrap:wrap}
 .setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
 .setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+/* ▲ css/08-diagram.css ここまで ▲ */
+/* ▼ css/09-incidents.css から ▼ */
+/* 事案管理 */
 /* ===== 事案管理 ===== */
 
 .iwrap{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;padding:10px 12px 24px;align-items:start}
@@ -522,13 +543,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .ifold:hover{border-color:var(--link);color:var(--link)}
 .ib{display:inline-flex;align-items:center;gap:5px}
 .ib svg{flex:none}
-.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+
 .irow .ix:hover{color:#B00020;border-color:#B00020}
 .dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
 .dg-crop .dg-canvas{border:0;border-radius:0}
 .iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
 .iwrap.ac .iassist{border:0;background:none;padding:0}
-.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
+
 .iassist .lab{font-size:.78rem;color:var(--sub);margin:6px 0 2px}
 .iph.col{flex-direction:column;align-items:stretch}
 .iph.col button{border-radius:6px;text-align:left;padding:5px 8px;cursor:grab}
@@ -536,7 +557,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .ikids{display:flex;flex-wrap:wrap;gap:6px}
 .ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
 .dg.ro .dg-hint,.dg.ro .dg-bar .lvs,.dg.ro .dg-bar .btn{display:none}
-.dg.ro .dg-canvas{pointer-events:none}
+
 .ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
 .ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}
 .iit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;cursor:pointer;font:inherit;color:var(--ink)}
@@ -556,23 +577,22 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+
 .irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
 .irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
-.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
-.irow .ix{padding:2px 8px}
+
 .irep{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .irep legend{font-weight:700;padding:0 4px}
 .form label.chk,.irep label.chk{flex-direction:row;align-items:center;gap:6px;font-size:.9rem}
-.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px}
+
 .iopt summary{cursor:pointer;color:var(--sub);font-size:.9rem}
-.dlg.iout{max-width:900px;width:92vw}
+
 table.icopy{border-collapse:collapse;width:100%;font-size:.88rem}
 table.icopy th,table.icopy td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overflow:auto}
 @media (max-width:900px){.iwrap,.iwrap.lc,.iwrap.ac,.iwrap.lc.ac{grid-template-columns:1fr}.ilist,.iassist{position:static;max-height:40vh}}
-.dlg.iout{max-height:90vh;overflow:auto}
+.dlg.iout{max-width:900px;width:92vw;max-height:90vh;overflow:auto}
 table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
 .iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
@@ -589,12 +609,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ish{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
 .ish b{font-size:1.05rem}
 .ish span{font-size:.85rem;color:var(--sub);font-weight:400}
-.iaw{border-left:4px solid var(--sc,#5B6670)}
+.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px;border-left:4px solid var(--sc,#5B6670)}
 .irow.cur{background:var(--fill);outline:2px solid var(--sc)}
-.irow textarea{resize:none;overflow:hidden;line-height:1.5;min-height:2.3em}
+
 .islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .islot.on{border-style:solid;color:var(--ink)}
-.irx{grid-column:1/-1}
+
 .irx:empty{display:none}
 .islots{display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 4px}
 .islots button{min-width:2.2em;height:2em;font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);border-radius:5px;cursor:pointer;color:var(--ink)}
@@ -605,17 +625,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
 .idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
-.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+
 .iq{display:flex;gap:6px}
 .iq input{flex:1}
-.dg-n.card.u{border-left-style:solid}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6;border-left-style:solid}
 .dg-n.unk .nt{font-size:1.15em}
 /* 日付は「月/日」の文字を見せ、日付の入力は透明にして重ねる（押すと暦が開く） */
 .idate{position:relative;display:flex;align-items:center;justify-content:center;height:2.3em;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:.85rem;cursor:pointer;overflow:hidden}
 .idate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0;cursor:pointer}
-.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
+
 .irow select.islot.on{border-style:solid;color:var(--ink)}
-.imodes{grid-template-columns:1fr !important}
+.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px;grid-template-columns:1fr !important}
 .imode{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap}
 .imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
 .imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
@@ -625,17 +645,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
 .dg-n.lite.u{border-left:1.5px dashed var(--ink)}
 .irow .idate,.irow select.islot{height:2.3em;box-sizing:border-box}
-.irow select.islot{padding:0 0 0 2px;font-size:.78rem}
-.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px}
-.inx:hover{color:var(--link);background:var(--fill)}
-.inx svg{width:18px;height:18px}
-.irow .inx:nth-of-type(1){grid-column:1}
-.irx{grid-row:3}
-.irow{row-gap:0}
-.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
-.inx svg{width:16px;height:16px}
-.irx:not(:empty){margin-top:4px}
+.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%;padding:0 0 0 2px;font-size:.78rem}
 
+.inx:hover{color:var(--link);background:var(--fill)}
+
+.irow .inx:nth-of-type(1){grid-column:1}
+.irx{grid-column:1/-1;grid-row:3}
+.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px;row-gap:0}
+.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px;height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:18px;height:18px;width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}
+/* ▲ css/09-incidents.css ここまで ▲ */
+/* ▼ css/10-print.css から ▼ */
+/* 個人票の印刷 */
 /* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
 #printbox .pbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);color:var(--ink);z-index:1}
@@ -681,16 +703,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-rs::after{content:'';width:46px;height:4px;border-radius:2px;background:var(--line);margin-top:3px}
 .dg-rs:hover::after{background:var(--link)}
 .dg.ro .dg-rs{display:none}
-.dg.ro .dg-canvas{aspect-ratio:2/1;height:auto !important}
+.dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
+/* ▲ css/10-print.css ここまで ▲ */
+/* ▼ css/11-later.css から ▼ */
+/* 後から足した規則（事案の一覧・点数・知らせなど） */
 /* 本文の欄は、日付・時間帯の枠と下の二重の矢印を合わせた高さにそろえる */
-.irow textarea{grid-row:1/3;grid-column:3;min-height:calc(2.3em + 1.15em);font-size:.92rem;line-height:1.45}
-.irow .ix{grid-row:1;grid-column:4}
+.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%;resize:none;overflow:hidden;line-height:1.5;min-height:2.3em;grid-row:1/3;grid-column:3;min-height:calc(2.3em + 1.15em);font-size:.92rem;line-height:1.45}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0;padding:2px 8px;grid-row:1;grid-column:4}
 .iqw{position:relative;flex:1;display:flex}
 .iqw input{flex:1;padding-right:18px}
 .iqc{position:absolute;right:1px;bottom:1px;width:0;height:0;padding:0;border:0;border-style:solid;border-width:0 0 12px 12px;border-color:transparent transparent #9AA3AB transparent;background:none;cursor:pointer}
 .iqc:hover{border-bottom-color:var(--link)}
 /* 事案管理の初めの画面：新規作成・検索と事案カード */
-.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px}
+
 .ihb{display:flex;align-items:center;gap:10px;padding:14px 18px;flex-direction:row}
 .ihb b{font-size:1.1rem}
 .ihb svg{width:24px;height:24px;flex:none}
@@ -743,11 +768,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihsort select{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:4px;padding:2px 4px;max-width:16em;background:var(--panel);color:var(--ink)}
 .icm .k em.rc{margin:0 1px 0 0;font-weight:700}
 .icm .k em.r-harm{color:#C0330A}.icm .k em.r-victim{color:#0F5EA8}.icm .k em.r-mutual{color:#7B3FA0}
-.ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
+.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
 #toast.stay{border:2px solid #B00020}
 #toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
+/* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
