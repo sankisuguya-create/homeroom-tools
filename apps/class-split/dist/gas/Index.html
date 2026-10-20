@@ -687,7 +687,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pc-fam div{border-bottom:.2mm solid #000;display:flex;align-items:center;justify-content:center;white-space:nowrap}
 .pc-fam div:last-child{border-bottom:0}
 @media print{
-  @page{size:A4 portrait;margin:0}
+  @page{size:210mm 297mm;margin:0} /* A4 縦を寸法で指定する（用紙の名前より、ブラウザが用紙と倍率を合わせやすい） */
   body.printing>*:not(#printbox){display:none!important}
   body.printing{background:#fff!important}
   #printbox{position:static;background:none;overflow:visible}
@@ -704,6 +704,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-rs:hover::after{background:var(--link)}
 .dg.ro .dg-rs{display:none}
 .dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
+.pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
 /* ▲ css/10-print.css ここまで ▲ */
 /* ▼ css/11-later.css から ▼ */
 /* 後から足した規則（事案の一覧・点数・知らせなど） */
@@ -2249,7 +2250,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_bcc71c594442';
+  var PAGE_BUILD = 'BUILD_186871dca88d';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4772,7 +4773,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     }
     var box = document.createElement('div');
     box.id = 'printbox';
-    box.innerHTML = '<div class="pbar"><b>個人票の印刷（' + total + '枚・' + pages.length + 'ページ）</b><span id="pover"></span><span class="sp"></span>' +
+    box.innerHTML = '<div class="pbar"><b>個人票の印刷（' + total + '枚・' + pages.length + 'ページ）</b><span id="pover"></span><span class="pnote">印刷の設定は「用紙 A4」「倍率 100%（実際のサイズ）」「余白 なし」。「用紙に合わせる」にすると大きさが変わります</span><span class="sp"></span>' +
       '<button class="btn primary" id="pgo">印刷する</button><button class="btn" id="pclose">閉じる<kbd>Esc</kbd></button></div>' +
       '<div class="pages">' + pages.join('') + '</div>';
     document.body.appendChild(box);

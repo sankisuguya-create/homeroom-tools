@@ -171,7 +171,7 @@
     }
     var box = document.createElement('div');
     box.id = 'printbox';
-    box.innerHTML = '<div class="pbar"><b>個人票の印刷（' + total + '枚・' + pages.length + 'ページ）</b><span id="pover"></span><span class="sp"></span>' +
+    box.innerHTML = '<div class="pbar"><b>個人票の印刷（' + total + '枚・' + pages.length + 'ページ）</b><span id="pover"></span><span class="pnote">印刷の設定は「用紙 A4」「倍率 100%（実際のサイズ）」「余白 なし」。「用紙に合わせる」にすると大きさが変わります</span><span class="sp"></span>' +
       '<button class="btn primary" id="pgo">印刷する</button><button class="btn" id="pclose">閉じる<kbd>Esc</kbd></button></div>' +
       '<div class="pages">' + pages.join('') + '</div>';
     document.body.appendChild(box);

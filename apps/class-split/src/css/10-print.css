@@ -28,7 +28,7 @@
 .pc-fam div{border-bottom:.2mm solid #000;display:flex;align-items:center;justify-content:center;white-space:nowrap}
 .pc-fam div:last-child{border-bottom:0}
 @media print{
-  @page{size:A4 portrait;margin:0}
+  @page{size:210mm 297mm;margin:0} /* A4 縦を寸法で指定する（用紙の名前より、ブラウザが用紙と倍率を合わせやすい） */
   body.printing>*:not(#printbox){display:none!important}
   body.printing{background:#fff!important}
   #printbox{position:static;background:none;overflow:visible}
@@ -45,3 +45,4 @@
 .dg-rs:hover::after{background:var(--link)}
 .dg.ro .dg-rs{display:none}
 .dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
+.pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
