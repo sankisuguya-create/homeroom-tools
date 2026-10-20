@@ -6,6 +6,10 @@
 <title>クラス替え</title>
 <style>
 /* ▼ src/app.css から。直すのは src のほう ▼ */
+/* class-split の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
+ * 規則を足す時は、その画面のファイルに足す。同じセレクタを2か所に書かない（build.py が確かめる）。 */
+/* ▼ css/01-base.css から ▼ */
+/* 土台（色の名前・文字・ボタン）とメニュー */
 /* 配置: メニュー → 名簿（年度・組・範囲の切替＋右に児童の記録）／クラス分け（全員を1画面に並べる盤面）。
    色分けは投影と色覚検証を白地で行ったため、明るい配色1種に固定する（docs/design.md §5） */
 :root{
@@ -57,13 +61,15 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .gbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:14px 0;font-size:1.3rem;font-weight:700;cursor:pointer}
 .gbtn[aria-pressed="true"]{border:3px solid var(--link);background:var(--fill);padding:12px 0}
 .gbtn small{display:block;font-size:.7rem;font-weight:400;color:var(--sub)}
-.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
 .big{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:22px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
 .big b{font-size:1.4rem}
 .big span{color:var(--sub);font-size:.9rem}
 .big:hover{border-color:var(--link)}
 @media (max-width:560px){.grades{grid-template-columns:repeat(3,1fr)}.bigs{grid-template-columns:1fr}}
-
+/* ▲ css/01-base.css ここまで ▲ */
+/* ▼ css/02-marks.css から ▼ */
+/* 配慮項目の印（アイコンの形） */
 /* ===== 印（頭文字＋色＋形。＋で程度） ===== */
 .b{position:relative;display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1.5em;font-size:.78em;font-weight:700;line-height:1;flex:none;vertical-align:middle;filter:drop-shadow(0 0 .6px #1A1A1A)}
 .b>i{position:absolute;inset:0;background:var(--c)}
@@ -106,19 +112,20 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .pentagon>em{top:.1em}
 .b.pill{width:2em}.pill>i{clip-path:inset(12% 0 round 999px)}
 .b.para{width:1.9em}.para>i{clip-path:polygon(25% 6%,100% 6%,75% 94%,0 94%)}
-.b.shell{width:2.15em}
-.bs>.b.shell{width:1.8em}
+
 /* 通：貝殻の形（上下がふくらんだ横長の形。左右の小さなとげは無し） */
 .shell>i{clip-path:polygon(2.0% 50.0%,6.0% 40.4%,10.0% 34.0%,14.0% 28.6%,18.0% 23.8%,22.0% 19.7%,26.0% 16.1%,30.0% 13.0%,34.0% 10.5%,38.0% 8.5%,42.0% 7.1%,46.0% 6.3%,50.0% 6.0%,54.0% 6.3%,58.0% 7.1%,62.0% 8.5%,66.0% 10.5%,70.0% 13.0%,74.0% 16.1%,78.0% 19.7%,82.0% 23.8%,86.0% 28.6%,90.0% 34.0%,94.0% 40.4%,98.0% 50.0%,94.0% 59.1%,90.0% 65.2%,86.0% 70.4%,82.0% 75.0%,78.0% 78.9%,74.0% 82.4%,70.0% 85.3%,66.0% 87.7%,62.0% 89.6%,58.0% 90.9%,54.0% 91.7%,50.0% 92.0%,46.0% 91.7%,42.0% 90.9%,38.0% 89.6%,34.0% 87.7%,30.0% 85.3%,26.0% 82.4%,22.0% 78.9%,18.0% 75.0%,14.0% 70.4%,10.0% 65.2%,6.0% 59.1%)}
-.b.shell{height:1.7em;margin:-.1em 0}
-.bs>.b.shell{height:1.45em;margin:0}
+.b.shell{width:2.15em;height:1.7em;margin:-.1em 0}
+.bs>.b.shell{width:1.8em;height:1.45em;margin:0}
 .octagon>i{clip-path:polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)}
 .shield>i{clip-path:polygon(0 0,100% 0,100% 55%,50% 100%,0 55%)}
 .shield>em{top:-.1em}
 /* 事案の数字：点線の枠の上下左右の中央に置く */
 .jn{display:inline-flex;align-items:center;justify-content:center;min-width:1.25em;height:1.25em;border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 .15em;font-size:.82em;line-height:1;box-sizing:border-box;font-variant-numeric:tabular-nums;text-align:center}
 .band{display:inline-block;width:5px;height:1.2em;vertical-align:middle;margin-right:6px;border-radius:1px}
-
+/* ▲ css/02-marks.css ここまで ▲ */
+/* ▼ css/03-roster.css から ▼ */
+/* 名簿 */
 /* ===== 名簿 ===== */
 .rbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
 .tab{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
@@ -166,7 +173,9 @@ table.h tr.cur td{font-weight:700}
 .sugg{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:150px;overflow:auto}
 .sugg button{border:0;background:none;text-align:left;padding:3px 8px;cursor:pointer}
 .sugg button:hover{background:var(--fill)}
-
+/* ▲ css/03-roster.css ここまで ▲ */
+/* ▼ css/04-split.css から ▼ */
+/* クラス分けの盤面と児童カード */
 /* ===== クラス分け ===== */
 .bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-bottom:6px}
 .tabs{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
@@ -183,7 +192,7 @@ table.h tr.cur td{font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
 .board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
-.col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0}
+
 .head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .head.target{background:var(--fill)}
 .h1{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -222,7 +231,7 @@ table.h tr.cur td{font-weight:700}
 .nm{font-weight:700;white-space:nowrap;overflow:hidden;font-size:calc(var(--rowh)*.38);letter-spacing:-.02em}
 .side .chip .nm{font-size:20px}
 .bs{position:relative;font-size:var(--ic);margin:0 4px}
-.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%)}
+
 /* 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は男女で同じ位置。縦に並ぶ児童でそろう */
 .bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
 .l2{display:flex;min-width:0;padding:0 4px 0 0}
@@ -232,7 +241,7 @@ table.h tr.cur td{font-weight:700}
 /* ＋のアイコン（学・欠・問・保）は大きくし、下へはみ出してよい */
 .chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3);transform-origin:50% 10%}
 .jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
-.bs>.b{width:1.25em;height:1.25em}
+.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%);width:1.25em;height:1.25em}
 .bs>.b.pill,.bs>.b.para{width:1.3em}
 /* 横幅はいちばん広い形（貝）にそろえ、ほかの形も横に広げる（縦はそのまま） */
 .b.b{width:2.15em}
@@ -251,7 +260,9 @@ table.cmp td.bad{color:var(--alert);font-weight:700}
 table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:left}
 .legend{font-size:.78rem;color:var(--sub);padding-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
 .legend .c{display:inline-flex;gap:3px;align-items:center}
-
+/* ▲ css/04-split.css ここまで ▲ */
+/* ▼ css/05-dialogs.css から ▼ */
+/* 浮く枠（窓）・設定 */
 /* ===== 浮く枠 ===== */
 .pop{position:fixed;inset:0;background:#1a1a1a66;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
 .dlg{background:var(--panel);border-radius:10px;padding:18px 20px;max-width:min(920px,100%);width:100%;box-shadow:0 10px 30px #0004;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto;box-sizing:border-box}
@@ -260,7 +271,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .side{display:flex;flex-direction:column;gap:6px;min-width:0}
 .side .lab{font-size:.9rem;color:var(--sub);font-variant-numeric:tabular-nums}
 .side .lab b{color:var(--ink);font-size:1.05rem}
-.side .chip{--rowh:52px;height:52px;cursor:default}
+
 .side .chip .bs{font-size:17px;--slot:1.7em}
 .side .chip .old{font-size:.8em}
 .side .chip.extra{border:2px dashed #A85800}
@@ -314,7 +325,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
 .hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
-
+/* ▲ css/05-dialogs.css ここまで ▲ */
+/* ▼ css/06-dark.css から ▼ */
+/* 名簿・クラス分けの黒い背景 */
 /* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
 body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
 body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
@@ -322,20 +335,22 @@ body[data-screen="split"] .hint{color:#ECECEC}
 :is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
 body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
-.col{background:#F7F8FA}
+.col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0;background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
 .col.nc1{background:#D9DFE6}
 .ncl{display:inline-block;background:#1A1A1A;color:#fff;border-radius:4px;padding:0 8px;letter-spacing:.05em}
 /* 名簿の表：横線に加えて縦線も薄く引く */
-body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED}
+
 body[data-screen="roster"] table.r :is(th,td):last-child{border-right:0}
 /* 黒地の凡例では、黒いアイコン（欠）が沈まないよう白い縁を付ける */
 body[data-screen="split"] .legend .b,body[data-screen="roster"] .legend .b{filter:drop-shadow(0 0 1px #fff) drop-shadow(0 0 .5px #fff)}
-
+/* ▲ css/06-dark.css ここまで ▲ */
+/* ▼ css/07-roster-wide.css から ▼ */
+/* 名簿の表の大きさ・児童の窓・並び順 */
 /* ===== 名簿：表を広く・大きく。＋のアイコンは大きく、ふつうのアイコンは少しだけ小さく ===== */
 body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
 body[data-screen="roster"] table.r{font-size:17px}
-body[data-screen="roster"] table.r :is(th,td){padding:5px 6px}
+body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED;padding:5px 6px}
 /* マスの幅と高さを固定し、＋のアイコンは描くときだけ拡大する（行の高さ・列の幅を変えない） */
 body[data-screen="roster"] table.r td.cell{width:2.6em;min-width:2.6em;max-width:2.6em;height:38px;padding:0;box-sizing:border-box;overflow:visible}
 body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
@@ -349,7 +364,7 @@ body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertica
 table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
 table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
 table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
-.prm{display:inline-flex;gap:3px}
+
 :is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
 .prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
 .prm .pf{color:var(--alert);border-color:var(--alert)}
@@ -389,7 +404,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .board .chip .jn{cursor:zoom-in}
 .board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
 /* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
-.bigs{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
 .bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
 .bigs .big[data-go="roster"] b{font-size:2rem}
 .bigs .big[data-go="roster"] span{font-size:1rem}
@@ -397,6 +412,9 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .bigs .big[data-go="split"] b{font-size:1.1rem}
 .bigs .big[data-go="split"] span{font-size:.8rem}
 .bigs .big:only-child{grid-column:1/-1}
+/* ▲ css/07-roster-wide.css ここまで ▲ */
+/* ▼ css/08-diagram.css から ▼ */
+/* 事案の関係図と、名簿・カードの細部 */
 /* ===== 事案の関係図 ===== */
 .dg{display:flex;flex-direction:column;gap:6px}
 .dg-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -411,11 +429,11 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .dg-n{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:3px 8px;font-weight:700;white-space:nowrap;cursor:grab;font-size:15px;z-index:2}
 .dg-n.from{outline:3px solid #C0330A}
 .dg-n.pick{outline:3px solid var(--link);background:var(--fill)}
-.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px}
+
 .dg-n.card.f{border-radius:999px 14px 14px 999px}
 .dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
 .dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
-.dg-n.card{min-width:8em;box-sizing:border-box}
+.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px;min-width:8em;box-sizing:border-box}
 .dg-n.card .nm2 .ph{visibility:hidden}
 .dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
 .dg-gl.from{background:#C0330A}
@@ -440,13 +458,13 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
 .inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
 /* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
-.prm{display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
+.prm{display:inline-flex;gap:3px;display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
 .prm .pl{display:flex;gap:2px;align-items:center;white-space:nowrap;min-height:1.35em}
 .prm .pk{cursor:help}
 .prm .pk:hover{text-decoration:underline}
 .prm .pmore{color:var(--sub);margin-left:3px}
 .prd{display:flex;flex-direction:column;gap:10px}
-.prd h3{margin:0 0 4px;font-size:.95rem}
+
 .kcards{display:flex;flex-wrap:wrap;gap:6px}
 /* 児童カード */
 .kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
@@ -458,7 +476,7 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .kbtn{border:2px solid transparent;background:none;padding:2px;border-radius:10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;font:inherit}
 .kbtn.on{border-color:var(--link)}
 .kbtn .ksince{font-size:.75rem;color:var(--sub);padding-left:4px}
-.prd h3{display:flex;gap:8px;align-items:center}
+.prd h3{margin:0 0 4px;font-size:.95rem;display:flex;gap:8px;align-items:center}
 .prd h3 .btn{font-size:.8rem;padding:2px 8px;font-weight:400}
 .pdet{margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--soft)}
 .pmemo{white-space:pre-wrap}
@@ -493,7 +511,7 @@ table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{backgroun
 .board .chip:not(.trn)::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;background:linear-gradient(135deg,transparent 50%,#9aa1a8 50%);pointer-events:none;z-index:3}
 .board .chip.f:not(.trn)::after{right:-1px;bottom:-1px}
 /* 入れ替えの確認：カードの大きさをそろえる */
-.side .chip{width:min(100%,340px);box-sizing:border-box}
+.side .chip{--rowh:52px;height:52px;cursor:default;width:min(100%,340px);box-sizing:border-box}
 .side .chip .l2>.bs:first-child{--slot:1.9em}
 /* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
 .jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
@@ -511,6 +529,9 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .setcols{display:flex;gap:28px;flex-wrap:wrap}
 .setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
 .setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+/* ▲ css/08-diagram.css ここまで ▲ */
+/* ▼ css/09-incidents.css から ▼ */
+/* 事案管理 */
 /* ===== 事案管理 ===== */
 
 .iwrap{display:grid;grid-template-columns:300px minmax(0,1fr) 280px;gap:12px;padding:10px 12px 24px;align-items:start}
@@ -522,13 +543,13 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .ifold:hover{border-color:var(--link);color:var(--link)}
 .ib{display:inline-flex;align-items:center;gap:5px}
 .ib svg{flex:none}
-.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0}
+
 .irow .ix:hover{color:#B00020;border-color:#B00020}
 .dg-crop{overflow:hidden;border:1px solid var(--line);border-radius:8px;background:#fff}
 .dg-crop .dg-canvas{border:0;border-radius:0}
 .iassist{position:sticky;top:8px;max-height:calc(100vh - 80px);overflow:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:8px}
 .iwrap.ac .iassist{border:0;background:none;padding:0}
-.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px}
+
 .iassist .lab{font-size:.78rem;color:var(--sub);margin:6px 0 2px}
 .iph.col{flex-direction:column;align-items:stretch}
 .iph.col button{border-radius:6px;text-align:left;padding:5px 8px;cursor:grab}
@@ -536,7 +557,7 @@ table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
 .ikids{display:flex;flex-wrap:wrap;gap:6px}
 .ikids .chip button{border:0;background:none;cursor:pointer;margin-left:4px}
 .dg.ro .dg-hint,.dg.ro .dg-bar .lvs,.dg.ro .dg-bar .btn{display:none}
-.dg.ro .dg-canvas{pointer-events:none}
+
 .ilist{display:flex;flex-direction:column;gap:4px;max-height:calc(100vh - 80px);overflow:auto;position:sticky;top:8px}
 .ify{font-weight:700;font-size:.85rem;color:var(--sub);margin:8px 0 2px}
 .iit{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 8px;cursor:pointer;font:inherit;color:var(--ink)}
@@ -556,23 +577,22 @@ table.irv{border-collapse:collapse;width:100%}
 table.irv th{white-space:nowrap;text-align:left;vertical-align:top;padding:3px 10px 3px 0;font-weight:400;color:var(--sub);width:1%}
 table.irv td{padding:3px 0;white-space:pre-wrap;vertical-align:top}
 .irows{display:flex;flex-direction:column;gap:6px}
-.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px}
+
 .irow input[type=date],.irow select{font:inherit;font-size:.8rem;padding:3px 2px;height:2.3em;box-sizing:border-box;min-width:0;width:100%}
 .irow input[type=date]::-webkit-calendar-picker-indicator{margin-left:0;padding:0}
 .iaddrow{align-self:flex-start}
-.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%}
-.irow .ix{padding:2px 8px}
+
 .irep{border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
 .irep legend{font-weight:700;padding:0 4px}
 .form label.chk,.irep label.chk{flex-direction:row;align-items:center;gap:6px;font-size:.9rem}
-.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px}
+
 .iopt summary{cursor:pointer;color:var(--sub);font-size:.9rem}
-.dlg.iout{max-width:900px;width:92vw}
+
 table.icopy{border-collapse:collapse;width:100%;font-size:.88rem}
 table.icopy th,table.icopy td{border-bottom:1px solid var(--line);padding:4px 6px;text-align:left;vertical-align:top}
 table.icopy pre{margin:0;white-space:pre-wrap;font:inherit;max-height:10em;overflow:auto}
 @media (max-width:900px){.iwrap,.iwrap.lc,.iwrap.ac,.iwrap.lc.ac{grid-template-columns:1fr}.ilist,.iassist{position:static;max-height:40vh}}
-.dlg.iout{max-height:90vh;overflow:auto}
+.dlg.iout{max-width:900px;width:92vw;max-height:90vh;overflow:auto}
 table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .iph{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 6px}
 .iph button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:2px 10px;cursor:pointer}
@@ -589,12 +609,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ish{display:flex;align-items:baseline;gap:10px;margin:0 0 6px}
 .ish b{font-size:1.05rem}
 .ish span{font-size:.85rem;color:var(--sub);font-weight:400}
-.iaw{border-left:4px solid var(--sc,#5B6670)}
+.iaw{font-weight:700;margin:4px 0 8px;padding:4px 8px;background:var(--fill);border-radius:4px;border-left:4px solid var(--sc,#5B6670)}
 .irow.cur{background:var(--fill);outline:2px solid var(--sc)}
-.irow textarea{resize:none;overflow:hidden;line-height:1.5;min-height:2.3em}
+
 .islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .islot.on{border-style:solid;color:var(--ink)}
-.irx{grid-column:1/-1}
+
 .irx:empty{display:none}
 .islots{display:flex;flex-wrap:wrap;gap:3px;margin:2px 0 4px}
 .islots button{min-width:2.2em;height:2em;font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--panel);border-radius:5px;cursor:pointer;color:var(--ink)}
@@ -605,17 +625,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .idraft{font-size:.75rem;font-weight:400;color:var(--sub);margin-left:10px}
 .idb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
 .dg-n.unk{border-style:dashed;color:var(--sub);min-width:3em;text-align:center}
-.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6}
+
 .iq{display:flex;gap:6px}
 .iq input{flex:1}
-.dg-n.card.u{border-left-style:solid}
+.dg-n.card.u{--oc:#9AA3AB;--ol:#F4F5F6;border-left-style:solid}
 .dg-n.unk .nt{font-size:1.15em}
 /* 日付は「月/日」の文字を見せ、日付の入力は透明にして重ねる（押すと暦が開く） */
 .idate{position:relative;display:flex;align-items:center;justify-content:center;height:2.3em;border:1px solid var(--line);border-radius:6px;background:var(--panel);font-size:.85rem;cursor:pointer;overflow:hidden}
 .idate input{position:absolute;inset:0;opacity:0;width:100%;height:100%;border:0;padding:0;cursor:pointer}
-.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%}
+
 .irow select.islot.on{border-style:solid;color:var(--ink)}
-.imodes{grid-template-columns:1fr !important}
+.imodes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:2px 12px;grid-template-columns:1fr !important}
 .imode{display:flex;align-items:flex-start;gap:6px;flex-wrap:wrap}
 .imq{width:1.4em;height:1.4em;border:1px solid var(--line);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:inherit;font-size:.8rem;color:var(--sub);background:var(--panel);cursor:pointer;padding:0}
 .imq[aria-expanded="true"]{border-color:var(--link);color:var(--link)}
@@ -625,17 +645,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-n.lite.f{border-radius:999px 8px 8px 999px;padding-left:9px}
 .dg-n.lite.u{border-left:1.5px dashed var(--ink)}
 .irow .idate,.irow select.islot{height:2.3em;box-sizing:border-box}
-.irow select.islot{padding:0 0 0 2px;font-size:.78rem}
-.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px}
-.inx:hover{color:var(--link);background:var(--fill)}
-.inx svg{width:18px;height:18px}
-.irow .inx:nth-of-type(1){grid-column:1}
-.irx{grid-row:3}
-.irow{row-gap:0}
-.inx{height:1.15em;margin-top:-1px;align-items:flex-start}
-.inx svg{width:16px;height:16px}
-.irx:not(:empty){margin-top:4px}
+.irow select.islot{font:inherit;font-size:.8rem;height:2.3em;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--sub);padding:0 2px;width:100%;padding:0 0 0 2px;font-size:.78rem}
 
+.inx:hover{color:var(--link);background:var(--fill)}
+
+.irow .inx:nth-of-type(1){grid-column:1}
+.irx{grid-column:1/-1;grid-row:3}
+.irow{display:grid;grid-template-columns:4.6em 4.9em minmax(0,1fr) auto;gap:6px;align-items:start;padding:3px;border-radius:6px;row-gap:0}
+.inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px;height:1.15em;margin-top:-1px;align-items:flex-start}
+.inx svg{width:18px;height:18px;width:16px;height:16px}
+.irx:not(:empty){margin-top:4px}
+/* ▲ css/09-incidents.css ここまで ▲ */
+/* ▼ css/10-print.css から ▼ */
+/* 個人票の印刷 */
 /* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
 #printbox .pbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);color:var(--ink);z-index:1}
@@ -681,16 +703,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg-rs::after{content:'';width:46px;height:4px;border-radius:2px;background:var(--line);margin-top:3px}
 .dg-rs:hover::after{background:var(--link)}
 .dg.ro .dg-rs{display:none}
-.dg.ro .dg-canvas{aspect-ratio:2/1;height:auto !important}
+.dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
+/* ▲ css/10-print.css ここまで ▲ */
+/* ▼ css/11-later.css から ▼ */
+/* 後から足した規則（事案の一覧・点数・知らせなど） */
 /* 本文の欄は、日付・時間帯の枠と下の二重の矢印を合わせた高さにそろえる */
-.irow textarea{grid-row:1/3;grid-column:3;min-height:calc(2.3em + 1.15em);font-size:.92rem;line-height:1.45}
-.irow .ix{grid-row:1;grid-column:4}
+.irow textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;min-height:3.2em;box-sizing:border-box;width:100%;resize:none;overflow:hidden;line-height:1.5;min-height:2.3em;grid-row:1/3;grid-column:3;min-height:calc(2.3em + 1.15em);font-size:.92rem;line-height:1.45}
+.irow .ix{width:34px;height:2.3em;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--line);background:var(--panel);border-radius:6px;cursor:pointer;color:var(--sub);padding:0;padding:2px 8px;grid-row:1;grid-column:4}
 .iqw{position:relative;flex:1;display:flex}
 .iqw input{flex:1;padding-right:18px}
 .iqc{position:absolute;right:1px;bottom:1px;width:0;height:0;padding:0;border:0;border-style:solid;border-width:0 0 12px 12px;border-color:transparent transparent #9AA3AB transparent;background:none;cursor:pointer}
 .iqc:hover{border-bottom-color:var(--link)}
 /* 事案管理の初めの画面：新規作成・検索と事案カード */
-.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px}
+
 .ihb{display:flex;align-items:center;gap:10px;padding:14px 18px;flex-direction:row}
 .ihb b{font-size:1.1rem}
 .ihb svg{width:24px;height:24px;flex:none}
@@ -732,10 +757,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ordbox{border:2px solid var(--link);border-radius:8px;padding:8px 10px;background:var(--fill)}
 .ordbox .ordrow{margin-top:4px}
 .btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
-.board.dealing .chip:not(.dealt){visibility:hidden}
-.board.dealing .chip.dealt{animation:dealin .18s ease-out}
-@keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt{animation:none}}
+.chip.plusin{outline:3px solid #D7263D;outline-offset:1px}
 .icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
 .icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
 .icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
@@ -746,11 +768,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihsort select{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:4px;padding:2px 4px;max-width:16em;background:var(--panel);color:var(--ink)}
 .icm .k em.rc{margin:0 1px 0 0;font-weight:700}
 .icm .k em.r-harm{color:#C0330A}.icm .k em.r-victim{color:#0F5EA8}.icm .k em.r-mutual{color:#7B3FA0}
-.ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
+.ihome{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:10px;margin-bottom:8px;grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
 #toast.stay{border:2px solid #B00020}
 #toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
+/* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
@@ -1058,6 +1081,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     if (free.length < 2) return asg;
     var c = counts(ctx, asg), pv = hardPairViol(ctx, asg);
     var cur = W_HARD * pv + balance(ctx, c) + incPenalty(ctx, asg);
+    // 入れ替えのたびに全部を数え直さない：つける・離すは入れ替えた2人に関わる組だけ、事案は2人が関わる事案だけを差し引きする
+    var hard = ctx.gen.hard, PAIRS = ctx.P.pairs;
+    var brokenOf = function (list) { var n = 0; for (var q = 0; q < list.length; q++) { var p0 = PAIRS[list[q]]; if (hard[p0.t] && pairBroken(p0, asg)) n++; } return n; };
+    var INC = ctx.wInc ? (ctx.P.inc || []) : [], incOf = [], cnt = [], v = new Array(nc).fill(0);
+    if (ctx.wInc) {
+      for (i = 0; i < N; i++) incOf.push([]);
+      INC.forEach(function (x, xi) { var row = new Array(nc).fill(0); x.kids.forEach(function (q) { incOf[q].push(xi); if (!row[asg[q]]++) v[asg[q]]++; }); cnt.push(row); });
+    }
+    var moveInc = function (q, from, to) { var l = incOf[q]; for (var t0 = 0; t0 < l.length; t0++) { var row = cnt[l[t0]]; if (!--row[from]) v[from]--; if (!row[to]++) v[to]++; } };
+    var incPen = function () { var m0 = 0, t1 = 0, k0; for (k0 = 0; k0 < nc; k0++) m0 += v[k0]; m0 /= nc; for (k0 = 0; k0 < nc; k0++) t1 += (v[k0] - m0) * (v[k0] - m0); return ctx.wInc * t1; };
     var IT = 50000, T = 8, cool = Math.pow(0.002 / 8, 1 / IT);
     for (var it = 0; it < IT; it++, T *= cool) {
       i = free[Math.floor(r() * free.length)]; j = free[Math.floor(r() * free.length)];
@@ -1065,11 +1098,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (a === b) continue;
       var vi = ctx.VAL[i], vj = ctx.VAL[j], m, d;
       for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] += d; c[b][m] -= d; }
+      var rel = ctx.relOf[i].length || ctx.relOf[j].length ? ctx.relOf[i].concat(ctx.relOf[j].filter(function (q) { return ctx.relOf[i].indexOf(q) < 0; })) : null; // 2人に共通の組は1回だけ数える
+      var before = rel ? brokenOf(rel) : 0;
       asg[i] = b; asg[j] = a;
-      var npv = (ctx.relOf[i].length || ctx.relOf[j].length) ? hardPairViol(ctx, asg) : pv;
-      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPenalty(ctx, asg) : 0);
+      var npv = rel ? pv - before + brokenOf(rel) : pv;
+      if (ctx.wInc) { moveInc(i, a, b); moveInc(j, b, a); }
+      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPen() : 0);
       if (nxt <= cur || r() < Math.exp((cur - nxt) / T)) { cur = nxt; pv = npv; }
-      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } }
+      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } if (ctx.wInc) { moveInc(j, a, b); moveInc(i, b, a); } }
     }
     return asg;
   }
@@ -1423,7 +1459,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     };
     var MOVES = [[0, 50], [0, -50], [0, 100], [0, -100], [0, 150], [0, -150], [0, 200], [0, -200], [80, 0], [-80, 0], [160, 0], [-160, 0], [80, 50], [-80, 50], [80, -50], [-80, -50]];
     var inside = function (u) { return (unit[u] || []).every(function (n) { return n.x >= 30 && n.x <= DG_W - 30 && n.y >= 20 && n.y <= DG_H - 20; }); };
-    for (var it = 0; it < 40 && bad(); it++) {
+    var t0 = Date.now(); // 大きな図でも待たせない：0.3秒で打ち切る（それまでに直せた所までで止める）
+    for (var it = 0; it < 40 && Date.now() - t0 < 300 && bad(); it++) {
       var c0 = cost(), best = null;
       Object.keys(unit).forEach(function (u) {
         MOVES.forEach(function (m) {
@@ -2212,7 +2249,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_a23b04cc0286';
+  var PAGE_BUILD = 'BUILD_b4310f9dcfb9';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2532,6 +2569,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     el.innerHTML = '<div class="dg-bar"><div class="lvs">' + MODES.map(function (m) {
         return '<button type="button" class="lv" data-dm="' + m[0] + '" aria-pressed="' + (st.mode === m[0]) + '">' + m[1] + '</button>';
       }).join('') + '</div>' +
+      (d.edges.length ? '<button type="button" class="btn" data-dtidy="1" title="同じ矢印の児童をグループにまとめ、ほぼ水平・垂直の線を揃え、交差と縦の空きを減らす">整える</button>' : '') +
       (st.mode === 'group' ? '<button type="button" class="btn primary" data-dgroup="1"' + (st.pick.length ? '' : ' disabled') + '>選んだ' + st.pick.length + '人を囲む</button>' : '') +
       '<label class="chk"><input type="checkbox" data-dcard="1"' + (st.card ? ' checked' : '') + '>カードで表示</label></div>' +
       '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
@@ -2589,6 +2627,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     el.onclick = function (e) {
       var t = e.target, x;
       if ((x = t.closest('[data-dm]'))) { st.mode = x.dataset.dm; st.from = null; st.pick = []; redo(); }
+      else if (t.closest('[data-dtidy]')) {
+        // 整える：押した時だけ並べ直す（置いた位置を勝手に変えない）。知らせの「戻す」で元の配置へ
+        var prev = JSON.parse(JSON.stringify(d)), next = E.tidyDiagram(d);
+        if (JSON.stringify(next) === JSON.stringify(E.normDiagram(d))) { App.toast('整える所はありませんでした'); e.stopPropagation(); return; }
+        st.d = d = next; st.from = null; st.pick = []; redo();
+        App.toast('関係図を整えました', function () { st.d = prev; redo(); });
+      }
       else if (t.closest('[data-dgroup]') && st.pick.length) {
         var used = d.groups.map(function (gr) { return gr.g; }), gname = LET.split('').filter(function (c) { return used.indexOf(c) < 0; })[0];
         d.groups.forEach(function (gr) { gr.members = gr.members.filter(function (id) { return st.pick.indexOf(id) < 0; }); }); // 児童は1つのグループにだけ入る
@@ -3344,6 +3389,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return { grade: y ? y.grade : '', cls: r ? r.cls + 1 : '', male: s.male, name: s.name, kana: s.kana };
   }
   // 全校の今年度の名簿を1回だけ読み、ほかの学年の児童の名前と学年・組を足す（ほかの学年を検索する時・ほかの学年の児童が関わる事案を見る時）
+
+/* ▼ incidents/inc-data.js から ▼ */
+/* 事案管理：全校の名簿・事案の読み込み、一覧の絞り込みと並べ方、検索の設定、被害・加害の児童。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   var SCHOOL = null;
   function loadSchool() {
     if (SCHOOL) return Promise.resolve(SCHOOL);
@@ -3380,19 +3428,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (lv.length && !(isBully(x.type) && lv.indexOf(levelOf(x)) >= 0)) return false; // 段階を選ぶと、いじめの事案だけに絞る
       if (st.length && st.indexOf(rp.status || 'open') < 0) return false;
       return true;
-    }).sort(SORTS.filter(function (s0) { return s0.k === (HOME.sort || 'new'); })[0].f);
+    }).sort((SORTS.filter(function (s0) { return s0.k === (HOME.sort || 'imp'); })[0] || SORTS[0]).f);
   }
   // 並び替え。同じ順位は新しい順
   var byNew = function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; };
-  var ST_RANK = { open: 0, watch: 1, done: 2, closed: 3 }, LV_RANK = { grave: 0, f2: 1, f1: 2, light: 3 };
-  function lastRec(x) { var rp = x.report || Rp.emptyReport(), ds = [].concat(rp.s1.hk, rp.s1.kk, rp.s1.sd, rp.s2.sd || []).map(function (r) { return r.d; }).filter(Boolean).sort(); return ds.length ? ds[ds.length - 1] : x.date; }
-  function weight(x) { return (isBully(x.type) ? LV_RANK[levelOf(x)] : 4); }
+  var ST_RANK = { open: 0, watch: 1, done: 2, closed: 3 };
   var SORTS = [
-    { k: 'new', label: '日付（新しい順）', f: byNew },
-    { k: 'old', label: '日付（古い順）', f: function (a, b) { return -byNew(a, b); } },
-    { k: 'imp', label: '重要度（対応中・いじめの段階が重い順）', f: function (a, b) { return (ST_RANK[(a.report || {}).status || 'open'] - ST_RANK[(b.report || {}).status || 'open']) || (weight(a) - weight(b)) || byNew(a, b); } },
-    { k: 'stale', label: '記録が止まっている順（解消を除き、最後の記録が古い順）', f: function (a, b) { var ca = ((a.report || {}).status === 'closed'), cb = ((b.report || {}).status === 'closed'); return (ca - cb) || (lastRec(a) < lastRec(b) ? -1 : lastRec(a) > lastRec(b) ? 1 : 0) || byNew(a, b); } },
-    { k: 'grade', label: '学年（低い順）', f: function (a, b) { return ((gradesOf(a)[0] || 9) - (gradesOf(b)[0] || 9)) || byNew(a, b); } }
+    { k: 'imp', label: '対応中が先（次に新しい順）', f: function (a, b) { return (ST_RANK[(a.report || {}).status || 'open'] - ST_RANK[(b.report || {}).status || 'open']) || byNew(a, b); } },
+    { k: 'new', label: '新しい順', f: byNew }
   ];
   function saveHome() { try { sessionStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
   function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length; }
@@ -3433,19 +3476,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }
     });
   }
-  // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）と、候補の書き方
+  // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）
   var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
   function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
   function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
-  var FMTS = [['gc', '3-2 田中 ハト'], ['name', '田中 ハト（3年2組）'], ['kana', '田中 ハト（たなか はと）3-2']];
   function srchDialog() {
     App.openDlg({
       html: function () {
-        var gs = srchGrades(), fmt = SRCH.fmt || 'gc';
+        var gs = srchGrades();
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="検索の設定" style="max-width:460px"><h2>関係する児童の検索</h2>' +
           '<div class="lab">探す学年</div><div class="lvs">' + [1, 2, 3, 4, 5, 6].map(function (g0) { return '<button class="lv" data-sg="' + g0 + '" aria-pressed="' + (gs.indexOf(g0) >= 0) + '">' + g0 + '年</button>'; }).join('') + '</div>' +
           '<p class="note">ほかの学年を選ぶと、全校の今年度の名簿から探します。</p>' +
-          '<div class="lab">候補の書き方</div><div class="ivic">' + FMTS.map(function (f) { return '<label class="chk"><input type="radio" name="sfmt" data-sf="' + f[0] + '"' + (fmt === f[0] ? ' checked' : '') + '> ' + esc(f[1]) + '</label>'; }).join('') + '</div>' +
           '<div class="acts"><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
@@ -3456,7 +3497,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           SRCH.grades = gs.sort(); saveSrch(); if (gs.some(function (x) { return x !== D().grade; })) loadSchool();
           App.refreshDlg(); return true;
         }
-        if ((b = t.closest('[data-sf]'))) { SRCH.fmt = b.dataset.sf; saveSrch(); return true; }
         return false;
       },
       onClose: function () { var q = App.$('fQ'); if (q) { App.$('fSugg').innerHTML = suggHtml(q.value); q.focus(); } }
@@ -3477,7 +3517,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return anyRole ? r === 'harm' || r === 'mutual' : true;
     });
   }
-
+/* ▲ incidents/inc-data.js ここまで ▲ */
+/* ▼ incidents/inc-list.js から ▼ */
+/* 事案管理：描く（左右の欄・初めの画面・事案カード・見る画面）。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 描く =====
   // 左（事案の一覧）と右（記入補助）は、作る・直す・追記の時だけ出す。一覧は事案の一覧の画面の検索設定（学年・言葉）に合わせる
   function sided() { return I.mode === 'form' || I.mode === 'add2'; }
@@ -3562,7 +3604,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var h = '<div class="ihome"><button class="big ihb" id="iadd2nd">' + IC.plus + '<b>事案を新規作成</b></button>' +
       '<label class="big ihb ihs">' + SVG('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>') + '<input id="iq" value="' + esc(I.q || '') + '" placeholder="事案を検索（名前・種別・内容）" autocomplete="off">' +
       '<button type="button" class="iqc' + (dflt ? '' : ' on') + '" id="ihset" title="検索の設定（学年・種別・いじめの段階・対応の状況）" aria-label="検索の設定"></button></label>' +
-      '<label class="big ihb ihsort">' + SVG('<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>') + '<span>並び替え</span><select id="isort">' + SORTS.map(function (s0) { return '<option value="' + s0.k + '"' + ((HOME.sort || 'new') === s0.k ? ' selected' : '') + '>' + esc(s0.label) + '</option>'; }).join('') + '</select></label></div>';
+      '<label class="big ihb ihsort">' + SVG('<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>') + '<span>並び替え</span><select id="isort">' + SORTS.map(function (s0) { return '<option value="' + s0.k + '"' + ((HOME.sort || 'imp') === s0.k ? ' selected' : '') + '>' + esc(s0.label) + '</option>'; }).join('') + '</select></label></div>';
     h += '<div class="note" id="inote">' + esc(homeNote(list, shown, q)) + '</div>';
     h += '<div class="icards" id="icards">' + cardsHtml(shown) + '</div>';
     return h;
@@ -3609,6 +3651,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 欄の見出しは「何を書く欄か」を問いで示す。欄ごとに色の帯を付け、右の記入補助の見出しも同じ色にする
+/* ▲ incidents/inc-list.js ここまで ▲ */
+/* ▼ incidents/inc-form.js から ▼ */
+/* 事案管理：記入（記録の行・記入補助・書きかけ・入力欄のキー・始める）。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
     's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
   var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
@@ -3687,7 +3732,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
       '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
-      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><span class="iqw"><input id="fQ" value="" placeholder="名前・よみで児童を足す（' + esc(srchGrades().map(function (g0) { return g0 + '年'; }).join('・')) + '）" autocomplete="off"><button type="button" class="iqc" id="fQset" title="検索の設定（探す学年・候補の書き方）" aria-label="検索の設定"></button></span>' +
+      '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><span class="iqw"><input id="fQ" value="" placeholder="名前・よみで児童を足す（' + esc(srchGrades().map(function (g0) { return g0 + '年'; }).join('・')) + '）" autocomplete="off"><button type="button" class="iqc" id="fQset" title="検索の設定（探す学年）" aria-label="検索の設定"></button></span>' +
       (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
     else h += '<div id="fDg" class="dg"></div>';
@@ -3930,7 +3975,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   function suggHtml(q) {
-    var d = D(), f = I.form, gs = srchGrades(), fmt = SRCH.fmt || 'gc';
+    var d = D(), f = I.form, gs = srchGrades();
     q = (q || '').trim();
     if (!q) return '';
     var pool = [];
@@ -3944,7 +3989,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     }).slice(0, 10);
     var label = function (r) {
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
-      return fmt === 'name' ? esc(s.name) + '（' + r.grade + '年' + (r.cls + 1) + '組）' : fmt === 'kana' ? esc(s.name) + '（' + esc(s.kana) + '）' + gc : gc + ' ' + esc(s.name);
+      return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）
     };
     return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読んでいます…' : '見つかりません') + '</div>';
   }
@@ -3976,7 +4021,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var vv = realVictims(x);
     if (vv.length > 1) vv.forEach(function (id) { if (!I.form.rep.s2v[id] || !I.form.rep.s2v[id].length) I.form.rep.s2v[id] = [{ d: today(), p: '', t: '' }]; });
   }
-
+/* ▲ incidents/inc-form.js ここまで ▲ */
+/* ▼ incidents/inc-output.js から ▼ */
+/* 事案管理：出力（Excel・コピー用の表）、行の追加、戻す。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 出力 =====
   var LABELS = null;
   function labels() {
@@ -4093,6 +4140,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     I.focus = null; rerenderPane(); saveDraftSoon(); App.toast('1つ前に戻しました'); return true;
   }
   function closeForm() { HIST = []; I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
+/* ▲ incidents/inc-output.js ここまで ▲ */
 
   App.screens.incidents = {
     enter: function () {
@@ -4219,16 +4267,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var sdTxt = f.rep.s1.sd.map(function (r) { return r.t; }).join('');
       if (!f.warned && sdTxt.indexOf('保護者') < 0) { f.warned = true; App.toast('指導の欄に、保護者への連絡が書かれていません。このままでよければ、もう一度「' + (f.edit != null ? '直す' : '登録する') + '」を押します'); return; }
       var x = f.edit != null ? incOf(f.edit) : {};
-      var b = body(x, f), orig = b.diagram;
-      // 関係図は保存の時に整理する（同じ矢印の児童をグループに・ほぼ水平垂直の線を揃える・縦の空きを詰める）。通知の「戻す」で置いた通りに戻せる
-      if (orig) b.diagram = E.tidyDiagram(orig);
-      var moved = orig && JSON.stringify(E.normDiagram(orig)) !== JSON.stringify(b.diagram);
+      var b = body(x, f);
       App.save(function () { return f.edit != null ? App.pf().updateIncident(f.edit, b) : App.pf().addIncident(b); }).then(function (inc) {
-        dropDraft(); saved(inc, (f.edit != null ? '事案を直しました' : '事案を登録しました') + (moved ? '（関係図を整理しました）' : ''));
-        if (moved) App.toast((f.edit != null ? '事案を直しました' : '事案を登録しました') + '（関係図を整理しました）', function () {
-          var b2 = Object.assign({}, body(inc, { rep: inc.report }), { diagram: orig });
-          App.save(function () { return App.pf().updateIncident(inc.id, b2); }).then(function (inc2) { saved(inc2, '関係図を置いた通りに戻しました'); });
-        });
+        dropDraft(); saved(inc, f.edit != null ? '事案を直しました' : '事案を登録しました');
       });
     },
     key: function (e) {
@@ -4357,6 +4398,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     } });
   }
 
+/* ▼ split/split-board.js から ▼ */
+/* クラス分け：描画（児童カード・上の帯・盤面・比較の表）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
@@ -4554,7 +4597,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     App.$('board').className = 'cmpwrap';
     App.$('board').innerHTML = h + '</tbody></table><p class="note">「所属が違う児童」は組の番号の付け替えを無視して数える。重みの略号：頭文字＋段階（な＝なし）。</p></div>';
   }
-
+/* ▲ split/split-board.js ここまで ▲ */
+/* ▼ split/split-dialogs.js から ▼ */
+/* クラス分け：確認の枠・案を作る窓・個人票の印刷・組の番号・決定。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 確認の枠 =====
   function chipsSide(ids, from, to, ex) {
     return '<div class="side"><div class="lab"><b>' + C.newClass(from) + '</b> → ' + C.newClass(to) + '</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
@@ -4644,24 +4689,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     });
   }
 
-  // 作った案を、A組から1枚ずつカードを並べて見せる。＋付きのカードを先に並べる。押すかキーで最後まで飛ばす
+  // 作った案は一度に出す（待たせない）。＋付きのカードだけ、少しの間ふちを光らせて目立たせる
   var DEAL = null, PRT_CLOSE = null;
   function deal() {
     var board = App.$('board'); if (!board) return;
-    var plus = [], rest = []; board.querySelectorAll('.col').forEach(function (col) { col.querySelectorAll('.chip').forEach(function (c) { (hasPlus(S.P.kids[+c.dataset.i]) ? plus : rest).push(c); }); });
-    var chips = plus.concat(rest), i = 0;
-    if (!chips.length) return;
-    board.classList.add('dealing');
-    var done = function () { if (!DEAL) return; clearTimeout(DEAL.t); chips.forEach(function (c) { c.classList.add('dealt'); }); board.classList.remove('dealing'); document.removeEventListener('pointerdown', done, true); document.removeEventListener('keydown', done, true); DEAL = null; };
-    var step = function () {
-      if (!DEAL) return;
-      if (i >= chips.length) { done(); return; }
-      chips[i++].classList.add('dealt');
-      DEAL.t = setTimeout(step, 28);
-    };
-    DEAL = { t: 0 };
-    document.addEventListener('pointerdown', done, true); document.addEventListener('keydown', done, true);
-    step();
+    var plus = []; board.querySelectorAll('.chip').forEach(function (c) { if (hasPlus(S.P.kids[+c.dataset.i])) { c.classList.add('plusin'); plus.push(c); } });
+    if (!plus.length) return;
+    DEAL = { t: setTimeout(function () { plus.forEach(function (c) { c.classList.remove('plusin'); }); DEAL = null; }, 1600) };
   }
 
   function renameDialog(pi) {
@@ -4814,7 +4848,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       App.save(function () { return App.pf().undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
     });
   }
-
+/* ▲ split/split-dialogs.js ここまで ▲ */
+/* ▼ split/split-pairs.js から ▼ */
+/* クラス分け：つける・離す・転入生・違反の一覧・ショートカット。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== つける・離す・組に固定 =====
   // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
   var PT = { far: '離す', near: 'つける', fix: '組に固定' };
@@ -4972,7 +5008,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       onOk: function () { App.closeDlg(); }
     });
   }
-
+/* ▲ split/split-pairs.js ここまで ▲ */
+/* ▼ split/split-actions.js から ▼ */
+/* クラス分け：操作（入れ替え・戻す・固定・複製・全画面）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 操作 =====
   function apply(p, ch) { ch.forEach(function (x) { p.asg[x[0]] = x[1]; }); }
   function doMove(changes, msg) {
@@ -5049,6 +5087,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     else if (d.documentElement.requestFullscreen) d.documentElement.requestFullscreen().catch(function () { App.toast('この表示では全画面にできません。F11キーを使ってください'); });
   }
   function selectPlan(pi) { S.active = pi; S.view = 'plan'; S.sel = -1; S.follow = null; render(); }
+/* ▲ split/split-actions.js ここまで ▲ */
 
   App.screens.split = {
     enter: function () {

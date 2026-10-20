@@ -301,6 +301,16 @@
     if (free.length < 2) return asg;
     var c = counts(ctx, asg), pv = hardPairViol(ctx, asg);
     var cur = W_HARD * pv + balance(ctx, c) + incPenalty(ctx, asg);
+    // 入れ替えのたびに全部を数え直さない：つける・離すは入れ替えた2人に関わる組だけ、事案は2人が関わる事案だけを差し引きする
+    var hard = ctx.gen.hard, PAIRS = ctx.P.pairs;
+    var brokenOf = function (list) { var n = 0; for (var q = 0; q < list.length; q++) { var p0 = PAIRS[list[q]]; if (hard[p0.t] && pairBroken(p0, asg)) n++; } return n; };
+    var INC = ctx.wInc ? (ctx.P.inc || []) : [], incOf = [], cnt = [], v = new Array(nc).fill(0);
+    if (ctx.wInc) {
+      for (i = 0; i < N; i++) incOf.push([]);
+      INC.forEach(function (x, xi) { var row = new Array(nc).fill(0); x.kids.forEach(function (q) { incOf[q].push(xi); if (!row[asg[q]]++) v[asg[q]]++; }); cnt.push(row); });
+    }
+    var moveInc = function (q, from, to) { var l = incOf[q]; for (var t0 = 0; t0 < l.length; t0++) { var row = cnt[l[t0]]; if (!--row[from]) v[from]--; if (!row[to]++) v[to]++; } };
+    var incPen = function () { var m0 = 0, t1 = 0, k0; for (k0 = 0; k0 < nc; k0++) m0 += v[k0]; m0 /= nc; for (k0 = 0; k0 < nc; k0++) t1 += (v[k0] - m0) * (v[k0] - m0); return ctx.wInc * t1; };
     var IT = 50000, T = 8, cool = Math.pow(0.002 / 8, 1 / IT);
     for (var it = 0; it < IT; it++, T *= cool) {
       i = free[Math.floor(r() * free.length)]; j = free[Math.floor(r() * free.length)];
@@ -308,11 +318,14 @@
       if (a === b) continue;
       var vi = ctx.VAL[i], vj = ctx.VAL[j], m, d;
       for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] += d; c[b][m] -= d; }
+      var rel = ctx.relOf[i].length || ctx.relOf[j].length ? ctx.relOf[i].concat(ctx.relOf[j].filter(function (q) { return ctx.relOf[i].indexOf(q) < 0; })) : null; // 2人に共通の組は1回だけ数える
+      var before = rel ? brokenOf(rel) : 0;
       asg[i] = b; asg[j] = a;
-      var npv = (ctx.relOf[i].length || ctx.relOf[j].length) ? hardPairViol(ctx, asg) : pv;
-      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPenalty(ctx, asg) : 0);
+      var npv = rel ? pv - before + brokenOf(rel) : pv;
+      if (ctx.wInc) { moveInc(i, a, b); moveInc(j, b, a); }
+      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPen() : 0);
       if (nxt <= cur || r() < Math.exp((cur - nxt) / T)) { cur = nxt; pv = npv; }
-      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } }
+      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } if (ctx.wInc) { moveInc(j, a, b); moveInc(i, b, a); } }
     }
     return asg;
   }
@@ -666,7 +679,8 @@
     };
     var MOVES = [[0, 50], [0, -50], [0, 100], [0, -100], [0, 150], [0, -150], [0, 200], [0, -200], [80, 0], [-80, 0], [160, 0], [-160, 0], [80, 50], [-80, 50], [80, -50], [-80, -50]];
     var inside = function (u) { return (unit[u] || []).every(function (n) { return n.x >= 30 && n.x <= DG_W - 30 && n.y >= 20 && n.y <= DG_H - 20; }); };
-    for (var it = 0; it < 40 && bad(); it++) {
+    var t0 = Date.now(); // 大きな図でも待たせない：0.3秒で打ち切る（それまでに直せた所までで止める）
+    for (var it = 0; it < 40 && Date.now() - t0 < 300 && bad(); it++) {
       var c0 = cost(), best = null;
       Object.keys(unit).forEach(function (u) {
         MOVES.forEach(function (m) {
@@ -980,7 +994,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_a23b04cc0286';
+var SERVER_BUILD = 'BUILD_b4310f9dcfb9';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

@@ -1,0 +1,58 @@
+/* 土台（色の名前・文字・ボタン）とメニュー */
+/* 配置: メニュー → 名簿（年度・組・範囲の切替＋右に児童の記録）／クラス分け（全員を1画面に並べる盤面）。
+   色分けは投影と色覚検証を白地で行ったため、明るい配色1種に固定する（docs/design.md §5） */
+:root{
+  color-scheme:light;
+  --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#616870; --line:#c9d1d9; --soft:#F1F3F5;
+  --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
+  /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
+  --f:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+  --rowh:30px; --ic:12px; --slot:18px; --slotL:18px;
+}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f);margin:0;font-size:15px;line-height:1.45;
+  padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px));padding-block:6px;
+  box-sizing:border-box;display:flex;flex-direction:column}
+body.fit{overflow:hidden}
+body.fit .top{display:none}
+/* 試行中：画面の上端に太い帯と、ボタンの色で、本番でないことを常に見せる */
+.btn.trial{font-weight:700}
+.btn.trial[aria-pressed="true"]{background:#A85800;color:#fff;border-color:#A85800}
+body.trying{box-shadow:inset 0 6px 0 #A85800;padding-top:12px}
+body.trying .demo{color:#A85800;font-weight:700;margin-left:0}
+button,input,select{font:inherit;color:inherit}
+a{color:var(--link)}
+kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:0 4px;background:var(--panel)}
+#app{flex:1;min-height:0;display:flex;flex-direction:column}
+#main{flex:1;min-height:0;display:flex;flex-direction:column}
+.top{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:6px}
+.top h1{font-size:1.1rem;margin:0}
+.crumb{color:var(--sub)}
+.crumb button{border:0;background:none;color:var(--link);text-decoration:underline;cursor:pointer;padding:0}
+.demo{font-size:.8rem;color:var(--sub);margin-left:auto}
+.save{font-size:.8rem;color:var(--sub)}
+.save.err{color:var(--alert);font-weight:700}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+.btn.danger{color:var(--alert);border-color:var(--alert);font-weight:700}
+.btn.primary kbd{background:transparent;color:#fff;border-color:#ffffff99}
+.btn kbd{margin-left:4px}
+@media (max-width:1500px){.bar .btn kbd,.vio kbd{display:none}}
+.btn:focus-visible,.tab:focus-visible,.gbtn:focus-visible,.big:focus-visible,.chip:focus-visible,.head:focus-visible,.lv:focus-visible{outline:3px solid var(--link);outline-offset:1px}
+.note{font-size:.85rem;color:var(--sub)}
+.sp{flex:1}
+
+/* ===== メニュー ===== */
+.menu{max-width:760px;width:100%;margin:24px auto;display:flex;flex-direction:column;gap:20px}
+.menu h2{font-size:1rem;margin:0 0 8px;color:var(--sub);font-weight:400}
+.grades{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.gbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:14px 0;font-size:1.3rem;font-weight:700;cursor:pointer}
+.gbtn[aria-pressed="true"]{border:3px solid var(--link);background:var(--fill);padding:12px 0}
+.gbtn small{display:block;font-size:.7rem;font-weight:400;color:var(--sub)}
+
+.big{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:22px;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px}
+.big b{font-size:1.4rem}
+.big span{color:var(--sub);font-size:.9rem}
+.big:hover{border-color:var(--link)}
+@media (max-width:560px){.grades{grid-template-columns:repeat(3,1fr)}.bigs{grid-template-columns:1fr}}

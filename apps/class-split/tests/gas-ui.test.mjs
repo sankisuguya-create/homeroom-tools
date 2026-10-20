@@ -31,8 +31,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++
 // クラス分けに入る：案がまだ無ければ、設定の窓で作り、並べる動きを飛ばす
 const intoSplit = async (p) => {
   await p.waitForSelector('.board .chip, #okbtn');
-  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); await p.keyboard.press('Shift'); }
-  await p.waitForFunction(() => !document.querySelector('.board.dealing'));
+  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); }
 };
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);

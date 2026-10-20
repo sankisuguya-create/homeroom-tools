@@ -1,0 +1,115 @@
+/* 事案の関係図と、名簿・カードの細部 */
+/* ===== 事案の関係図 ===== */
+.dg{display:flex;flex-direction:column;gap:6px}
+.dg-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dg-hint{margin:0}
+.dg-canvas{position:relative;width:100%;aspect-ratio:6/1;min-height:70px;background:#fff;border:1px solid var(--line);border-radius:8px;touch-action:none;user-select:none;overflow:hidden}
+.dg-svg{position:absolute;inset:0;width:100%;height:100%}
+.dg-g{fill:#0F5EA80d;stroke:#0F5EA8;stroke-width:2}
+.dg-g.from{stroke:#C0330A;stroke-width:3}
+.dg-e{stroke:#C0330A;stroke-width:2.5;fill:none}
+.dg-ah{fill:#C0330A}
+.dg-eh{stroke:transparent;stroke-width:14;fill:none}
+.dg-n{position:absolute;transform:translate(-50%,-50%);background:#fff;border:1.5px solid var(--ink);border-radius:6px;padding:3px 8px;font-weight:700;white-space:nowrap;cursor:grab;font-size:15px;z-index:2}
+.dg-n.from{outline:3px solid #C0330A}
+.dg-n.pick{outline:3px solid var(--link);background:var(--fill)}
+
+.dg-n.card.f{border-radius:999px 14px 14px 999px}
+.dg-n.card .nb{font-size:.7em;color:var(--sub);font-weight:400}
+.dg-n.card .nm2{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.dg-n.card{display:grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border-left:6px solid var(--oc);background:var(--ol);padding:3px 8px 3px 5px;min-width:8em;box-sizing:border-box}
+.dg-n.card .nm2 .ph{visibility:hidden}
+.dg-gl{position:absolute;transform:translate(6px,-55%);background:#0F5EA8;color:#fff;font-weight:700;border-radius:4px;padding:0 6px;font-size:13px;cursor:pointer;z-index:3}
+.dg-gl.from{background:#C0330A}
+.dg-sum{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.9rem;align-items:baseline}
+.dg-sum em,.meta em{font-style:normal;font-weight:700;margin-right:3px}
+.r-harm{color:#C0330A}.r-victim{color:#0F5EA8}.r-mutual{color:#7B3FA0}.r-related{color:var(--sub)}
+.inc .it .ie{align-self:flex-start;font-size:.8rem;padding:2px 8px}
+.form .dg-bar label.chk{display:inline-flex;flex-direction:row;gap:4px;align-items:center;margin:0}
+/* 名簿の上の帯：いまの状態（既定と違う時だけ）。戻す・解除のボタンを添える */
+.rbar .state{display:inline-flex;gap:6px;align-items:center;font-size:.85rem;background:var(--fill-b);color:var(--ink);border-radius:6px;padding:2px 4px 2px 10px}
+.rbar .state .btn{padding:2px 8px}
+.dlg.more section{margin-bottom:10px}
+.dlg.more h3{margin:0 0 4px;font-size:.9rem}
+/* 名簿の名前：空白込み8文字分の枠。入らない名前は左へ流して最初に戻す（動きを減らす設定では止める） */
+.nmw{display:inline-block;width:8em;overflow:hidden;white-space:nowrap;vertical-align:bottom}
+.nmt{display:inline-block}
+.nmt.run{animation:nmscroll var(--dur,4s) linear infinite}
+@keyframes nmscroll{0%,20%{transform:translateX(0)}75%,92%{transform:translateX(var(--d))}92.01%,100%{transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.nmt.run{animation:none}}
+
+/* 事案の詳細（関係図の下） */
+.form textarea#fDetail{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical;width:100%;box-sizing:border-box}
+.inc .it .dt{font-size:.85rem;white-space:pre-wrap;color:var(--ink);max-height:4.5em;overflow:hidden}
+/* 名簿のつける・離す：苗字の羅列（小さめ。見やすさは窓とカードに任せる） */
+.prm{display:inline-flex;gap:3px;display:flex;flex-direction:column;gap:1px;font-size:.72em;line-height:1.35}
+.prm .pl{display:flex;gap:2px;align-items:center;white-space:nowrap;min-height:1.35em}
+.prm .pk{cursor:help}
+.prm .pk:hover{text-decoration:underline}
+.prm .pmore{color:var(--sub);margin-left:3px}
+.prd{display:flex;flex-direction:column;gap:10px}
+
+.kcards{display:flex;flex-wrap:wrap;gap:6px}
+/* 児童カード */
+.kcard{display:inline-grid;grid-template-columns:auto auto;gap:0 6px;align-items:center;border:1.5px solid var(--ink);border-left:6px solid var(--oc);background:var(--ol);border-radius:6px;padding:3px 8px 3px 5px;color:var(--ink);font-size:15px}
+.kcard.f{border-radius:999px 14px 14px 999px}
+.kcard .nb{font-size:.7em;color:var(--sub)}
+.kcard .mk{grid-column:1/-1;display:flex;gap:2px;font-size:12px}
+.tip .kcard{border-color:transparent;border-left-color:var(--oc)}
+/* つける・離すの窓 */
+.kbtn{border:2px solid transparent;background:none;padding:2px;border-radius:10px;cursor:pointer;display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;font:inherit}
+.kbtn.on{border-color:var(--link)}
+.kbtn .ksince{font-size:.75rem;color:var(--sub);padding-left:4px}
+.prd h3{margin:0 0 4px;font-size:.95rem;display:flex;gap:8px;align-items:center}
+.prd h3 .btn{font-size:.8rem;padding:2px 8px;font-weight:400}
+.pdet{margin-top:6px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:var(--soft)}
+.pmemo{white-space:pre-wrap}
+.pinc,.pinclist{display:flex;flex-direction:column;gap:3px;font-size:.9rem}
+.pinc a,.pinclist a{margin-right:6px}
+.pform{border:2px solid var(--link);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.pform h3{margin:0}
+.pform input#pq,.pform textarea{font:inherit;padding:5px 7px;border:1px solid var(--line);border-radius:6px}
+.pform label{display:flex;flex-direction:column;gap:3px}
+.pform label.chk{flex-direction:row;align-items:center}
+.ptags{display:flex;flex-wrap:wrap;gap:4px}
+.ptag{border:1px solid var(--line);background:#fff;border-radius:999px;padding:2px 10px;font-size:.85rem;cursor:pointer;color:var(--ink)}
+.ptag.on{background:var(--link);border-color:var(--link);color:#fff}
+span.ptag{cursor:default;margin-right:3px}
+/* 名簿の欄：右下の灰色の角＝設定の窓。真ん中＝値を変える */
+table.r td.cc{position:relative}
+table.r td.cc::after{content:"";position:absolute;right:0;bottom:0;width:12px;height:12px;background:linear-gradient(135deg,transparent 50%,#b4bac1 50%);pointer-events:none}
+table.r td.cc:hover::after{background:linear-gradient(135deg,transparent 50%,#6e767e 50%)}
+table.r td.pr.cc,table.r td.memo.cc,table.r td.ji.cc{cursor:pointer}
+table.r td.pr.cc:hover,table.r td.memo.cc:hover,table.r td.ji.cc:hover{background:var(--soft)}
+/* 程度を選ぶ窓 */
+.lvpick{display:flex;flex-direction:column;gap:6px}
+.lvopt{display:flex;gap:12px;align-items:center;text-align:left;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:8px 12px;cursor:pointer;font:inherit;color:var(--ink)}
+.lvopt[aria-pressed="true"]{border-color:var(--link);background:var(--fill)}
+.lvopt .ic{min-width:3em;font-size:20px;font-weight:700}
+/* 備考の定型の言葉 */
+.mpicks{display:flex;flex-wrap:wrap;gap:6px}
+.mpicks select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff}
+.ctxl{display:flex;flex-direction:column;gap:3px}
+.ctxl textarea{font:inherit;padding:6px;border:1px solid var(--line);border-radius:6px;resize:vertical}
+/* クラス分けのカード：右下の灰色の角（押すと経年の記録）。女子のカードも男子と同じ位置（丸い縁からはみ出してよい） */
+.board .chip:not(.trn)::after{content:"";position:absolute;right:0;bottom:0;width:10px;height:10px;background:linear-gradient(135deg,transparent 50%,#9aa1a8 50%);pointer-events:none;z-index:3}
+.board .chip.f:not(.trn)::after{right:-1px;bottom:-1px}
+/* 入れ替えの確認：カードの大きさをそろえる */
+.side .chip{--rowh:52px;height:52px;cursor:default;width:min(100%,340px);box-sizing:border-box}
+.side .chip .l2>.bs:first-child{--slot:1.9em}
+/* 事案の数：上に全部の件数、下の（ ）に被害の件数 */
+.jn.jn2{flex-direction:column;height:auto;min-height:1.25em;padding:1px .2em;gap:0;line-height:1.05}
+.jn.jn2 b{font-weight:700}
+.jn.jn2 i{font-style:normal;font-size:.78em}
+.jn.jn1{width:auto;gap:.1em;padding:0 .3em;white-space:nowrap}
+.jn.jn1 b{font-weight:700}
+.jn.jn1 i{font-style:normal;font-size:.85em}
+table.r th.jh small{font-weight:400}
+/* 名簿の見出し：押すと並べ替え */
+table.r th.sorth{cursor:pointer;user-select:none}
+table.r th.sorth:hover{background:#e3e8ed}
+table.r th.sorth.on{background:var(--fill)}
+table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
+.setcols{display:flex;gap:28px;flex-wrap:wrap}
+.setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
+.setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
