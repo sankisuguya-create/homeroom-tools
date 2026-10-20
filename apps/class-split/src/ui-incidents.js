@@ -83,9 +83,9 @@
       if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
       if (t.closest('#ihome')) { I.sel = null; render(); return true; }
       if (t.closest('#iadd2nd')) { newForm(null); render(); refocus('fQ'); return true; }
-      if ((x = t.closest('[data-ist],[data-ilv]'))) {
+      if ((x = t.closest('[data-ist],[data-ilv],[data-irep]'))) {
         var xi = incOf(I.sel), rp0 = Rp.norm(xi.report);
-        if (x.dataset.ist) rp0.status = x.dataset.ist; else rp0.level = x.dataset.ilv;
+        if (x.dataset.ist) rp0.status = x.dataset.ist; else if (x.dataset.irep) rp0.reported = rp0.reported ? '' : today(); else rp0.level = x.dataset.ilv;
         App.save(function () { return App.pf().updateIncident(xi.id, body(xi, { rep: rp0 })); }).then(function (inc) {
           var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id); if (i >= 0) list[i] = inc; render();
         });

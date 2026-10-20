@@ -122,3 +122,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px;height:1.15em;margin-top:-1px;align-items:flex-start}
 .inx svg{width:18px;height:18px;width:16px;height:16px}
 .irx:not(:empty){margin-top:4px}
+/* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
+.itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
+.irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}

@@ -658,6 +658,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .inx{grid-row:2;height:1.5em;border:0;background:none;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;border-radius:4px;height:1.15em;margin-top:-1px;align-items:flex-start}
 .inx svg{width:18px;height:18px;width:16px;height:16px}
 .irx:not(:empty){margin-top:4px}
+/* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
+.itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
+.irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}
 /* ▲ css/09-incidents.css ここまで ▲ */
 /* ▼ css/10-print.css から ▼ */
 /* 個人票の印刷 */
@@ -1529,13 +1532,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var SECTIONS2 = { sd: '指導の経過', vi: '被害児童・保護者の様子', ha: '加害児童・保護者の様子' };
 
   function emptyReport() {
-    return { light: false, level: '', status: 'open', found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
+    return { light: false, level: '', status: 'open', reported: '', found: '', modes: C.MODES.map(function () { return false; }), other: '', s1: { hk: [], kk: [], sd: [] }, s2: { sd: [], vi: [], ha: [], kikan: '' }, s2v: {} };
   }
   function norm(r) {
     var e = emptyReport(); r = r || {};
     var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
     e.level = C.BULLY_LEVELS.some(function (x) { return x.k === r.level; }) ? r.level : '';
     e.status = C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
+    e.reported = /^\d{4}-\d{2}-\d{2}$/.test(String(r.reported || '')) ? String(r.reported) : ''; // 市教委（生徒指導担当）へ報告した日。空＝未報告
     e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
     e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
     ['hk', 'kk', 'sd'].forEach(function (k) { e.s1[k] = rows(r.s1 && r.s1[k]); });
@@ -1865,6 +1869,53 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   g.Paste = { parseRoster: parseRoster, LABEL: LABEL };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/paste.js ここまで ▲ */
+/* ▼ src/zip.js から。直すのは src のほう ▼ */
+// xlsx（zip）を画面の中で開き、作り直す（試行の画面で、選んだ様式の Excel に書き込むため）。外の部品は使わない。
+// 読み：中央ディレクトリから各ファイルを取り出し、圧縮（deflate）はブラウザの DecompressionStream でほどく。
+// 書き：圧縮せずに格納する（Excel はそのまま開ける。大きさは少し増える）
+(function (g) {
+  'use strict';
+  var CRC = (function () { var t = new Uint32Array(256); for (var n = 0; n < 256; n++) { var c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(u8) { var c = 0xFFFFFFFF; for (var i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function inflate(u8) {
+    if (typeof DecompressionStream === 'undefined') return Promise.reject(new Error('このブラウザでは Excel を開けません'));
+    var s = new Blob([u8]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return new Response(s).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+  }
+  function read(buf) {
+    var u8 = new Uint8Array(buf), dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength), e = -1;
+    for (var i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50) { e = i; break; }
+    if (e < 0) return Promise.reject(new Error('Excel のファイルではありません'));
+    var n = dv.getUint16(e + 10, true), p = dv.getUint32(e + 16, true), list = [], dec = new TextDecoder();
+    for (var k = 0; k < n; k++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) return Promise.reject(new Error('Excel のファイルが読めません'));
+      var method = dv.getUint16(p + 10, true), size = dv.getUint32(p + 20, true), nl = dv.getUint16(p + 28, true), xl = dv.getUint16(p + 30, true), cl = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+      var name = dec.decode(u8.subarray(p + 46, p + 46 + nl)), start = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+      list.push({ name: name, method: method, raw: u8.subarray(start, start + size) });
+      p += 46 + nl + xl + cl;
+    }
+    return Promise.all(list.map(function (f) {
+      if (f.method === 0) return Promise.resolve({ name: f.name, data: f.raw });
+      if (f.method === 8) return inflate(f.raw).then(function (d) { return { name: f.name, data: d }; });
+      return Promise.reject(new Error('Excel のファイルの圧縮の形が読めません'));
+    }));
+  }
+  function write(files) {
+    var enc = new TextEncoder(), parts = [], cen = [], off = 0;
+    var h = function (n, w) { var a = new Uint8Array(n), v = new DataView(a.buffer); w(v); return a; };
+    files.forEach(function (f) {
+      var nm = enc.encode(f.name), d = f.data, c = crc32(d);
+      var loc = h(30, function (v) { v.setUint32(0, 0x04034b50, true); v.setUint16(4, 20, true); v.setUint16(6, 0x0800, true); v.setUint32(14, c, true); v.setUint32(18, d.length, true); v.setUint32(22, d.length, true); v.setUint16(26, nm.length, true); });
+      cen.push(h(46, function (v) { v.setUint32(0, 0x02014b50, true); v.setUint16(4, 20, true); v.setUint16(6, 20, true); v.setUint16(8, 0x0800, true); v.setUint32(16, c, true); v.setUint32(20, d.length, true); v.setUint32(24, d.length, true); v.setUint16(28, nm.length, true); v.setUint32(42, off, true); }), nm);
+      parts.push(loc, nm, d); off += 30 + nm.length + d.length;
+    });
+    var cs = cen.reduce(function (t, a) { return t + a.length; }, 0);
+    var end = h(22, function (v) { v.setUint32(0, 0x06054b50, true); v.setUint16(8, files.length, true); v.setUint16(10, files.length, true); v.setUint32(12, cs, true); v.setUint32(16, off, true); });
+    return new Blob(parts.concat(cen, [end]), { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  g.Zip = { read: read, write: write, crc32: crc32 };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/zip.js ここまで ▲ */
 /* ▼ src/platform-demo.js から。直すのは src のほう ▼ */
 // Platform層（見本用）。本番の GAS と同じ形の非同期 API を、メモリ上の架空データで返す。
 // 画面はこの API だけを呼ぶ。PR② で同じ形の platform-gas.js（google.script.run）を足して差し替える。
@@ -2035,6 +2086,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     // 対応の状況：古い事案ほど解消・指導済みが多い
     var age = (Date.now() - new Date(date).getTime()) / 864e5;
     rp.status = age < 14 ? pick(['open', 'open', 'done']) : age < 90 ? pick(['done', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'done', 'watch']);
+    // 報告済み：いじめで、1週間より前の事案で、対応中でないもの（乱数は使わない＝ほかの見本の値を変えない）
+    if (/いじめ/.test(type) && age >= 7 && rp.status !== 'open') rp.reported = Rp.addDays(date, 7);
     rp.s1.hk.push(row(pick(P.hk)));
     rp.s1.kk.push(row(lead + pick(P.kk.slice(0, 11))));
     if (R() < .5) rp.s1.kk.push(row(pick(P.kk.slice(11))));
@@ -2149,8 +2202,29 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     saveDraft: function (grade, d) { S.drafts = S.drafts || {}; S.drafts[grade] = d ? { at: new Date().toISOString(), draft: clone(d) } : null; return later({ ok: true }); },
     loadDraft: function (grade) { return later((S.drafts || {})[grade] || null); },
-    // 試行では様式のファイルが無いので Excel は作れない（コピペ用の表は使える）
-    exportReport: function () { return Promise.reject(Object.assign(new Error('試行では Excel を作れません。下の表からコピーしてください'), { noRetry: true })); },
+    // 試行の Excel：選んだ様式の .xlsx（template に入れた中身）を画面の中で開き、本番のサーバーと同じ手順でセルに書き、ダウンロードさせる
+    template: null,
+    exportReport: function (kind, values, incId, seq) {
+      var self = this, R = C.REPORT, Rp = g.Report;
+      if (!self.template) return Promise.reject(Object.assign(new Error('様式の Excel（.xlsx）を選んでください'), { noRetry: true }));
+      if (!R.sheets[kind]) return Promise.reject(Object.assign(new Error('様式が分かりません'), { noRetry: true }));
+      var ok = {}; Rp.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
+      var vals = {}; Object.keys(values || {}).forEach(function (ref) { if (ok[ref]) { var v = values[ref]; vals[ref] = typeof v === 'number' && isFinite(v) ? v : String(v).slice(0, 8000); } });
+      return g.Zip.read(self.template).then(function (files) {
+        var by = {}, dec = new TextDecoder(), enc = new TextEncoder();
+        files.forEach(function (f, i) { by[f.name] = i; });
+        var text = function (n) { return dec.decode(files[by[n]].data); }, put = function (n, s) { files[by[n]].data = enc.encode(s); };
+        if (by['xl/workbook.xml'] == null || by['xl/_rels/workbook.xml.rels'] == null) throw Object.assign(new Error('様式のファイルが読めません'), { noRetry: true });
+        var wb = text('xl/workbook.xml'), path = Rp.sheetPath(wb, text('xl/_rels/workbook.xml.rels'), R.sheets[kind]);
+        if (!path || by[path] == null) throw Object.assign(new Error('様式のファイルに「' + R.sheets[kind] + '」のシートがありません'), { noRetry: true });
+        Object.keys(by).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Rp.untab(text(n), n === path)); });
+        put(path, Rp.fillSheet(text(path), vals));
+        put('xl/workbook.xml', Rp.activate(wb, R.sheets[kind]));
+        var t = new Date(), p2 = function (n) { return ('0' + n).slice(-2); };
+        var name = R.names[kind] + '_事案' + (+incId || 0) + (+seq ? '_被害' + (+seq) : '') + '_' + t.getFullYear() + p2(t.getMonth() + 1) + p2(t.getDate()) + '_' + p2(t.getHours()) + p2(t.getMinutes()) + '.xlsx';
+        return { name: name, url: URL.createObjectURL(g.Zip.write(files)), download: true };
+      });
+    },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },
@@ -2253,7 +2327,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_01d6aa5a189a';
+  var PAGE_BUILD = 'BUILD_868492490684';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3569,6 +3643,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     watch: SVG('<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
     closed: SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>')
   };
+  // 報告済み：書類に✓の印（生徒指導担当が一覧で見分けられるように、カードの右上に出す）
+  var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
   // いじめの報告の段階：決めていなければ、様式Ⅱ用の追記があれば様式Ⅱ、なければ様式Ⅰ
   function levelOf(x) {
     var rp = x.report || Rp.emptyReport();
@@ -3582,6 +3658,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function tagsHtml(x) {
     var rp = x.report || Rp.emptyReport(), h = '<div class="itags">';
+    if (rp.reported) h += '<span class="itg irp" title="' + esc(Rp.md(rp.reported)) + 'に報告">' + REP_IC + '報告済み</span>';
     var gs = gradesOf(x); if (gs.length) h += '<span class="itg ig">' + gs.join('・') + '年</span>';
     typesOf(x.type).forEach(function (t) {
       if (t === 'いじめ') {
@@ -3634,7 +3711,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
       '<div class="istat"><span class="lab">対応</span>' + C.STATUS.map(function (s0) { return '<button class="lv ib st-' + s0.k + '" data-ist="' + s0.k + '" aria-pressed="' + (rp.status === s0.k) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') +
-      (b ? '<span class="lab">報告</span>' + C.BULLY_LEVELS.map(function (lv) { return '<button class="lv" data-ilv="' + lv.k + '" aria-pressed="' + (levelOf(x) === lv.k) + '"' + (levelOf(x) === lv.k ? ' style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '"' : '') + '>' + esc(lv.label) + '</button>'; }).join('') : '') + '</div>';
+      '<span class="lab">報告</span><button class="lv ib irpb" data-irep="1" aria-pressed="' + !!rp.reported + '">' + REP_IC + (rp.reported ? esc(Rp.md(rp.reported)) + 'に報告済み' : '未報告') + '</button>' +
+      (b ? C.BULLY_LEVELS.map(function (lv) { return '<button class="lv" data-ilv="' + lv.k + '" aria-pressed="' + (levelOf(x) === lv.k) + '"' + (levelOf(x) === lv.k ? ' style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '"' : '') + '>' + esc(lv.label) + '</button>'; }).join('') : '') + '</div>';
     h += x.diagram && x.diagram.nodes.length ? '<section><h3>関係図</h3><div id="vDg" class="dg ro"></div></section>' :
       '<section><h3>関係する児童</h3><div>' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>いじめの項目</h3><table class="irv"><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +
@@ -4063,8 +4141,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
               return '<label class="chk"><input type="checkbox" data-ivic="' + id + '"' + (st.pick.indexOf(id) >= 0 ? ' checked' : '') + '> ' + esc(kidName(id)) + '</label>';
             }).join('') + '<p class="note">選んだ児童1人につき1つの書類を作ります。下のコピー用の表は ' + esc(kidName(st.victim)) + ' の分です。</p></div>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
-          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.name) + ' ↗</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.mode === 'demo' ? (App.pf().template ? '選んだ様式に書き込み、ダウンロードします（元のファイルは変えません）' : '試行では、市教委の様式の Excel（.xlsx）をこの端末から選んでください') : App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span>' +
+            (App.mode === 'demo' ? '<label class="btn ib">様式の Excel を選ぶ<input type="file" id="itmpl" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label>' + (App.pf().templateName ? '<span class="note">' + esc(App.pf().templateName) + '</span>' : '') : '') + '</div>' +
+          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '"' + (m.download ? ' download="' + esc(m.name) + '"' : ' target="_blank" rel="noopener"') + '>' + esc(m.name) + (m.download ? ' ⤓' : ' ↗') + '</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -4088,10 +4167,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
               var seq = vs.length > 1 ? vs.indexOf(v) + 1 : 0;
               return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, seq); }).then(function (r) { r.victim = v; st.made.push(r); });
             }, Promise.resolve());
-          }).then(function () { App.refreshDlg(); });
+          }).then(function () {
+            App.refreshDlg();
+            // 試行：作った分をそのままダウンロードする
+            st.made.forEach(function (m) { if (m.download) { var a = document.createElement('a'); a.href = m.url; a.download = m.name; document.body.appendChild(a); a.click(); a.remove(); } });
+          });
           return true;
         }
         return false;
+      },
+      input: function (t) {
+        if (t.id !== 'itmpl' || !t.files || !t.files[0]) return;
+        var f = t.files[0];
+        f.arrayBuffer().then(function (b) { App.pf().template = b; App.pf().templateName = f.name; App.refreshDlg(); App.toast('様式を読み込みました：' + f.name); });
       }
     });
   }
@@ -4175,9 +4263,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
       if (t.closest('#ihome')) { I.sel = null; render(); return true; }
       if (t.closest('#iadd2nd')) { newForm(null); render(); refocus('fQ'); return true; }
-      if ((x = t.closest('[data-ist],[data-ilv]'))) {
+      if ((x = t.closest('[data-ist],[data-ilv],[data-irep]'))) {
         var xi = incOf(I.sel), rp0 = Rp.norm(xi.report);
-        if (x.dataset.ist) rp0.status = x.dataset.ist; else rp0.level = x.dataset.ilv;
+        if (x.dataset.ist) rp0.status = x.dataset.ist; else if (x.dataset.irep) rp0.reported = rp0.reported ? '' : today(); else rp0.level = x.dataset.ilv;
         App.save(function () { return App.pf().updateIncident(xi.id, body(xi, { rep: rp0 })); }).then(function (inc) {
           var list = D().incidents, i = list.map(function (y) { return y.id; }).indexOf(inc.id); if (i >= 0) list[i] = inc; render();
         });
