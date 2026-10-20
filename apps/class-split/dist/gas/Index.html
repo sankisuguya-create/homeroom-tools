@@ -658,16 +658,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* ▲ css/09-incidents.css ここまで ▲ */
 /* ▼ css/10-print.css から ▼ */
 /* 個人票の印刷 */
-/* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
+/* ===== 個人票の印刷（18×5cm を A4 縦に5枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
 #printbox .pbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);color:var(--ink);z-index:1}
 #printbox .pbar #pover{color:#B00020;font-weight:700}
 #printbox .pages{display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px}
-.pp{width:210mm;height:297mm;box-sizing:border-box;padding:8.5mm 15mm 0;background:#fff;position:relative;overflow:hidden;font-family:inherit}
+.pp{width:210mm;height:297mm;box-sizing:border-box;padding:23.5mm 15mm 0;background:#fff;position:relative;overflow:hidden;font-family:inherit}
 .pp-h{position:absolute;top:2.5mm;left:15mm;font-size:8pt}
 .pp-f{position:absolute;bottom:2.5mm;left:15mm;font-size:6.5pt;display:flex;align-items:center;gap:3mm}
 .pp-ruler{display:inline-block;width:100mm;height:1.5mm;border:solid #000;border-width:0 .3mm .3mm .3mm}
-.pc{width:180mm;height:40mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:.8mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pc{width:180mm;height:50mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:.8mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
@@ -2249,7 +2249,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_b4310f9dcfb9';
+  var PAGE_BUILD = 'BUILD_bcc71c594442';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4728,9 +4728,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // 決定した組の番号。未設定の間は仮（A組＝1組…）
   // ===== 個人票の印刷 =====
-  // 18×4cm の票を A4 縦に7枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
+  // 18×5cm の票を A4 縦に5枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
   // 左は上に良い項目（緑）、名前、下に負担の4項目と事案数。右上に配慮（紫）と備考、右下に離す・つける。色はアイコンと旧学級の帯（濃い方）だけ。女子は左を半円（画面のカードと同じ形）。字は枠に収まるまで縮める（下限6pt）
-  var PRINT_PER_PAGE = 7, PRINT_MIN_PT = 6;
+  var PRINT_PER_PAGE = 5, PRINT_MIN_PT = 6;
   function printCards() {
     var p = S.plans[S.active], kids = S.P.kids, esc = App.esc;
     var named = S.decision && S.decision.named, names = namesOf();

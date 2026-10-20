@@ -127,9 +127,9 @@
 
   // 決定した組の番号。未設定の間は仮（A組＝1組…）
   // ===== 個人票の印刷 =====
-  // 18×4cm の票を A4 縦に7枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
+  // 18×5cm の票を A4 縦に5枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
   // 左は上に良い項目（緑）、名前、下に負担の4項目と事案数。右上に配慮（紫）と備考、右下に離す・つける。色はアイコンと旧学級の帯（濃い方）だけ。女子は左を半円（画面のカードと同じ形）。字は枠に収まるまで縮める（下限6pt）
-  var PRINT_PER_PAGE = 7, PRINT_MIN_PT = 6;
+  var PRINT_PER_PAGE = 5, PRINT_MIN_PT = 6;
   function printCards() {
     var p = S.plans[S.active], kids = S.P.kids, esc = App.esc;
     var named = S.decision && S.decision.named, names = namesOf();

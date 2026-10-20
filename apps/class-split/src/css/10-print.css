@@ -1,14 +1,14 @@
 /* 個人票の印刷 */
-/* ===== 個人票の印刷（18×4cm を A4 縦に7枚） ===== */
+/* ===== 個人票の印刷（18×5cm を A4 縦に5枚） ===== */
 #printbox{position:fixed;inset:0;z-index:50;background:#777;overflow:auto;color:#000}
 #printbox .pbar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);color:var(--ink);z-index:1}
 #printbox .pbar #pover{color:#B00020;font-weight:700}
 #printbox .pages{display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px}
-.pp{width:210mm;height:297mm;box-sizing:border-box;padding:8.5mm 15mm 0;background:#fff;position:relative;overflow:hidden;font-family:inherit}
+.pp{width:210mm;height:297mm;box-sizing:border-box;padding:23.5mm 15mm 0;background:#fff;position:relative;overflow:hidden;font-family:inherit}
 .pp-h{position:absolute;top:2.5mm;left:15mm;font-size:8pt}
 .pp-f{position:absolute;bottom:2.5mm;left:15mm;font-size:6.5pt;display:flex;align-items:center;gap:3mm}
 .pp-ruler{display:inline-block;width:100mm;height:1.5mm;border:solid #000;border-width:0 .3mm .3mm .3mm}
-.pc{width:180mm;height:40mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:.8mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pc{width:180mm;height:50mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:.8mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
