@@ -52,28 +52,31 @@
       onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
     });
   };
-  // クラス分けテストの点数から「賢い」を足す：学年で点数の上位（割合は年度ごと）。手動の印（k7m）は残し、どちらかで賢い。
-  // a.k7s＝点数で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
-  App.topIds = function (sc) {
-    // 順位で決める時：順位の付いた人数の上位（割合）まで。同じ順位は全員
-    if (sc && sc.use === 'rank') {
-      var rk = Object.keys(sc.r || {}); if (!rk.length) return {};
-      var nr = Math.max(1, Math.round(rk.length * (sc.top || g.CONFIG.SCORE_DEF.top))), o2 = {};
-      rk.sort(function (x, y) { return sc.r[x] - sc.r[y]; });
-      var cutR = sc.r[rk[nr - 1]];
-      rk.forEach(function (id) { if (sc.r[id] <= cutR) o2[id] = 1; });
-      return o2;
-    }
-    var ids = Object.keys((sc && sc.s) || {}); if (!ids.length) return {};
-    ids.sort(function (x, y) { return sc.s[y] - sc.s[x]; });
-    var n = Math.max(1, Math.round(ids.length * (sc.top || g.CONFIG.SCORE_DEF.top))), cut = sc.s[ids[n - 1]], out = {};
-    ids.forEach(function (id) { if (sc.s[id] >= cut) out[id] = 1; }); // 同点は境目の点まで全員
+  // クラス分けテストの点数・学力の順位から「賢い」を足す。学力は組の中の男女ごと（1組の男子、1組の女子…）に比べ、
+  // それぞれの上位（割合は年度ごと）に付ける。手動の印（k7m）は残し、どちらかで賢い。
+  // a.k7s＝点数・順位で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
+  // groupOf(id) は比べる組（例 '0:m'）。渡さなければ全体を1つとして比べる
+  App.topIds = function (sc, groupOf) {
+    var out = {}; if (!sc) return out;
+    var rank = sc.use === 'rank', map = rank ? sc.r || {} : sc.s || {}, top = sc.top || g.CONFIG.SCORE_DEF.top, groups = {};
+    Object.keys(map).forEach(function (id) { var k = groupOf ? groupOf(id) : ''; if (k == null) return; (groups[k] = groups[k] || []).push(id); });
+    Object.keys(groups).forEach(function (k) {
+      var ids = groups[k];
+      ids.sort(function (x, y) { return rank ? map[x] - map[y] : map[y] - map[x]; });
+      var n = Math.max(1, Math.round(ids.length * top)), cut = map[ids[n - 1]];
+      ids.forEach(function (id) { if (rank ? map[id] <= cut : map[id] >= cut) out[id] = 1; }); // 同点・同じ順位は境目まで全員
+    });
     return out;
+  };
+  // 学力を比べる組：その年度の組と男女
+  App.scoreGroup = function (d, y) {
+    var at = {}; y.rows.forEach(function (r) { var s = d.kids[r.id]; at[r.id] = r.cls + ':' + (s && s.male ? 'm' : 'f'); });
+    return function (id) { return at[id]; };
   };
   App.applyScores = function (d) {
     d.scores = d.scores || {};
     (d.years || []).forEach(function (y) {
-      var top = App.topIds(d.scores[y.fy]);
+      var top = App.topIds(d.scores[y.fy], App.scoreGroup(d, y));
       y.rows.forEach(function (r) {
         var a = r.a; if (!('k7m' in a)) a.k7m = a.k7 | 0;
         if (top[r.id] && !a.k7m) { a.k7 = 1; a.k7s = 1; } else { a.k7 = a.k7m; delete a.k7s; }

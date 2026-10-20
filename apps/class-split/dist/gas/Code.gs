@@ -995,7 +995,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_2535455a13c0';
+var SERVER_BUILD = 'BUILD_89635d148da9';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1414,7 +1414,7 @@ var apiSetScores = api_(function (fy, grade, v) {
   if (!(top > 0 && top < 1)) throw userError_('上位の割合が違います');
   var ids = {}; rosterRows_(fy).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
   Object.keys(v.s || {}).forEach(function (id) { var n = +v.s[id]; if (ids[id] && n >= 0 && n <= max) s[id] = n; });
-  // 順位（1が上）。点数と順位のどちらで「賢い」を決めるかは use（最後に保存した方の窓）
+  // 順位（1が上。組の中の男女ごとの順位）。点数と順位のどちらで「賢い」を決めるかは use（最後に保存した方の窓）
   var r = {}, nk = Object.keys(ids).length;
   Object.keys(v.r || {}).forEach(function (id) { var n = Math.floor(+v.r[id]); if (ids[id] && n >= 1 && n <= nk) r[id] = n; });
   var use = v.use === 'rank' ? 'rank' : 'score';

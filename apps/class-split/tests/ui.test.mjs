@@ -348,11 +348,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const autoBefore = await p.locator('td.cell.auto[data-k="k7"]').count();
   await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-score]'); await p.waitForSelector('.sctab');
   const n = await p.locator('.scin').count();
-  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String(i)).join('\n')); await p.click('[data-scpaste]');
+  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String((i * 37) % 101)).join('\n')); await p.click('[data-scpaste]'); // 点数は満点（100）を超えないように
   await p.fill('#scTop', '10'); await p.locator('#scTop').dispatchEvent('input');
   await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
   const nAuto = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0]; return y.rows.filter(r => r.a.k7s).length; });
-  ok(nAuto >= 1 && nAuto <= Math.round(n * 0.1), `点数の上位1割に「賢い」が付く（${nAuto}人／${n}人。手動で付いている児童は数えない）`);
+  const per = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], g = {}, top = App.topIds(d.scores[d.fy], App.scoreGroup(d, y)); y.rows.forEach(r => { const k = r.cls + (d.kids[r.id].male ? 'm' : 'f'); g[k] = g[k] || { n: 0, t: 0 }; g[k].n++; if (top[r.id]) g[k].t++; }); return Object.values(g); });
+  ok(nAuto >= 1 && per.every(x => x.t >= 1 && x.t <= Math.max(1, Math.round(x.n * 0.1)) + 1), `点数の上位1割は、組の中の男女ごとに付く（${per.length}組×男女、点数で付いた${nAuto}人）`);
   ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
