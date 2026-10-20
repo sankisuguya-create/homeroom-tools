@@ -13,7 +13,7 @@
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
-.board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden}
+.board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;position:relative}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
 
 .head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -83,3 +83,6 @@ table.cmp td.bad{color:var(--alert);font-weight:700}
 table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:left}
 .legend{font-size:.78rem;color:var(--sub);padding-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
 .legend .c{display:inline-flex;gap:3px;align-items:center}
+.board.zoomed{overflow:hidden;cursor:grab;touch-action:none}
+.board.zoomed .cols{will-change:transform}
+.zreset{position:absolute;right:8px;bottom:8px;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.35)}

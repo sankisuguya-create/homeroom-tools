@@ -378,6 +378,21 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.keyboard.press('Escape');
   await p.close();
 }
+// クラス分け：ホイールでカーソルの所を中心に拡大・縮小。「等倍に戻す」で元へ
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+  const chip = p.locator('.board .chip').nth(40), b0 = await chip.boundingBox(), cx = b0.x + b0.width / 2, cy = b0.y + b0.height / 2;
+  await p.mouse.move(cx, cy); await p.mouse.wheel(0, -400); await p.waitForTimeout(100);
+  const b1 = await chip.boundingBox();
+  ok(b1.width > b0.width * 1.5 && Math.abs(b1.x + b1.width / 2 - cx) < 3 && Math.abs(b1.y + b1.height / 2 - cy) < 3, 'ホイールで、カーソルの所を動かさずに拡大する');
+  await p.click('#zreset'); const b2 = await chip.boundingBox();
+  ok(Math.abs(b2.width - b0.width) < 1 && await p.locator('#zreset').count() === 0, '「等倍に戻す」で元の大きさ');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);
