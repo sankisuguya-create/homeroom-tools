@@ -156,7 +156,6 @@
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
-      if (t.closest('#smore')) { moreDialog(); return true; }
       if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }

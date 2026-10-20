@@ -263,6 +263,10 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .board.zoomed{overflow:hidden;cursor:grab;touch-action:none}
 
 .zreset{position:absolute;right:8px;bottom:8px;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.bar .bsep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+.btn.warnbtn{border:2px solid #B00020;color:#B00020;font-weight:700}
+/* 帯の操作のボタンは1つのまとまりとして右に寄せる（折り返す時もまとまりごと次の行へ） */
+.bar .bacts{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
 /* ▲ css/04-split.css ここまで ▲ */
 /* ▼ css/05-dialogs.css から ▼ */
 /* 浮く枠（窓）・設定 */
@@ -2377,7 +2381,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_547260a20b4f';
+  var PAGE_BUILD = 'BUILD_d377db72b0ca';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3189,35 +3193,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var SORT_LABEL = { cls: '組', no: '番号', kana: 'よみ', sex: '性別', sp: '特支', ji: '事案数', pr: 'つける離す', memo: '備考' };
   function sortLabel(k) { var at = C.ATTRS.filter(function (a) { return a.k === k; })[0]; return at ? at.label : SORT_LABEL[k] || k; }
 
-  // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
-  function moreDialog() {
-    App.openDlg({
-      html: function () {
-        var d = D(), edit = R.fy === editableFy();
-        var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
-        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:640px"><h2>その他</h2>' +
-          '<section><h3>年度</h3><div class="rbar">' + years.map(function (fy) {
-            return '<button class="tab" data-fy="' + fy + '" aria-selected="' + (fy === R.fy) + '">' + fy + '年度（' + yearOf(fy).grade + '年）' +
-              (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</button>';
-          }).join('') + '</div></section>' +
-          '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
-          '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
-          '</div></section>' +
-          '<section><h3>編集</h3><div class="rbar">' +
-          (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
-          '</div></section>' +
-          '<section><h3>使い方</h3><div class="note">配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押すか、マスを長押しする：説明・経緯・事案などの窓（文字を書く窓は「保存」で保存）。<br>' +
-          '事案・つける離す・備考の欄は、どこを押しても窓が開きます。直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div></section>' +
-          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
-      },
-      noEnter: true,
-      input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
-      // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
-      click: function (t) {
-        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste')) return false;
-        App.closeDlg(); return App.screens.roster.click(t);
-      }
-    });
+  // 使い方の窓（帯の「?」）
+  function helpDialog() {
+    var d = D();
+    App.openDlg({ noEnter: true, html: function () {
+      return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="名簿の使い方" style="max-width:640px"><h2>名簿の使い方</h2><div class="note">' +
+        '配慮項目のマスの真ん中を押す：空→アイコン→＋→空。マスの右下の灰色の角を押すか、マスを長押しする：説明・経緯・事案などの窓（文字を書く窓は「保存」で保存）。<br>' +
+        '見出しを押した順に並べ替えの優先になります（もう一度で逆、3回目で外す）。<br>' +
+        'つける・離すの欄の右下を押すと、その児童のつける・離す（経緯・理由・何年生から）の窓が開きます。学年全体の一覧はクラス分けの画面の「つける離す」でも同じものを直せます。<br>' +
+        '直せるのは' + editableFy() + '年度だけです（' + (d.decision ? '決定の後は今年度を凍結' : '決定前は今年度') + '）。</div>' +
+        '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+    } });
   }
 
   function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
@@ -3248,7 +3234,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (SORT.length) h += '<span class="state">並び順：' + SORT.map(function (x) { return App.esc(sortLabel(x.k)) + (x.dir > 0 ? '↑' : '↓'); }).join('→') + '<button class="btn" id="unorder">解除</button></span>';
     }
     // 名簿を貼る：年度の初めや転入の時にすぐ使えるよう、上の帯に出す（直せる年度だけ）
-    h += '<span class="sp"></span>' + (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') + '<button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
+    // 「その他」の窓をやめ、年度・全校の事案・絞り込み・使い方を帯に出す
+    var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
+    h += '<span class="sp"></span>' +
+      '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '年度（' + yearOf(fy).grade + '年）' + (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</option>'; }).join('') + '</select></label>' +
+      '<button class="btn" id="onlyIncB" aria-pressed="' + !!R.onlyInc + '" title="事案のある児童だけを出す">事案のある児童</button>' +
+      '<button class="btn" data-scope="' + (R.scope === 'school' ? 'cls' : 'school') + '" aria-pressed="' + (R.scope === 'school') + '">全校の事案</button>' +
+      (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
+      '<button class="btn" id="rhelp" title="名簿の使い方">?</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
@@ -3576,8 +3569,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t.closest('td.ji')) return true; // 事案の欄は角から開く
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
-      if (t.closest('#rpairs')) { openPairs(null); return true; }
-      if (t.closest('#rmore')) { moreDialog(); return true; }
+      if (t.closest('#rhelp')) { helpDialog(); return true; }
+      if (t.closest('#onlyIncB')) { R.onlyInc = !R.onlyInc; render(); return true; }
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }
       if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
@@ -3588,6 +3581,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     input: function (t) {
       if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
+      if (t.id === 'rfy') { R.fy = +t.value; render(); return; }
     },
     key: function (e) {
       if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }
@@ -4702,27 +4696,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       '<span class="jr">' + jn + '</span></div>';
   }
 
-  function moreDialog() {
-    var ro = !!S.decision, np = S.view !== 'plan';
-    var btn = function (id, label, kbd, off) { return '<button class="btn" id="' + id + '"' + (off ? ' disabled' : '') + '>' + label + (kbd ? '<kbd>' + kbd + '</kbd>' : '') + '</button>'; };
-    App.openDlg({
-      noEnter: true,
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
-          (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
-            '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
-          '<section><h3>表示</h3><div class="rbar">' + btn('prt', '個人票を印刷…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
-          (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
-          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var b = t.closest('button[id]');
-        if (!b || b.disabled) return false;
-        App.closeDlg(); return App.screens.split.click(t);
-      }
-    });
-  }
-
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
@@ -4734,13 +4707,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
     h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
-    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '<button class="btn primary" id="xlsOut" title="決定した組を「次年度組編成」の Excel で出す">Excel で出す</button><button class="btn primary" id="cnames">組の番号を決める…</button><button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
-    else h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
-      '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>';
-    // 編集中に毎回は使わない操作は「その他…」の窓へ（キーの近道はそのまま効く）
-    h += '<button class="btn ordbtn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>⇅ 並び順…</button><button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
-    if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
-    return '<div class="bar">' + h + '</div>';
+    // ボタンは「その他」の窓に隠さず、作業の順に帯に並べる：直す → 条件 → 見せ方 → 出す → 決める
+    var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
+    h += '<span class="bacts">';
+    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '</span>' +
+      b('cnames', '組の番号を決める…', '', 'primary') + b('prt', '個人票を印刷…', '', '', np) + b('xlsOut', 'Excel で出す', '決定した組を「次年度組編成」の Excel で出す', 'primary') + b('undoDecide', '決定を取り消す…', '', 'danger');
+    else h += b('undo', '↶', '戻す（Ctrl+Z）', '', np || !p.hist.length) + b('redo', '↷', 'やり直す（Ctrl+Y）', '', np || !p.fut.length) + b('dup', '複製', 'この案を写して新しい案にする（D）', '', np) +
+      '<span class="bsep"></span>' + b('pairs', 'つける離す', 'つける・離す・組に固定（P）') + b('trans', '転入生') +
+      '<span class="bsep"></span>' + b('order', '⇅ 並び順', '組の中のカードの並び順', 'ordbtn', np) + b('prt', '印刷', '個人票を印刷', '', np);
+    h += b('fs', '⛶', '全画面（F）') + b('hbtn', '?', 'ショートカット一覧（?）');
+    if (!ro) h += '<span class="bsep"></span>' + b('decide', '決定', App.st.grade >= 6 ? '6年は決定しません' : 'この案でクラス替えを決める（来年度の名簿を作る）', 'warnbtn', np || App.st.grade >= 6) + b('gen', '案を作る', '（G）', 'primary');
+    return '<div class="bar">' + h + '</span></div>';
   }
 
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
@@ -5529,7 +5506,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
-      if (t.closest('#smore')) { moreDialog(); return true; }
       if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }

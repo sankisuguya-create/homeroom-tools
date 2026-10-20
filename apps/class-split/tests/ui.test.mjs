@@ -108,12 +108,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#main .rbar .tab[data-fy], main #paste, main .chk').count() === 0, `${w}x${h} 上の帯は組・学年と「名簿を貼る」「その他…」だけ`);
-  await p.click('#rmore');
-  ok(await p.locator('.dlg.more .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿（その他の窓）`);
-  await p.check('.dlg.more #onlyInc');
-  ok(await p.locator('.dlg.more #onlyInc').isChecked() && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
-  await p.keyboard.press('Escape'); await p.click('#unfilter');
+  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#rmore').count() === 0 && await p.locator('#rfy').count() === 1, `${w}x${h} 「その他」の窓は無く、年度・全校の事案・絞り込みは上の帯`);
+  ok(await p.locator('#rfy option').count() === 6, `${w}x${h} 6年は6年度分の名簿（年度の選択）`);
+  await p.click('#onlyIncB');
+  ok(await p.locator('#onlyIncB[aria-pressed="true"]').count() === 1 && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
+  await p.click('#unfilter');
   ok(await p.locator('#main .state').count() === 0, `${w}x${h} 解除で状態が消える`);
   // 見出しを押した順に優先：性別（1回目＝男が先、2回目＝女が先）→ 名前（よみ）
   await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="kana"]');
@@ -123,8 +122,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('#main .state', { hasText: '並び順' }).count() === 1, `${w}x${h} 並び順を変えると帯に出る`);
   await p.click('#unorder');
   ok(await p.locator('#main .state').count() === 0 && (await p.locator('td.nm').first().evaluate(e => e.closest('tr').cells[0].textContent)) === '1', `${w}x${h} 戻すで番号順`);
-  await p.click('#rmore'); await p.locator('.dlg.more .tab[data-fy]').last().click();
-  ok(await p.locator('.dlg.more').count() === 0 && await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと窓が閉じ、帯に「見るだけ」が出る`);
+  { const v = await p.locator('#rfy option').last().getAttribute('value'); await p.selectOption('#rfy', v); }
+  ok(await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと、帯に「見るだけ」が出る`);
   await p.locator('#main .state .btn').click();
   ok(await p.locator('table.r.ro').count() === 0, `${w}x${h} 戻るで編集できる年度に戻る`);
   await p.locator('td.nm').first().click();
@@ -226,7 +225,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
-  await p.click('#smore'); await p.click('#decide');
+  await p.click('#decide');
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
@@ -242,9 +241,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');
   ok(await p.locator('.ncl').first().textContent() === 'A組', 'クラス分けの枠は A組…');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  await p.click('#rmore');
-  ok(await p.locator('.tab[data-fy]', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');
-  await p.locator('.tab[data-fy]', { hasText: '今年度' }).click();
+  ok(await p.locator('#rfy option', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');
+  { const v = await p.locator('#rfy option', { hasText: '今年度' }).getAttribute('value'); await p.selectOption('#rfy', v); }
   ok(await p.locator('table.r.ro').count() === 1, '決定後の今年度は凍結（見るだけ）');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.decided');
   await p.click('#undoDecide'); await p.fill('#cword', '4年の決定を取り消す'); await p.click('[data-act="ok"]');

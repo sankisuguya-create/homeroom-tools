@@ -86,3 +86,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .board.zoomed{overflow:hidden;cursor:grab;touch-action:none}
 
 .zreset{position:absolute;right:8px;bottom:8px;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.bar .bsep{width:1px;align-self:stretch;background:var(--line);margin:0 2px}
+.btn.warnbtn{border:2px solid #B00020;color:#B00020;font-weight:700}
+/* 帯の操作のボタンは1つのまとまりとして右に寄せる（折り返す時もまとまりごと次の行へ） */
+.bar .bacts{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
