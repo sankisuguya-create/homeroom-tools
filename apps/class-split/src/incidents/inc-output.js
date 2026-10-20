@@ -63,7 +63,7 @@
           }).then(function () {
             App.refreshDlg();
             // 試行：作った分をそのままダウンロードする
-            st.made.forEach(function (m) { if (m.download) { var a = document.createElement('a'); a.href = m.url; a.download = m.name; document.body.appendChild(a); a.click(); a.remove(); } });
+            st.made.forEach(function (m) { if (m.download) { var a = document.createElement('a'); a.href = m.url; a.download = m.name; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000); } });
           });
           return true;
         }

@@ -135,7 +135,7 @@ CPU を1/4に落とした Chromium（低性能端末の代わり）、144人の�
 | `src/ui-common.js` | 共通部品（印・トースト・浮く枠・保存状態） |
 | `src/report.js` | 市教委の様式（簡易・様式Ⅰ・様式Ⅱ）のセルへの対応と、xlsx の中の XML の書き換え（画面とサーバーで共用） |
 | `src/ui-menu.js` / `ui-roster.js` / `ui-settings.js` | メニュー・名簿・設定の画面 |
-| `src/ui-split.js` ＋ `src/split/*.js` | クラス分け。部品（盤面・窓・つける離す・操作・拡大縮小）は build.py が ui-split.js の中に差し込む（同じ閉じた範囲） |
+| `src/ui-split.js` ＋ `src/split/*.js` | クラス分け。部品（盤面・窓・つける離す・操作・拡大縮小・次年度組編成の Excel）は build.py が ui-split.js の中に差し込む（同じ閉じた範囲） |
 | `src/ui-incidents.js` ＋ `src/incidents/*.js` | 事案管理。部品（読み込みと絞り込み・描く・記入・出力）は同じく差し込む |
 | `src/ui-diagram.js` | 事案の関係図（置く・囲む・矢印・整える） |
 | `src/main.js` | 画面の切り替えと入力の振り分け |
