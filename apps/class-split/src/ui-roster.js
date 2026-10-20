@@ -255,19 +255,39 @@
   }
 
   function memoDialog(Y, r) {
-    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade, esc = App.esc;
+    var SB = C.normSibs(r.a.sib || []), memoNow = r.a.memo || '';
+    var sibRows = function () {
+      return SB.map(function (x, i) {
+        return '<div class="sibrow"><select data-sbr="' + i + '">' + C.SIB_REL.map(function (q) { return '<option' + (q === x.r ? ' selected' : '') + '>' + q + '</option>'; }).join('') + '</select>' +
+          '<select data-sbg="' + i + '">' + C.SIB_GRADES.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === x.g ? ' selected' : '') + '>' + q[1] + '</option>'; }).join('') + '</select>' +
+          '<input data-sbn="' + i + '" value="' + esc(x.n) + '" maxlength="20" placeholder="名前（なくてよい）">' +
+          '<button type="button" class="btn ib" data-sbdel="' + i + '" aria-label="この兄弟を消す">✕</button></div>';
+      }).join('') || '<div class="note">兄弟はいません（いれば「＋兄弟を足す」）</div>';
+    };
     App.openDlg({
       focus: 'mtx',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
           '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
-          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(memoNow) + '</textarea>' +
           // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
           '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
-          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
+          '<div class="lab" style="margin-top:10px">兄弟（この学校にいない兄弟も）</div><div id="sibs">' + sibRows() + '</div>' +
+          '<button type="button" class="btn" data-sbadd="1">＋兄弟を足す</button>' +
+          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります（兄弟の学年は1つ上がります）。個人票の印刷では、備考の欄の下に家庭環境と兄弟をまとめて出します。</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
+      click: function (t) {
+        var b;
+        if (t.closest('[data-sbadd]')) { memoNow = App.$('mtx').value; SB.push({ r: '兄', g: Math.min(10, grade + 1), n: '' }); App.refreshDlg(); return true; }
+        if ((b = t.closest('[data-sbdel]'))) { memoNow = App.$('mtx').value; SB.splice(+b.dataset.sbdel, 1); App.refreshDlg(); return true; }
+        return false;
+      },
       input: function (t) {
+        if (t.dataset.sbr != null) { SB[+t.dataset.sbr].r = t.value; return; }
+        if (t.dataset.sbg != null) { SB[+t.dataset.sbg].g = +t.value; return; }
+        if (t.dataset.sbn != null) { SB[+t.dataset.sbn].n = t.value; return; }
         if (!t.dataset.mpick || !t.value) return;
         var ta = App.$('mtx'), w = t.value, a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
         var before = v.slice(0, a), after = v.slice(b), sep = before && !/[、。\s]$/.test(before) ? '、' : '';
@@ -275,10 +295,12 @@
         var pos = Math.min(400, (before + sep + w).length); ta.focus(); ta.setSelectionRange(pos, pos);
       },
       onOk: function () {
-        var text = App.$('mtx').value.trim().slice(0, 400);
+        var text = App.$('mtx').value.trim().slice(0, 400), sb = C.normSibs(SB), changedSib = JSON.stringify(sb) !== JSON.stringify(C.normSibs(r.a.sib || []));
         if (text) r.a.memo = text; else delete r.a.memo;
+        if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
   }
@@ -428,7 +450,7 @@
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
-        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
+        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo || r.a.sib ? ' title="' + esc((r.a.memo || '') + (r.a.sib ? '　兄弟：' + C.sibText(r.a.sib) : '')) + '"' : '') + '><div>' + esc(r.a.memo || '') + (r.a.sib ? ' <small class="msib">兄弟：' + esc(C.sibText(r.a.sib)) + '</small>' : '') + '</div></td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';

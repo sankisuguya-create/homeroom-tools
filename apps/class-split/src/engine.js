@@ -344,6 +344,7 @@
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if ((at.side || at.ctx) && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; if (at.ctx && s.a[at.k + '_i']) a[at.k + '_i'] = s.a[at.k + '_i'].slice(); });
       if (s.a.sp) a.sp = 1;
       if (s.a.memo) a.memo = s.a.memo;
+      if (s.a.sib && s.a.sib.length) a.sib = C.nextSibs(s.a.sib); // 兄弟の学年は1つ上げて写す
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }

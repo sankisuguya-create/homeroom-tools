@@ -417,6 +417,9 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .bigs .big:only-child{grid-column:1/-1}
 /* 性別の列：名前の列から分けた（並べ替えのため）。字1つ分の幅 */
 body[data-screen="roster"] table.r :is(th,td).sxc{width:3.6em;min-width:3.6em;max-width:3.6em;padding:0 2px;text-align:center}
+body[data-screen="roster"] table.r td.memo .msib{color:var(--sub);margin-left:.4em}
+.sibrow{display:flex;gap:6px;align-items:center;margin:4px 0}
+.sibrow input{flex:1;min-width:0;font:inherit;padding:3px 6px}
 /* ▲ css/07-roster-wide.css ここまで ▲ */
 /* ▼ css/08-diagram.css から ▼ */
 /* 事案の関係図と、名簿・カードの細部 */
@@ -680,7 +683,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pp-f{position:absolute;bottom:2.5mm;left:15mm;font-size:6.5pt;display:flex;align-items:center;gap:3mm}
 .pp-ruler{display:inline-block;width:100mm;height:1.5mm;border:solid #000;border-width:0 .3mm .3mm .3mm}
 .pc{width:180mm;height:50mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:1.6mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
+.pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
 .pc-l{display:grid;grid-template-rows:8.5mm auto auto 8.5mm;grid-template-columns:minmax(0,1fr);align-content:center;justify-items:center;gap:.5mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
@@ -691,13 +694,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pc-ic .jn{font-size:9pt}
 .pc-r{display:grid;grid-template-rows:1fr 1fr;min-width:0}
 .pc-t,.pc-b{overflow:hidden;padding:.8mm 1.5mm;line-height:1.25;min-height:0}
-.pc-t{border-bottom:.3mm solid #000}
+.pc-t{border-bottom:.3mm solid #000;display:flex;flex-direction:column}
 .pc-t b,.pc-b b{font-weight:700;margin-right:.5mm}
 .pc-b .b{font-size:.9em;vertical-align:middle}
 .fit.over{outline:.4mm dashed #B00020;outline-offset:-.6mm}
-.pc-fam{display:grid;grid-template-rows:auto 1fr 1fr 1fr;border-left:.3mm solid #000;font-size:6.5pt}
-.pc-fam div{border-bottom:.2mm solid #000;display:flex;align-items:center;justify-content:center;white-space:nowrap}
-.pc-fam div:last-child{border-bottom:0}
 @media print{
   @page{size:210mm 297mm;margin:0} /* A4 縦を寸法で指定する（用紙の名前より、ブラウザが用紙と倍率を合わせやすい） */
   body.printing>*:not(#printbox){display:none!important}
@@ -717,6 +717,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg.ro .dg-rs{display:none}
 .dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
 .pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
+.pc-famline{margin-top:auto;padding-top:.5mm;border-top:.2mm dashed #666} /* 備考の欄のいちばん下に置く */
 /* ▲ css/10-print.css ここまで ▲ */
 /* ▼ css/11-later.css から ▼ */
 /* 後から足した規則（事案の一覧・点数・知らせなど） */
@@ -951,6 +952,25 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
 
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  // 兄弟：[{ r: 続柄, g: 学年（0＝未就学、1〜6、7〜9＝中1〜3、10＝高校以上）, n: 名前（任意） }]。決定で来年度に写す時は学年を1つ上げる
+  CONFIG.SIB_REL = ['兄', '姉', '弟', '妹'];
+  CONFIG.SIB_GRADES = [[0, '未就学'], [1, '1年'], [2, '2年'], [3, '3年'], [4, '4年'], [5, '5年'], [6, '6年'], [7, '中1'], [8, '中2'], [9, '中3'], [10, '高校以上']];
+  CONFIG.normSibs = function (list) {
+    if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
+    return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
+      var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
+      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+    });
+  };
+  CONFIG.sibText = function (list) {
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+  };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
+  CONFIG.familyWords = function (memo) {
+    var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');
+    return grp ? grp.items.filter(function (w) { return m.indexOf(w) >= 0; }) : [];
+  };
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
   // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
@@ -1312,6 +1332,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if ((at.side || at.ctx) && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; if (at.ctx && s.a[at.k + '_i']) a[at.k + '_i'] = s.a[at.k + '_i'].slice(); });
       if (s.a.sp) a.sp = 1;
       if (s.a.memo) a.memo = s.a.memo;
+      if (s.a.sib && s.a.sib.length) a.sib = C.nextSibs(s.a.sib); // 兄弟の学年は1つ上げて写す
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -2057,6 +2078,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           if (R() < .4) w.push(pick(pick(C.MEMO_PICKS).items));
           r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
         }
+        // 兄弟の見本：番号で決める（乱数を使わない＝ほかの見本の値を変えない）
+        if (r.no % 7 === 0) r.a.sib = [{ r: r.no % 2 ? '兄' : '姉', g: Math.min(10, y2 + 3), n: '' }].concat(r.no % 14 === 0 ? [{ r: '妹', g: 0, n: '' }] : []);
       });
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
@@ -2205,6 +2228,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 400); else delete r.a.memo; return later({ ok: true }); }
+      if (k === 'sib') { var sb = C.normSibs(text); if (sb.length) r.a.sib = sb; else delete r.a.sib; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 1000); else delete r.a[k + '_t']; }
       if (incs !== undefined) { if (v && incs.length) r.a[k + '_i'] = incs.slice(); else delete r.a[k + '_i']; }
@@ -3010,19 +3034,39 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   function memoDialog(Y, r) {
-    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade, esc = App.esc;
+    var SB = C.normSibs(r.a.sib || []), memoNow = r.a.memo || '';
+    var sibRows = function () {
+      return SB.map(function (x, i) {
+        return '<div class="sibrow"><select data-sbr="' + i + '">' + C.SIB_REL.map(function (q) { return '<option' + (q === x.r ? ' selected' : '') + '>' + q + '</option>'; }).join('') + '</select>' +
+          '<select data-sbg="' + i + '">' + C.SIB_GRADES.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === x.g ? ' selected' : '') + '>' + q[1] + '</option>'; }).join('') + '</select>' +
+          '<input data-sbn="' + i + '" value="' + esc(x.n) + '" maxlength="20" placeholder="名前（なくてよい）">' +
+          '<button type="button" class="btn ib" data-sbdel="' + i + '" aria-label="この兄弟を消す">✕</button></div>';
+      }).join('') || '<div class="note">兄弟はいません（いれば「＋兄弟を足す」）</div>';
+    };
     App.openDlg({
       focus: 'mtx',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
           '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
-          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(memoNow) + '</textarea>' +
           // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
           '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
-          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
+          '<div class="lab" style="margin-top:10px">兄弟（この学校にいない兄弟も）</div><div id="sibs">' + sibRows() + '</div>' +
+          '<button type="button" class="btn" data-sbadd="1">＋兄弟を足す</button>' +
+          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります（兄弟の学年は1つ上がります）。個人票の印刷では、備考の欄の下に家庭環境と兄弟をまとめて出します。</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
+      click: function (t) {
+        var b;
+        if (t.closest('[data-sbadd]')) { memoNow = App.$('mtx').value; SB.push({ r: '兄', g: Math.min(10, grade + 1), n: '' }); App.refreshDlg(); return true; }
+        if ((b = t.closest('[data-sbdel]'))) { memoNow = App.$('mtx').value; SB.splice(+b.dataset.sbdel, 1); App.refreshDlg(); return true; }
+        return false;
+      },
       input: function (t) {
+        if (t.dataset.sbr != null) { SB[+t.dataset.sbr].r = t.value; return; }
+        if (t.dataset.sbg != null) { SB[+t.dataset.sbg].g = +t.value; return; }
+        if (t.dataset.sbn != null) { SB[+t.dataset.sbn].n = t.value; return; }
         if (!t.dataset.mpick || !t.value) return;
         var ta = App.$('mtx'), w = t.value, a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
         var before = v.slice(0, a), after = v.slice(b), sep = before && !/[、。\s]$/.test(before) ? '、' : '';
@@ -3030,10 +3074,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         var pos = Math.min(400, (before + sep + w).length); ta.focus(); ta.setSelectionRange(pos, pos);
       },
       onOk: function () {
-        var text = App.$('mtx').value.trim().slice(0, 400);
+        var text = App.$('mtx').value.trim().slice(0, 400), sb = C.normSibs(SB), changedSib = JSON.stringify(sb) !== JSON.stringify(C.normSibs(r.a.sib || []));
         if (text) r.a.memo = text; else delete r.a.memo;
+        if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
   }
@@ -3183,7 +3229,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
-        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
+        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo || r.a.sib ? ' title="' + esc((r.a.memo || '') + (r.a.sib ? '　兄弟：' + C.sibText(r.a.sib) : '')) + '"' : '') + '><div>' + esc(r.a.memo || '') + (r.a.sib ? ' <small class="msib">兄弟：' + esc(C.sibText(r.a.sib)) + '</small>' : '') + '</div></td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
@@ -4885,6 +4931,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       rel[q.i][q.t].push(q.j); rel[q.j][q.t].push(q.i);
     });
     var side = C.ATTRS.filter(function (at) { return at.side; });
+    // 備考から家庭環境の言葉を抜いた残り（家庭環境は下の行にまとめて出すので、二度書かない）
+    var memoRest = function (m) { var t = String(m || ''); C.familyWords(t).forEach(function (w) { t = t.split(w).join(''); }); return t.replace(/^[、。\s]+|[、。\s]+$/g, '').replace(/([、。])[、。\s]+/g, '$1'); };
     var card = function (i) {
       var s = kids[i], a = s.a || {}, oc = App.classColor(s.old);
       // 項目ごとに決まった位置に出す（無い項目は見えないアイコンで場所を取る）
@@ -4892,13 +4940,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var who = function (js) { return js.map(function (j) { return esc(kids[j].name); }).join('・'); };
       var bot = (rel[i].far.length ? '<div><b>離</b> ' + who(rel[i].far) + '</div>' : '') + (rel[i].near.length ? '<div><b>つ</b> ' + who(rel[i].near) + '</div>' : '');
       var top = side.filter(function (at) { return a[at.k] | 0; }).map(function (at) { return '<div>' + App.mark(at, 1) + ' ' + esc(a[at.k + '_t'] || '') + '</div>'; }).join('') +
-        (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
+        (memoRest(a.memo) ? '<div><b>備考</b> ' + esc(memoRest(a.memo)) + '</div>' : '') +
+        // 備考の欄のいちばん下：家庭環境（備考の定型の言葉から）と兄弟（備考の窓の兄弟から）。前の右端の「家庭環境」の枠をここにまとめた
+        (C.familyWords(a.memo).length || (a.sib && a.sib.length) ? '<div class="pc-famline">' + (C.familyWords(a.memo).length ? '<b>家庭</b> ' + esc(C.familyWords(a.memo).join('・')) + '　' : '') + (a.sib && a.sib.length ? '<b>兄弟</b> ' + esc(C.sibText(a.sib)) : '') + '</div>' : '');
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
         '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
         '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
-        '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';
     };
     var pages = [], total = 0;

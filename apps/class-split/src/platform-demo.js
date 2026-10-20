@@ -112,6 +112,8 @@
           if (R() < .4) w.push(pick(pick(C.MEMO_PICKS).items));
           r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
         }
+        // 兄弟の見本：番号で決める（乱数を使わない＝ほかの見本の値を変えない）
+        if (r.no % 7 === 0) r.a.sib = [{ r: r.no % 2 ? '兄' : '姉', g: Math.min(10, y2 + 3), n: '' }].concat(r.no % 14 === 0 ? [{ r: '妹', g: 0, n: '' }] : []);
       });
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
@@ -260,6 +262,7 @@
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 400); else delete r.a.memo; return later({ ok: true }); }
+      if (k === 'sib') { var sb = C.normSibs(text); if (sb.length) r.a.sib = sb; else delete r.a.sib; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 1000); else delete r.a[k + '_t']; }
       if (incs !== undefined) { if (v && incs.length) r.a[k + '_i'] = incs.slice(); else delete r.a[k + '_i']; }

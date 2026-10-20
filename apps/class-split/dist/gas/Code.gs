@@ -146,6 +146,25 @@
   };
 
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  // 兄弟：[{ r: 続柄, g: 学年（0＝未就学、1〜6、7〜9＝中1〜3、10＝高校以上）, n: 名前（任意） }]。決定で来年度に写す時は学年を1つ上げる
+  CONFIG.SIB_REL = ['兄', '姉', '弟', '妹'];
+  CONFIG.SIB_GRADES = [[0, '未就学'], [1, '1年'], [2, '2年'], [3, '3年'], [4, '4年'], [5, '5年'], [6, '6年'], [7, '中1'], [8, '中2'], [9, '中3'], [10, '高校以上']];
+  CONFIG.normSibs = function (list) {
+    if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
+    return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
+      var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
+      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+    });
+  };
+  CONFIG.sibText = function (list) {
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+  };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
+  CONFIG.familyWords = function (memo) {
+    var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');
+    return grp ? grp.items.filter(function (w) { return m.indexOf(w) >= 0; }) : [];
+  };
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
   // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
@@ -507,6 +526,7 @@
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if ((at.side || at.ctx) && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; if (at.ctx && s.a[at.k + '_i']) a[at.k + '_i'] = s.a[at.k + '_i'].slice(); });
       if (s.a.sp) a.sp = 1;
       if (s.a.memo) a.memo = s.a.memo;
+      if (s.a.sib && s.a.sib.length) a.sib = C.nextSibs(s.a.sib); // 兄弟の学年は1つ上げて写す
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -1003,7 +1023,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_352d892132b7';
+var SERVER_BUILD = 'BUILD_547260a20b4f';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1070,6 +1090,7 @@ function attrsHead_() {
   CONFIG.ATTRS.forEach(function (at) { if (at.side || at.ctx) h.push(at.k + '_t'); if (at.ctx) h.push(at.k + '_i'); }); // _t＝内容・経緯の文、_i＝紐付けた事案の番号
   h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
   h.push('memo'); // 備考（自由記述）。決定で来年度に写す
+  h.push('sib'); // 兄弟（JSON の並び。CONFIG.normSibs の形）。決定で来年度に写す時は学年を1つ上げる
   return h;
 }
 // シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
@@ -1173,6 +1194,7 @@ function attrsMap_(fy) {
     });
     if (+r.sp) a.sp = 1;
     if (r.memo) a.memo = String(r.memo);
+    if (r.sib) { var sb = CONFIG.normSibs(String(r.sib)); if (sb.length) a.sib = sb; }
     m[String(r.id8)] = a;
   });
   return m;
@@ -1437,7 +1459,8 @@ var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
   if (k === 'memo') { text = String(text == null ? '' : text).trim(); v = text ? 1 : 0; }
-  var at = k === 'sp' ? { k: 'sp', max: 1 } : k === 'memo' ? { k: 'memo', max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  if (k === 'sib') { text = JSON.stringify(CONFIG.normSibs(text)); v = text === '[]' ? 0 : 1; }
+  var at = k === 'sp' ? { k: 'sp', max: 1 } : k === 'memo' || k === 'sib' ? { k: k, max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
   if (!at) throw userError_('項目が違います');
   if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY);
@@ -1448,9 +1471,10 @@ var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
     ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
-    if (k === 'memo') { // 備考は文字だけを持つ
-      if (row) writeCell_(t, row, 'memo', plainText_(text, 400));
-      else append_(name, attrsHead_(), [{ id8: String(id), memo: plainText_(text, 400) }]);
+    if (k === 'memo' || k === 'sib') { // 備考・兄弟は文字だけを持つ（兄弟は JSON の並び）
+      var val = k === 'sib' ? (v ? text : '') : plainText_(text, 400);
+      if (row) writeCell_(t, row, k, val);
+      else { var o0 = { id8: String(id) }; o0[k] = val; append_(name, attrsHead_(), [o0]); }
       return { ok: true, by: by };
     }
     var tk = (at.side || at.ctx) && text !== undefined ? k + '_t' : null, tv = tk ? plainText_(v ? text : '', at.ctx ? 1000 : 200) : '';
@@ -1644,7 +1668,7 @@ var apiDecide = api_(function (grade, plan) {
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
-    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); return o; }));
+    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); if (r.a.sib && r.a.sib.length) o.sib = JSON.stringify(r.a.sib); return o; }));
     ensureCols_('pairs_carry', TABLES_[2].head);
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return Object.assign({ fy: FY, type: p.t, a: p.a, b: p.b }, pairCells_(p, grade)); })); // 経緯・理由・何年生からを次の年度へ持ち越す

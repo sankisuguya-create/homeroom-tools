@@ -140,6 +140,8 @@
       rel[q.i][q.t].push(q.j); rel[q.j][q.t].push(q.i);
     });
     var side = C.ATTRS.filter(function (at) { return at.side; });
+    // 備考から家庭環境の言葉を抜いた残り（家庭環境は下の行にまとめて出すので、二度書かない）
+    var memoRest = function (m) { var t = String(m || ''); C.familyWords(t).forEach(function (w) { t = t.split(w).join(''); }); return t.replace(/^[、。\s]+|[、。\s]+$/g, '').replace(/([、。])[、。\s]+/g, '$1'); };
     var card = function (i) {
       var s = kids[i], a = s.a || {}, oc = App.classColor(s.old);
       // 項目ごとに決まった位置に出す（無い項目は見えないアイコンで場所を取る）
@@ -147,13 +149,14 @@
       var who = function (js) { return js.map(function (j) { return esc(kids[j].name); }).join('・'); };
       var bot = (rel[i].far.length ? '<div><b>離</b> ' + who(rel[i].far) + '</div>' : '') + (rel[i].near.length ? '<div><b>つ</b> ' + who(rel[i].near) + '</div>' : '');
       var top = side.filter(function (at) { return a[at.k] | 0; }).map(function (at) { return '<div>' + App.mark(at, 1) + ' ' + esc(a[at.k + '_t'] || '') + '</div>'; }).join('') +
-        (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
+        (memoRest(a.memo) ? '<div><b>備考</b> ' + esc(memoRest(a.memo)) + '</div>' : '') +
+        // 備考の欄のいちばん下：家庭環境（備考の定型の言葉から）と兄弟（備考の窓の兄弟から）。前の右端の「家庭環境」の枠をここにまとめた
+        (C.familyWords(a.memo).length || (a.sib && a.sib.length) ? '<div class="pc-famline">' + (C.familyWords(a.memo).length ? '<b>家庭</b> ' + esc(C.familyWords(a.memo).join('・')) + '　' : '') + (a.sib && a.sib.length ? '<b>兄弟</b> ' + esc(C.sibText(a.sib)) : '') + '</div>' : '');
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
         '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
         '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
-        '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';
     };
     var pages = [], total = 0;
