@@ -94,7 +94,7 @@
 
   // ===== 並び順：組の中の児童の並べ方（第一〜第三優先）。この端末にだけ覚える =====
   var SORT_KEYS = [
-    { k: 'old', label: '旧クラス', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
+    { k: 'old', label: '旧学級', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
     { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
     { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
     { k: 'no', label: '旧出席番号', f: function (s) { return s.old < 0 ? 999 : s.no; } },

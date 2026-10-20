@@ -615,7 +615,7 @@
     });
     h += '</tbody></table><div class="note">項目の数字は程度（空欄＝なし）。事案の（ ）は被害の件数（関係図で被害・相互の側）。「準」は決定後の準備中の年度。</div></section>';
     var list = incsOf(kid).sort(function (a, b) { return b.date < a.date ? -1 : 1; });
-    h += '<section><h3>事案（全' + list.length + '件）' + (canAdd && !R.form ? '<button class="btn primary" id="addInc">＋事案を登録</button>' : '') + '</h3>';
+    h += '<section><h3>事案（全' + list.length + '件）' + (canAdd && !R.form ? '<button class="btn primary" id="addInc" title="事案管理の画面で、この児童の事案を作る">＋事案管理で登録</button>' : '') + '</h3>';
     h += '<div class="inc">' + (list.map(function (x) {
       var others = x.ids.filter(function (id) { return id !== kid; }).map(function (id) { return d.kids[id] ? d.kids[id].name : id; });
       var y = d.years.filter(function (yy) { return yy.fy === C.fiscalYearOfIso(x.date); })[0];

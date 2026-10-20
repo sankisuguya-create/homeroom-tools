@@ -22,8 +22,10 @@
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
   function render() {
     var esc = App.esc, s = T.s;
-    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案と報告書'], ['view', '表示'], ['year', '年度替わり']];
-    var h = '<div class="rbar">' + tabs.map(function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') +
+    // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
+    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案と報告書'], ['year', '年度替わり'], ['view', '表示']];
+    var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
+    var h = '<div class="rbar"><span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 4).map(tab).join('') + '<span class="bsep"></span><span class="sgrp">この端末だけ</span>' + tab(tabs[4]) +
       '<span class="sp"></span>' + (T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
