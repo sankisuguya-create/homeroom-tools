@@ -271,6 +271,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.selectOption('#isort', 'new');
   ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
   await p.click('#iadd2nd');
+  ok(await p.locator('[data-ty="虞犯"] ruby rt', { hasText: 'ぐはん' }).count() === 1, '事案の種別に「虞犯」（ふりがな付き）');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
@@ -355,6 +356,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const per = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], g = {}, top = App.topIds(d.scores[d.fy], App.scoreGroup(d, y)); y.rows.forEach(r => { const k = r.cls + (d.kids[r.id].male ? 'm' : 'f'); g[k] = g[k] || { n: 0, t: 0 }; g[k].n++; if (top[r.id]) g[k].t++; }); return Object.values(g); });
   ok(nAuto >= 1 && per.every(x => x.t >= 1 && x.t <= Math.max(1, Math.round(x.n * 0.1)) + 1), `点数の上位1割は、組の中の男女ごとに付く（${per.length}組×男女、点数で付いた${nAuto}人）`);
   ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
+  const tiers = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], c = {}; y.rows.forEach(r => { if (r.a.tier) c[r.a.tier] = (c[r.a.tier] || 0) + 1; }); const P = { kids: y.rows.map(r => ({ id: r.id, male: d.kids[r.id].male, old: r.cls, a: r.a, area: '' })), pairs: [], inc: [], nc: 4 }; return { c, met: Engine.prepare(P, Engine.defaultGen()).MET.filter(m => m.grp === 'acad').length }; });
+  ok(tiers.c[1] > 0 && tiers.c[2] > 0 && tiers.c[5] > 0 && tiers.met >= 4, `点数を10％刻みの段に分け、2段から下もクラス分けでそろえる（段ごとの人数 ${JSON.stringify(tiers.c)}・そろえる段 ${tiers.met}）`);
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
   await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');

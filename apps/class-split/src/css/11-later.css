@@ -74,3 +74,6 @@
 .rkn{width:4.2em}
 .rkh{flex:1;cursor:grab;user-select:none;padding:4px 2px}
 .rkh small{margin-left:8px;color:var(--sub)}
+.rkrow.tierend{border-bottom:2px solid #9AA3AB}
+.rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
+.rkrow.top .rkt{color:#007A57;font-weight:700}

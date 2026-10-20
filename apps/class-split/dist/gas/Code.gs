@@ -12,7 +12,8 @@
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
     // クラス分けテストの点数：満点と、学年で上位何割を「賢い」にするかの既定（年度・学年ごとに直せる）
-    SCORE_DEF: { max: 100, top: 0.1 },
+    SCORE_DEF: { max: 100, top: 0.1 }, // top＝段の刻み（1段＝賢い）
+    TIER_MAX: 10, // 段は10段まで（刻みが細かくても、下の方はまとめる）
     // 備考の定型の言葉（選ぶと備考の入力欄に入る）
     MEMO_PICKS: [
       { label: '発達特性', items: ['自閉症', '自閉傾向', 'ADHD傾向', 'LD傾向', '感覚過敏', 'こだわりが強い', '切り替えが苦手'] },
@@ -42,7 +43,8 @@
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
       { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
       { k: 'area', label: '地区',   s: '地区', w: 0 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 },  // 0にすると案を作る条件に入れない
+      { k: 'acad', label: '学力の段', s: '段', w: 2 }   // 点数・順位の2段から下（1段＝賢いは「賢い」の重み）を組ごとにそろえる
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5, 5],
@@ -66,7 +68,8 @@
       { c: '#2E9E4F', t: '#FFFFFF', l: '#E2F3E7' }
     ],
     AREAS: ['東', '西', '南', '北'],
-    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', '虞犯', 'その他'],
+    TYPE_RUBY: { '虞犯': 'ぐはん' }, // 事案の種別のふりがな（画面で漢字の上に出す）
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
     // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
@@ -204,6 +207,11 @@
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
+    // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える
+    var tierMax = 0; P.kids.forEach(function (s) { var t = s.a && s.a.tier | 0; if (t > tierMax) tierMax = t; });
+    if ((gen.w.acad | 0) > 0) for (var tr = 2; tr <= tierMax; tr++) (function (tr) {
+      MET.push({ k: 'acad' + tr, grp: 'acad', label: '学力' + tr + '段', w: C.LEVEL_W[gen.w.acad | 0], tol: 1, v: function (s) { return (s.a && s.a.tier | 0) === tr ? 1 : 0; } });
+    })(tr);
     // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
@@ -995,7 +1003,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_89635d148da9';
+var SERVER_BUILD = 'BUILD_352d892132b7';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

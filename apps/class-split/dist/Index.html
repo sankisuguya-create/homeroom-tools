@@ -664,6 +664,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
 .itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
 .irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}
+/* ふりがな（虞犯）：小さく、行の高さを変えない */
+.itg ruby rt,.lv ruby rt,.meta ruby rt{font-size:.55em;line-height:1}
+.itg ruby{ruby-position:over}
 /* ▲ css/09-incidents.css ここまで ▲ */
 /* ▼ css/10-print.css から ▼ */
 /* 個人票の印刷 */
@@ -792,6 +795,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .rkn{width:4.2em}
 .rkh{flex:1;cursor:grab;user-select:none;padding:4px 2px}
 .rkh small{margin-left:8px;color:var(--sub)}
+.rkrow.tierend{border-bottom:2px solid #9AA3AB}
+.rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
+.rkrow.top .rkt{color:#007A57;font-weight:700}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -811,7 +817,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
     // クラス分けテストの点数：満点と、学年で上位何割を「賢い」にするかの既定（年度・学年ごとに直せる）
-    SCORE_DEF: { max: 100, top: 0.1 },
+    SCORE_DEF: { max: 100, top: 0.1 }, // top＝段の刻み（1段＝賢い）
+    TIER_MAX: 10, // 段は10段まで（刻みが細かくても、下の方はまとめる）
     // 備考の定型の言葉（選ぶと備考の入力欄に入る）
     MEMO_PICKS: [
       { label: '発達特性', items: ['自閉症', '自閉傾向', 'ADHD傾向', 'LD傾向', '感覚過敏', 'こだわりが強い', '切り替えが苦手'] },
@@ -841,7 +848,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
       { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
       { k: 'area', label: '地区',   s: '地区', w: 0 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 },  // 0にすると案を作る条件に入れない
+      { k: 'acad', label: '学力の段', s: '段', w: 2 }   // 点数・順位の2段から下（1段＝賢いは「賢い」の重み）を組ごとにそろえる
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5, 5],
@@ -865,7 +873,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       { c: '#2E9E4F', t: '#FFFFFF', l: '#E2F3E7' }
     ],
     AREAS: ['東', '西', '南', '北'],
-    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', '虞犯', 'その他'],
+    TYPE_RUBY: { '虞犯': 'ぐはん' }, // 事案の種別のふりがな（画面で漢字の上に出す）
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
     // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
@@ -1003,6 +1012,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
+    // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える
+    var tierMax = 0; P.kids.forEach(function (s) { var t = s.a && s.a.tier | 0; if (t > tierMax) tierMax = t; });
+    if ((gen.w.acad | 0) > 0) for (var tr = 2; tr <= tierMax; tr++) (function (tr) {
+      MET.push({ k: 'acad' + tr, grp: 'acad', label: '学力' + tr + '段', w: C.LEVEL_W[gen.w.acad | 0], tol: 1, v: function (s) { return (s.a && s.a.tier | 0) === tr ? 1 : 0; } });
+    })(tr);
     // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
@@ -2391,18 +2405,24 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // それぞれの上位（割合は年度ごと）に付ける。手動の印（k7m）は残し、どちらかで賢い。
   // a.k7s＝点数・順位で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
   // groupOf(id) は比べる組（例 '0:m'）。渡さなければ全体を1つとして比べる
-  App.topIds = function (sc, groupOf) {
+  // 学力の段：組の男女ごとに、上から「刻み」（sc.top。例 10％）ずつ 1段・2段・3段…に分ける。1段＝「賢い」。
+  // 2段から下は印を出さないが、クラス分けで組ごとの人数をそろえる（厳密な順位で分けると条件がきつすぎるので、段でそろえる）。
+  // 1段は同点・同じ順位を境目まで全員入れる。2段から下は並びの位置で分ける
+  App.tiers = function (sc, groupOf) {
     var out = {}; if (!sc) return out;
-    var rank = sc.use === 'rank', map = rank ? sc.r || {} : sc.s || {}, top = sc.top || g.CONFIG.SCORE_DEF.top, groups = {};
+    var rank = sc.use === 'rank', map = rank ? sc.r || {} : sc.s || {}, step = sc.top || g.CONFIG.SCORE_DEF.top, groups = {};
     Object.keys(map).forEach(function (id) { var k = groupOf ? groupOf(id) : ''; if (k == null) return; (groups[k] = groups[k] || []).push(id); });
     Object.keys(groups).forEach(function (k) {
-      var ids = groups[k];
+      var ids = groups[k], n = ids.length;
       ids.sort(function (x, y) { return rank ? map[x] - map[y] : map[y] - map[x]; });
-      var n = Math.max(1, Math.round(ids.length * top)), cut = map[ids[n - 1]];
-      ids.forEach(function (id) { if (rank ? map[id] <= cut : map[id] >= cut) out[id] = 1; }); // 同点・同じ順位は境目まで全員
+      var n1 = Math.max(1, Math.round(n * step)), cut = map[ids[n1 - 1]];
+      ids.forEach(function (id, i) {
+        out[id] = (rank ? map[id] <= cut : map[id] >= cut) ? 1 : Math.max(2, Math.min(g.CONFIG.TIER_MAX, Math.floor(i / (n * step)) + 1));
+      });
     });
     return out;
   };
+  App.topIds = function (sc, groupOf) { var t = App.tiers(sc, groupOf), out = {}; Object.keys(t).forEach(function (id) { if (t[id] === 1) out[id] = 1; }); return out; };
   // 学力を比べる組：その年度の組と男女
   App.scoreGroup = function (d, y) {
     var at = {}; y.rows.forEach(function (r) { var s = d.kids[r.id]; at[r.id] = r.cls + ':' + (s && s.male ? 'm' : 'f'); });
@@ -2411,9 +2431,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   App.applyScores = function (d) {
     d.scores = d.scores || {};
     (d.years || []).forEach(function (y) {
-      var top = App.topIds(d.scores[y.fy], App.scoreGroup(d, y));
+      var tier = App.tiers(d.scores[y.fy], App.scoreGroup(d, y)), top = {};
+      Object.keys(tier).forEach(function (id) { if (tier[id] === 1) top[id] = 1; });
       y.rows.forEach(function (r) {
         var a = r.a; if (!('k7m' in a)) a.k7m = a.k7 | 0;
+        if (tier[r.id]) a.tier = tier[r.id]; else delete a.tier; // 画面の中だけの値（保存しない）
         if (top[r.id] && !a.k7m) { a.k7 = 1; a.k7s = 1; } else { a.k7 = a.k7m; delete a.k7s; }
       });
     });
@@ -2864,7 +2886,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         var tp = tops(), n = Object.keys(F.s).length;
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="クラス分けテストの点数" style="max-width:760px"><h2>クラス分けテストの点数（' + fy + '年度 ' + grade + '年）</h2>' +
           '<div class="scset"><label>満点 <input type="number" id="scMax" min="1" max="10000" value="' + F.max + '"> 点</label>' +
-          '<label>組の男女ごとに上位 <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％を「賢い」にする</label>' +
+          '<label>組の男女ごとに上から <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」。2段から下は印なしで、クラス分けで組ごとにそろえる）</label>' +
           '<span class="note">入力 ' + n + '人・上位 ' + Object.keys(tp).length + '人（同点は含める）</span></div>' +
           '<label class="ctxl">まとめて貼る（Excel などから。1行に1人：点数だけなら下の表の順、または「組・番号・点数」「名前・点数」）<textarea id="scPaste" rows="3" placeholder="例）1	1	85"></textarea></label>' +
           '<div class="acts" style="margin-top:4px;justify-content:flex-start"><button type="button" class="btn" data-scpaste="1">貼った値を表に入れる</button></div>' +
@@ -2923,9 +2945,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var label = function (k) { var p = k.split(':'); return (+p[0] + 1) + '組・' + (p[1] === 'm' ? '男子' : '女子'); };
     var order = function () { return G[cur] || []; };
     var cut = function () { return Math.max(1, Math.round(order().length * F.top)); };
+    // 段：1段は上位の割合まで、2段から下は並びの位置で刻む（名簿の計算 App.tiers と同じ決め方）
+    var tierAt = function (i) { var n = order().length; return i < cut() ? 1 : Math.max(2, Math.min(C.TIER_MAX, Math.floor(i / (n * F.top)) + 1)); };
     var row = function (id, i) {
-      var r = byId[id], s = d.kids[id];
-      return '<div class="rkrow' + (i < cut() ? ' top' : '') + (i === cut() - 1 ? ' cut' : '') + '" data-rk="' + id + '">' +
+      var r = byId[id], s = d.kids[id], t = tierAt(i), last = i === order().length - 1 || tierAt(i + 1) !== t;
+      return '<div class="rkrow' + (t === 1 ? ' top' : '') + (i === cut() - 1 ? ' cut' : last ? ' tierend' : '') + '" data-rk="' + id + '">' +
+        '<span class="rkt">' + t + '段</span>' +
         '<input type="number" class="rkn" data-rkn="' + id + '" min="1" max="' + order().length + '" value="' + (i + 1) + '" aria-label="順位">' +
         '<span class="rkh" data-rkh="' + id + '" title="ドラッグで入れ替える">⠿ ' + esc(s.name) + '<small>' + (r.cls + 1) + '-' + r.no + '</small></span>' +
         (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') + '</div>';
@@ -2938,7 +2963,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力の順位" style="max-width:600px"><h2>学力の順位（' + fy + '年度 ' + grade + '年）</h2>' +
           '<div class="rbar rktabs">' + keys.map(function (k) { return '<button type="button" class="tab" data-rkg="' + k + '" aria-selected="' + (k === cur) + '"><span class="band" style="background:' + App.classColor(+k.split(':')[0]).c + '"></span>' + label(k) + '（' + G[k].length + '）</button>'; }).join('') + '</div>' +
-          '<div class="scset"><label>組の男女ごとに上位 <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％を「賢い」にする</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
+          '<div class="scset"><label>組の男女ごとに上から <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」）</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
           (Object.keys(s0).length ? '<button type="button" class="btn" data-rkscore="1">この組・男女を点数の順に並べ直す</button>' : '') + '</div>' +
           '<p class="note">学力は組の中の男女ごとに比べます。順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
           '<div class="rklist" id="rklist">' + list() + '</div>' +
@@ -3466,6 +3491,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
   function D() { return App.st.data; }
   function esc(s) { return App.esc(s); }
+  // 事案の種別の名前。読みにくい種別（虞犯）は漢字の上にふりがなを付ける
+  function typeHtml(t) { var r = (C.TYPE_RUBY || {})[t]; return r ? '<ruby>' + esc(t) + '<rt>' + esc(r) + '</rt></ruby>' : esc(t); }
+  function typesHtml(type) { return typesOf(type).map(typeHtml).join('・') || esc(type); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0] || (ALLINC || []).filter(function (x) { return x.id === id; })[0]; }
   function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }
@@ -3556,7 +3584,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="事案の検索の設定" style="max-width:460px"><h2>事案の検索</h2>' +
           '<div class="lab">探す学年</div><div class="lvs"><button class="lv" data-hga="1" aria-pressed="' + (gs.length === 6) + '">全学年</button>' + [1, 2, 3, 4, 5, 6].map(function (g0) { return '<button class="lv" data-hg="' + g0 + '" aria-pressed="' + (gs.indexOf(g0) >= 0) + '">' + g0 + '年</button>'; }).join('') + '</div>' +
           '<p class="note">学年は、関わった児童の学年で選びます。ほかの学年を選ぶと、全校の事案を読み込みます。</p>' +
-          '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + esc(t) + '</button>'; }).join('') + '</div>' +
+          '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + typeHtml(t) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">いじめの段階（選ぶと、いじめの事案だけに絞る）</div><div class="lvs">' + C.BULLY_LEVELS.map(function (b) { return '<button class="lv" data-hf="levels:' + b.k + '" aria-pressed="' + ((HOME.levels || []).indexOf(b.k) >= 0) + '">' + esc(b.label) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">対応の状況（選ばなければすべて）</div><div class="lvs">' + C.STATUS.map(function (s0) { return '<button class="lv" data-hf="status:' + s0.k + '" aria-pressed="' + ((HOME.status || []).indexOf(s0.k) >= 0) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') + '</div>' +
           '<div class="acts"><button class="btn" data-hgr="1">' + D().grade + '年だけ・絞り込みなしに戻す</button><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
@@ -3655,6 +3683,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     '物損': SVG('<path d="M4 6h7l-2 5 3 2-1 5H4zM14 6h6v12h-7l1-4-3-2z"/>'),
     'いじめ': SVG('<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>'),
     'けが': SVG('<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M11 11l2 2M13 11l-2 2"/>'),
+    '虞犯': SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/>'), // 盾に「！」（非行のおそれ）
     'その他': SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12h.5M12 12h.5M16 12h.5"/>')
   };
   var ST_IC = {
@@ -3684,7 +3713,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t === 'いじめ') {
         var lv = C.BULLY_LEVELS.filter(function (b) { return b.k === levelOf(x); })[0];
         h += '<span class="itg ib2" style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '">' + TYPE_IC['いじめ'] + 'いじめ・' + esc(lv.label) + '</span>';
-      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + esc(t) + '</span>';
+      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + typeHtml(t) + '</span>';
     });
     var st = C.STATUS.filter(function (s0) { return s0.k === rp.status; })[0] || C.STATUS[0];
     h += '<span class="itg ist st-' + st.k + '">' + ST_IC[st.k] + esc(st.label) + '</span>';
@@ -3726,7 +3755,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function viewHtml(x) {
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
-    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
+    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + typesHtml(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
       '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
@@ -3833,7 +3862,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function formHtml() {
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
-      '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + typeHtml(t) + '</button>'; }).join('') + '</div>' +
       '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><span class="iqw"><input id="fQ" value="" placeholder="名前・よみで児童を足す（' + esc(srchGrades().map(function (g0) { return g0 + '年'; }).join('・')) + '）" autocomplete="off"><button type="button" class="iqc" id="fQset" title="検索の設定（探す学年）" aria-label="検索の設定"></button></span>' +
       (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
