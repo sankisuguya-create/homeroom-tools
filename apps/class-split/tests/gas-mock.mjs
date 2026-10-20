@@ -21,6 +21,7 @@ export function makeGas(src) {
     getLastRow() { return this.data.length; }
     getLastColumn() { return this.width(); }
     deleteRow(r) { this.data.splice(r - 1, 1); }
+    deleteRows(r, n) { this.data.splice(r - 1, n); }
   }
   class SS {
     constructor(name) { this.id = 'ss' + nextId++; this.name = name; this.sheets = {}; }

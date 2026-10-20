@@ -64,8 +64,8 @@
     if (ALLINC) return Promise.resolve(ALLINC);
     return Promise.all([App.pf().allIncidents(), loadSchool()]).then(function (r) { ALLINC = r[0]; return ALLINC; });
   }
-  // 事案の一覧で探す学年（この端末に覚える。空＝この学年だけ）
-  var HOME = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
+  // 事案の一覧で探す学年と絞り込み（開いている間だけ覚える。校務PCは共用なので、次の先生の画面に残さない。空＝この学年だけ）
+  var HOME = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
   function homeGrades() { return HOME.grades && HOME.grades.length ? HOME.grades : [D().grade]; }
   function homeOthers() { return homeGrades().some(function (g0) { return g0 !== D().grade; }); }
   function homeList() {
@@ -98,7 +98,7 @@
     { k: 'stale', label: '記録が止まっている順（解消を除き、最後の記録が古い順）', f: function (a, b) { var ca = ((a.report || {}).status === 'closed'), cb = ((b.report || {}).status === 'closed'); return (ca - cb) || (lastRec(a) < lastRec(b) ? -1 : lastRec(a) > lastRec(b) ? 1 : 0) || byNew(a, b); } },
     { k: 'grade', label: '学年（低い順）', f: function (a, b) { return ((gradesOf(a)[0] || 9) - (gradesOf(b)[0] || 9)) || byNew(a, b); } }
   ];
-  function saveHome() { try { localStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
+  function saveHome() { try { sessionStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
   function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length; }
   function refreshCards() {
     var cs = App.$('icards'); if (!cs) return;
@@ -137,9 +137,9 @@
       }
     });
   }
-  // 関係する児童の検索の設定（この端末に覚える）：探す学年（空＝この学年だけ）と、候補の書き方
-  var SRCH = (function () { try { return JSON.parse(localStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
-  function saveSrch() { try { localStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
+  // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）と、候補の書き方
+  var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
+  function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
   function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
   var FMTS = [['gc', '3-2 田中 ハト'], ['name', '田中 ハト（3年2組）'], ['kana', '田中 ハト（たなか はと）3-2']];
   function srchDialog() {
@@ -518,6 +518,7 @@
   }
   function dropDraft() { clearTimeout(draftT); I.draft = null; var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, null); }, 'draft:' + gr); }
   function restoreDraft() {
+    HIST = []; // 前の記入の「戻す」を、書きかけに当てない
     var dr = I.draft && I.draft.draft; if (!dr) return;
     var f = dr.form;
     if (dr.mode === 'add2') { var x = incOf(f.edit); if (!x) { dropDraft(); return; } I.form = { edit: x.id, rep: Rp.norm(f.rep), x: x }; ensureV(x); I.mode = 'add2'; I.sel = x.id; }
@@ -532,6 +533,8 @@
   var PDOWN = false, PEND = null;
   document.addEventListener('pointerdown', function () { PDOWN = true; }, true);
   document.addEventListener('pointerup', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
+  // 指を離した知らせが届かない時（枠の外で離した・タブを切り替えた）に、押している印が残らないように
+  ['blur', 'visibilitychange'].forEach(function (ev) { (ev === 'blur' ? window : document).addEventListener(ev, function () { PDOWN = false; PEND = null; }); });
   document.addEventListener('pointercancel', function () { PDOWN = false; if (PEND) { var f = PEND; PEND = null; setTimeout(f, 0); } }, true);
   document.addEventListener('focusin', function (e) {
     if (App.st.screen !== 'incidents' || !I.form) return;
@@ -652,6 +655,7 @@
 
   // ===== 始める =====
   function newForm(kid) {
+    HIST = [];
     var st = App.Diagram.state(null);
     if (kid) App.Diagram.add(st, kid);
     var rp = Rp.emptyReport(), d0 = today();
