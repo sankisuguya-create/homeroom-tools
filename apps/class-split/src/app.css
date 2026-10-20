@@ -724,10 +724,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ordbox{border:2px solid var(--link);border-radius:8px;padding:8px 10px;background:var(--fill)}
 .ordbox .ordrow{margin-top:4px}
 .btn.ordbtn{border:2px solid var(--link);color:var(--link);font-weight:700}
-.board.dealing .chip:not(.dealt){visibility:hidden}
-.board.dealing .chip.dealt{animation:dealin .18s ease-out}
-@keyframes dealin{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
-@media (prefers-reduced-motion: reduce){.board.dealing .chip.dealt{animation:none}}
+.chip.plusin{outline:3px solid #D7263D;outline-offset:1px}
 .icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
 .icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
 .icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
