@@ -108,7 +108,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#main .rbar .tab[data-fy], main #paste, main .chk').count() === 0, `${w}x${h} 上の帯は組・学年と「その他…」だけ`);
+  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#main .rbar .tab[data-fy], main #paste, main .chk').count() === 0, `${w}x${h} 上の帯は組・学年と「名簿を貼る」「その他…」だけ`);
   await p.click('#rmore');
   ok(await p.locator('.dlg.more .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿（その他の窓）`);
   await p.check('.dlg.more #onlyInc');
@@ -390,6 +390,20 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(b1.width > b0.width * 1.5 && Math.abs(b1.x + b1.width / 2 - cx) < 3 && Math.abs(b1.y + b1.height / 2 - cy) < 3, 'ホイールで、カーソルの所を動かさずに拡大する');
   await p.click('#zreset'); const b2 = await chip.boundingBox();
   ok(Math.abs(b2.width - b0.width) < 1 && await p.locator('#zreset').count() === 0, '「等倍に戻す」で元の大きさ');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 名簿を貼る：名簿の上の帯から開き、貼った児童を登録する
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#paste');
+  ok(await p.locator('.bar #paste, #main > div #paste').count() >= 1, '名簿の上の帯に「名簿を貼る」');
+  await p.click('#paste'); await p.waitForSelector('#ptxt');
+  await p.fill('#ptxt', '組\t番号\t児童ID\t名前\tよみ\t性別\n1\t40\t99990001\t新入 ハナ\tしんにゅう はな\t女');
+  await p.click('#okbtn'); await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  ok(/追加1人/.test(await p.textContent('#toast')), '貼った児童が名簿に登録される');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
