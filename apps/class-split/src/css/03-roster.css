@@ -1,0 +1,48 @@
+/* 名簿 */
+/* ===== 名簿 ===== */
+.rbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px}
+.tab{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;display:inline-flex;gap:6px;align-items:center;white-space:nowrap}
+.tab[aria-selected="true"]{background:var(--fill);border:2px solid var(--link);padding:3px 9px;font-weight:700}
+.lab{color:var(--sub);font-size:.85rem;margin-right:2px}
+.chk{display:inline-flex;gap:4px;align-items:center;font-size:.9rem;cursor:pointer}
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:10px;align-items:start}
+@media (max-width:1000px){.layout{grid-template-columns:1fr}}
+.tw{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;max-height:100%}
+table.r{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+table.r th,table.r td{border-bottom:1px solid var(--line);padding:3px 6px;text-align:center;white-space:nowrap}
+table.r th{background:var(--soft);font-weight:400;font-size:.85rem;position:sticky;top:0;z-index:1}
+table.r td.nm{text-align:left;font-weight:700;cursor:pointer}
+table.r td.nm:hover{text-decoration:underline}
+table.r tr.on td{background:var(--fill)}
+td.cell{cursor:pointer;min-width:2.2em;height:28px;font-size:17px}
+td.cell:hover{background:var(--soft)}
+table.ro td.cell{cursor:default}
+table.ro td.cell:hover{background:none}
+td.ji{cursor:pointer}
+.sx{color:var(--sub);font-weight:700;font-size:.8rem;margin-right:4px}
+.sx.f{color:#D11F3A}
+.sx.m{color:#1A62D6}
+.frozen{font-size:.85rem;background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:12px;max-height:100%;overflow:auto;box-sizing:border-box}
+.pane h2{margin:0;font-size:1.2rem}
+.pane h3{margin:0 0 4px;font-size:.95rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pane .id{color:var(--sub);font-size:.85rem;font-weight:400}
+.empty{color:var(--sub);padding:20px 0;text-align:center}
+table.h{border-collapse:collapse;width:100%;font-size:.85rem;font-variant-numeric:tabular-nums}
+table.h th,table.h td{border-bottom:1px solid var(--line);padding:3px 3px;text-align:center}
+table.h th{background:var(--soft);font-weight:400}
+table.h tr.cur td{font-weight:700}
+.inc{display:flex;flex-direction:column;gap:6px}
+.inc .it{border:1px solid var(--line);border-radius:6px;padding:6px 8px;display:flex;flex-direction:column;gap:2px}
+.inc .meta{font-size:.8rem;color:var(--sub)}
+.form{border:1px solid var(--line);background:var(--soft);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.form label{display:flex;flex-direction:column;gap:2px;font-size:.85rem}
+.form input,.form select{padding:4px 6px;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+.form .row{display:flex;gap:6px}
+.form .row>*{flex:1}
+.picked{display:flex;flex-wrap:wrap;gap:4px}
+.picked span{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 8px;font-size:.85rem}
+.picked button{border:0;background:none;cursor:pointer;color:var(--sub);padding:0 0 0 4px}
+.sugg{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:150px;overflow:auto}
+.sugg button{border:0;background:none;text-align:left;padding:3px 8px;cursor:pointer}
+.sugg button:hover{background:var(--fill)}

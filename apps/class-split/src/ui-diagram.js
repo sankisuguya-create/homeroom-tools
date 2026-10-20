@@ -55,6 +55,7 @@
     el.innerHTML = '<div class="dg-bar"><div class="lvs">' + MODES.map(function (m) {
         return '<button type="button" class="lv" data-dm="' + m[0] + '" aria-pressed="' + (st.mode === m[0]) + '">' + m[1] + '</button>';
       }).join('') + '</div>' +
+      (d.edges.length ? '<button type="button" class="btn" data-dtidy="1" title="同じ矢印の児童をグループにまとめ、ほぼ水平・垂直の線を揃え、交差と縦の空きを減らす">整える</button>' : '') +
       (st.mode === 'group' ? '<button type="button" class="btn primary" data-dgroup="1"' + (st.pick.length ? '' : ' disabled') + '>選んだ' + st.pick.length + '人を囲む</button>' : '') +
       '<label class="chk"><input type="checkbox" data-dcard="1"' + (st.card ? ' checked' : '') + '>カードで表示</label></div>' +
       '<div class="dg-hint note">' + ({ move: '児童やグループの記号をドラッグして動かします。', arrow: '矢印の元（加害の側）→ 先（被害の側）の順に、児童かグループの記号を押します。', group: '囲む児童を押して選び、「囲む」を押します。', del: '消す児童・グループの記号・矢印を押します。' })[st.mode] + '</div>' +
@@ -112,6 +113,13 @@
     el.onclick = function (e) {
       var t = e.target, x;
       if ((x = t.closest('[data-dm]'))) { st.mode = x.dataset.dm; st.from = null; st.pick = []; redo(); }
+      else if (t.closest('[data-dtidy]')) {
+        // 整える：押した時だけ並べ直す（置いた位置を勝手に変えない）。知らせの「戻す」で元の配置へ
+        var prev = JSON.parse(JSON.stringify(d)), next = E.tidyDiagram(d);
+        if (JSON.stringify(next) === JSON.stringify(E.normDiagram(d))) { App.toast('整える所はありませんでした'); e.stopPropagation(); return; }
+        st.d = d = next; st.from = null; st.pick = []; redo();
+        App.toast('関係図を整えました', function () { st.d = prev; redo(); });
+      }
       else if (t.closest('[data-dgroup]') && st.pick.length) {
         var used = d.groups.map(function (gr) { return gr.g; }), gname = LET.split('').filter(function (c) { return used.indexOf(c) < 0; })[0];
         d.groups.forEach(function (gr) { gr.members = gr.members.filter(function (id) { return st.pick.indexOf(id) < 0; }); }); // 児童は1つのグループにだけ入る

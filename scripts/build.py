@@ -69,7 +69,7 @@ GAS_ORDER = ["Scale.gs", "Config.gs", "Roster.gs", "Master.gs", "Lock.gs", "Hour
              "Store.gs", "Aggregate.gs", "Api.gs", "Export.gs", "Code.gs", "Setup.gs",
              "Year.gs"]
 INCLUDE_HTML = re.compile(r"<\?!= include\('(\w+)'\) \?>")
-INCLUDE = re.compile(r'^[ \t]*/\* @include ([\w.\-]+) \*/[ \t]*$', re.M)
+INCLUDE = re.compile(r'^[ \t]*/\* @include ([\w.\-/]+) \*/[ \t]*$', re.M)
 
 BANNER = ("/* このファイルは apps/note-assessment/web/src/scale.js から\n"
           "   scripts/build.py が作る。正本を直すこと。 */\n")
@@ -133,7 +133,8 @@ def render(src: pathlib.Path, search_dirs) -> str:
             included = expand_css(include_file(name, search_dirs), search_dirs)
             included = expand_dark(included.rstrip("\n") + "\n").rstrip("\n")
         else:
-            included = include_file(name, search_dirs).read_text(encoding="utf-8").rstrip("\n")
+            # js の中の /* @include */ も展開する（大きな画面のファイルを、同じ閉じた範囲のまま部品に分けるため）
+            included = expand_css(include_file(name, search_dirs), search_dirs).rstrip("\n")
         return ("/* ▼ src/%s から。直すのは src のほう ▼ */\n" % name
                 + included
                 + "\n/* ▲ src/%s ここまで ▲ */" % name)
@@ -182,6 +183,50 @@ def merged_html(name: str) -> str:
         raise SystemExit("差し込みきれていない include() が %s に残っている" % name)
     return out
 
+def top_selectors(css: str):
+    """@media などの塊の外にある規則のセレクタを、出てくる順に返す（コメントは除く）。"""
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    out, i, n = [], 0, len(css)
+    while i < n:
+        if css[i].isspace():
+            i += 1
+            continue
+        if css[i] == "@":
+            depth, k = 0, i
+            while k < n:
+                if css[k] == "{":
+                    depth += 1
+                elif css[k] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        k += 1
+                        break
+                elif css[k] == ";" and depth == 0:
+                    k += 1
+                    break
+                k += 1
+            i = k
+            continue
+        k = css.find("{", i)
+        if k < 0:
+            break
+        out.append(re.sub(r"\s+", " ", css[i:k]).strip())
+        i = css.find("}", k) + 1
+    return out
+
+def check_css_dups():
+    """class-split の css/*.css で、同じセレクタの規則が2か所にあれば止める。
+    後から足した規則が前の規則を黙って上書きし、どちらを直せばよいか分からなくなるため。"""
+    seen, dups = {}, []
+    for f in sorted((CLASS_SRC / "css").glob("*.css")):
+        for sel in top_selectors(f.read_text(encoding="utf-8")):
+            if sel in seen:
+                dups.append("%s（%s と %s）" % (sel, seen[sel], f.name))
+            else:
+                seen[sel] = f.name
+    if dups:
+        raise SystemExit("class-split の css に同じセレクタが2か所あります。1つにまとめてください: " + "、".join(dups))
+
 def class_gas_targets():
     """class-split の GAS 一式。Code.gs は config.js・engine.js・report.js・server.gs をこの順につなぐ
     （サーバーも画面と同じ計算の正本を使う）。版の印は note-assessment と同じく内容のハッシュ。"""
@@ -229,6 +274,7 @@ def write_or_check(dest: pathlib.Path, built: str, check: bool, bad):
 
 def main():
     check = "--check" in sys.argv
+    check_css_dups()
     bad = []
     print("生成物を確認" if check else "生成")
 

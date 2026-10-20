@@ -1,0 +1,88 @@
+/* クラス分けの盤面と児童カード */
+/* ===== クラス分け ===== */
+.bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-bottom:6px}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
+.tab .k{font-size:.72rem;color:var(--sub);font-weight:400}
+.tab .v{font-size:.78rem;color:var(--sub);font-weight:400}
+.tab .v.bad{color:var(--alert);font-weight:700}
+.tab .x{border:0;background:none;color:var(--sub);cursor:pointer;padding:0 2px;line-height:1}
+.tab.cmp{border-style:dashed}
+.vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.vio.has{border-color:var(--alert);color:var(--alert);background:var(--alert-soft);font-weight:700}
+.hint{flex:1;min-width:0;font-size:.95rem;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hint b{color:var(--ink)}
+.hint.follow{color:var(--ink);font-weight:700}
+.decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
+.board{flex:1;min-height:0;overflow:hidden;position:relative}
+.cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(0,1fr));gap:6px}
+
+.head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
+.head.target{background:var(--fill)}
+.h1{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
+.h1 b{font-size:1.1rem}
+.h1 .w{color:var(--alert);font-weight:700}
+.jis{border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 5px;font-size:.85rem}
+.st{display:flex;flex-wrap:nowrap;gap:0 .4em;font-size:min(.8rem,calc((100cqw - 16px) / 37));white-space:nowrap;overflow:hidden;font-variant-numeric:tabular-nums;align-items:center}
+.st .w{color:var(--alert);font-weight:700}
+.st .w::after{content:"△"}
+.st.sub{color:var(--sub)}
+.st .c{display:inline-flex;gap:2px;align-items:center}
+.sub2{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px}
+.gcol{display:flex;flex-direction:column;gap:2px;min-height:0;min-width:0}
+.gcol>.chip{height:var(--rowh);flex:none;box-sizing:border-box}
+/* 児童カード：男＝長方形、女＝ピル型。左端は旧学級の色の帯（旧番号）、地は旧学級の薄い色 */
+.chip{display:grid;grid-template-columns:var(--bandw) minmax(0,1fr) var(--jrw);grid-template-rows:1fr 1fr;min-width:0;border:1px solid var(--line);
+  cursor:pointer;--bandw:calc(var(--rowh)*.31);--jrw:calc(var(--rowh)*.5);font-size:calc(var(--rowh)*.36);line-height:1;user-select:none;position:relative;background:var(--ol,var(--panel))}
+.chip.m{border-radius:2px}
+.chip.f{border-radius:999px}
+/* 帯の角はカードの角に合わせる（アイコンをはみ出させるので、カードで切り取らない） */
+.chip.m .old{border-radius:1px 0 0 1px}
+.chip.f .old{border-radius:999px 0 0 999px}
+.chip:hover{border-color:var(--sub)}
+.chip.sel{border:3px solid var(--link);box-shadow:inset 0 0 0 2px #fff}
+.chip.locked{background:repeating-linear-gradient(135deg,var(--ol) 0 5px,#0000001f 5px 6px)}
+.chip.locked .nm::before{content:"固 ";color:var(--sub);font-weight:400}
+.chip.rel-far .nm::after{content:" 離";color:var(--alert)}
+.chip.rel-near .nm::after{content:" つ";color:var(--link)}
+.chip.rel-far{outline:4px solid var(--alert);outline-offset:-4px}
+.chip.rel-near{outline:2px dashed var(--link);outline-offset:-1px}
+.chip.flash{animation:fl 1.1s ease-out 2}
+@keyframes fl{0%{box-shadow:0 0 0 4px var(--fill-b)}100%{box-shadow:0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.chip.flash{animation:none;box-shadow:0 0 0 4px var(--fill-b)}}
+.old{grid-row:1/3;background:var(--oc);color:var(--ot);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.5em;font-variant-numeric:tabular-nums}
+.l1{display:flex;align-items:center;gap:3px;padding:0 4px 1px;min-width:0}
+.nm{font-weight:700;white-space:nowrap;overflow:hidden;font-size:calc(var(--rowh)*.38);letter-spacing:-.02em}
+.side .chip .nm{font-size:20px}
+.bs{position:relative;font-size:var(--ic);margin:0 4px}
+
+/* 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は男女で同じ位置。縦に並ぶ児童でそろう */
+.bs.gd{margin:0 0 0 auto;align-self:stretch;width:calc(3*var(--slot));flex:none}
+.l2{display:flex;min-width:0;padding:0 4px 0 0}
+.l2>.bs:first-child{flex:1;--slot:var(--slotL)}
+/* 事案の数：旧番号の帯の反対側（右端）に、2段の真ん中で置く */
+.chip .bs>.b{z-index:1}
+/* ＋のアイコン（学・欠・問・保）は大きくし、下へはみ出してよい */
+.chip .bs>.b[data-lv="2"]{z-index:2;transform:translateY(-50%) scale(1.3);transform-origin:50% 10%}
+.jr{grid-column:3;grid-row:1/3;display:flex;align-items:center;justify-content:flex-start;font-size:var(--ic)}
+.bs>.b{position:absolute;left:calc(var(--s)*var(--slot));top:50%;transform:translateY(-50%);width:1.25em;height:1.25em}
+.bs>.b.pill,.bs>.b.para{width:1.3em}
+/* 横幅はいちばん広い形（貝）にそろえ、ほかの形も横に広げる（縦はそのまま） */
+.b.b{width:2.15em}
+.bs>.b.b{width:1.8em}
+.rt{font-size:.85em;font-weight:700;flex:none}
+.rt.far{color:var(--alert)} .rt.near{color:var(--link)}
+.lkm{flex:none;color:var(--sub);font-size:.85em}
+.cmpwrap{flex:1;min-height:0;overflow:auto}
+table.cmp{border-collapse:collapse;background:var(--panel);font-variant-numeric:tabular-nums}
+table.cmp th,table.cmp td{border:1px solid var(--line);padding:6px 12px;text-align:center;white-space:nowrap}
+table.cmp th:first-child,table.cmp td:first-child{text-align:left}
+table.cmp thead th{background:var(--fill);cursor:pointer;white-space:normal;min-width:7em}
+table.cmp td.best{font-weight:700}
+table.cmp td.best::after{content:" ★";color:var(--link)}
+table.cmp td.bad{color:var(--alert);font-weight:700}
+table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:left}
+.legend{font-size:.78rem;color:var(--sub);padding-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center}
+.legend .c{display:inline-flex;gap:3px;align-items:center}
+.board.zoomed{overflow:hidden;cursor:grab;touch-action:none}
+.board.zoomed .cols{will-change:transform}
+.zreset{position:absolute;right:8px;bottom:8px;z-index:20;box-shadow:0 2px 6px rgba(0,0,0,.35)}

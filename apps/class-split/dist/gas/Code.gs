@@ -301,6 +301,16 @@
     if (free.length < 2) return asg;
     var c = counts(ctx, asg), pv = hardPairViol(ctx, asg);
     var cur = W_HARD * pv + balance(ctx, c) + incPenalty(ctx, asg);
+    // 入れ替えのたびに全部を数え直さない：つける・離すは入れ替えた2人に関わる組だけ、事案は2人が関わる事案だけを差し引きする
+    var hard = ctx.gen.hard, PAIRS = ctx.P.pairs;
+    var brokenOf = function (list) { var n = 0; for (var q = 0; q < list.length; q++) { var p0 = PAIRS[list[q]]; if (hard[p0.t] && pairBroken(p0, asg)) n++; } return n; };
+    var INC = ctx.wInc ? (ctx.P.inc || []) : [], incOf = [], cnt = [], v = new Array(nc).fill(0);
+    if (ctx.wInc) {
+      for (i = 0; i < N; i++) incOf.push([]);
+      INC.forEach(function (x, xi) { var row = new Array(nc).fill(0); x.kids.forEach(function (q) { incOf[q].push(xi); if (!row[asg[q]]++) v[asg[q]]++; }); cnt.push(row); });
+    }
+    var moveInc = function (q, from, to) { var l = incOf[q]; for (var t0 = 0; t0 < l.length; t0++) { var row = cnt[l[t0]]; if (!--row[from]) v[from]--; if (!row[to]++) v[to]++; } };
+    var incPen = function () { var m0 = 0, t1 = 0, k0; for (k0 = 0; k0 < nc; k0++) m0 += v[k0]; m0 /= nc; for (k0 = 0; k0 < nc; k0++) t1 += (v[k0] - m0) * (v[k0] - m0); return ctx.wInc * t1; };
     var IT = 50000, T = 8, cool = Math.pow(0.002 / 8, 1 / IT);
     for (var it = 0; it < IT; it++, T *= cool) {
       i = free[Math.floor(r() * free.length)]; j = free[Math.floor(r() * free.length)];
@@ -308,11 +318,14 @@
       if (a === b) continue;
       var vi = ctx.VAL[i], vj = ctx.VAL[j], m, d;
       for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] += d; c[b][m] -= d; }
+      var rel = ctx.relOf[i].length || ctx.relOf[j].length ? ctx.relOf[i].concat(ctx.relOf[j].filter(function (q) { return ctx.relOf[i].indexOf(q) < 0; })) : null; // 2人に共通の組は1回だけ数える
+      var before = rel ? brokenOf(rel) : 0;
       asg[i] = b; asg[j] = a;
-      var npv = (ctx.relOf[i].length || ctx.relOf[j].length) ? hardPairViol(ctx, asg) : pv;
-      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPenalty(ctx, asg) : 0);
+      var npv = rel ? pv - before + brokenOf(rel) : pv;
+      if (ctx.wInc) { moveInc(i, a, b); moveInc(j, b, a); }
+      var nxt = W_HARD * npv + balance(ctx, c) + (ctx.wInc ? incPen() : 0);
       if (nxt <= cur || r() < Math.exp((cur - nxt) / T)) { cur = nxt; pv = npv; }
-      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } }
+      else { asg[i] = a; asg[j] = b; for (m = 0; m < M; m++) { d = vj[m] - vi[m]; c[a][m] -= d; c[b][m] += d; } if (ctx.wInc) { moveInc(j, a, b); moveInc(i, b, a); } }
     }
     return asg;
   }
@@ -666,7 +679,8 @@
     };
     var MOVES = [[0, 50], [0, -50], [0, 100], [0, -100], [0, 150], [0, -150], [0, 200], [0, -200], [80, 0], [-80, 0], [160, 0], [-160, 0], [80, 50], [-80, 50], [80, -50], [-80, -50]];
     var inside = function (u) { return (unit[u] || []).every(function (n) { return n.x >= 30 && n.x <= DG_W - 30 && n.y >= 20 && n.y <= DG_H - 20; }); };
-    for (var it = 0; it < 40 && bad(); it++) {
+    var t0 = Date.now(); // 大きな図でも待たせない：0.3秒で打ち切る（それまでに直せた所までで止める）
+    for (var it = 0; it < 40 && Date.now() - t0 < 300 && bad(); it++) {
       var c0 = cost(), best = null;
       Object.keys(unit).forEach(function (u) {
         MOVES.forEach(function (m) {
@@ -980,7 +994,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_df0f309a67d2';
+var SERVER_BUILD = 'BUILD_01d6aa5a189a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1050,7 +1064,7 @@ function attrsHead_() {
   return h;
 }
 // シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
-function plainText_(s, max) { s = String(s == null ? '' : s).slice(0, max || 200); return /^[=+\-@]/.test(s) ? "'" + s : s; }
+function plainText_(s, max) { s = String(s == null ? '' : s).slice(0, max || 200); return /^[=+\-@\t\r]/.test(s) ? "'" + s : s; }
 
 var SS_ = null;
 function db_() {
@@ -1063,13 +1077,21 @@ function db_() {
 function sheet_(ss, name, head) {
   var sh = ss.getSheetByName(name);
   if (!sh) {
-    sh = ss.insertSheet(name);
+    forget_(); sh = ss.insertSheet(name);
     if (head) sh.getRange(1, 1, 1, head.length).setValues([head]);
   }
   return sh;
 }
 // 表を読む：見出しの名前で列を引く。無い表は空
+// 1回の呼び出しの間だけ、読んだ表を覚える（設定などを何度も読むのを省く）。
+// 何かを書いたら全部忘れ、ロックを取った時も忘れる（ロックの前に読んだ古い値で判断しない）
+var READ_ = {};
+function forget_() { READ_ = {}; }
 function read_(name) {
+  if (READ_[name]) return READ_[name];
+  return (READ_[name] = readNow_(name));
+}
+function readNow_(name) {
   var sh = db_().getSheetByName(name);
   if (!sh) return { sh: null, head: [], rows: [] };
   var v = sh.getDataRange().getValues();
@@ -1087,7 +1109,7 @@ function ensureCols_(name, head) {
   var sh = sheet_(db_(), name, head);
   var w = Math.max(1, sh.getLastColumn()), cur = sh.getRange(1, 1, 1, w).getValues()[0].map(String);
   var miss = head.filter(function (h) { return cur.indexOf(h) < 0; });
-  if (miss.length) sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]);
+  if (miss.length) { forget_(); sh.getRange(1, cur[0] ? w + 1 : 1, 1, miss.length).setValues([miss]); }
   return sh;
 }
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
@@ -1096,17 +1118,18 @@ function append_(name, head, objs) {
   var sh = sheet_(db_(), name, head);
   var cur = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
   if (!cur[0]) cur = head;
-  sh.getRange(sh.getLastRow() + 1, 1, objs.length, cur.length).setValues(objs.map(function (o) { return rowOf_(cur, o); }));
+  forget_(); sh.getRange(sh.getLastRow() + 1, 1, objs.length, cur.length).setValues(objs.map(function (o) { return rowOf_(cur, o); }));
 }
 // 書き戻しは変えた行の変えた列だけ（同時に別の行を直している人を上書きしない）
 function writeCell_(t, row, col, value) {
   var c = t.head.indexOf(col);
   if (c < 0) throw new Error('列がありません：' + col);
-  t.sh.getRange(row._r, c + 1).setValue(value);
+  forget_(); t.sh.getRange(row._r, c + 1).setValue(value);
 }
 function withLock_(fn) {
   var lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) throw userError_('ほかの人が保存中です。少し待ってからもう一度');
+  forget_();
   try { return fn(); } finally { lock.releaseLock(); }
 }
 function log_(by, action, n) { append_('log', TABLES_[5].head, [{ at: new Date(), by: by, action: action, n: n }]); }
@@ -1117,6 +1140,7 @@ function getSetting_(key, def) {
   return def;
 }
 function setSetting_(key, value) {
+  if (value === null) { removeRows_('settings', function (r) { return r.key === key; }); return; } // 空にする時は行ごと消す（行が増え続けない）
   var t = read_('settings');
   for (var i = 0; i < t.rows.length; i++) if (t.rows[i].key === key) { writeCell_(t, t.rows[i], 'json', JSON.stringify(value)); return; }
   append_('settings', TABLES_[0].head, [{ key: key, json: JSON.stringify(value) }]);
@@ -1154,6 +1178,7 @@ function decisionOf_(fy, grade) {
 function api_(fn) {
   return function () {
     var args = arguments;
+    forget_();
     try { return JSON.stringify({ ok: true, build: SERVER_BUILD, v: fn.apply(null, args) }); }
     catch (e) {
       var m = String(e && e.message || e);
@@ -1198,6 +1223,7 @@ var apiBoot = api_(function (grade) {
     transfers: transfers_(FY, grade),
     plans: getSetting_('plans_' + FY + '_' + grade, { ver: 0, plans: [] }),
     scores: scoresOf_(years),
+    pairsVer: (getSetting_('pairsver_' + FY + '_' + grade, { ver: 0 }).ver) || 0,
     decision: dec ? { plan: String(dec.plan), at: String(dec.at), names: namesOf_(dec, FY, grade), named: !!String(dec.names || '') } : null
   };
 });
@@ -1266,18 +1292,22 @@ function carry_(FY, grade, idset) {
 }
 
 // つける・離す・組に固定を、学年ごとにまとめて置き換える
-var apiSavePairs = api_(function (grade, pairs) {
+// 版つき（案と同じ）：読み込んだ時の版と違えば、ほかの先生が先に保存したので上書きしない
+var apiSavePairs = api_(function (grade, pairs, baseVer) {
   var by = requireTeacher_();
   grade = +grade;
-  var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade;
-  if (decisionOf_(FY, grade)) throw userError_('クラス替えを決定したので直せません');
+  var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade, vkey = 'pairsver_' + FY + '_' + grade;
   return withLock_(function () {
+    if (decisionOf_(FY, grade)) throw userError_('クラス替えを決定したので直せません'); // 決定と同時に保存しても、決定の後は書かない
+    var cur = getSetting_(vkey, { ver: 0 });
+    if (baseVer != null && (+baseVer || 0) !== (+cur.ver || 0)) return { conflict: true, ver: cur.ver, by: cur.by || '' };
+    setSetting_(vkey, { ver: (+cur.ver || 0) + 1, by: by });
     sheet_(db_(), name, PAIR_HEAD); ensureCols_(name, PAIR_HEAD);
     removeRows_(name, function (r) { return r._r > 1; });
     append_(name, PAIR_HEAD, (pairs || []).map(function (p) {
       return Object.assign({ type: p.t, a: String(p.a), b: p.t === 'fix' ? '' : String(p.b), k: p.t === 'fix' ? (+p.k) + 1 : '', by: by, at: new Date().toISOString() }, pairCells_(p, grade));
     }));
-    return { n: (pairs || []).length };
+    return { n: (pairs || []).length, ver: (+cur.ver || 0) + 1 };
   });
 });
 
@@ -1298,7 +1328,7 @@ var apiImportRoster = api_(function (fy, grade, rows) {
       var id = String(x.id);
       if (!/^\d{8}$/.test(id)) throw userError_('児童IDが8桁でない行があります');
       classes[+x.cls] = 1; ids[id] = 1;
-      var o = { id8: id, name: String(x.name), kana: String(x.kana || ''), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
+      var o = { id8: id, name: plainText_(x.name, 40), kana: plainText_(x.kana || '', 60), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
       var r = byId[id];
       if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
       else added.push(o);
@@ -1310,6 +1340,8 @@ var apiImportRoster = api_(function (fy, grade, rows) {
   });
 });
 
+// 事案の版：最後に直した時刻。直す時に読んだ時の版と比べ、ほかの先生が先に直していたら上書きしない
+function revOf_(at) { return at instanceof Date ? at.toISOString() : String(at || ''); }
 function incidents_() {
   var kids = {}, roles = {};
   read_('incident_kids').rows.forEach(function (r) {
@@ -1321,7 +1353,7 @@ function incidents_() {
     if (r.diagram) { try { dg = Engine.normDiagram(JSON.parse(String(r.diagram))); } catch (e) { dg = null; } }
     var rp = null;
     if (r.report) { try { rp = Report.norm(JSON.parse(String(r.report))); } catch (e) { rp = null; } }
-    return { id: +r.inc_id, date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
+    return { id: +r.inc_id, rev: revOf_(r.at), date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
   });
 }
 // 事案の入力を確かめる：関係図があれば、関係する児童と役割は関係図から決める
@@ -1345,7 +1377,7 @@ function incidentInput_(x) {
   if (end && (!/^\d{4}-\d{2}-\d{2}$/.test(end) || end < date)) throw userError_('終わりの日は始まりの日より後にしてください');
   var rp = x.report ? reportInput_(x.report) : null, rjson = rp ? JSON.stringify(rp) : '';
   if (rjson.length > 45000) throw userError_('記録が長すぎます。分けて書いてください');
-  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: String(x.type), url: String(x.url || ''), report: rp, rjson: rjson };
+  return { ids: ids, roles: roles, diagram: dg, json: json, date: date, dateEnd: end, detail: plainText_(String(x.detail || '').trim(), 5000), type: plainText_(String(x.type), 60), url: String(x.url || ''), report: rp, rjson: rjson };
 }
 // 報告書の記録（発覚・経緯・指導、様式Ⅱの追記）を確かめる。文字数と行数に上限を置く
 function reportInput_(r) {
@@ -1375,14 +1407,17 @@ function scoresOf_(years) {
 var apiSetScores = api_(function (fy, grade, v) {
   requireTeacher_();
   fy = +fy; grade = +grade;
-  var FY = CONFIG.fiscalYear(), dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
-  if (fy !== editable) throw userError_('この年度の点数は直せません');
+  var FY = CONFIG.fiscalYear();
   var max = +v.max, top = +v.top, s = {};
   if (!(max > 0 && max <= 10000)) throw userError_('満点が違います');
   if (!(top > 0 && top < 1)) throw userError_('上位の割合が違います');
   var ids = {}; rosterRows_(fy).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
   Object.keys(v.s || {}).forEach(function (id) { var n = +v.s[id]; if (ids[id] && n >= 0 && n <= max) s[id] = n; });
-  return withLock_(function () { setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s }); return { ok: true }; });
+  return withLock_(function () {
+    var dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
+    if (fy !== editable) throw userError_('この年度の点数は直せません');
+    setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s }); return { ok: true };
+  });
 });
 
 var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
@@ -1392,10 +1427,10 @@ var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
   var at = k === 'sp' ? { k: 'sp', max: 1 } : k === 'memo' ? { k: 'memo', max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
   if (!at) throw userError_('項目が違います');
   if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
-  var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY), dec = decisionOf_(FY, cohortGrade);
-  var editable = dec ? FY + 1 : FY;
-  if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
+  var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY);
   return withLock_(function () {
+    var dec = decisionOf_(FY, cohortGrade), editable = dec ? FY + 1 : FY; // 決定と同時の保存でも、決定の後は書かない
+    if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
     var name = 'attrs_' + fy;
     ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
@@ -1442,7 +1477,7 @@ var apiFetchTitle = api_(function (url) { requireTeacher_(); return { title: tit
 var apiAddIncident = api_(function (x) {
   var by = requireTeacher_();
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
+  var title = plainText_(String(x.title || '').trim() || (v.url ? titleOf_(v.url) : ''), 200);
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), next = 1;
@@ -1451,25 +1486,28 @@ var apiAddIncident = api_(function (x) {
     append_('incidents', TABLES_[3].head, [inc]);
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (id) { return { inc_id: next, id8: id, role: v.roles[id] || '' }; }));
     log_(by, 'addIncident', v.ids.length);
-    return { id: next, date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
+    return { id: next, rev: revOf_(inc.at), date: inc.date, dateEnd: v.dateEnd, detail: v.detail, type: inc.type, title: title, url: inc.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
 });
 
 // 事案を直す（関係図・文書・日付・種別）。関係する児童は関係図から入れ直す
-var apiUpdateIncident = api_(function (id, x) {
+var apiUpdateIncident = api_(function (id, x, baseRev) {
   var by = requireTeacher_();
   id = +id;
   var v = incidentInput_(x);
-  var title = String(x.title || '').trim() || (v.url ? titleOf_(v.url) : '');
+  var title = plainText_(String(x.title || '').trim() || (v.url ? titleOf_(v.url) : ''), 200);
   return withLock_(function () {
     ensureCols_('incidents', TABLES_[3].head); ensureCols_('incident_kids', TABLES_[4].head);
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
     if (!row) throw userError_('事案が見つかりません');
+    if (baseRev && revOf_(row.at) !== String(baseRev)) return { conflict: true, by: String(row.by || '') };
+    var now = new Date();
+    writeCell_(t, row, 'by', by); writeCell_(t, row, 'at', now);
     [['date', v.date], ['date_end', v.dateEnd], ['detail', v.detail], ['type', v.type], ['url', v.url], ['file_id', fileIdOf_(v.url)], ['title', title], ['diagram', v.json], ['report', v.rjson]].forEach(function (c) { writeCell_(t, row, c[0], c[1]); });
     removeRows_('incident_kids', function (r) { return +r.inc_id === id; });
     append_('incident_kids', TABLES_[4].head, v.ids.map(function (k) { return { inc_id: id, id8: k, role: v.roles[k] || '' }; }));
     log_(by, 'updateIncident', v.ids.length);
-    return { id: id, date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
+    return { id: id, rev: revOf_(now), date: v.date, dateEnd: v.dateEnd, detail: v.detail, type: v.type, title: title, url: v.url, ids: v.ids, roles: v.roles, diagram: v.diagram, report: v.report };
   });
 });
 
@@ -1543,7 +1581,8 @@ var apiSchoolKids = api_(function () {
   var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
   return rosterRows_(FY).map(function (r) {
     var a = {}, src = am[r.id] || {};
-    CONFIG.ATTRS.forEach(function (at) { if (src[at.k]) a[at.k] = src[at.k]; if (src[at.k + '_t']) a[at.k + '_t'] = src[at.k + '_t']; });
+    // ほかの学年の児童には、項目の程度（アイコン）だけを渡す。経緯・内容の文（_t。医療・家庭の事情を含む）は渡さない
+    CONFIG.ATTRS.forEach(function (at) { if (src[at.k]) a[at.k] = src[at.k]; });
     if (src.sp) a.sp = 1;
     return { id: r.id, name: r.name, kana: r.kana, male: r.male, grade: r.grade, cls: r.cls, a: a };
   });
@@ -1581,7 +1620,12 @@ var apiDecide = api_(function (grade, plan) {
     var nc = 0; asg.forEach(function (k) { if (k + 1 > nc) nc = k + 1; });
     var rows = Engine.nextYearRows(kids, asg, nc), info = {};
     cur.forEach(function (r) { info[r.id] = r; });
-    var nfy = FY + 1;
+    var nfy = FY + 1, mine = {};
+    cur.forEach(function (r) { mine[String(r.id)] = 1; });
+    // 前の決定が途中で止まって残した行（決定の行が書かれる前に止まった分）を先に消す。やり直しても二重にならない
+    removeRows_('roster_' + nfy, function (r) { return mine[String(r.id8)]; });
+    removeRows_('attrs_' + nfy, function (r) { return mine[String(r.id8)]; });
+    removeRows_('pairs_carry', function (r) { return +r.fy === FY && (mine[String(r.a)] || mine[String(r.b)]); });
     append_('roster_' + nfy, ROSTER_HEAD, rows.map(function (r) {
       var s = info[r.id];
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
@@ -1648,7 +1692,7 @@ var apiSetClassNames = api_(function (grade, names) {
         if (+r.grade === grade + 1 && ids[String(r.id8)]) { var k = old.indexOf(v); if (k >= 0) v = names[k]; }
         return [v];
       });
-      t.sh.getRange(2, c + 1, col.length, 1).setValues(col); // 1回で書く（行ごとに書くと遅い）
+      forget_(); t.sh.getRange(2, c + 1, col.length, 1).setValues(col); // 1回で書く（行ごとに書くと遅い）
     }
     ensureCols_('decisions', TABLES_[1].head);
     var d = read_('decisions');
@@ -1659,10 +1703,18 @@ var apiSetClassNames = api_(function (grade, names) {
 });
 
 // 行を消す（下の行から消すので行番号がずれない）
+// 条件に合う行を消す。1行ずつ deleteRow すると行の数だけ呼び出しが要り、数年分で6分の上限に届くので、
+// 残す行を書き戻し、余った末尾の行をまとめて消す（呼び出しは3回）
 function removeRows_(name, pred) {
-  var t = read_(name), n = 0;
-  if (!t.sh) return 0;
-  t.rows.slice().reverse().forEach(function (r) { if (pred(r)) { t.sh.deleteRow(r._r); n++; } });
+  var t = read_(name);
+  if (!t.sh || !t.rows.length) return 0;
+  var all = t.sh.getDataRange().getValues(), keep = [], n = 0;
+  t.rows.forEach(function (r, i) { if (pred(r)) n++; else keep.push(all[i + 1]); });
+  if (!n) return 0;
+  var w = all[0].length;
+  forget_();
+  if (keep.length) t.sh.getRange(2, 1, keep.length, w).setValues(keep);
+  t.sh.deleteRows(2 + keep.length, n);
   return n;
 }
 

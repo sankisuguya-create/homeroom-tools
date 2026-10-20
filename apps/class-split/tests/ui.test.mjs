@@ -24,8 +24,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++
 // クラス分けに入る：案がまだ無ければ、設定の窓で作り、並べる動きを飛ばす
 const intoSplit = async (p) => {
   await p.waitForSelector('.board .chip, #okbtn');
-  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); await p.keyboard.press('Shift'); }
-  await p.waitForFunction(() => !document.querySelector('.board.dealing'));
+  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); }
 };
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {
@@ -308,8 +307,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-dm="arrow"]');
   const dn = p.locator('#fDg .dg-n');
   await dn.nth(0).click(); await dn.nth(1).click(); await dn.nth(0).click(); await dn.nth(2).click();
+  await p.click('[data-dtidy]');
+  ok(await p.locator('#fDg .dg-gl').count() === 1 && await p.locator('#toast', { hasText: '整えました' }).count() === 1, '「整える」を押すと、矢印の出入りが同じ2人をグループにまとめる');
+  await p.click('#tundo'); ok(await p.locator('#fDg .dg-gl').count() === 0, '「戻す」で置いた通りに戻る');
+  await p.click('[data-dtidy]');
   await p.fill('#rw-s1-sd-0', '保護者に連絡した'); await p.click('#incForm button.primary'); await p.waitForSelector('#iadd2');
-  ok(await p.locator('#toast', { hasText: '関係図を整理しました' }).count() === 1 && await p.locator('#vDg .dg-gl').count() === 1, '保存の時、矢印の出入りが同じ2人はグループにまとめる');
+  ok(await p.locator('#vDg .dg-gl').count() === 1, '整えた形で保存される');
   await p.click('#iadd2');
   ok(await p.locator('.isec[data-sec^="s2v:"]').count() === 2, '被害の児童が2人なら、様式Ⅱの「被害児童・保護者の様子」は2つの欄');
   await p.click('#cancelInc');
@@ -341,10 +344,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
-  await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board.dealing');
-  ok(true, '作るとカードを1枚ずつ並べる');
-  await p.keyboard.press('Shift'); await p.waitForFunction(() => !document.querySelector('.board.dealing'));
-  ok(await p.locator('.board .chip').count() > 0 && await p.locator('#order.ordbtn').count() === 1, 'キーで並べる動きを飛ばせ、並び順のボタンは上の帯に出る');
+  await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
+  ok(await p.locator('.board .chip.plusin').count() > 0, '作るとカードを一度に出し、＋付きのカードを目立たせる');
+  ok(await p.locator('#order.ordbtn').count() === 1, '並び順のボタンは上の帯に出る');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
@@ -362,6 +364,32 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForSelector('#toast.stay'); await p.waitForTimeout(3800);
   ok(await p.locator('#toast:not([hidden]).stay').count() === 1, '直せない保存の誤りは、時間で消えない');
   await p.click('#tclose'); ok(await p.locator('#toast[hidden]').count() === 1, '×で閉じる');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 名簿：マスの長押しでも、右下の角と同じ窓が開く（値は変えない）
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cc[data-k="k3"]');
+  const td = p.locator('td.cc[data-k="k3"]').first(), before = await td.innerHTML(), bb = await td.boundingBox();
+  await p.mouse.move(bb.x + bb.width / 2, bb.y + bb.height / 2); await p.mouse.down(); await p.waitForTimeout(700); await p.mouse.up();
+  ok(await p.locator('#layer .dlg').count() === 1 && await td.innerHTML() === before, 'マスを長押しすると窓が開き、値は変わらない');
+  await p.keyboard.press('Escape');
+  await p.close();
+}
+// クラス分け：ホイールでカーソルの所を中心に拡大・縮小。「等倍に戻す」で元へ
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+  const chip = p.locator('.board .chip').nth(40), b0 = await chip.boundingBox(), cx = b0.x + b0.width / 2, cy = b0.y + b0.height / 2;
+  await p.mouse.move(cx, cy); await p.mouse.wheel(0, -400); await p.waitForTimeout(100);
+  const b1 = await chip.boundingBox();
+  ok(b1.width > b0.width * 1.5 && Math.abs(b1.x + b1.width / 2 - cx) < 3 && Math.abs(b1.y + b1.height / 2 - cy) < 3, 'ホイールで、カーソルの所を動かさずに拡大する');
+  await p.click('#zreset'); const b2 = await chip.boundingBox();
+  ok(Math.abs(b2.width - b0.width) < 1 && await p.locator('#zreset').count() === 0, '「等倍に戻す」で元の大きさ');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

@@ -1,0 +1,63 @@
+/* 浮く枠（窓）・設定 */
+/* ===== 浮く枠 ===== */
+.pop{position:fixed;inset:0;background:#1a1a1a66;display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.dlg{background:var(--panel);border-radius:10px;padding:18px 20px;max-width:min(920px,100%);width:100%;box-shadow:0 10px 30px #0004;display:flex;flex-direction:column;gap:14px;max-height:100%;overflow:auto;box-sizing:border-box}
+.dlg h2{margin:0;font-size:1.3rem}
+.swap{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:12px;align-items:center}
+.side{display:flex;flex-direction:column;gap:6px;min-width:0}
+.side .lab{font-size:.9rem;color:var(--sub);font-variant-numeric:tabular-nums}
+.side .lab b{color:var(--ink);font-size:1.05rem}
+
+.side .chip .bs{font-size:17px;--slot:1.7em}
+.side .chip .old{font-size:.8em}
+.side .chip.extra{border:2px dashed #A85800}
+.arrow{font-size:2.4rem;color:var(--link);font-weight:700;line-height:1}
+.notebox{font-size:.9rem;background:var(--fill-b);border-radius:6px;padding:8px 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.farbox{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.more summary{cursor:pointer;padding:4px 0;font-weight:700;list-style:none}
+.more summary::-webkit-details-marker{display:none}
+.more[open] summary{color:var(--sub)}
+.warnbox{border:2px solid var(--alert);background:var(--alert-soft);color:var(--alert);border-radius:6px;padding:8px 10px;font-weight:700}
+.acts{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.acts .btn{padding:8px 16px;font-size:1rem}
+.viol{position:fixed;z-index:15;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 8px 24px #0003;padding:8px 12px;max-height:60vh;overflow:auto;max-width:min(560px,calc(100% - 32px))}
+.viol ul{margin:0;padding-left:1.2em}
+.viol li{cursor:pointer;padding:3px 0}
+.viol li:hover{text-decoration:underline}
+.viol .k{font-weight:700}.viol .k.bad{color:var(--alert)}
+.gen table{border-collapse:collapse;width:100%}
+.gen td{padding:4px 6px;border-bottom:1px solid var(--line)}
+.gen td:first-child{white-space:nowrap}
+.lvs{display:flex;gap:3px}
+.lv{border:1px solid var(--line);background:var(--panel);border-radius:4px;padding:2px 10px;cursor:pointer;min-width:3em}
+.lv[aria-pressed="true"]{background:var(--link);color:#fff;border-color:var(--link);font-weight:700}
+/* 「必」：必ず守る条件になる特別な段階。濃い赤紫の地に金の縁 */
+.lv.must{border:2px solid #8B1E5A;color:#8B1E5A;font-weight:700;margin-left:6px}
+.lv.must[aria-pressed="true"]{background:#8B1E5A;color:#fff;border-color:#E0A800;box-shadow:0 0 0 2px #E0A800}
+.mustwarn{border:2px solid #8B1E5A;background:#FBEAF2;color:#5A0E38;border-radius:6px;padding:6px 10px;font-size:.9rem}
+.gencols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.gencols{grid-template-columns:1fr}}
+.toggles{display:flex;flex-wrap:wrap;gap:6px}
+.tg{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 12px;cursor:pointer}
+.tg[aria-pressed="true"]{background:var(--fill);border-color:var(--link);font-weight:700}
+.tg[aria-pressed="true"]::before{content:"✓ "}
+.help table{border-collapse:collapse}
+.help td{padding:4px 10px;border-bottom:1px solid var(--line)}
+.dlg input[type=text]{padding:6px 8px;border:1px solid var(--line);border-radius:4px;font-size:1rem}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px;display:flex;gap:12px;align-items:center;z-index:30;cursor:pointer;max-width:calc(100% - 32px)}
+.toast[hidden]{display:none}
+.toast button{background:none;border:1px solid #fff9;color:#fff;border-radius:4px;padding:2px 8px;cursor:pointer}
+
+/* 特別支援学級（名簿の「支」）・転入生の凡例 */
+.spb{display:inline-block;background:#FFE0BF;border:1px solid #C77A2E;color:#7A3E00;border-radius:3px;padding:0 4px;font-weight:700;font-size:.85em}
+.lg{display:inline-block;width:1.6em;height:1em;border:1px solid var(--line);border-radius:2px;vertical-align:middle}
+.lg.tr{background:linear-gradient(90deg,#8C8C8C 0 30%,#fff 30%)}
+.trf{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px;align-items:center}
+.trf input{flex:1 1 10em;min-width:0;padding:6px 8px;font-size:1rem}
+
+/* 設定：説明文の欄 */
+.hrow td{border-top:0;padding-top:0}
+.hlp{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:.85rem}
+.hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
+.hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
+.hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}

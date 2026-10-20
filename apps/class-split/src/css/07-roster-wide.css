@@ -1,0 +1,66 @@
+/* 名簿の表の大きさ・児童の窓・並び順 */
+/* ===== 名簿：表を広く・大きく。＋のアイコンは大きく、ふつうのアイコンは少しだけ小さく ===== */
+body[data-screen="roster"] .layout{grid-template-columns:minmax(0,1fr)}
+body[data-screen="roster"] table.r{font-size:17px}
+body[data-screen="roster"] table.r :is(th,td){border-right:1px solid #E3E8ED;padding:5px 6px}
+/* マスの幅と高さを固定し、＋のアイコンは描くときだけ拡大する（行の高さ・列の幅を変えない） */
+body[data-screen="roster"] table.r td.cell{width:2.6em;min-width:2.6em;max-width:2.6em;height:38px;padding:0;box-sizing:border-box;overflow:visible}
+body[data-screen="roster"] table.r td.cell .b{font-size:.9em}
+body[data-screen="roster"] table.r td.cell .b[data-lv="2"]{transform:scale(1.45)}
+/* 特別支援学級：有無だけなので最小の幅 */
+body[data-screen="roster"] table.r :is(th,td).spc{width:2.2em;min-width:2.2em;max-width:2.2em;padding:0 2px;font-size:.78em}
+body[data-screen="roster"] table.r th.spc{vertical-align:bottom}
+body[data-screen="roster"] table.r td.spc .spb{font-size:1.1em;padding:0 3px}
+/* つける・離す：数だけ。相手はカーソルで出す */
+body[data-screen="roster"] table.r th.pr{font-size:.78em;line-height:1.2;vertical-align:bottom}
+table.r td.pr{min-width:3.4em;max-width:16em;white-space:normal;text-align:left}
+table.r td.pr.ed,table.r td.memo.ed{cursor:pointer}
+table.r td.pr.ed:hover,table.r td.memo.ed:hover{background:var(--soft)}
+
+:is(.prm,.prd) :is(b.pf,b.pn,b.px){font-size:.8em;padding:0 3px;border-radius:3px;border:1.5px solid;font-weight:700}
+.prd .pf{color:var(--alert);border-color:var(--alert)}.prd .pn{color:var(--link);border-color:var(--link)}
+.prm .pf{color:var(--alert);border-color:var(--alert)}
+.prm .pn{color:var(--link);border-color:var(--link)}
+.prm .px{color:var(--sub);border-color:var(--sub)}
+/* 備考：1行で切り、全文はカーソルで出す（押すと書ける） */
+table.r :is(th,td).memo{text-align:left;min-width:10em;font-size:.85em}
+table.r td.memo>div{width:0;min-width:100%;overflow:hidden;text-overflow:ellipsis}
+/* 名前の列は枠の幅だけ。表の余りは備考の列が受ける */
+body[data-screen="roster"] table.r :is(th,td):nth-child(-n+3):not(.cell){width:1%}
+body[data-screen="roster"] table.r th .b{font-size:.8em}
+/* 児童の窓（経年の記録と事案） */
+.kidpop{width:min(760px,94vw);max-height:88vh;max-width:none;position:relative;padding:14px 16px}
+.kidpop .kx{position:absolute;right:12px;top:10px}
+.kidpop h2{padding-right:7em}
+.kidpop table.h{font-size:.95rem}
+body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
+/* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
+body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
+/* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
+table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
+/* 学年・組・番は字の幅に頼らず、箱の幅で縦をそろえる */
+table.h td.gcn .g,table.h td.gcn .sep,table.h td.gcn .no{display:inline-block;text-align:center}
+table.h td.gcn .g{width:.8em}
+table.h td.gcn .sep{width:.6em}
+table.h td.gcn .no{width:1.4em;text-align:right}
+/* 並び順の枠 */
+.ordrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ordrow>b{min-width:5em}
+.ordrow .lv{white-space:nowrap}
+/* 項目で絞って見る：該当しない児童を暗くする。押した項目は見出しで枠を付ける */
+.st [data-hl]{cursor:pointer;border-radius:4px;padding:0 2px}
+.st [data-hl]:hover{background:#0000000f}
+.st [data-hl].on{outline:2px solid var(--ink);background:#fff}
+.board.hl .chip:not(.hit){opacity:.22;filter:grayscale(.6)}
+/* カードの事案の数：押すと記録の窓 */
+.board .chip .jn{cursor:zoom-in}
+.board .chip .jn:hover{background:#fff;outline:2px solid var(--ink)}
+/* メニュー：よく使う「名簿」を大きく、「クラス分け」は右に細く（使う頻度を大きさで示す） */
+.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)}
+.bigs .big[data-go="roster"]{padding:34px 28px;min-height:9em;justify-content:center}
+.bigs .big[data-go="roster"] b{font-size:2rem}
+.bigs .big[data-go="roster"] span{font-size:1rem}
+.bigs .big[data-go="split"]{padding:16px}
+.bigs .big[data-go="split"] b{font-size:1.1rem}
+.bigs .big[data-go="split"] span{font-size:.8rem}
+.bigs .big:only-child{grid-column:1/-1}
