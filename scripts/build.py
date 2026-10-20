@@ -133,7 +133,8 @@ def render(src: pathlib.Path, search_dirs) -> str:
             included = expand_css(include_file(name, search_dirs), search_dirs)
             included = expand_dark(included.rstrip("\n") + "\n").rstrip("\n")
         else:
-            included = include_file(name, search_dirs).read_text(encoding="utf-8").rstrip("\n")
+            # js の中の /* @include */ も展開する（大きな画面のファイルを、同じ閉じた範囲のまま部品に分けるため）
+            included = expand_css(include_file(name, search_dirs), search_dirs).rstrip("\n")
         return ("/* ▼ src/%s から。直すのは src のほう ▼ */\n" % name
                 + included
                 + "\n/* ▲ src/%s ここまで ▲ */" % name)
