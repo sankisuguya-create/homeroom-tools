@@ -77,3 +77,7 @@
 .rkrow.tierend{border-bottom:2px solid #9AA3AB}
 .rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
 .rkrow.top .rkt{color:#007A57;font-weight:700}
+/* 学力の窓の上：点数・順位の切り替えと「賢い」の決め方 */
+.acadtabs{align-items:center;flex-wrap:wrap}
+.acaduse{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.9rem}
+.acadman{margin:-4px 0 8px;font-size:.88rem}.acadman summary{cursor:pointer;color:var(--sub)}

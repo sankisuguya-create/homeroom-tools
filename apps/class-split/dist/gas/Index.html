@@ -803,6 +803,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .rkrow.tierend{border-bottom:2px solid #9AA3AB}
 .rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
 .rkrow.top .rkt{color:#007A57;font-weight:700}
+/* 学力の窓の上：点数・順位の切り替えと「賢い」の決め方 */
+.acadtabs{align-items:center;flex-wrap:wrap}
+.acaduse{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.9rem}
+.acadman{margin:-4px 0 8px;font-size:.88rem}.acadman summary{cursor:pointer;color:var(--sub)}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -2381,7 +2385,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_d377db72b0ca';
+  var PAGE_BUILD = 'BUILD_15e9f1861c7d';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2937,7 +2941,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? '点数か順位で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数か学力の順位の上位にも「賢い」が付きます。') +
             '<div style="margin-top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button>' +
             '<button type="button" class="btn primary" data-rank="1">学力の順位を入力</button></div>' +
-            '<p class="note">「賢い」は、点数と順位のうち、最後に保存した方の上位で決めます' + (D().scores[R.fy] ? '（今は' + (D().scores[R.fy].use === 'rank' ? '順位' : '点数') + '）' : '') + '。</p></div>' : '') +
+            '<p class="note">点数と順位のどちらで決めるかは、学力の窓の上で選びます。</p></div>' : '') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
@@ -2992,16 +2996,32 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // クラス分けテストの点数：出席番号順の表に手で入れるか、Excel などの列（点数だけ、または 番号・名前・点数）を貼る。
   // 満点と上位の割合も決める。組の中の男女ごとに、上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
+  // 学力の窓の上の部分（点数・順位で共通）：切り替えのタブ、「賢い」の決め方（点数か順位か）、手動で付けた「賢い」の児童
+  function acadHead(Y, kind, F) {
+    var d = D(), esc = App.esc, man = Y.rows.filter(function (r) { return r.a.k7m; });
+    return '<h2>学力（' + R.fy + '年度 ' + Y.grade + '年）</h2>' +
+      '<div class="rbar acadtabs"><button type="button" class="tab" data-acadtab="score" aria-selected="' + (kind === 'score') + '">点数</button><button type="button" class="tab" data-acadtab="rank" aria-selected="' + (kind === 'rank') + '">順位</button>' +
+      '<span class="acaduse">「賢い」の決め方 <label class="chk"><input type="radio" name="acaduse" data-acaduse="score"' + (F.use === 'score' ? ' checked' : '') + '> 点数で</label><label class="chk"><input type="radio" name="acaduse" data-acaduse="rank"' + (F.use === 'rank' ? ' checked' : '') + '> 順位で</label></span></div>' +
+      '<p class="note">学力は組の中の男女ごとに比べます。' + (man.length ? '</p><details class="acadman"><summary>手動で「賢い」を付けた児童 ' + man.length + '人（点数・順位に関わらず「賢い」）</summary><div class="note">' + man.map(function (r) { return esc(d.kids[r.id].name); }).join('、') + '</div></details>' : '手動で「賢い」を付けた児童はいません。</p>');
+  }
+  // タブを押した時：保存していない入力があれば切り替えない（入力を失わない）
+  function acadTab(t, kind, F, Y) {
+    var b = t.closest('[data-acadtab]'); if (!b) return false;
+    if (b.dataset.acadtab === kind) return true;
+    if (F.dirty) { App.toast('入力を保存するか「やめる」を押してから切り替えてください'); return true; }
+    App.closeDlg(); (b.dataset.acadtab === 'rank' ? rankDialog : scoreDialog)(Y); return true;
+  }
+  App.acadDialog = function () { var Y = yearOf(R.fy), sc = D().scores[R.fy] || {}; (sc.use === 'rank' ? rankDialog : scoreDialog)(Y); };
   function scoreDialog(Y) {
     var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
-    var F = { max: sc0.max || C.SCORE_DEF.max, top: sc0.top || C.SCORE_DEF.top, s: Object.assign({}, sc0.s || {}) };
+    var F = { max: sc0.max || C.SCORE_DEF.max, top: sc0.top || C.SCORE_DEF.top, s: Object.assign({}, sc0.s || {}), use: sc0.use || 'score', dirty: false };
     var rows = Y.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
     var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }, App.scoreGroup(d, Y)); }; // 組の中の男女ごとの上位
     App.openDlg({
       noEnter: true, focus: 'scPaste',
       html: function () {
         var tp = tops(), n = Object.keys(F.s).length;
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="クラス分けテストの点数" style="max-width:760px"><h2>クラス分けテストの点数（' + fy + '年度 ' + grade + '年）</h2>' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力（点数）" style="max-width:760px">' + acadHead(Y, 'score', F) +
           '<div class="scset"><label>満点 <input type="number" id="scMax" min="1" max="10000" value="' + F.max + '"> 点</label>' +
           '<label>組の男女ごとに上から <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」。2段から下は印なしで、クラス分けで組ごとにそろえる）</label>' +
           '<span class="note">入力 ' + n + '人・上位 ' + Object.keys(tp).length + '人（同点は含める）</span></div>' +
@@ -3015,12 +3035,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存</button></div></div></div>';
       },
       input: function (t) {
+        if (t.dataset.acaduse) { F.use = t.dataset.acaduse; F.dirty = true; return; }
+        F.dirty = true;
         if (t.id === 'scMax') { var m = +t.value; if (m > 0) F.max = m; return; }
         if (t.id === 'scTop') { var p = +t.value; if (p >= 1 && p <= 99) F.top = p / 100; return; }
         if (t.dataset.sc) { if (t.value === '') delete F.s[t.dataset.sc]; else F.s[t.dataset.sc] = Math.max(0, Math.min(F.max, +t.value)); }
       },
       click: function (t) {
+        if (acadTab(t, 'score', F, Y)) return true;
         if (!t.closest('[data-scpaste]')) return false;
+        F.dirty = true;
         var lines = App.$('scPaste').value.split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean), bad = 0;
         var byName = {}; rows.forEach(function (r) { byName[d.kids[r.id].name.replace(/[\s　]/g, '')] = r; });
         lines.forEach(function (l, i) {
@@ -3035,7 +3059,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return true;
       },
       onOk: function () {
-        var v = { max: F.max, top: F.top, s: F.s, r: sc0.r || {}, use: 'score' }; // 順位は残す。この窓で保存したら点数で決める
+        var v = { max: F.max, top: F.top, s: F.s, r: sc0.r || {}, use: F.use }; // 順位は残す。決め方は窓の切り替えで選んだ方
         d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
         App.save(function () { return App.pf().setScores(fy, grade, v); });
       }
@@ -3047,7 +3071,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 上位の割合（点数と共用）の線より上の児童に「賢い」が付く。保存すると、点数ではなく順位で決める
   function rankDialog(Y) {
     var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
-    var F = { top: sc0.top || C.SCORE_DEF.top };
+    var F = { top: sc0.top || C.SCORE_DEF.top, use: sc0.use === 'score' && Object.keys(sc0.s || {}).length ? 'score' : 'rank', dirty: false };
     var r0 = sc0.r || {}, s0 = sc0.s || {}, grp = App.scoreGroup(d, Y), byId = {};
     Y.rows.forEach(function (r) { byId[r.id] = r; });
     // 組ごと・男女ごとの並び。始めは 前の順位 → 点数の高い順 → 番号
@@ -3074,27 +3098,31 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     };
     var list = function () { return order().map(row).join(''); };
     var redraw = function () { var el = App.$('rklist'); if (el) { var st = el.scrollTop; el.innerHTML = list(); el.scrollTop = st; } var n = App.$('rkcnt'); if (n) n.textContent = label(cur) + '：上位 ' + cut() + '人に「賢い」'; };
-    var moveTo = function (id, pos) { var o = order(), i = o.indexOf(id); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, pos)), 0, id); };
+    var moveTo = function (id, pos) { F.dirty = true; var o = order(), i = o.indexOf(id); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, pos)), 0, id); };
     App.openDlg({
       noEnter: true,
       html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力の順位" style="max-width:600px"><h2>学力の順位（' + fy + '年度 ' + grade + '年）</h2>' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力（順位）" style="max-width:600px">' + acadHead(Y, 'rank', F) +
           '<div class="rbar rktabs">' + keys.map(function (k) { return '<button type="button" class="tab" data-rkg="' + k + '" aria-selected="' + (k === cur) + '"><span class="band" style="background:' + App.classColor(+k.split(':')[0]).c + '"></span>' + label(k) + '（' + G[k].length + '）</button>'; }).join('') + '</div>' +
           '<div class="scset"><label>組の男女ごとに上から <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」）</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
           (Object.keys(s0).length ? '<button type="button" class="btn" data-rkscore="1">この組・男女を点数の順に並べ直す</button>' : '') + '</div>' +
-          '<p class="note">学力は組の中の男女ごとに比べます。順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
+          '<p class="note">順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
           '<div class="rklist" id="rklist">' + list() + '</div>' +
-          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存（全部の組・男女を順位で決める）</button></div></div></div>';
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存（全部の組・男女の順位）</button></div></div></div>';
       },
-      input: function (t) { if (t.id === 'rkTop') { var p = +t.value; if (p >= 1 && p <= 99) { F.top = p / 100; redraw(); } } },
+      input: function (t) {
+        if (t.dataset.acaduse) { F.use = t.dataset.acaduse; F.dirty = true; return; }
+        if (t.id === 'rkTop') { var p = +t.value; if (p >= 1 && p <= 99) { F.top = p / 100; F.dirty = true; redraw(); } }
+      },
       click: function (t) {
+        if (acadTab(t, 'rank', F, Y)) return true;
         var b = t.closest('[data-rkg]'); if (b) { cur = b.dataset.rkg; App.refreshDlg(); return true; }
         if (t.closest('[data-rkscore]')) { order().sort(function (a, c) { var sa = s0[a] == null ? -1 : s0[a], sc = s0[c] == null ? -1 : s0[c]; return sc - sa; }); redraw(); return true; }
         return false;
       },
       onOk: function () {
         var r = {}; keys.forEach(function (k) { G[k].forEach(function (id, i) { r[id] = i + 1; }); }); // 順位は組・男女の中での順位
-        var v = { max: sc0.max || C.SCORE_DEF.max, top: F.top, s: s0, r: r, use: 'rank' };
+        var v = { max: sc0.max || C.SCORE_DEF.max, top: F.top, s: s0, r: r, use: F.use };
         d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
         App.save(function () { return App.pf().setScores(fy, grade, v); });
       }
@@ -3238,6 +3266,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
     h += '<span class="sp"></span>' +
       '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '年度（' + yearOf(fy).grade + '年）' + (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</option>'; }).join('') + '</select></label>' +
+      (R.scope !== 'school' ? '<button class="btn" id="acadB" title="クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）">学力…</button>' : '') +
       '<button class="btn" id="onlyIncB" aria-pressed="' + !!R.onlyInc + '" title="事案のある児童だけを出す">事案のある児童</button>' +
       '<button class="btn" data-scope="' + (R.scope === 'school' ? 'cls' : 'school') + '" aria-pressed="' + (R.scope === 'school') + '">全校の事案</button>' +
       (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
@@ -3570,6 +3599,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rhelp')) { helpDialog(); return true; }
+      if (t.closest('#acadB')) { App.acadDialog(); return true; }
       if (t.closest('#onlyIncB')) { R.onlyInc = !R.onlyInc; render(); return true; }
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }

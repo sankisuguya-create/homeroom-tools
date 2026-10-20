@@ -457,6 +457,23 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 学力の窓：名簿の帯の「学力…」から開き、点数・順位をタブで切り替え、「賢い」の決め方を選んで保存する
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
+  await p.click('#acadB'); await p.waitForSelector('.sctab');
+  await p.click('[data-acadtab="rank"]'); await p.waitForSelector('#rklist');
+  ok(await p.locator('[data-acadtab="rank"][aria-selected="true"]').count() === 1, '学力の窓で点数と順位をタブで切り替えられる');
+  await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
+  await p.fill('.scin >> nth=0', '90'); await p.click('[data-acadtab="rank"]');
+  ok(await p.locator('.sctab').count() === 1 && /保存/.test(await p.textContent('#toast')), '保存していない入力がある時は切り替えない');
+  await p.check('[data-acaduse="rank"]'); await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
+  ok(await p.evaluate(() => App.st.data.scores[App.st.data.fy].use) === 'rank', '「賢い」の決め方は選んだ方で保存する（最後に保存した窓では決めない）');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);
