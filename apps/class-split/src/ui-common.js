@@ -115,13 +115,13 @@
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
-  App.toast = function (msg, undoFn) {
+  App.toast = function (msg, undoFn, stay, label) {
     var t = App.$('toast');
-    t.innerHTML = '<span>' + App.esc(msg) + '</span>' + (undoFn ? '<button id="tundo">戻す</button>' : '');
-    t.hidden = false;
+    t.innerHTML = '<span>' + App.esc(msg) + '</span>' + (undoFn ? '<button id="tundo">' + App.esc(label || '戻す') + '</button>' : '') + (stay ? '<button id="tclose" aria-label="閉じる">×</button>' : '');
+    t.hidden = false; t.classList.toggle('stay', !!stay);
     App.toastUndo = undoFn || null;
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す
+    if (!stay) toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す。誤りの知らせは閉じるまで残す
   };
 
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
@@ -144,16 +144,35 @@
       if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
     });
   };
-  // 失敗したら5秒後にもう一度。成功・失敗を表示する
-  App.save = function (fn) {
-    App.saveState('saving');
-    return fn().then(function (r) { App.saveState('ok'); return r; }, function (e) {
-      App.saveState('err', e && e.message);
-      // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
-      if (e && e.noRetry) { App.toast(e.message); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
-      return new Promise(function (res) { setTimeout(res, 5000); }).then(function () { return App.save(fn); });
-    });
+  // 保存：失敗したら間を延ばしながら（5→10→20→40→60秒）やり直す。6回失敗したら止め、閉じるまで消えない知らせで「もう一度」を出す。
+  // key を渡すと、同じ key の新しい保存が来た時に古い方のやり直しを止める（古い値で新しい値を上書きしない）。
+  // 送れていない保存がある間は、画面を閉じる時にブラウザが確かめる
+  var LATEST = {}, PENDING = 0, SEQ = 0;
+  App.pending = function () { return PENDING; };
+  App.save = function (fn, key) {
+    var id = ++SEQ; if (key) LATEST[key] = id;
+    PENDING++;
+    var done = function () { PENDING = Math.max(0, PENDING - 1); };
+    var stale = function () { return key && LATEST[key] !== id; };
+    var attempt = function (n) {
+      App.saveState('saving');
+      return fn().then(function (r) { done(); if (!stale()) App.saveState('ok'); return r; }, function (e) {
+        App.saveState('err', e && e.message);
+        // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
+        if (e && e.noRetry) { done(); App.toast(e.message, null, true); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
+        if (stale()) { done(); return new Promise(function () {}); } // 新しい保存に任せる
+        if (n >= 5) {
+          done();
+          return new Promise(function (res) {
+            App.toast('保存できませんでした（' + ((e && e.message) || '通信の誤り') + '）。通信を確かめて「もう一度」を押してください', function () { PENDING++; res(attempt(0)); }, true, 'もう一度');
+          });
+        }
+        return new Promise(function (res) { setTimeout(res, Math.min(60000, 5000 * Math.pow(2, n))); }).then(function () { return stale() ? (done(), new Promise(function () {})) : attempt(n + 1); });
+      });
+    };
+    return attempt(0);
   };
+  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

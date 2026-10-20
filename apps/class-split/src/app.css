@@ -741,3 +741,5 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
+#toast.stay{border:2px solid #B00020}
+#toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}

@@ -10,11 +10,13 @@
   var DEF_HELP = {};
   C.ATTRS.forEach(function (at) { DEF_HELP[at.k] = (at.help || []).slice(); });
   function helpOf(at, x) { var d = DEF_HELP[at.k], h = x && x.help || []; return d.map(function (t, i) { return h[i] ? String(h[i]) : t; }); }
+  // 設定の文字は画面の HTML にそのまま入る所が多いので、HTML の記号を読み込む時に落とす（サーバーでも保存の時に落とす）
+  var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
-    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } at.help = helpOf(at, x); });
-    if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.slice();
-    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.slice();
+    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
+    if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
+    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.map(safe).filter(Boolean);
   };
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -61,6 +63,8 @@
     } else {
       h += yearTab();
     }
+    // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
+    h += '<p class="note" style="margin-top:16px">版：' + esc(App.pf().build || '試行（見本）') + '</p>';
     App.$('main').innerHTML = h + '</div>';
   }
 

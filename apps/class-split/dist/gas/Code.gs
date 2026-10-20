@@ -980,7 +980,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_49aee2dd1d11';
+var SERVER_BUILD = 'BUILD_df0f309a67d2';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1684,23 +1684,25 @@ var apiSettings = api_(function () {
   s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
   return { settings: s, me: me };
 });
+// 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
+function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
 var apiSaveSettings = api_(function (s) {
   var by = requireTeacher_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
-    slots: (s.slots || []).map(function (t) { return String(t).trim().slice(0, 20); }).filter(Boolean).slice(0, 30),
+    slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
     school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300) };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
     var x = s.attrs[at.k] || {};
-    var label = String(x.label === undefined ? at.label : x.label).trim().slice(0, 20), ini = String(x.s === undefined ? at.s : x.s).trim().slice(0, 1);
+    var label = safeText_(x.label === undefined ? at.label : x.label, 20), ini = safeText_(x.s === undefined ? at.s : x.s, 1);
     if (!label || !ini) throw userError_('項目の名前と頭文字は空にできません');
     // 説明文：空の欄は既定の文に戻す
-    var help = (at.help || []).map(function (d, i) { var t = String(x.help && x.help[i] || '').trim().slice(0, 80); return t || d; });
+    var help = (at.help || []).map(function (d, i) { var t = safeText_(x.help && x.help[i] || '', 80); return t || d; });
     clean.attrs[at.k] = { label: label, s: ini, w: Math.max(0, Math.min(3, +x.w || 0)), help: help };
   });
-  clean.types = (s.types || []).map(function (t) { return String(t).trim(); }).filter(Boolean).slice(0, 20);
+  clean.types = (s.types || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 20);
   if (!clean.types.length) throw userError_('事案の種別を1つ以上入れてください');
   clean.teachers = (s.teachers || []).filter(function (t) { return t && t.email; }).map(function (t) {
     return { email: String(t.email).trim().toLowerCase(), grade: +t.grade || 0, cls: +t.cls || 0 };
@@ -1742,7 +1744,8 @@ var apiPurge = api_(function (ids) {
   rosterSheets_().forEach(function (fy) { if (fy < FY) rosterRows_(fy).forEach(function (r) { if (set[r.id]) lastFy[r.id] = fy; }); });
   incidents_().forEach(function (x) { x.ids.forEach(function (id) { inc[id] = 1; }); });
   ids.forEach(function (id) {
-    if (lastFy[id] != null && !CONFIG.purgeable(lastFy[id], FY, keep, !!inc[id])) throw userError_('残す年数を過ぎていない児童は消せません（事案に関わった児童は卒業・転出から' + CONFIG.INCIDENT_KEEP_YEARS + '年度）');
+    if (lastFy[id] == null) throw userError_('過去の名簿にいない児童は消せません（' + id + '）');
+    if (!CONFIG.purgeable(lastFy[id], FY, keep, !!inc[id])) throw userError_('残す年数を過ぎていない児童は消せません（事案に関わった児童は卒業・転出から' + CONFIG.INCIDENT_KEEP_YEARS + '年度）');
   });
   return withLock_(function () {
     var n = 0;
@@ -1765,15 +1768,33 @@ var apiPurge = api_(function (ids) {
           writeCell_(t, r, 'diagram', left[r.inc_id] ? JSON.stringify(Engine.normDiagram(dg)) : '');
         }
       }
+      // 残った事案の、被害児童ごとの欄（様式Ⅱ）から消した児童の分を外す
+      if (left[r.inc_id] && r.report) {
+        var rp; try { rp = JSON.parse(String(r.report)); } catch (e) { rp = null; }
+        if (rp && rp.s2v && Object.keys(rp.s2v).some(function (id) { return set[id]; })) {
+          Object.keys(rp.s2v).forEach(function (id) { if (set[id]) delete rp.s2v[id]; });
+          writeCell_(t, r, 'report', JSON.stringify(rp));
+        }
+      }
     });
+    // 設定に入っている児童の値：案の割り当て、クラス分けテストの点数、事案の書きかけ（消した児童が入っていれば書きかけごと捨てる）
     read_('settings').rows.forEach(function (r) {
-      if (!/^plans_/.test(String(r.key))) return;
-      var v = JSON.parse(r.json), ch = false;
-      (v.plans || []).forEach(function (p) {
-        Object.keys(p.assign || {}).forEach(function (id) { if (set[id]) { delete p.assign[id]; ch = true; } });
-        p.locks = (p.locks || []).filter(function (id) { return !set[id]; });
-      });
-      if (ch) setSetting_(String(r.key), v);
+      var key = String(r.key), v; try { v = JSON.parse(r.json); } catch (e) { return; } // 読めない行は飛ばす（ほかの行の掃除は続ける）
+      if (!v) return;
+      var ch = false;
+      if (/^plans_/.test(key)) {
+        (v.plans || []).forEach(function (p) {
+          Object.keys(p.assign || {}).forEach(function (id) { if (set[id]) { delete p.assign[id]; ch = true; } });
+          var l0 = (p.locks || []).length; p.locks = (p.locks || []).filter(function (id) { return !set[id]; }); if (p.locks.length !== l0) ch = true;
+        });
+        if (ch) setSetting_(key, v);
+      } else if (/^scores_/.test(key)) {
+        Object.keys(v.s || {}).forEach(function (id) { if (set[id]) { delete v.s[id]; ch = true; } });
+        if (ch) setSetting_(key, v);
+      } else if (/^incdraft_/.test(key)) {
+        var js = String(r.json);
+        if (Object.keys(set).some(function (id) { return js.indexOf('"' + id + '"') >= 0; })) setSetting_(key, null);
+      }
     });
     log_(by, 'purge', ids.length);
     return { kids: ids.length, rows: n };

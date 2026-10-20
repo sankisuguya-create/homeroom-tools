@@ -348,6 +348,23 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 読み込みの失敗：止まらずに理由と「もう一度」を出す。保存の失敗は閉じるまで残る知らせ
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.evaluate(() => { const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); });
+  await p.click('[data-go="roster"]'); await p.waitForSelector('#reloadBtn');
+  ok(/時間切れ/.test(await p.textContent('#main')), '読み込めない時は理由と「もう一度」を出す');
+  await p.click('#reloadBtn'); await p.waitForSelector('td.nm');
+  ok(true, '「もう一度」で読み込める');
+  await p.evaluate(() => { App.save(() => Promise.reject(Object.assign(new Error('権限がありません'), { noRetry: true }))); });
+  await p.waitForSelector('#toast.stay'); await p.waitForTimeout(3800);
+  ok(await p.locator('#toast:not([hidden]).stay').count() === 1, '直せない保存の誤りは、時間で消えない');
+  await p.click('#tclose'); ok(await p.locator('#toast[hidden]').count() === 1, '×で閉じる');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

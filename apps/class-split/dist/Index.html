@@ -749,6 +749,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihome{grid-template-columns:minmax(0,1fr) minmax(0,2fr) auto}
 @media (max-width:900px){.ihome{grid-template-columns:1fr}}
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
+#toast.stay{border:2px solid #B00020}
+#toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
 /* ▲ src/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
@@ -2321,13 +2323,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   App.classColor = function (k) { return k < 0 ? NO_CLASS : C.CLASS_COLORS[k % C.CLASS_COLORS.length]; };
 
   var toastT = 0;
-  App.toast = function (msg, undoFn) {
+  App.toast = function (msg, undoFn, stay, label) {
     var t = App.$('toast');
-    t.innerHTML = '<span>' + App.esc(msg) + '</span>' + (undoFn ? '<button id="tundo">戻す</button>' : '');
-    t.hidden = false;
+    t.innerHTML = '<span>' + App.esc(msg) + '</span>' + (undoFn ? '<button id="tundo">' + App.esc(label || '戻す') + '</button>' : '') + (stay ? '<button id="tclose" aria-label="閉じる">×</button>' : '');
+    t.hidden = false; t.classList.toggle('stay', !!stay);
     App.toastUndo = undoFn || null;
     clearTimeout(toastT);
-    toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す
+    if (!stay) toastT = setTimeout(function () { t.hidden = true; }, undoFn ? 8000 : 3500); // 戻せる通知は読んで押す間を残す。誤りの知らせは閉じるまで残す
   };
 
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
@@ -2350,16 +2352,35 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
     });
   };
-  // 失敗したら5秒後にもう一度。成功・失敗を表示する
-  App.save = function (fn) {
-    App.saveState('saving');
-    return fn().then(function (r) { App.saveState('ok'); return r; }, function (e) {
-      App.saveState('err', e && e.message);
-      // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
-      if (e && e.noRetry) { App.toast(e.message); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
-      return new Promise(function (res) { setTimeout(res, 5000); }).then(function () { return App.save(fn); });
-    });
+  // 保存：失敗したら間を延ばしながら（5→10→20→40→60秒）やり直す。6回失敗したら止め、閉じるまで消えない知らせで「もう一度」を出す。
+  // key を渡すと、同じ key の新しい保存が来た時に古い方のやり直しを止める（古い値で新しい値を上書きしない）。
+  // 送れていない保存がある間は、画面を閉じる時にブラウザが確かめる
+  var LATEST = {}, PENDING = 0, SEQ = 0;
+  App.pending = function () { return PENDING; };
+  App.save = function (fn, key) {
+    var id = ++SEQ; if (key) LATEST[key] = id;
+    PENDING++;
+    var done = function () { PENDING = Math.max(0, PENDING - 1); };
+    var stale = function () { return key && LATEST[key] !== id; };
+    var attempt = function (n) {
+      App.saveState('saving');
+      return fn().then(function (r) { done(); if (!stale()) App.saveState('ok'); return r; }, function (e) {
+        App.saveState('err', e && e.message);
+        // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
+        if (e && e.noRetry) { done(); App.toast(e.message, null, true); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
+        if (stale()) { done(); return new Promise(function () {}); } // 新しい保存に任せる
+        if (n >= 5) {
+          done();
+          return new Promise(function (res) {
+            App.toast('保存できませんでした（' + ((e && e.message) || '通信の誤り') + '）。通信を確かめて「もう一度」を押してください', function () { PENDING++; res(attempt(0)); }, true, 'もう一度');
+          });
+        }
+        return new Promise(function (res) { setTimeout(res, Math.min(60000, 5000 * Math.pow(2, n))); }).then(function () { return stale() ? (done(), new Promise(function () {})) : attempt(n + 1); });
+      });
+    };
+    return attempt(0);
   };
+  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -3688,7 +3709,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       App.pf().saveDraft(App.st.grade, d).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存しました'; }, function () { var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存できません（通信）'; });
     }, 1500);
   }
-  function dropDraft() { clearTimeout(draftT); I.draft = null; App.pf().saveDraft(App.st.grade, null); }
+  function dropDraft() { clearTimeout(draftT); I.draft = null; var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, null); }, 'draft:' + gr); }
   function restoreDraft() {
     var dr = I.draft && I.draft.draft; if (!dr) return;
     var f = dr.form;
@@ -3987,7 +4008,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         I.draft = dr; if (I.mode === 'view') rerenderPane();
       }, function () { /* 読めなくても入力はできる */ });
     },
-    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { I.draft = { at: new Date().toISOString(), draft: d }; App.pf().saveDraft(App.st.grade, d); } } },
+    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, d); }, 'draft:' + gr).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; }); } } },
     click: function (t) {
       var x;
       if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
@@ -4175,12 +4196,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
-  var saveT = 0;
+  // 案の保存は少し待ってまとめる。学年と中身は呼んだ時点で決め（待つ間に学年を変えても、元の学年に保存する）、画面を離れる時はすぐ送る
+  var saveT = 0, pend = null;
   function persist() {
     clearTimeout(saveT);
     App.saveState('saving');
-    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return App.pf().savePlans(grade, data); }); }, 1200);
+    var grade = App.st.grade, S0 = S;
+    pend = function () { pend = null; var cur = S; S = S0; var data = serialize(); S = cur; App.save(function () { return App.pf().savePlans(grade, data); }, 'plans:' + grade); };
+    saveT = setTimeout(function () { if (pend) pend(); }, 1200);
   }
+  function flush() { clearTimeout(saveT); if (pend) pend(); }
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
@@ -4930,7 +4955,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (!S.plans.length) { renderSetup(); genDialog(); return; }
       render();
     },
-    leave: function () { document.body.classList.remove('fit'); },
+    leave: function () { flush(); document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
     click: function (t, e) {
@@ -5007,11 +5032,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var DEF_HELP = {};
   C.ATTRS.forEach(function (at) { DEF_HELP[at.k] = (at.help || []).slice(); });
   function helpOf(at, x) { var d = DEF_HELP[at.k], h = x && x.help || []; return d.map(function (t, i) { return h[i] ? String(h[i]) : t; }); }
+  // 設定の文字は画面の HTML にそのまま入る所が多いので、HTML の記号を読み込む時に落とす（サーバーでも保存の時に落とす）
+  var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
-    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = x.label; at.s = x.s; at.w = +x.w; } at.help = helpOf(at, x); });
-    if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.slice();
-    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.slice();
+    C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
+    if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
+    if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.map(safe).filter(Boolean);
   };
 
   function clone(x) { return JSON.parse(JSON.stringify(x)); }
@@ -5058,6 +5085,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     } else {
       h += yearTab();
     }
+    // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
+    h += '<p class="note" style="margin-top:16px">版：' + esc(App.pf().build || '試行（見本）') + '</p>';
     App.$('main').innerHTML = h + '</div>';
   }
 
@@ -5178,19 +5207,25 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         App.applySettings(r[1].settings); App.me = r[1].me;
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
-      });
+      }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); });
+    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
+  // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
+  function loadFailed(e) {
+    App.$('main').innerHTML = '<div class="menu"><section><h2>読み込めませんでした</h2><p>' + App.esc((e && e.message) || '通信の誤り') + '</p>' +
+      '<p class="note">通信が不安定な時に起こります。少し待ってから押してください。</p><button class="btn primary" id="reloadBtn">もう一度読み込む</button> <button class="btn" data-go="menu">メニューへ</button></section></div>';
+  }
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
   document.addEventListener('click', function (e) {
     var t = e.target, scr = App.screens[App.st.screen];
     if (t.closest('.trial')) { App.toggleTrial(); return; }
+    if (t.closest('#reloadBtn')) { App.reload(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
-    if (t.closest('#toast')) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる
+    if (t.closest('#tclose') || (t.closest('#toast') && !App.$('toast').classList.contains('stay'))) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる（誤りの知らせは×で）
     if (App.dlg) {
       var act = t.closest('[data-act]');
       if (act && act.dataset.act === 'ok') { App.dlg.onOk(); return; }

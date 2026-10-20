@@ -1,0 +1,30 @@
+# 生成物（dist）が正本（src）と一致するか、テストが通るかを、push と PR のたびに確かめる。
+# 失敗したら、手元で python3 scripts/build.py を実行して dist を作り直し、テストを直してから push する。
+name: check
+on:
+  push:
+  pull_request:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: 生成物と正本の一致
+        run: python3 scripts/build.py --check
+      - name: 計算とサーバーのテスト
+        run: node --test apps/class-split/tests/engine.test.mjs apps/class-split/tests/gas.test.mjs apps/class-split/tests/paste.test.mjs
+      - name: Playwright を入れる
+        run: |
+          npm install -g playwright@1.56.1
+          npx -y playwright@1.56.1 install --with-deps chromium
+      - name: 画面のテスト
+        run: |
+          node apps/class-split/tests/ui.test.mjs
+          node --test apps/class-split/tests/gas-ui.test.mjs

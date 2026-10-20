@@ -516,7 +516,7 @@
       App.pf().saveDraft(App.st.grade, d).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存しました'; }, function () { var el = App.$('idraft'); if (el) el.textContent = '書きかけを保存できません（通信）'; });
     }, 1500);
   }
-  function dropDraft() { clearTimeout(draftT); I.draft = null; App.pf().saveDraft(App.st.grade, null); }
+  function dropDraft() { clearTimeout(draftT); I.draft = null; var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, null); }, 'draft:' + gr); }
   function restoreDraft() {
     var dr = I.draft && I.draft.draft; if (!dr) return;
     var f = dr.form;
@@ -815,7 +815,7 @@
         I.draft = dr; if (I.mode === 'view') rerenderPane();
       }, function () { /* 読めなくても入力はできる */ });
     },
-    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { I.draft = { at: new Date().toISOString(), draft: d }; App.pf().saveDraft(App.st.grade, d); } } },
+    leave: function () { if (I.form) { clearTimeout(draftT); var d = draftOf(); if (d) { var gr = App.st.grade; App.save(function () { return App.pf().saveDraft(gr, d); }, 'draft:' + gr).then(function () { I.draft = { at: new Date().toISOString(), draft: d }; }); } } },
     click: function (t) {
       var x;
       if (t.closest('#ilistT,#ilistT2')) { FOLD.list = !FOLD.list; saveFold(); render(); return true; }
