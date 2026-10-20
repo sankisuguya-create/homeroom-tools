@@ -298,7 +298,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#ihome'); ok(await p.locator('.icard').count() === n0 + 1, '事案が一覧に足される'); await p.click('.icard');
   await p.click('#iadd2'); await p.fill('#rw-s2-vi-0', '元気に過ごしている'); await p.click('#inc2Form button.primary'); await p.waitForSelector('#iadd2');
   ok(await p.locator('.ipane', { hasText: '元気に過ごしている' }).count() === 1, '様式Ⅱ用の追記が残る');
+  await p.click('[data-irep]');
+  await p.waitForSelector('[data-irep][aria-pressed="true"]');
+  ok(/報告済み/.test(await p.textContent('[data-irep]')), '見る画面で「報告済み」にできる（日付が入る）');
+  await p.click('#ihome'); ok(await p.locator('.icard .irp').count() > 0, '報告済みの事案は、カードの右上に印が出る'); await p.locator('.icard').first().click();
   await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
+  ok(await p.locator('#itmpl').count() === 1, '試行でも様式の Excel を選んで出力できる');
   ok(await p.locator('.icopy td', { hasText: '朝休み、訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
   await p.keyboard.press('Escape');
   // 被害の児童が2人：様式Ⅱ用の追記は児童ごとの欄、Excel は児童の数だけ
