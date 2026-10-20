@@ -27,19 +27,25 @@
         App.applySettings(r[1].settings); App.me = r[1].me;
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
-      });
+      }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); });
+    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
+  // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
+  function loadFailed(e) {
+    App.$('main').innerHTML = '<div class="menu"><section><h2>読み込めませんでした</h2><p>' + App.esc((e && e.message) || '通信の誤り') + '</p>' +
+      '<p class="note">通信が不安定な時に起こります。少し待ってから押してください。</p><button class="btn primary" id="reloadBtn">もう一度読み込む</button> <button class="btn" data-go="menu">メニューへ</button></section></div>';
+  }
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
   document.addEventListener('click', function (e) {
     var t = e.target, scr = App.screens[App.st.screen];
     if (t.closest('.trial')) { App.toggleTrial(); return; }
+    if (t.closest('#reloadBtn')) { App.reload(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
-    if (t.closest('#toast')) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる
+    if (t.closest('#tclose') || (t.closest('#toast') && !App.$('toast').classList.contains('stay'))) { App.$('toast').hidden = true; return; } // 時間を待たずに消せる（誤りの知らせは×で）
     if (App.dlg) {
       var act = t.closest('[data-act]');
       if (act && act.dataset.act === 'ok') { App.dlg.onOk(); return; }

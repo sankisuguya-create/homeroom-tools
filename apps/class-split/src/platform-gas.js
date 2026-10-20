@@ -63,6 +63,7 @@
     saveDraft: function (grade, d) { return call('apiSaveDraft', grade, d); },
     loadDraft: function (grade) { return call('apiLoadDraft', grade); },
     exportReport: function (kind, values, incId, seq) { return call('apiExportReport', kind, values, incId, seq); },
+    build: PAGE_BUILD,
     schoolKids: function () { return call('apiSchoolKids'); },
     setScores: function (fy, grade, v) { return call('apiSetScores', fy, grade, v); },
     allIncidents: function () { return call('apiAllIncidents'); },

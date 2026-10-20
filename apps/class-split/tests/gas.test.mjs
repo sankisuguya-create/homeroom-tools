@@ -219,6 +219,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const st = call('apiSaveSettings', { attrs: { k1: { label: '学習の支援', s: '援', w: 3 } }, types: ['対人', ' ', 'けが'], teachers: [{ email: 'Tanaka@edu.nishi.or.jp', grade: 4, cls: 2 }], keepYears: 9 });
     assert.ok(st.ok, st.err);
     assert.deepEqual(st.v.types, ['対人', 'けが']); assert.equal(st.v.keepYears, 6); assert.equal(st.v.attrs.k1.s, '援');
+    const xs = call('apiSaveSettings', { attrs: { k1: { label: '学<img src=x onerror=alert(1)>習', s: '援', w: 3 } }, types: ['対人"><b>'] });
+    assert.ok(xs.ok, xs.err); assert.ok(!/[<>"]/.test(xs.v.attrs.k1.label + xs.v.types[0]), '設定の文字から HTML の記号を落とす');
+    call('apiSaveSettings', { attrs: { k1: { label: '学習の支援', s: '援', w: 3 } }, types: ['対人', 'けが'], teachers: [{ email: 'Tanaka@edu.nishi.or.jp', grade: 4, cls: 2 }], keepYears: 6 });
     const me = call('apiSettings').v.me;
     assert.deepEqual([me.grade, me.cls], [4, 1], 'メールの大文字小文字を無視して担任を見つける');
     const hs = call('apiSaveSettings', { attrs: { k3: { label: '問題行動', s: '問', w: 3, help: ['トラブル', '  ', '深刻'] }, k5: { label: 'アレルギー', s: 'ア', w: 1, help: ['食物', '要配慮', 'これは捨てる'] } }, types: ['対人'] });
@@ -243,7 +246,13 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const inc2 = call('apiAddIncident', { url: 'https://docs.google.com/document/d/DOC1234567890abcdefghijXYZ/edit', title: '', date: '2026-05-01', type: '対人', ids: ['60000009'] });
     cand = call('apiLeaveCandidates').v;
     assert.deepEqual(cand.map(x => x.id).sort(), ['60000001', '60000009']);
+    ctx.setSetting_('scores_' + (FY - 1) + '_6', { max: 100, top: 0.1, s: { '60000001': 90, '60000002': 80 } });
+    ctx.setSetting_('incdraft_a@edu.nishi.or.jp_6', { at: 'x', draft: { ids: ['60000001'] } });
+    ctx.setSetting_('incdraft_b@edu.nishi.or.jp_4', { at: 'x', draft: { ids: ['40000011'] } });
     const pg = call('apiPurge', ['60000001', '60000009']);
+    assert.deepEqual(Object.keys(ctx.getSetting_('scores_' + (FY - 1) + '_6', {}).s), ['60000002'], '点数から消した児童を外す');
+    assert.equal(ctx.getSetting_('incdraft_a@edu.nishi.or.jp_6', 1), null, '消した児童の入った書きかけは捨てる');
+    assert.ok(ctx.getSetting_('incdraft_b@edu.nishi.or.jp_4', null), 'ほかの書きかけは残す');
     assert.ok(pg.ok, pg.err);
     assert.equal(call('apiLeaveCandidates').v.length, 0);
     assert.ok(!db().getSheetByName('roster_' + (FY - 1)).data.some(r => r[0] === '60000001'));

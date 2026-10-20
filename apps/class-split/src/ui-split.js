@@ -61,12 +61,16 @@
       return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
-  var saveT = 0;
+  // 案の保存は少し待ってまとめる。学年と中身は呼んだ時点で決め（待つ間に学年を変えても、元の学年に保存する）、画面を離れる時はすぐ送る
+  var saveT = 0, pend = null;
   function persist() {
     clearTimeout(saveT);
     App.saveState('saving');
-    saveT = setTimeout(function () { var grade = App.st.grade, data = serialize(); App.save(function () { return App.pf().savePlans(grade, data); }); }, 1200);
+    var grade = App.st.grade, S0 = S;
+    pend = function () { pend = null; var cur = S; S = S0; var data = serialize(); S = cur; App.save(function () { return App.pf().savePlans(grade, data); }, 'plans:' + grade); };
+    saveT = setTimeout(function () { if (pend) pend(); }, 1200);
   }
+  function flush() { clearTimeout(saveT); if (pend) pend(); }
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
@@ -816,7 +820,7 @@
       if (!S.plans.length) { renderSetup(); genDialog(); return; }
       render();
     },
-    leave: function () { document.body.classList.remove('fit'); },
+    leave: function () { flush(); document.body.classList.remove('fit'); },
     render: function () { if (S) render(); },
     state: function () { return S; },
     click: function (t, e) {
