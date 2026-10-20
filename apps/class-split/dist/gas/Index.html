@@ -190,12 +190,12 @@ table.h tr.cur td{font-weight:700}
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
 .decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
-.board{flex:1;min-height:0;overflow-x:auto;overflow-y:hidden;position:relative}
-.cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(260px,1fr));gap:6px;min-width:min-content}
+.board{flex:1;min-height:0;overflow:hidden;position:relative}
+.cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(0,1fr));gap:6px}
 
 .head{padding:2px 8px;border-bottom:1px solid var(--line);cursor:pointer}
 .head.target{background:var(--fill)}
-.h1{display:flex;gap:10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
+.h1{display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;font-variant-numeric:tabular-nums;white-space:nowrap}
 .h1 b{font-size:1.1rem}
 .h1 .w{color:var(--alert);font-weight:700}
 .jis{border:1.5px dashed #1A1A1A;border-radius:3px;padding:0 5px;font-size:.85rem}
@@ -2253,7 +2253,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_151968f37e0e';
+  var PAGE_BUILD = 'BUILD_01d6aa5a189a';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4543,10 +4543,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // 行の高さとアイコンの大きさを、空の列の寸法から決める（全員を1画面に収める）。
   // カードを入れた後に測ると、140人分の配置を2回計算することになり重い
+  var FIT_W = 4.2; // 列の幅÷行の高さ。これより狭い列では行の高さ（字・印の大きさ）を小さくする
   function fit(rows) {
     var gc = document.querySelector('.gcol');
     if (!gc) return;
-    var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
+    // 行の高さは、縦（全員の行が入る）と横（名前と印が列の幅に入る）の両方から決める。画面が狭くても横に流さない（拡大は盤面の拡大で）
+    var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rw = gc.clientWidth / FIT_W, rhc = Math.max(10, Math.min(40, rh, rw)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
     // アイコンの間隔は崩れない範囲で最大にとる（＋で大きくしたアイコンどうしが重ならないように）。
     // 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は縦にそろえるので同じ間隔：1段目の名前（空白を含め NAME_CHARS 文字）の残り。

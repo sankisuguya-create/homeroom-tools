@@ -138,10 +138,12 @@
 
   // 行の高さとアイコンの大きさを、空の列の寸法から決める（全員を1画面に収める）。
   // カードを入れた後に測ると、140人分の配置を2回計算することになり重い
+  var FIT_W = 4.2; // 列の幅÷行の高さ。これより狭い列では行の高さ（字・印の大きさ）を小さくする
   function fit(rows) {
     var gc = document.querySelector('.gcol');
     if (!gc) return;
-    var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rhc = Math.max(18, Math.min(40, rh)), root = document.documentElement.style;
+    // 行の高さは、縦（全員の行が入る）と横（名前と印が列の幅に入る）の両方から決める。画面が狭くても横に流さない（拡大は盤面の拡大で）
+    var rh = (gc.clientHeight - (rows - 1) * 2) / rows, rw = gc.clientWidth / FIT_W, rhc = Math.max(10, Math.min(40, rh, rw)), root = document.documentElement.style;
     root.setProperty('--rowh', rhc.toFixed(2) + 'px');
     // アイコンの間隔は崩れない範囲で最大にとる（＋で大きくしたアイコンどうしが重ならないように）。
     // 右の枠（1段目＝賢・リ・運、2段目＝ア・身・通）は縦にそろえるので同じ間隔：1段目の名前（空白を含め NAME_CHARS 文字）の残り。
