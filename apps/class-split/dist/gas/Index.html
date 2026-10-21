@@ -2425,7 +2425,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_70d5e7a44849';
+  var PAGE_BUILD = 'BUILD_7b42c35bd5be';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2523,6 +2523,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // データの出し入れ先。本番（gas）と試行（demo：ダミーデータ・保存しない）を画面から切り替える
   App.mode = g.Platforms.gas ? 'gas' : 'demo';
   App.pf = function () { return g.Platforms[App.mode]; };
+  // 貼った版の印。試行中でも本番の画面の版を出す（見本だけのページでは「見本」）
+  App.buildLabel = function () { var b = g.Platforms.gas && g.Platforms.gas.build; return b ? b + (App.mode === 'demo' ? '（試行中）' : '') : '見本（GAS に貼っていないページ）'; };
 
   // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
   // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
@@ -2903,7 +2905,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>' +
         (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
-        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案と報告書・年度替わり）</button></section></div>';
+        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案と報告書・年度替わり）</button>' +
+        '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
     click: function (t) {
       var gb = t.closest('[data-g]');
@@ -5696,7 +5699,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       h += yearTab();
     }
     // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
-    h += '<p class="note" style="margin-top:16px">版：' + esc(App.pf().build || '試行（見本）') + '</p>';
+    h += '<p class="note" style="margin-top:16px">版：' + esc(App.buildLabel()) + '</p>';
     App.$('main').innerHTML = h + '</div>';
   }
 

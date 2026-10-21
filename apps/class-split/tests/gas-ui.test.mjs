@@ -70,6 +70,7 @@ const before = JSON.stringify(gas.db().sheets);
 await p.click('.top .trial');
 await p.waitForFunction(() => document.body.classList.contains('trying'));
 ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
+ok(/版：BUILD_[0-9a-f]{12}（試行中）/.test(await p.textContent('#mbuild')), '試行中でもメニューに本番の画面の版が出る');
 await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
 await p.locator('td.cell').first().click();
 await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
@@ -79,6 +80,7 @@ await p.click('.bar .trial');
 await p.waitForFunction(() => !document.body.classList.contains('trying'));
 await p.waitForSelector('.gbtn');
 ok(await p.locator('.gbtn small', { hasText: '90人' }).count() === 1, '試行をやめると本番のデータに戻る');
+ok(/^版：BUILD_[0-9a-f]{12}$/.test((await p.textContent('#mbuild')).trim()), '本番ではメニューに版が出る');
 
 // 名簿を貼る（本番）：見出しで読み、取り込むとシートに入る
 await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#rfy');

@@ -13,6 +13,8 @@
   // データの出し入れ先。本番（gas）と試行（demo：ダミーデータ・保存しない）を画面から切り替える
   App.mode = g.Platforms.gas ? 'gas' : 'demo';
   App.pf = function () { return g.Platforms[App.mode]; };
+  // 貼った版の印。試行中でも本番の画面の版を出す（見本だけのページでは「見本」）
+  App.buildLabel = function () { var b = g.Platforms.gas && g.Platforms.gas.build; return b ? b + (App.mode === 'demo' ? '（試行中）' : '') : '見本（GAS に貼っていないページ）'; };
 
   // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
   // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
