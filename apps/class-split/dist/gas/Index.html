@@ -741,7 +741,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihb svg{width:24px;height:24px;flex:none}
 .ihs input{flex:1;border:0;background:none;font:inherit;font-size:1rem;outline:none;min-width:0}
 .ihs:focus-within{border-color:var(--link)}
-.icards{padding:0 0 6px 6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
+.icards{padding:16px 14px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
 .icard{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
 .icard:hover{border-color:var(--link)}
 .icm{display:flex;flex-direction:column;gap:2px;min-width:0}
@@ -813,11 +813,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .rfy{display:inline-flex;align-items:center;gap:6px;color:inherit}
 .rfy select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#1A1A1A}
 .rkk{width:2.2em;display:flex;justify-content:center}
-/* 報告済みのバッジ：カードの左下で枠に重ねる。金色の丸に「報」、右上に青い✓ */
-.irbadge{position:absolute;left:-7px;bottom:-9px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+/* 報告済みのバッジ：カードの右上で枠に重ねる（学年のタグに重なってよい）。金色の丸に「報」、右上に青い✓ */
+.irbadge{position:absolute;right:-9px;top:-9px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at 35% 30%,#FFF1B8 0,#E8C14A 45%,#B8891A 100%);border:1.5px solid #8A6410;color:#3A2600;font-weight:700;font-size:15px;line-height:1;
   box-shadow:0 1px 2px #0004;z-index:2;pointer-events:none}
 .irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
+.irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -2424,7 +2425,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_9e02062d0217';
+  var PAGE_BUILD = 'BUILD_70d5e7a44849';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3740,13 +3741,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     // 学年は今年度の学年で見る（この学年の事案は D().incidents に入っている。ほかは全校の名簿の学年）
     var own = {}; D().incidents.forEach(function (x) { own[x.id] = 1; });
     var xk = D().xk || {};
-    var ty = HOME.types || [], lv = HOME.levels || [], st = HOME.status || [];
+    var ty = HOME.types || [], lv = HOME.levels || [], st = HOME.status || [], rpf = HOME.rep || [];
     return src.filter(function (x) {
       if (!(own[x.id] && gs.indexOf(D().grade) >= 0) && !x.ids.some(function (id) { return xk[id] && gs.indexOf(xk[id].grade) >= 0; })) return false;
       var ts = typesOf(x.type), rp = x.report || Rp.emptyReport();
       if (ty.length && !ts.some(function (t) { return ty.indexOf(t) >= 0; })) return false;
       if (lv.length && !(isBully(x.type) && lv.indexOf(levelOf(x)) >= 0)) return false; // 段階を選ぶと、いじめの事案だけに絞る
       if (st.length && st.indexOf(rp.status || 'open') < 0) return false;
+      if (rpf.length && rpf.indexOf(rp.reported ? 'yes' : 'no') < 0) return false; // 報告済みのバッジのあり・なし
       return true;
     }).sort((SORTS.filter(function (s0) { return s0.k === (HOME.sort || 'imp'); })[0] || SORTS[0]).f);
   }
@@ -3758,7 +3760,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     { k: 'new', label: '新しい順', f: byNew }
   ];
   function saveHome() { try { sessionStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
-  function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length; }
+  function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length || (HOME.rep || []).length; }
   function refreshCards() {
     var cs = App.$('icards'); if (!cs) return;
     var q = (I.q || '').trim(), list = homeList(), shown = list.filter(function (x) { return matchQ(x, q); });
@@ -3767,7 +3769,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function homeNote(list, shown, q) {
     var gs = homeGrades(), lab = gs.length === 6 ? '全学年' : gs.join('・') + '年';
-    var f = [].concat(HOME.types || [], (HOME.levels || []).map(function (k) { return 'いじめ・' + C.BULLY_LEVELS.filter(function (b) { return b.k === k; })[0].label; }), (HOME.status || []).map(function (k) { return C.STATUS.filter(function (s0) { return s0.k === k; })[0].label; }));
+    var f = [].concat(HOME.types || [], (HOME.levels || []).map(function (k) { return 'いじめ・' + C.BULLY_LEVELS.filter(function (b) { return b.k === k; })[0].label; }), (HOME.status || []).map(function (k) { return C.STATUS.filter(function (s0) { return s0.k === k; })[0].label; }), (HOME.rep || []).map(function (k) { return k === 'yes' ? '報告済み' : '未報告'; }));
     lab += f.length ? '・' + f.join('／') : '';
     return (q ? '「' + q + '」に合う事案 ' + shown.length + '件（' + lab + '）' : lab + 'の事案 ' + list.length + '件') + (homeOthers() && !ALLINC ? '　読み込み中…' : '');
   }
@@ -3781,13 +3783,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + typeHtml(t) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">いじめの段階（選ぶと、いじめの事案だけに絞る）</div><div class="lvs">' + C.BULLY_LEVELS.map(function (b) { return '<button class="lv" data-hf="levels:' + b.k + '" aria-pressed="' + ((HOME.levels || []).indexOf(b.k) >= 0) + '">' + esc(b.label) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">対応の状況（選ばなければすべて）</div><div class="lvs">' + C.STATUS.map(function (s0) { return '<button class="lv" data-hf="status:' + s0.k + '" aria-pressed="' + ((HOME.status || []).indexOf(s0.k) >= 0) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') + '</div>' +
+          '<div class="lab">報告（選ばなければすべて）</div><div class="lvs">' + [['yes', '報告済み'], ['no', '未報告']].map(function (r) { return '<button class="lv" data-hf="rep:' + r[0] + '" aria-pressed="' + ((HOME.rep || []).indexOf(r[0]) >= 0) + '">' + (r[0] === 'yes' ? '<span class="irbadge sm" aria-hidden="true">報</span>' : '') + r[1] + '</button>'; }).join('') + '</div>' +
           '<div class="acts"><button class="btn" data-hgr="1">' + D().grade + '年だけ・絞り込みなしに戻す</button><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
         var b, gs = homeGrades().slice();
         if ((b = t.closest('[data-hg]'))) { var g0 = +b.dataset.hg, i = gs.indexOf(g0); if (i >= 0) { if (gs.length > 1) gs.splice(i, 1); } else gs.push(g0); }
         else if (t.closest('[data-hga]')) gs = gs.length === 6 ? [D().grade] : [1, 2, 3, 4, 5, 6];
-        else if (t.closest('[data-hgr]')) { gs = [D().grade]; HOME.types = []; HOME.levels = []; HOME.status = []; }
+        else if (t.closest('[data-hgr]')) { gs = [D().grade]; HOME.types = []; HOME.levels = []; HOME.status = []; HOME.rep = []; }
         else if ((b = t.closest('[data-hf]'))) { var kv = b.dataset.hf.split(':'), arr = HOME[kv[0]] = (HOME[kv[0]] || []).slice(), j = arr.indexOf(kv[1]); if (j >= 0) arr.splice(j, 1); else arr.push(kv[1]); }
         else return false;
         HOME.grades = gs.sort(); saveHome();
@@ -3887,7 +3890,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
   // 報告済み：書類に✓の印（見る画面の報告のボタン）
   var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
-  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの左下に、枠に重ねて置く（タグの列には入れない）
+  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの右上に、枠に重ねて置く（学年のタグに重なってよい）
   function repBadge(rp) {
     if (!rp.reported) return '';
     var t = esc(Rp.md(rp.reported)) + 'に報告済み';
@@ -3919,7 +3922,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function matchQ(x, q) {
     if (!q) return true;
-    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail].concat(x.ids.map(kidName));
+    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail, rp.reported ? '報告済み' : '未報告'].concat(x.ids.map(kidName)); // 「報告済み」「未報告」でも探せる
     ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k].forEach(function (r) { txt.push(r.t); }); });
     var all = txt.join(' ').replace(/[ 　]/g, '');
     return q.split(/[ 　]+/).filter(Boolean).every(function (w) { return all.indexOf(w) >= 0; });

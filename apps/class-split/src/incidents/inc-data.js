@@ -28,13 +28,14 @@
     // 学年は今年度の学年で見る（この学年の事案は D().incidents に入っている。ほかは全校の名簿の学年）
     var own = {}; D().incidents.forEach(function (x) { own[x.id] = 1; });
     var xk = D().xk || {};
-    var ty = HOME.types || [], lv = HOME.levels || [], st = HOME.status || [];
+    var ty = HOME.types || [], lv = HOME.levels || [], st = HOME.status || [], rpf = HOME.rep || [];
     return src.filter(function (x) {
       if (!(own[x.id] && gs.indexOf(D().grade) >= 0) && !x.ids.some(function (id) { return xk[id] && gs.indexOf(xk[id].grade) >= 0; })) return false;
       var ts = typesOf(x.type), rp = x.report || Rp.emptyReport();
       if (ty.length && !ts.some(function (t) { return ty.indexOf(t) >= 0; })) return false;
       if (lv.length && !(isBully(x.type) && lv.indexOf(levelOf(x)) >= 0)) return false; // 段階を選ぶと、いじめの事案だけに絞る
       if (st.length && st.indexOf(rp.status || 'open') < 0) return false;
+      if (rpf.length && rpf.indexOf(rp.reported ? 'yes' : 'no') < 0) return false; // 報告済みのバッジのあり・なし
       return true;
     }).sort((SORTS.filter(function (s0) { return s0.k === (HOME.sort || 'imp'); })[0] || SORTS[0]).f);
   }
@@ -46,7 +47,7 @@
     { k: 'new', label: '新しい順', f: byNew }
   ];
   function saveHome() { try { sessionStorage.setItem('classSplit.incHome', JSON.stringify(HOME)); } catch (e) { /* 今は効く */ } }
-  function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length; }
+  function homeFiltered() { return homeOthers() || (HOME.types || []).length || (HOME.levels || []).length || (HOME.status || []).length || (HOME.rep || []).length; }
   function refreshCards() {
     var cs = App.$('icards'); if (!cs) return;
     var q = (I.q || '').trim(), list = homeList(), shown = list.filter(function (x) { return matchQ(x, q); });
@@ -55,7 +56,7 @@
   }
   function homeNote(list, shown, q) {
     var gs = homeGrades(), lab = gs.length === 6 ? '全学年' : gs.join('・') + '年';
-    var f = [].concat(HOME.types || [], (HOME.levels || []).map(function (k) { return 'いじめ・' + C.BULLY_LEVELS.filter(function (b) { return b.k === k; })[0].label; }), (HOME.status || []).map(function (k) { return C.STATUS.filter(function (s0) { return s0.k === k; })[0].label; }));
+    var f = [].concat(HOME.types || [], (HOME.levels || []).map(function (k) { return 'いじめ・' + C.BULLY_LEVELS.filter(function (b) { return b.k === k; })[0].label; }), (HOME.status || []).map(function (k) { return C.STATUS.filter(function (s0) { return s0.k === k; })[0].label; }), (HOME.rep || []).map(function (k) { return k === 'yes' ? '報告済み' : '未報告'; }));
     lab += f.length ? '・' + f.join('／') : '';
     return (q ? '「' + q + '」に合う事案 ' + shown.length + '件（' + lab + '）' : lab + 'の事案 ' + list.length + '件') + (homeOthers() && !ALLINC ? '　読み込み中…' : '');
   }
@@ -69,13 +70,14 @@
           '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + typeHtml(t) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">いじめの段階（選ぶと、いじめの事案だけに絞る）</div><div class="lvs">' + C.BULLY_LEVELS.map(function (b) { return '<button class="lv" data-hf="levels:' + b.k + '" aria-pressed="' + ((HOME.levels || []).indexOf(b.k) >= 0) + '">' + esc(b.label) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">対応の状況（選ばなければすべて）</div><div class="lvs">' + C.STATUS.map(function (s0) { return '<button class="lv" data-hf="status:' + s0.k + '" aria-pressed="' + ((HOME.status || []).indexOf(s0.k) >= 0) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') + '</div>' +
+          '<div class="lab">報告（選ばなければすべて）</div><div class="lvs">' + [['yes', '報告済み'], ['no', '未報告']].map(function (r) { return '<button class="lv" data-hf="rep:' + r[0] + '" aria-pressed="' + ((HOME.rep || []).indexOf(r[0]) >= 0) + '">' + (r[0] === 'yes' ? '<span class="irbadge sm" aria-hidden="true">報</span>' : '') + r[1] + '</button>'; }).join('') + '</div>' +
           '<div class="acts"><button class="btn" data-hgr="1">' + D().grade + '年だけ・絞り込みなしに戻す</button><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
         var b, gs = homeGrades().slice();
         if ((b = t.closest('[data-hg]'))) { var g0 = +b.dataset.hg, i = gs.indexOf(g0); if (i >= 0) { if (gs.length > 1) gs.splice(i, 1); } else gs.push(g0); }
         else if (t.closest('[data-hga]')) gs = gs.length === 6 ? [D().grade] : [1, 2, 3, 4, 5, 6];
-        else if (t.closest('[data-hgr]')) { gs = [D().grade]; HOME.types = []; HOME.levels = []; HOME.status = []; }
+        else if (t.closest('[data-hgr]')) { gs = [D().grade]; HOME.types = []; HOME.levels = []; HOME.status = []; HOME.rep = []; }
         else if ((b = t.closest('[data-hf]'))) { var kv = b.dataset.hf.split(':'), arr = HOME[kv[0]] = (HOME[kv[0]] || []).slice(), j = arr.indexOf(kv[1]); if (j >= 0) arr.splice(j, 1); else arr.push(kv[1]); }
         else return false;
         HOME.grades = gs.sort(); saveHome();

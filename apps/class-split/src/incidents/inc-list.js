@@ -46,7 +46,7 @@
   };
   // 報告済み：書類に✓の印（見る画面の報告のボタン）
   var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
-  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの左下に、枠に重ねて置く（タグの列には入れない）
+  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの右上に、枠に重ねて置く（学年のタグに重なってよい）
   function repBadge(rp) {
     if (!rp.reported) return '';
     var t = esc(Rp.md(rp.reported)) + 'に報告済み';
@@ -78,7 +78,7 @@
   }
   function matchQ(x, q) {
     if (!q) return true;
-    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail].concat(x.ids.map(kidName));
+    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail, rp.reported ? '報告済み' : '未報告'].concat(x.ids.map(kidName)); // 「報告済み」「未報告」でも探せる
     ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k].forEach(function (r) { txt.push(r.t); }); });
     var all = txt.join(' ').replace(/[ 　]/g, '');
     return q.split(/[ 　]+/).filter(Boolean).every(function (w) { return all.indexOf(w) >= 0; });
