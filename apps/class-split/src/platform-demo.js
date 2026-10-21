@@ -113,6 +113,8 @@
           if (R() < .4) w.push(pick(pick(C.MEMO_PICKS).items));
           r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
         }
+        // 兄弟の見本：番号で決める（乱数を使わない＝ほかの見本の値を変えない）
+        if (r.no % 7 === 0) r.a.sib = [{ r: r.no % 2 ? '兄' : '姉', g: Math.min(10, y2 + 3), n: '' }].concat(r.no % 14 === 0 ? [{ r: '妹', g: 0, n: '' }] : []);
       });
       // クラス分けテストの点数（今年度と前年度）。学力しんどさは低め・賢いは高め。数人は欠席で点数なし。
       // 上位の割合（top）に入った児童は「賢い」が自動で付く（App.applyScores）。別の乱数で作る
@@ -184,6 +186,8 @@
     // 対応の状況：古い事案ほど解消・指導済みが多い
     var age = (Date.now() - new Date(date).getTime()) / 864e5;
     rp.status = age < 14 ? pick(['open', 'open', 'done']) : age < 90 ? pick(['done', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'done', 'watch']);
+    // 報告済み：いじめで、1週間より前の事案で、対応中でないもの（乱数は使わない＝ほかの見本の値を変えない）
+    if (/いじめ/.test(type) && age >= 7 && rp.status !== 'open') rp.reported = Rp.addDays(date, 7);
     rp.s1.hk.push(row(pick(P.hk)));
     rp.s1.kk.push(row(lead + pick(P.kk.slice(0, 11))));
     if (R() < .5) rp.s1.kk.push(row(pick(P.kk.slice(11))));
@@ -277,6 +281,7 @@
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 400); else delete r.a.memo; return later({ ok: true }); }
+      if (k === 'sib') { var sb = C.normSibs(text); if (sb.length) r.a.sib = sb; else delete r.a.sib; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 1000); else delete r.a[k + '_t']; }
       if (incs !== undefined) { if (v && incs.length) r.a[k + '_i'] = incs.slice(); else delete r.a[k + '_i']; }
@@ -300,8 +305,29 @@
     },
     saveDraft: function (grade, d) { S.drafts = S.drafts || {}; S.drafts[grade] = d ? { at: new Date().toISOString(), draft: clone(d) } : null; return later({ ok: true }); },
     loadDraft: function (grade) { return later((S.drafts || {})[grade] || null); },
-    // 試行では様式のファイルが無いので Excel は作れない（コピペ用の表は使える）
-    exportReport: function () { return Promise.reject(Object.assign(new Error('試行では Excel を作れません。下の表からコピーしてください'), { noRetry: true })); },
+    // 試行の Excel：選んだ様式の .xlsx（template に入れた中身）を画面の中で開き、本番のサーバーと同じ手順でセルに書き、ダウンロードさせる
+    template: null,
+    exportReport: function (kind, values, incId, seq) {
+      var self = this, R = C.REPORT, Rp = g.Report;
+      if (!self.template) return Promise.reject(Object.assign(new Error('様式の Excel（.xlsx）を選んでください'), { noRetry: true }));
+      if (!R.sheets[kind]) return Promise.reject(Object.assign(new Error('様式が分かりません'), { noRetry: true }));
+      var ok = {}; Rp.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
+      var vals = {}; Object.keys(values || {}).forEach(function (ref) { if (ok[ref]) { var v = values[ref]; vals[ref] = typeof v === 'number' && isFinite(v) ? v : String(v).slice(0, 8000); } });
+      return g.Zip.read(self.template).then(function (files) {
+        var by = {}, dec = new TextDecoder(), enc = new TextEncoder();
+        files.forEach(function (f, i) { by[f.name] = i; });
+        var text = function (n) { return dec.decode(files[by[n]].data); }, put = function (n, s) { files[by[n]].data = enc.encode(s); };
+        if (by['xl/workbook.xml'] == null || by['xl/_rels/workbook.xml.rels'] == null) throw Object.assign(new Error('様式のファイルが読めません'), { noRetry: true });
+        var wb = text('xl/workbook.xml'), path = Rp.sheetPath(wb, text('xl/_rels/workbook.xml.rels'), R.sheets[kind]);
+        if (!path || by[path] == null) throw Object.assign(new Error('様式のファイルに「' + R.sheets[kind] + '」のシートがありません'), { noRetry: true });
+        Object.keys(by).forEach(function (n) { if (/^xl\/worksheets\/[^/]+\.xml$/.test(n)) put(n, Rp.untab(text(n), n === path)); });
+        put(path, Rp.fillSheet(text(path), vals));
+        put('xl/workbook.xml', Rp.activate(wb, R.sheets[kind]));
+        var t = new Date(), p2 = function (n) { return ('0' + n).slice(-2); };
+        var name = R.names[kind] + '_事案' + (+incId || 0) + (+seq ? '_被害' + (+seq) : '') + '_' + t.getFullYear() + p2(t.getMonth() + 1) + p2(t.getDate()) + '_' + p2(t.getHours()) + p2(t.getMinutes()) + '.xlsx';
+        return { name: name, url: URL.createObjectURL(g.Zip.write(files)), download: true };
+      });
+    },
     fetchTitle: function (url) { gen();
       return later({ title: /docs\.google\.com/.test(url) ? '（見本）取得した文書の名前' : '' });
     },

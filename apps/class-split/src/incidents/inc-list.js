@@ -36,6 +36,7 @@
     '物損': SVG('<path d="M4 6h7l-2 5 3 2-1 5H4zM14 6h6v12h-7l1-4-3-2z"/>'),
     'いじめ': SVG('<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>'),
     'けが': SVG('<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M11 11l2 2M13 11l-2 2"/>'),
+    '虞犯': SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/>'), // 盾に「！」（非行のおそれ）
     'その他': SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12h.5M12 12h.5M16 12h.5"/>')
   };
   var ST_IC = {
@@ -44,6 +45,8 @@
     watch: SVG('<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
     closed: SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>')
   };
+  // 報告済み：書類に✓の印（生徒指導担当が一覧で見分けられるように、カードの右上に出す）
+  var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
   // いじめの報告の段階：決めていなければ、様式Ⅱ用の追記があれば様式Ⅱ、なければ様式Ⅰ
   function levelOf(x) {
     var rp = x.report || Rp.emptyReport();
@@ -57,12 +60,13 @@
   }
   function tagsHtml(x) {
     var rp = x.report || Rp.emptyReport(), h = '<div class="itags">';
+    if (rp.reported) h += '<span class="itg irp" title="' + esc(Rp.md(rp.reported)) + 'に報告">' + REP_IC + '報告済み</span>';
     var gs = gradesOf(x); if (gs.length) h += '<span class="itg ig">' + gs.join('・') + '年</span>';
     typesOf(x.type).forEach(function (t) {
       if (t === 'いじめ') {
         var lv = C.BULLY_LEVELS.filter(function (b) { return b.k === levelOf(x); })[0];
         h += '<span class="itg ib2" style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '">' + TYPE_IC['いじめ'] + 'いじめ・' + esc(lv.label) + '</span>';
-      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + esc(t) + '</span>';
+      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + typeHtml(t) + '</span>';
     });
     var st = C.STATUS.filter(function (s0) { return s0.k === rp.status; })[0] || C.STATUS[0];
     h += '<span class="itg ist st-' + st.k + '">' + ST_IC[st.k] + esc(st.label) + '</span>';
@@ -104,12 +108,13 @@
   }
   function viewHtml(x) {
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
-    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
+    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + typesHtml(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
       '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
       '<div class="istat"><span class="lab">対応</span>' + C.STATUS.map(function (s0) { return '<button class="lv ib st-' + s0.k + '" data-ist="' + s0.k + '" aria-pressed="' + (rp.status === s0.k) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') +
-      (b ? '<span class="lab">報告</span>' + C.BULLY_LEVELS.map(function (lv) { return '<button class="lv" data-ilv="' + lv.k + '" aria-pressed="' + (levelOf(x) === lv.k) + '"' + (levelOf(x) === lv.k ? ' style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '"' : '') + '>' + esc(lv.label) + '</button>'; }).join('') : '') + '</div>';
+      '<span class="lab">報告</span><button class="lv ib irpb" data-irep="1" aria-pressed="' + !!rp.reported + '">' + REP_IC + (rp.reported ? esc(Rp.md(rp.reported)) + 'に報告済み' : '未報告') + '</button>' +
+      (b ? C.BULLY_LEVELS.map(function (lv) { return '<button class="lv" data-ilv="' + lv.k + '" aria-pressed="' + (levelOf(x) === lv.k) + '"' + (levelOf(x) === lv.k ? ' style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '"' : '') + '>' + esc(lv.label) + '</button>'; }).join('') : '') + '</div>';
     h += x.diagram && x.diagram.nodes.length ? '<section><h3>関係図</h3><div id="vDg" class="dg ro"></div></section>' :
       '<section><h3>関係する児童</h3><div>' + x.ids.map(function (id) { var r = x.roles && x.roles[id]; return esc(kidName(id)) + (r ? '（' + E.ROLE_NAMES[r] + '）' : ''); }).join('、') + '</div></section>';
     if (b) h += '<section><h3>いじめの項目</h3><table class="irv"><tr><th>発見のきっかけ</th><td>' + esc(rp.found || '（未選択）') + '</td></tr><tr><th>態様</th><td>' +

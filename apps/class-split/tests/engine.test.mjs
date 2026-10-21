@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
-for (const f of ['config.js', 'engine.js', 'report.js', 'platform-demo.js']) {
+for (const f of ['config.js', 'engine.js', 'report.js', 'zip.js', 'platform-demo.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(SRC, f), 'utf8'), { filename: f });
 }
 const { CONFIG: C, Engine: E, Report: RP } = globalThis; const PF = globalThis.Platforms.demo;
@@ -302,4 +302,29 @@ test('関係図の整理：矢印の交差・別の児童を通る線を無く�
   // a→d と b→c が交差する
   const d2 = E.tidyDiagram({ nodes: [{ id: 'a', x: 100, y: 60 }, { id: 'b', x: 100, y: 250 }, { id: 'c', x: 500, y: 60 }, { id: 'd', x: 500, y: 250 }], edges: [{ f: 'k:a', t: 'k:d' }, { f: 'k:b', t: 'k:c' }] });
   assert.equal(E.diagramProblems(d2), 0);
+});
+
+test('試行の Excel：zip を作って読み戻すと同じ中身（圧縮したファイルも読める）', async () => {
+  const Z = globalThis.Zip, enc = new TextEncoder(), dec = new TextDecoder();
+  const blob = Z.write([{ name: 'xl/workbook.xml', data: enc.encode('<workbook>様式Ⅰ</workbook>') }, { name: 'a.txt', data: enc.encode('x'.repeat(1000)) }]);
+  const back = await Z.read(await blob.arrayBuffer());
+  assert.deepEqual(back.map(f => f.name), ['xl/workbook.xml', 'a.txt']);
+  assert.equal(dec.decode(back[0].data), '<workbook>様式Ⅰ</workbook>');
+  // 圧縮（deflate）された zip：node の zlib で作り、読めるか
+  const zlib = await import('node:zlib'), raw = zlib.deflateRawSync(Buffer.from('hello'.repeat(50))), nm = Buffer.from('h.txt');
+  const crc = Z.crc32(new Uint8Array(Buffer.from('hello'.repeat(50))));
+  const loc = Buffer.alloc(30); loc.writeUInt32LE(0x04034b50, 0); loc.writeUInt16LE(8, 8); loc.writeUInt32LE(crc, 14); loc.writeUInt32LE(raw.length, 18); loc.writeUInt32LE(250, 22); loc.writeUInt16LE(nm.length, 26);
+  const cen = Buffer.alloc(46); cen.writeUInt32LE(0x02014b50, 0); cen.writeUInt16LE(8, 10); cen.writeUInt32LE(crc, 16); cen.writeUInt32LE(raw.length, 20); cen.writeUInt32LE(250, 24); cen.writeUInt16LE(nm.length, 28);
+  const body = Buffer.concat([loc, nm, raw]), end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(1, 8); end.writeUInt16LE(1, 10); end.writeUInt32LE(46 + nm.length, 12); end.writeUInt32LE(body.length, 16);
+  const got = await Z.read(Buffer.concat([body, cen, nm, end]));
+  assert.equal(dec.decode(got[0].data), 'hello'.repeat(50));
+  assert.equal(RP.norm({ reported: '2026-10-01' }).reported, '2026-10-01'); assert.equal(RP.norm({ reported: 'x' }).reported, '', '報告日は日付だけ');
+});
+
+test('兄弟：形をそろえ、決定で来年度に写す時は学年を1つ上げる（未就学はそのまま、高校以上で止める）', () => {
+  assert.deepEqual(C.normSibs('[{"r":"兄","g":5,"n":"<b>太郎"},{"r":"x","g":99}]'), [{ r: '兄', g: 5, n: 'b太郎' }, { r: '兄', g: 0, n: '' }]);
+  assert.equal(C.sibText([{ r: '姉', g: 7, n: '' }, { r: '弟', g: 0, n: 'ジロウ' }]), '姉（中1）、弟（未就学）ジロウ');
+  const rows = E.nextYearRows([{ id: 'a', kana: 'あ', a: { sib: [{ r: '兄', g: 6, n: '' }, { r: '妹', g: 0, n: '' }, { r: '姉', g: 10, n: '' }] } }], new Int8Array([0]), 1);
+  assert.deepEqual(rows[0].a.sib.map(x => x.g), [7, 0, 10]);
+  assert.deepEqual(C.familyWords('母子家庭。忘れ物が多い。祖父母が養育'), ['母子家庭', '祖父母が養育']);
 });

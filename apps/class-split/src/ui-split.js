@@ -94,7 +94,7 @@
 
   // ===== 並び順：組の中の児童の並べ方（第一〜第三優先）。この端末にだけ覚える =====
   var SORT_KEYS = [
-    { k: 'old', label: '旧クラス', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
+    { k: 'old', label: '旧学級', f: function (s) { return s.old < 0 ? 99 : s.old; } }, // 転入生は最後
     { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
     { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
     { k: 'no', label: '旧出席番号', f: function (s) { return s.old < 0 ? 999 : s.no; } },
@@ -120,6 +120,7 @@
   /* @include split/split-pairs.js */
   /* @include split/split-actions.js */
   /* @include split/split-zoom.js */
+  /* @include split/split-excel.js */
 
   App.screens.split = {
     enter: function () {
@@ -140,6 +141,7 @@
     click: function (t, e) {
       var x;
       if (t.closest('#zreset')) { zoomReset(); return true; }
+      if (t.closest('#xlsOut')) { exportExcel(); return true; }
       if ((x = t.closest('[data-del]'))) {
         e.stopPropagation(); delDialog(+x.dataset.del); return true;
       }
@@ -154,7 +156,6 @@
       if (t.closest('#fs')) { fullscreen(); return true; }
       if (t.closest('#hbtn')) { helpDialog(); return true; }
       if (t.closest('#pairs')) { pairsDialog(); return true; }
-      if (t.closest('#smore')) { moreDialog(); return true; }
       if (t.closest('#cnames')) { namesDialog(); return true; }
       if (t.closest('#trans')) { transDialog(); return true; }
       if (t.closest('#order')) { orderDialog(); return true; }

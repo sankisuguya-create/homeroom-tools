@@ -34,8 +34,9 @@
               return '<label class="chk"><input type="checkbox" data-ivic="' + id + '"' + (st.pick.indexOf(id) >= 0 ? ' checked' : '') + '> ' + esc(kidName(id)) + '</label>';
             }).join('') + '<p class="note">選んだ児童1人につき1つの書類を作ります。下のコピー用の表は ' + esc(kidName(st.victim)) + ' の分です。</p></div>' : '') +
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
-          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span></div>' +
-          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '" target="_blank" rel="noopener">' + esc(m.name) + ' ↗</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
+          '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.mode === 'demo' ? (App.pf().template ? '選んだ様式に書き込み、ダウンロードします（元のファイルは変えません）' : '試行では、市教委の様式の Excel（.xlsx）をこの端末から選んでください') : App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span>' +
+            (App.mode === 'demo' ? '<label class="btn ib">様式の Excel を選ぶ<input type="file" id="itmpl" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label>' + (App.pf().templateName ? '<span class="note">' + esc(App.pf().templateName) + '</span>' : '') : '') + '</div>' +
+          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '"' + (m.download ? ' download="' + esc(m.name) + '"' : ' target="_blank" rel="noopener"') + '>' + esc(m.name) + (m.download ? ' ⤓' : ' ↗') + '</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -59,10 +60,19 @@
               var seq = vs.length > 1 ? vs.indexOf(v) + 1 : 0;
               return pr.then(function () { return App.pf().exportReport(kind, cellsOf(v), x.id, seq); }).then(function (r) { r.victim = v; st.made.push(r); });
             }, Promise.resolve());
-          }).then(function () { App.refreshDlg(); });
+          }).then(function () {
+            App.refreshDlg();
+            // 試行：作った分をそのままダウンロードする
+            st.made.forEach(function (m) { if (m.download) { var a = document.createElement('a'); a.href = m.url; a.download = m.name; document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000); } });
+          });
           return true;
         }
         return false;
+      },
+      input: function (t) {
+        if (t.id !== 'itmpl' || !t.files || !t.files[0]) return;
+        var f = t.files[0];
+        f.arrayBuffer().then(function (b) { App.pf().template = b; App.pf().templateName = f.name; App.refreshDlg(); App.toast('様式を読み込みました：' + f.name); });
       }
     });
   }

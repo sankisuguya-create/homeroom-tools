@@ -16,6 +16,9 @@
     var cols = b.querySelector('.cols'), on = ZOOM.k > 1.001;
     cols.style.transformOrigin = '0 0';
     cols.style.transform = on ? 'translate(' + ZOOM.x + 'px,' + ZOOM.y + 'px) scale(' + ZOOM.k + ')' : '';
+    // 動かしている間だけ画像として動かし（軽い）、止まったら今の倍率で描き直す（拡大してもぼやけない）
+    cols.style.willChange = 'transform'; clearTimeout(ZOOM.t);
+    ZOOM.t = setTimeout(function () { cols.style.willChange = ''; }, 180);
     b.classList.toggle('zoomed', on);
     var r = b.querySelector('.zreset');
     if (on && !r) b.insertAdjacentHTML('beforeend', '<button type="button" class="btn zreset" id="zreset">等倍に戻す（' + Math.round(ZOOM.k * 100) + '%）</button>');

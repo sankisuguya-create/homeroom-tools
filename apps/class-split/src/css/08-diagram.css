@@ -109,7 +109,8 @@ table.r th.jh small{font-weight:400}
 table.r th.sorth{cursor:pointer;user-select:none}
 table.r th.sorth:hover{background:#e3e8ed}
 table.r th.sorth.on{background:var(--fill)}
-table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link)}
+table.r th .sa{margin-left:2px;font-size:.8em;color:var(--link);white-space:nowrap}
+table.r th .sa b{display:inline-block;min-width:1.2em;border-radius:50%;background:var(--link);color:#fff;text-align:center;margin-right:1px}
 .setcols{display:flex;gap:28px;flex-wrap:wrap}
 .setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
 .setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}

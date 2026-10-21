@@ -108,22 +108,19 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 名簿：年度タブ・児童の経年の記録
   await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#main .rbar .tab[data-fy], main #paste, main .chk').count() === 0, `${w}x${h} 上の帯は組・学年と「その他…」だけ`);
-  await p.click('#rmore');
-  ok(await p.locator('.dlg.more .tab[data-fy]').count() === 6, `${w}x${h} 6年は6年度分の名簿（その他の窓）`);
-  await p.check('.dlg.more #onlyInc');
-  ok(await p.locator('.dlg.more #onlyInc').isChecked() && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
-  await p.keyboard.press('Escape'); await p.click('#unfilter');
-  ok(await p.locator('#main .state').count() === 0, `${w}x${h} 解除で状態が消える`);
-  await p.click('#rmore'); await p.click('.dlg.more #rorder');
-  await p.click('[data-ord="0:female"]'); await p.click('[data-ord="1:kana"]'); await p.keyboard.press('Enter');
-  const sx = await p.locator('td.nm .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
-  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 並び順（女が先）が名簿に効く`);
+  ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#rmore').count() === 0 && await p.locator('#rfy').count() === 1, `${w}x${h} 「その他」の窓は無く、年度・全校の事案・絞り込みは上の帯`);
+  ok(await p.locator('#rfy option').count() === 6, `${w}x${h} 6年は6年度分の名簿（年度の選択）`);
+  ok(await p.locator('#onlyIncB').count() === 0 && /^\d{4}$/.test((await p.locator('#rfy option').first().textContent()).trim()), `${w}x${h} 事案で絞るボタンは無く（事案数の見出しで並べる）、年度は「2026」の形`);
+  // 見出しを押した順に優先：性別（1回目＝男が先、2回目＝女が先）→ 名前（よみ）
+  await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="kana"]');
+  const sx = await p.locator('td.sxc .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
+  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 見出しの性別を2回押すと女が先`);
+  ok(await p.locator('th[data-csort="sex"] .sa b').textContent() === '1' && await p.locator('th[data-csort="kana"] .sa b').textContent() === '2', `${w}x${h} 押した順に第一・第二の印`);
   ok(await p.locator('#main .state', { hasText: '並び順' }).count() === 1, `${w}x${h} 並び順を変えると帯に出る`);
   await p.click('#unorder');
   ok(await p.locator('#main .state').count() === 0 && (await p.locator('td.nm').first().evaluate(e => e.closest('tr').cells[0].textContent)) === '1', `${w}x${h} 戻すで番号順`);
-  await p.click('#rmore'); await p.locator('.dlg.more .tab[data-fy]').last().click();
-  ok(await p.locator('.dlg.more').count() === 0 && await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと窓が閉じ、帯に「見るだけ」が出る`);
+  { const v = await p.locator('#rfy option').last().getAttribute('value'); await p.selectOption('#rfy', v); }
+  ok(await p.locator('#main .state', { hasText: '見るだけ' }).count() === 1 && await p.locator('table.r.ro').count() === 1, `${w}x${h} 過去の年度を選ぶと、帯に「見るだけ」が出る`);
   await p.locator('#main .state .btn').click();
   ok(await p.locator('table.r.ro').count() === 0, `${w}x${h} 戻るで編集できる年度に戻る`);
   await p.locator('td.nm').first().click();
@@ -225,19 +222,23 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
-  await p.click('#smore'); await p.click('#decide');
+  await p.click('#decide');
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
   ok(await p.locator('.decided', { hasText: 'A組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 1, '決定の直後は組の番号が仮');
+  {
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#xlsOut')]);
+    const buf = fs.readFileSync(await dl.path()), txt = buf.toString('utf8');
+    ok(buf.slice(0, 2).toString() === 'PK' && txt.includes('生徒管理番号') && txt.includes('仮番号') && txt.includes('>A組<'), '決定した組を Excel（次年度組編成の列）で出せる');
+    if (process.env.XLSX_OUT) fs.writeFileSync(process.env.XLSX_OUT, buf);
+  }
   await p.click('#cnames'); await p.click('[data-cn="0:2"]'); await p.keyboard.press('Enter');
   await p.waitForSelector('.decided:has-text("A組＝2組")');
   ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');
   ok(await p.locator('.ncl').first().textContent() === 'A組', 'クラス分けの枠は A組…');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
-  await p.click('#rmore');
-  ok(await p.locator('.tab[data-fy]', { hasText: '準備中' }).count() === 1, '名簿に準備中の年度が出る');
-  await p.locator('.tab[data-fy]', { hasText: '今年度' }).click();
+  { const fy = await p.evaluate(() => App.st.data.fy); ok(await p.locator('#rfy option[value="' + (fy + 1) + '"]').count() === 1, '名簿に準備中の年度（来年度）が出る'); await p.selectOption('#rfy', String(fy)); }
   ok(await p.locator('table.r.ro').count() === 1, '決定後の今年度は凍結（見るだけ）');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('.decided');
   await p.click('#undoDecide'); await p.fill('#cword', '4年の決定を取り消す'); await p.click('[data-act="ok"]');
@@ -264,6 +265,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.selectOption('#isort', 'new');
   ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
   await p.click('#iadd2nd');
+  ok(await p.locator('[data-ty="虞犯"] ruby rt', { hasText: 'ぐはん' }).count() === 1, '事案の種別に「虞犯」（ふりがな付き）');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
@@ -298,7 +300,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#ihome'); ok(await p.locator('.icard').count() === n0 + 1, '事案が一覧に足される'); await p.click('.icard');
   await p.click('#iadd2'); await p.fill('#rw-s2-vi-0', '元気に過ごしている'); await p.click('#inc2Form button.primary'); await p.waitForSelector('#iadd2');
   ok(await p.locator('.ipane', { hasText: '元気に過ごしている' }).count() === 1, '様式Ⅱ用の追記が残る');
+  await p.click('[data-irep]');
+  await p.waitForSelector('[data-irep][aria-pressed="true"]');
+  ok(/報告済み/.test(await p.textContent('[data-irep]')), '見る画面で「報告済み」にできる（日付が入る）');
+  await p.click('#ihome'); ok(await p.locator('.icard .irp').count() > 0, '報告済みの事案は、カードの右上に印が出る'); await p.locator('.icard').first().click();
   await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
+  ok(await p.locator('#itmpl').count() === 1, '試行でも様式の Excel を選んで出力できる');
   ok(await p.locator('.icopy td', { hasText: '朝休み、訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
   await p.keyboard.press('Escape');
   // 被害の児童が2人：様式Ⅱ用の追記は児童ごとの欄、Excel は児童の数だけ
@@ -336,12 +343,15 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const autoBefore = await p.locator('td.cell.auto[data-k="k7"]').count();
   await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-score]'); await p.waitForSelector('.sctab');
   const n = await p.locator('.scin').count();
-  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String(i)).join('\n')); await p.click('[data-scpaste]');
+  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String((i * 37) % 101)).join('\n')); await p.click('[data-scpaste]'); // 点数は満点（100）を超えないように
   await p.fill('#scTop', '10'); await p.locator('#scTop').dispatchEvent('input');
   await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
   const nAuto = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0]; return y.rows.filter(r => r.a.k7s).length; });
-  ok(nAuto >= 1 && nAuto <= Math.round(n * 0.1), `点数の上位1割に「賢い」が付く（${nAuto}人／${n}人。手動で付いている児童は数えない）`);
+  const per = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], g = {}, top = App.topIds(d.scores[d.fy], App.scoreGroup(d, y)); y.rows.forEach(r => { const k = r.cls + (d.kids[r.id].male ? 'm' : 'f'); g[k] = g[k] || { n: 0, t: 0 }; g[k].n++; if (top[r.id]) g[k].t++; }); return Object.values(g); });
+  ok(nAuto >= 1 && per.every(x => x.t >= 1 && x.t <= Math.max(1, Math.round(x.n * 0.1)) + 1), `点数の上位1割は、組の中の男女ごとに付く（${per.length}組×男女、点数で付いた${nAuto}人）`);
   ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
+  const tiers = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], c = {}; y.rows.forEach(r => { if (r.a.tier) c[r.a.tier] = (c[r.a.tier] || 0) + 1; }); const P = { kids: y.rows.map(r => ({ id: r.id, male: d.kids[r.id].male, old: r.cls, a: r.a, area: '' })), pairs: [], inc: [], nc: 4 }; return { c, met: Engine.prepare(P, Engine.defaultGen()).MET.filter(m => m.grp === 'acad').length }; });
+  ok(tiers.c[1] > 0 && tiers.c[2] > 0 && tiers.c[5] > 0 && tiers.met >= 4, `点数を10％刻みの段に分け、2段から下もクラス分けでそろえる（段ごとの人数 ${JSON.stringify(tiers.c)}・そろえる段 ${tiers.met}）`);
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
   await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
@@ -390,6 +400,73 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(b1.width > b0.width * 1.5 && Math.abs(b1.x + b1.width / 2 - cx) < 3 && Math.abs(b1.y + b1.height / 2 - cy) < 3, 'ホイールで、カーソルの所を動かさずに拡大する');
   await p.click('#zreset'); const b2 = await chip.boundingBox();
   ok(Math.abs(b2.width - b0.width) < 1 && await p.locator('#zreset').count() === 0, '「等倍に戻す」で元の大きさ');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 名簿を貼る：名簿の上の帯から開き、貼った児童を登録する
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#paste');
+  ok(await p.locator('.bar #paste, #main > div #paste').count() >= 1, '名簿の上の帯に「名簿を貼る」');
+  await p.click('#paste'); await p.waitForSelector('#ptxt');
+  await p.fill('#ptxt', '組\t番号\t児童ID\t名前\tよみ\t性別\n1\t40\t99990001\t新入 ハナ\tしんにゅう はな\t女');
+  await p.click('#okbtn'); await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  ok(/追加1人/.test(await p.textContent('#toast')), '貼った児童が名簿に登録される');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 学力の順位：数字を打つとその位置へ、名前をドラッグして入れ替え。保存すると順位の上位に「賢い」
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="2"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k7"]');
+  const td = p.locator('td.cell[data-k="k7"]').first(), bb = await td.boundingBox();
+  await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-rank]'); await p.waitForSelector('#rklist');
+  const ids = () => p.locator('[data-rk]').evaluateAll(es => es.map(e => e.dataset.rk));
+  const n = (await ids()).length, last = (await ids())[n - 1];
+  await p.fill('[data-rkn="' + last + '"]', '1'); await p.keyboard.press('Enter');
+  ok((await ids())[0] === last, '順位の数字を打つと、その位置へ動く');
+  const before = await ids(), h1 = await p.locator('[data-rkh="' + before[1] + '"]').boundingBox(), h0 = await p.locator('[data-rk="' + before[0] + '"]').boundingBox();
+  await p.mouse.move(h1.x + 10, h1.y + h1.height / 2); await p.mouse.down(); await p.mouse.move(h1.x + 10, h0.y + 3, { steps: 6 }); await p.mouse.up();
+  const after = await ids();
+  ok(after[0] === before[1] && after[1] === before[0], '名前をドラッグして入れ替えられる');
+  await p.fill('#rkTop', '10'); await p.locator('#rkTop').dispatchEvent('input');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('#rklist'));
+  const res = await p.evaluate(top => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], sc = d.scores[d.fy]; return { use: sc.use, first: sc.r[top], auto: y.rows.filter(r => r.a.k7s).map(r => r.id) }; }, after[0]);
+  ok(res.use === 'rank' && res.first === 1 && (res.auto.includes(after[0]) || (await p.evaluate(id => App.st.data.years.filter(y => y.fy === App.st.data.fy)[0].rows.find(r => r.id === id).a.k7m, after[0]))), '保存すると順位で決め、1位の児童は「賢い」');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 備考の窓：兄弟を足して保存すると、名簿の備考の欄に出る
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.memo.cc');
+  await p.locator('td.memo.cc').nth(1).click(); await p.waitForSelector('#mtx');
+  await p.click('[data-sbadd]'); await p.selectOption('[data-sbr="0"]', '姉'); await p.selectOption('[data-sbg="0"]', '7'); await p.fill('[data-sbn="0"]', 'ハナ');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.getElementById('mtx'));
+  ok(await p.locator('td.memo .msib', { hasText: '姉（中1）ハナ' }).count() === 1, '備考の窓で兄弟を足すと、名簿の備考の欄に出る');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 学力の窓：名簿の帯の「学力…」から開き、点数・順位をタブで切り替え、「賢い」の決め方を選んで保存する
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
+  await p.click('#acadB'); await p.waitForSelector('.sctab');
+  await p.click('[data-acadtab="rank"]'); await p.waitForSelector('#rklist');
+  ok(await p.locator('[data-acadtab="rank"][aria-selected="true"]').count() === 1, '学力の窓で点数と順位をタブで切り替えられる');
+  await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
+  await p.fill('.scin >> nth=0', '90'); await p.click('[data-acadtab="rank"]');
+  ok(await p.locator('.sctab').count() === 1 && /保存/.test(await p.textContent('#toast')), '保存していない入力がある時は切り替えない');
+  await p.check('[data-acaduse="rank"]'); await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
+  ok(await p.evaluate(() => App.st.data.scores[App.st.data.fy].use) === 'rank', '「賢い」の決め方は選んだ方で保存する（最後に保存した窓では決めない）');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

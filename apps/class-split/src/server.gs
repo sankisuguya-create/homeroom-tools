@@ -69,6 +69,7 @@ function attrsHead_() {
   CONFIG.ATTRS.forEach(function (at) { if (at.side || at.ctx) h.push(at.k + '_t'); if (at.ctx) h.push(at.k + '_i'); }); // _t＝内容・経緯の文、_i＝紐付けた事案の番号
   h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
   h.push('memo'); // 備考（自由記述）。決定で来年度に写す
+  h.push('sib'); // 兄弟（JSON の並び。CONFIG.normSibs の形）。決定で来年度に写す時は学年を1つ上げる
   return h;
 }
 // シートに書く文字：= + - @ で始まると式として読まれるので、先頭に ' を付けて文字のまま残す
@@ -172,6 +173,7 @@ function attrsMap_(fy) {
     });
     if (+r.sp) a.sp = 1;
     if (r.memo) a.memo = String(r.memo);
+    if (r.sib) { var sb = CONFIG.normSibs(String(r.sib)); if (sb.length) a.sib = sb; }
     m[String(r.id8)] = a;
   });
   return m;
@@ -421,10 +423,14 @@ var apiSetScores = api_(function (fy, grade, v) {
   if (!(top > 0 && top < 1)) throw userError_('上位の割合が違います');
   var ids = {}; rosterRows_(fy).forEach(function (r) { if (r.grade === grade) ids[r.id] = 1; });
   Object.keys(v.s || {}).forEach(function (id) { var n = +v.s[id]; if (ids[id] && n >= 0 && n <= max) s[id] = n; });
+  // 順位（1が上。組の中の男女ごとの順位）。点数と順位のどちらで「賢い」を決めるかは use（最後に保存した方の窓）
+  var r = {}, nk = Object.keys(ids).length;
+  Object.keys(v.r || {}).forEach(function (id) { var n = Math.floor(+v.r[id]); if (ids[id] && n >= 1 && n <= nk) r[id] = n; });
+  var use = v.use === 'rank' ? 'rank' : 'score';
   return withLock_(function () {
     var dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
     if (fy !== editable) throw userError_('この年度の点数は直せません');
-    setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s }); return { ok: true };
+    setSetting_('scores_' + fy + '_' + grade, { max: max, top: top, s: s, r: r, use: use }); return { ok: true };
   });
 });
 
@@ -432,7 +438,8 @@ var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; v = +v;
   if (k === 'memo') { text = String(text == null ? '' : text).trim(); v = text ? 1 : 0; }
-  var at = k === 'sp' ? { k: 'sp', max: 1 } : k === 'memo' ? { k: 'memo', max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
+  if (k === 'sib') { text = JSON.stringify(CONFIG.normSibs(text)); v = text === '[]' ? 0 : 1; }
+  var at = k === 'sp' ? { k: 'sp', max: 1 } : k === 'memo' || k === 'sib' ? { k: k, max: 1 } : CONFIG.ATTRS.filter(function (a) { return a.k === k; })[0];
   if (!at) throw userError_('項目が違います');
   if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY);
@@ -443,9 +450,10 @@ var apiSetAttr = api_(function (fy, grade, id, k, v, text, incs) {
     ensureCols_(name, attrsHead_());
     var t = read_(name), row = null;
     t.rows.forEach(function (r) { if (String(r.id8) === String(id)) row = r; });
-    if (k === 'memo') { // 備考は文字だけを持つ
-      if (row) writeCell_(t, row, 'memo', plainText_(text, 400));
-      else append_(name, attrsHead_(), [{ id8: String(id), memo: plainText_(text, 400) }]);
+    if (k === 'memo' || k === 'sib') { // 備考・兄弟は文字だけを持つ（兄弟は JSON の並び）
+      var val = k === 'sib' ? (v ? text : '') : plainText_(text, 400);
+      if (row) writeCell_(t, row, k, val);
+      else { var o0 = { id8: String(id) }; o0[k] = val; append_(name, attrsHead_(), [o0]); }
       return { ok: true, by: by };
     }
     var tk = (at.side || at.ctx) && text !== undefined ? k + '_t' : null, tv = tk ? plainText_(v ? text : '', at.ctx ? 1000 : 200) : '';
@@ -639,7 +647,7 @@ var apiDecide = api_(function (grade, plan) {
       return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
-    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); return o; }));
+    append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); if (r.a.sib && r.a.sib.length) o.sib = JSON.stringify(r.a.sib); return o; }));
     ensureCols_('pairs_carry', TABLES_[2].head);
     append_('pairs_carry', TABLES_[2].head, pairs_(FY, grade).filter(function (p) { return p.t !== 'fix'; })
       .map(function (p) { return Object.assign({ fy: FY, type: p.t, a: p.a, b: p.b }, pairCells_(p, grade)); })); // 経緯・理由・何年生からを次の年度へ持ち越す

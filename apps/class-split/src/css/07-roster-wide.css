@@ -64,3 +64,8 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .bigs .big[data-go="split"] b{font-size:1.1rem}
 .bigs .big[data-go="split"] span{font-size:.8rem}
 .bigs .big:only-child{grid-column:1/-1}
+/* 性別の列：名前の列から分けた（並べ替えのため）。字1つ分の幅 */
+body[data-screen="roster"] table.r :is(th,td).sxc{width:3.6em;min-width:3.6em;max-width:3.6em;padding:0 2px;text-align:center}
+body[data-screen="roster"] table.r td.memo .msib{color:var(--sub);margin-left:.4em}
+.sibrow{display:flex;gap:6px;align-items:center;margin:4px 0}
+.sibrow input{flex:1;min-width:0;font:inherit;padding:3px 6px}
