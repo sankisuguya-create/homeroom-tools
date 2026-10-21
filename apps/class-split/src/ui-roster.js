@@ -218,7 +218,8 @@
         '<span class="rkt" title="' + t + '段">' + (i + 1) + '位</span>' +
         '<input type="number" class="rkn" data-rkn="' + id + '" min="1" max="' + order().length + '" value="' + (i + 1) + '" aria-label="順位">' +
         '<span class="rkh" data-rkh="' + id + '" title="ドラッグで入れ替える">⠿ ' + esc(s.name) + '<small>' + (r.cls + 1) + '-' + r.no + '</small></span>' +
-        (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') + '</div>';
+        (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') +
+        '<span class="rkk">' + (t === 1 ? App.mark(C.ATTRS.filter(function (a) { return a.k === 'k7'; })[0], 1) : '') + '</span></div>'; // 1段＝「賢い」は右に印
     };
     var list = function () { return order().map(row).join(''); };
     var redraw = function () { var el = App.$('rklist'); if (el) { var st = el.scrollTop; el.innerHTML = list(); el.scrollTop = st; } var n = App.$('rkcnt'); if (n) n.textContent = label(cur) + '：上位 ' + cut() + '人に「賢い」'; };

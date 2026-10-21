@@ -86,3 +86,4 @@
 .rbar .bsep{width:1px;align-self:stretch;background:var(--line);margin:0 6px}
 .rfy{display:inline-flex;align-items:center;gap:6px;color:inherit}
 .rfy select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#1A1A1A}
+.rkk{width:2.2em;display:flex;justify-content:center}
