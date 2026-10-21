@@ -417,6 +417,9 @@ table.h td.gcn .no{width:1.4em;text-align:right}
 .bigs .big:only-child{grid-column:1/-1}
 /* 性別の列：名前の列から分けた（並べ替えのため）。字1つ分の幅 */
 body[data-screen="roster"] table.r :is(th,td).sxc{width:3.6em;min-width:3.6em;max-width:3.6em;padding:0 2px;text-align:center}
+body[data-screen="roster"] table.r td.memo .msib{color:var(--sub);margin-left:.4em}
+.sibrow{display:flex;gap:6px;align-items:center;margin:4px 0}
+.sibrow input{flex:1;min-width:0;font:inherit;padding:3px 6px}
 /* ▲ css/07-roster-wide.css ここまで ▲ */
 /* ▼ css/08-diagram.css から ▼ */
 /* 事案の関係図と、名簿・カードの細部 */
@@ -664,6 +667,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
 .itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
 .irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}
+/* ふりがな（虞犯）：小さく、行の高さを変えない */
+.itg ruby rt,.lv ruby rt,.meta ruby rt{font-size:.55em;line-height:1}
+.itg ruby{ruby-position:over}
 /* ▲ css/09-incidents.css ここまで ▲ */
 /* ▼ css/10-print.css から ▼ */
 /* 個人票の印刷 */
@@ -677,7 +683,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pp-f{position:absolute;bottom:2.5mm;left:15mm;font-size:6.5pt;display:flex;align-items:center;gap:3mm}
 .pp-ruler{display:inline-block;width:100mm;height:1.5mm;border:solid #000;border-width:0 .3mm .3mm .3mm}
 .pc{width:180mm;height:50mm;box-sizing:border-box;border:.2mm dashed #999;margin-top:-.2mm;padding:1.6mm;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-.pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr 20mm}
+.pc-in{height:100%;box-sizing:border-box;border:.4mm solid #000;border-radius:2mm;overflow:hidden;display:grid;grid-template-columns:6mm 58mm 1fr}
 .pc.f .pc-in{border-radius:20mm 2mm 2mm 20mm}
 .pc-band{height:100%}
 .pc-l{display:grid;grid-template-rows:8.5mm auto auto 8.5mm;grid-template-columns:minmax(0,1fr);align-content:center;justify-items:center;gap:.5mm;border-right:.3mm solid #000;padding:0 1.5mm;min-width:0}
@@ -688,13 +694,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pc-ic .jn{font-size:9pt}
 .pc-r{display:grid;grid-template-rows:1fr 1fr;min-width:0}
 .pc-t,.pc-b{overflow:hidden;padding:.8mm 1.5mm;line-height:1.25;min-height:0}
-.pc-t{border-bottom:.3mm solid #000}
+.pc-t{border-bottom:.3mm solid #000;display:flex;flex-direction:column}
 .pc-t b,.pc-b b{font-weight:700;margin-right:.5mm}
 .pc-b .b{font-size:.9em;vertical-align:middle}
 .fit.over{outline:.4mm dashed #B00020;outline-offset:-.6mm}
-.pc-fam{display:grid;grid-template-rows:auto 1fr 1fr 1fr;border-left:.3mm solid #000;font-size:6.5pt}
-.pc-fam div{border-bottom:.2mm solid #000;display:flex;align-items:center;justify-content:center;white-space:nowrap}
-.pc-fam div:last-child{border-bottom:0}
 @media print{
   @page{size:210mm 297mm;margin:0} /* A4 縦を寸法で指定する（用紙の名前より、ブラウザが用紙と倍率を合わせやすい） */
   body.printing>*:not(#printbox){display:none!important}
@@ -714,6 +717,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dg.ro .dg-rs{display:none}
 .dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
 .pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
+.pc-famline{margin-top:auto;padding-top:.5mm;border-top:.2mm dashed #666} /* 備考の欄のいちばん下に置く */
 /* ▲ css/10-print.css ここまで ▲ */
 /* ▼ css/11-later.css から ▼ */
 /* 後から足した規則（事案の一覧・点数・知らせなど） */
@@ -783,6 +787,18 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
 #toast.stay{border:2px solid #B00020}
 #toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
+/* 学力の順位の窓：1行に1人。太い線より上が「賢い」。⠿ を押して上下に動かす */
+.rklist{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:6px;touch-action:none}
+.rkrow{display:flex;align-items:center;gap:8px;padding:3px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+.rkrow.top{background:#E3F4EA}
+.rkrow.cut{border-bottom:3px solid #009E73}
+.rkrow.drag{outline:2px solid var(--link);position:relative;z-index:1}
+.rkn{width:4.2em}
+.rkh{flex:1;cursor:grab;user-select:none;padding:4px 2px}
+.rkh small{margin-left:8px;color:var(--sub)}
+.rkrow.tierend{border-bottom:2px solid #9AA3AB}
+.rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
+.rkrow.top .rkt{color:#007A57;font-weight:700}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -802,7 +818,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
     // クラス分けテストの点数：満点と、学年で上位何割を「賢い」にするかの既定（年度・学年ごとに直せる）
-    SCORE_DEF: { max: 100, top: 0.1 },
+    SCORE_DEF: { max: 100, top: 0.1 }, // top＝段の刻み（1段＝賢い）
+    TIER_MAX: 10, // 段は10段まで（刻みが細かくても、下の方はまとめる）
     // 備考の定型の言葉（選ぶと備考の入力欄に入る）
     MEMO_PICKS: [
       { label: '発達特性', items: ['自閉症', '自閉傾向', 'ADHD傾向', 'LD傾向', '感覚過敏', 'こだわりが強い', '切り替えが苦手'] },
@@ -832,7 +849,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
       { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
       { k: 'area', label: '地区',   s: '地区', w: 0 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 },  // 0にすると案を作る条件に入れない
+      { k: 'acad', label: '学力の段', s: '段', w: 2 }   // 点数・順位の2段から下（1段＝賢いは「賢い」の重み）を組ごとにそろえる
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5, 5],
@@ -856,7 +874,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       { c: '#2E9E4F', t: '#FFFFFF', l: '#E2F3E7' }
     ],
     AREAS: ['東', '西', '南', '北'],
-    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', '虞犯', 'その他'],
+    TYPE_RUBY: { '虞犯': 'ぐはん' }, // 事案の種別のふりがな（画面で漢字の上に出す）
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
     // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
@@ -933,6 +952,25 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
 
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  // 兄弟：[{ r: 続柄, g: 学年（0＝未就学、1〜6、7〜9＝中1〜3、10＝高校以上）, n: 名前（任意） }]。決定で来年度に写す時は学年を1つ上げる
+  CONFIG.SIB_REL = ['兄', '姉', '弟', '妹'];
+  CONFIG.SIB_GRADES = [[0, '未就学'], [1, '1年'], [2, '2年'], [3, '3年'], [4, '4年'], [5, '5年'], [6, '6年'], [7, '中1'], [8, '中2'], [9, '中3'], [10, '高校以上']];
+  CONFIG.normSibs = function (list) {
+    if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
+    return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
+      var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
+      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+    });
+  };
+  CONFIG.sibText = function (list) {
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+  };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
+  CONFIG.familyWords = function (memo) {
+    var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');
+    return grp ? grp.items.filter(function (w) { return m.indexOf(w) >= 0; }) : [];
+  };
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
   // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない
@@ -994,6 +1032,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
+    // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える
+    var tierMax = 0; P.kids.forEach(function (s) { var t = s.a && s.a.tier | 0; if (t > tierMax) tierMax = t; });
+    if ((gen.w.acad | 0) > 0) for (var tr = 2; tr <= tierMax; tr++) (function (tr) {
+      MET.push({ k: 'acad' + tr, grp: 'acad', label: '学力' + tr + '段', w: C.LEVEL_W[gen.w.acad | 0], tol: 1, v: function (s) { return (s.a && s.a.tier | 0) === tr ? 1 : 0; } });
+    })(tr);
     // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
@@ -1289,6 +1332,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if ((at.side || at.ctx) && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; if (at.ctx && s.a[at.k + '_i']) a[at.k + '_i'] = s.a[at.k + '_i'].slice(); });
       if (s.a.sp) a.sp = 1;
       if (s.a.memo) a.memo = s.a.memo;
+      if (s.a.sib && s.a.sib.length) a.sib = C.nextSibs(s.a.sib); // 兄弟の学年は1つ上げて写す
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }
@@ -2034,6 +2078,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           if (R() < .4) w.push(pick(pick(C.MEMO_PICKS).items));
           r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
         }
+        // 兄弟の見本：番号で決める（乱数を使わない＝ほかの見本の値を変えない）
+        if (r.no % 7 === 0) r.a.sib = [{ r: r.no % 2 ? '兄' : '姉', g: Math.min(10, y2 + 3), n: '' }].concat(r.no % 14 === 0 ? [{ r: '妹', g: 0, n: '' }] : []);
       });
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
@@ -2182,6 +2228,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));
       if (k === 'memo') { if (text) r.a.memo = String(text).slice(0, 400); else delete r.a.memo; return later({ ok: true }); }
+      if (k === 'sib') { var sb = C.normSibs(text); if (sb.length) r.a.sib = sb; else delete r.a.sib; return later({ ok: true }); }
       if (k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; } else r.a[k] = v;
       if (text !== undefined) { if (v && text) r.a[k + '_t'] = String(text).slice(0, 1000); else delete r.a[k + '_t']; }
       if (incs !== undefined) { if (v && incs.length) r.a[k + '_i'] = incs.slice(); else delete r.a[k + '_i']; }
@@ -2330,7 +2377,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_7ad04b7de572';
+  var PAGE_BUILD = 'BUILD_547260a20b4f';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2467,21 +2514,41 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
     });
   };
-  // クラス分けテストの点数から「賢い」を足す：学年で点数の上位（割合は年度ごと）。手動の印（k7m）は残し、どちらかで賢い。
-  // a.k7s＝点数で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
-  App.topIds = function (sc) {
-    var ids = Object.keys((sc && sc.s) || {}); if (!ids.length) return {};
-    ids.sort(function (x, y) { return sc.s[y] - sc.s[x]; });
-    var n = Math.max(1, Math.round(ids.length * (sc.top || g.CONFIG.SCORE_DEF.top))), cut = sc.s[ids[n - 1]], out = {};
-    ids.forEach(function (id) { if (sc.s[id] >= cut) out[id] = 1; }); // 同点は境目の点まで全員
+  // クラス分けテストの点数・学力の順位から「賢い」を足す。学力は組の中の男女ごと（1組の男子、1組の女子…）に比べ、
+  // それぞれの上位（割合は年度ごと）に付ける。手動の印（k7m）は残し、どちらかで賢い。
+  // a.k7s＝点数・順位で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
+  // groupOf(id) は比べる組（例 '0:m'）。渡さなければ全体を1つとして比べる
+  // 学力の段：組の男女ごとに、上から「刻み」（sc.top。例 10％）ずつ 1段・2段・3段…に分ける。1段＝「賢い」。
+  // 2段から下は印を出さないが、クラス分けで組ごとの人数をそろえる（厳密な順位で分けると条件がきつすぎるので、段でそろえる）。
+  // 1段は同点・同じ順位を境目まで全員入れる。2段から下は並びの位置で分ける
+  App.tiers = function (sc, groupOf) {
+    var out = {}; if (!sc) return out;
+    var rank = sc.use === 'rank', map = rank ? sc.r || {} : sc.s || {}, step = sc.top || g.CONFIG.SCORE_DEF.top, groups = {};
+    Object.keys(map).forEach(function (id) { var k = groupOf ? groupOf(id) : ''; if (k == null) return; (groups[k] = groups[k] || []).push(id); });
+    Object.keys(groups).forEach(function (k) {
+      var ids = groups[k], n = ids.length;
+      ids.sort(function (x, y) { return rank ? map[x] - map[y] : map[y] - map[x]; });
+      var n1 = Math.max(1, Math.round(n * step)), cut = map[ids[n1 - 1]];
+      ids.forEach(function (id, i) {
+        out[id] = (rank ? map[id] <= cut : map[id] >= cut) ? 1 : Math.max(2, Math.min(g.CONFIG.TIER_MAX, Math.floor(i / (n * step)) + 1));
+      });
+    });
     return out;
+  };
+  App.topIds = function (sc, groupOf) { var t = App.tiers(sc, groupOf), out = {}; Object.keys(t).forEach(function (id) { if (t[id] === 1) out[id] = 1; }); return out; };
+  // 学力を比べる組：その年度の組と男女
+  App.scoreGroup = function (d, y) {
+    var at = {}; y.rows.forEach(function (r) { var s = d.kids[r.id]; at[r.id] = r.cls + ':' + (s && s.male ? 'm' : 'f'); });
+    return function (id) { return at[id]; };
   };
   App.applyScores = function (d) {
     d.scores = d.scores || {};
     (d.years || []).forEach(function (y) {
-      var top = App.topIds(d.scores[y.fy]);
+      var tier = App.tiers(d.scores[y.fy], App.scoreGroup(d, y)), top = {};
+      Object.keys(tier).forEach(function (id) { if (tier[id] === 1) top[id] = 1; });
       y.rows.forEach(function (r) {
         var a = r.a; if (!('k7m' in a)) a.k7m = a.k7 | 0;
+        if (tier[r.id]) a.tier = tier[r.id]; else delete a.tier; // 画面の中だけの値（保存しない）
         if (top[r.id] && !a.k7m) { a.k7 = 1; a.k7s = 1; } else { a.k7 = a.k7m; delete a.k7s; }
       });
     });
@@ -2863,12 +2930,15 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(at.label) + '" style="max-width:520px"><h2>' + esc(s.name) + 'の' + esc(at.label) + '</h2>' +
           '<div class="lvpick">' + opts.map(function (o) { return '<button type="button" class="lvopt" data-lvset="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '"><span class="ic">' + o[1] + '</span><span>' + esc(o[2]) + '</span></button>'; }).join('') + '</div>' +
-          (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? 'クラス分けテストの点数で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数の上位にも「賢い」が付きます。') +
-            '<div style="margin-top:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button></div></div>' : '') +
+          (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? '点数か順位で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数か学力の順位の上位にも「賢い」が付きます。') +
+            '<div style="margin-top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button>' +
+            '<button type="button" class="btn primary" data-rank="1">学力の順位を入力</button></div>' +
+            '<p class="note">「賢い」は、点数と順位のうち、最後に保存した方の上位で決めます' + (D().scores[R.fy] ? '（今は' + (D().scores[R.fy].use === 'rank' ? '順位' : '点数') + '）' : '') + '。</p></div>' : '') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
         if (t.closest('[data-score]')) { App.closeDlg(); scoreDialog(Y); return true; }
+        if (t.closest('[data-rank]')) { App.closeDlg(); rankDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
         if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }); return true; }
@@ -2917,19 +2987,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // クラス分けテストの点数：出席番号順の表に手で入れるか、Excel などの列（点数だけ、または 番号・名前・点数）を貼る。
-  // 満点と上位の割合も決める。学年で上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
+  // 満点と上位の割合も決める。組の中の男女ごとに、上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
   function scoreDialog(Y) {
     var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
     var F = { max: sc0.max || C.SCORE_DEF.max, top: sc0.top || C.SCORE_DEF.top, s: Object.assign({}, sc0.s || {}) };
     var rows = Y.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
-    var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }); };
+    var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }, App.scoreGroup(d, Y)); }; // 組の中の男女ごとの上位
     App.openDlg({
       noEnter: true, focus: 'scPaste',
       html: function () {
         var tp = tops(), n = Object.keys(F.s).length;
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="クラス分けテストの点数" style="max-width:760px"><h2>クラス分けテストの点数（' + fy + '年度 ' + grade + '年）</h2>' +
           '<div class="scset"><label>満点 <input type="number" id="scMax" min="1" max="10000" value="' + F.max + '"> 点</label>' +
-          '<label>学年で上位 <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％を「賢い」にする</label>' +
+          '<label>組の男女ごとに上から <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」。2段から下は印なしで、クラス分けで組ごとにそろえる）</label>' +
           '<span class="note">入力 ' + n + '人・上位 ' + Object.keys(tp).length + '人（同点は含める）</span></div>' +
           '<label class="ctxl">まとめて貼る（Excel などから。1行に1人：点数だけなら下の表の順、または「組・番号・点数」「名前・点数」）<textarea id="scPaste" rows="3" placeholder="例）1	1	85"></textarea></label>' +
           '<div class="acts" style="margin-top:4px;justify-content:flex-start"><button type="button" class="btn" data-scpaste="1">貼った値を表に入れる</button></div>' +
@@ -2961,27 +3031,131 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return true;
       },
       onOk: function () {
-        var v = { max: F.max, top: F.top, s: F.s };
+        var v = { max: F.max, top: F.top, s: F.s, r: sc0.r || {}, use: 'score' }; // 順位は残す。この窓で保存したら点数で決める
         d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
         App.save(function () { return App.pf().setScores(fy, grade, v); });
       }
     });
   }
 
+  // 学力の順位：組の中の男女ごと（1組の男子・1組の女子…）に、上から1位・2位…の並び。上の切り替えで組と男女を選ぶ。
+  // 順位の数字を打つか、名前をドラッグして入れ替える（指・ペンでも動く）。
+  // 上位の割合（点数と共用）の線より上の児童に「賢い」が付く。保存すると、点数ではなく順位で決める
+  function rankDialog(Y) {
+    var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
+    var F = { top: sc0.top || C.SCORE_DEF.top };
+    var r0 = sc0.r || {}, s0 = sc0.s || {}, grp = App.scoreGroup(d, Y), byId = {};
+    Y.rows.forEach(function (r) { byId[r.id] = r; });
+    // 組ごと・男女ごとの並び。始めは 前の順位 → 点数の高い順 → 番号
+    var G = {}, keys = [];
+    Y.rows.slice().sort(function (a, b) {
+      var ra = r0[a.id] || 1e9, rb = r0[b.id] || 1e9; if (ra !== rb) return ra - rb;
+      var sa = s0[a.id] == null ? -1 : s0[a.id], sb = s0[b.id] == null ? -1 : s0[b.id]; if (sa !== sb) return sb - sa;
+      return a.no - b.no;
+    }).forEach(function (r) { var k = grp(r.id); if (!G[k]) { G[k] = []; keys.push(k); } G[k].push(r.id); });
+    keys.sort(function (a, b) { var p = a.split(':'), q = b.split(':'); return (+p[0] - +q[0]) || (p[1] === 'm' ? -1 : 1); });
+    var cur = keys.filter(function (k) { return +k.split(':')[0] === (R.scope === 'cls' ? R.cls : 0); })[0] || keys[0];
+    var label = function (k) { var p = k.split(':'); return (+p[0] + 1) + '組・' + (p[1] === 'm' ? '男子' : '女子'); };
+    var order = function () { return G[cur] || []; };
+    var cut = function () { return Math.max(1, Math.round(order().length * F.top)); };
+    // 段：1段は上位の割合まで、2段から下は並びの位置で刻む（名簿の計算 App.tiers と同じ決め方）
+    var tierAt = function (i) { var n = order().length; return i < cut() ? 1 : Math.max(2, Math.min(C.TIER_MAX, Math.floor(i / (n * F.top)) + 1)); };
+    var row = function (id, i) {
+      var r = byId[id], s = d.kids[id], t = tierAt(i), last = i === order().length - 1 || tierAt(i + 1) !== t;
+      return '<div class="rkrow' + (t === 1 ? ' top' : '') + (i === cut() - 1 ? ' cut' : last ? ' tierend' : '') + '" data-rk="' + id + '">' +
+        '<span class="rkt">' + t + '段</span>' +
+        '<input type="number" class="rkn" data-rkn="' + id + '" min="1" max="' + order().length + '" value="' + (i + 1) + '" aria-label="順位">' +
+        '<span class="rkh" data-rkh="' + id + '" title="ドラッグで入れ替える">⠿ ' + esc(s.name) + '<small>' + (r.cls + 1) + '-' + r.no + '</small></span>' +
+        (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') + '</div>';
+    };
+    var list = function () { return order().map(row).join(''); };
+    var redraw = function () { var el = App.$('rklist'); if (el) { var st = el.scrollTop; el.innerHTML = list(); el.scrollTop = st; } var n = App.$('rkcnt'); if (n) n.textContent = label(cur) + '：上位 ' + cut() + '人に「賢い」'; };
+    var moveTo = function (id, pos) { var o = order(), i = o.indexOf(id); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, pos)), 0, id); };
+    App.openDlg({
+      noEnter: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力の順位" style="max-width:600px"><h2>学力の順位（' + fy + '年度 ' + grade + '年）</h2>' +
+          '<div class="rbar rktabs">' + keys.map(function (k) { return '<button type="button" class="tab" data-rkg="' + k + '" aria-selected="' + (k === cur) + '"><span class="band" style="background:' + App.classColor(+k.split(':')[0]).c + '"></span>' + label(k) + '（' + G[k].length + '）</button>'; }).join('') + '</div>' +
+          '<div class="scset"><label>組の男女ごとに上から <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」）</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
+          (Object.keys(s0).length ? '<button type="button" class="btn" data-rkscore="1">この組・男女を点数の順に並べ直す</button>' : '') + '</div>' +
+          '<p class="note">学力は組の中の男女ごとに比べます。順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
+          '<div class="rklist" id="rklist">' + list() + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存（全部の組・男女を順位で決める）</button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'rkTop') { var p = +t.value; if (p >= 1 && p <= 99) { F.top = p / 100; redraw(); } } },
+      click: function (t) {
+        var b = t.closest('[data-rkg]'); if (b) { cur = b.dataset.rkg; App.refreshDlg(); return true; }
+        if (t.closest('[data-rkscore]')) { order().sort(function (a, c) { var sa = s0[a] == null ? -1 : s0[a], sc = s0[c] == null ? -1 : s0[c]; return sc - sa; }); redraw(); return true; }
+        return false;
+      },
+      onOk: function () {
+        var r = {}; keys.forEach(function (k) { G[k].forEach(function (id, i) { r[id] = i + 1; }); }); // 順位は組・男女の中での順位
+        var v = { max: sc0.max || C.SCORE_DEF.max, top: F.top, s: s0, r: r, use: 'rank' };
+        d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
+        App.save(function () { return App.pf().setScores(fy, grade, v); });
+      }
+    });
+    // 順位の数字：打ち終えたら（Enter か欄を出た時）その位置へ
+    var commit = function (t) { var n = Math.floor(+t.value); if (n >= 1) { moveTo(t.dataset.rkn, n - 1); redraw(); var el = document.querySelector('[data-rkn="' + t.dataset.rkn + '"]'); if (el) el.focus(); } };
+    var layer = App.$('layer'), H = {};
+    H.change = function (e) { if (e.target.dataset && e.target.dataset.rkn) commit(e.target); };
+    H.keydown = function (e) { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.rkn) { e.preventDefault(); e.target.blur(); } };
+    // ドラッグ：⠿ を押して上下に動かすと、指の下の行の位置へ入れる（動かすたびに並びを描き直す）
+    var drag = null;
+    H.pointerdown = function (e) {
+      var h = e.target.closest && e.target.closest('[data-rkh]'); if (!h) return;
+      e.preventDefault(); drag = h.dataset.rkh; layer.setPointerCapture && layer.setPointerCapture(e.pointerId);
+      var rw = h.closest('.rkrow'); if (rw) rw.classList.add('drag');
+    };
+    H.pointermove = function (e) {
+      if (!drag) return;
+      var el = document.elementFromPoint(e.clientX, e.clientY), rw = el && el.closest && el.closest('[data-rk]'), box = App.$('rklist');
+      if (box) { var q = box.getBoundingClientRect(); if (e.clientY < q.top + 24) box.scrollTop -= 12; else if (e.clientY > q.bottom - 24) box.scrollTop += 12; } // 端に寄せると流す
+      if (!rw || rw.dataset.rk === drag) return;
+      moveTo(drag, order().indexOf(rw.dataset.rk)); redraw();
+      var me = document.querySelector('[data-rk="' + drag + '"]'); if (me) me.classList.add('drag');
+    };
+    H.pointerup = H.pointercancel = function () { if (!drag) return; drag = null; redraw(); };
+    Object.keys(H).forEach(function (k) { layer.addEventListener(k, H[k]); });
+    // 窓を閉じたら外す（開くたびに増やさない）
+    var dlg = App.dlg, prevClose = dlg.onClose;
+    dlg.onClose = function () { Object.keys(H).forEach(function (k) { layer.removeEventListener(k, H[k]); }); if (prevClose) prevClose(); };
+  }
+
   function memoDialog(Y, r) {
-    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade, esc = App.esc;
+    var SB = C.normSibs(r.a.sib || []), memoNow = r.a.memo || '';
+    var sibRows = function () {
+      return SB.map(function (x, i) {
+        return '<div class="sibrow"><select data-sbr="' + i + '">' + C.SIB_REL.map(function (q) { return '<option' + (q === x.r ? ' selected' : '') + '>' + q + '</option>'; }).join('') + '</select>' +
+          '<select data-sbg="' + i + '">' + C.SIB_GRADES.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === x.g ? ' selected' : '') + '>' + q[1] + '</option>'; }).join('') + '</select>' +
+          '<input data-sbn="' + i + '" value="' + esc(x.n) + '" maxlength="20" placeholder="名前（なくてよい）">' +
+          '<button type="button" class="btn ib" data-sbdel="' + i + '" aria-label="この兄弟を消す">✕</button></div>';
+      }).join('') || '<div class="note">兄弟はいません（いれば「＋兄弟を足す」）</div>';
+    };
     App.openDlg({
       focus: 'mtx',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
           '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
-          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(memoNow) + '</textarea>' +
           // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
           '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
-          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
+          '<div class="lab" style="margin-top:10px">兄弟（この学校にいない兄弟も）</div><div id="sibs">' + sibRows() + '</div>' +
+          '<button type="button" class="btn" data-sbadd="1">＋兄弟を足す</button>' +
+          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります（兄弟の学年は1つ上がります）。個人票の印刷では、備考の欄の下に家庭環境と兄弟をまとめて出します。</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
+      click: function (t) {
+        var b;
+        if (t.closest('[data-sbadd]')) { memoNow = App.$('mtx').value; SB.push({ r: '兄', g: Math.min(10, grade + 1), n: '' }); App.refreshDlg(); return true; }
+        if ((b = t.closest('[data-sbdel]'))) { memoNow = App.$('mtx').value; SB.splice(+b.dataset.sbdel, 1); App.refreshDlg(); return true; }
+        return false;
+      },
       input: function (t) {
+        if (t.dataset.sbr != null) { SB[+t.dataset.sbr].r = t.value; return; }
+        if (t.dataset.sbg != null) { SB[+t.dataset.sbg].g = +t.value; return; }
+        if (t.dataset.sbn != null) { SB[+t.dataset.sbn].n = t.value; return; }
         if (!t.dataset.mpick || !t.value) return;
         var ta = App.$('mtx'), w = t.value, a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
         var before = v.slice(0, a), after = v.slice(b), sep = before && !/[、。\s]$/.test(before) ? '、' : '';
@@ -2989,10 +3163,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         var pos = Math.min(400, (before + sep + w).length); ta.focus(); ta.setSelectionRange(pos, pos);
       },
       onOk: function () {
-        var text = App.$('mtx').value.trim().slice(0, 400);
+        var text = App.$('mtx').value.trim().slice(0, 400), sb = C.normSibs(SB), changedSib = JSON.stringify(sb) !== JSON.stringify(C.normSibs(r.a.sib || []));
         if (text) r.a.memo = text; else delete r.a.memo;
+        if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
   }
@@ -3142,7 +3318,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
-        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
+        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo || r.a.sib ? ' title="' + esc((r.a.memo || '') + (r.a.sib ? '　兄弟：' + C.sibText(r.a.sib) : '')) + '"' : '') + '><div>' + esc(r.a.memo || '') + (r.a.sib ? ' <small class="msib">兄弟：' + esc(C.sibText(r.a.sib)) + '</small>' : '') + '</div></td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';
@@ -3450,6 +3626,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
   function D() { return App.st.data; }
   function esc(s) { return App.esc(s); }
+  // 事案の種別の名前。読みにくい種別（虞犯）は漢字の上にふりがなを付ける
+  function typeHtml(t) { var r = (C.TYPE_RUBY || {})[t]; return r ? '<ruby>' + esc(t) + '<rt>' + esc(r) + '</rt></ruby>' : esc(t); }
+  function typesHtml(type) { return typesOf(type).map(typeHtml).join('・') || esc(type); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0] || (ALLINC || []).filter(function (x) { return x.id === id; })[0]; }
   function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }
@@ -3540,7 +3719,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="事案の検索の設定" style="max-width:460px"><h2>事案の検索</h2>' +
           '<div class="lab">探す学年</div><div class="lvs"><button class="lv" data-hga="1" aria-pressed="' + (gs.length === 6) + '">全学年</button>' + [1, 2, 3, 4, 5, 6].map(function (g0) { return '<button class="lv" data-hg="' + g0 + '" aria-pressed="' + (gs.indexOf(g0) >= 0) + '">' + g0 + '年</button>'; }).join('') + '</div>' +
           '<p class="note">学年は、関わった児童の学年で選びます。ほかの学年を選ぶと、全校の事案を読み込みます。</p>' +
-          '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + esc(t) + '</button>'; }).join('') + '</div>' +
+          '<div class="lab">種別（選ばなければすべて）</div><div class="lvs">' + C.INCIDENT_TYPES.map(function (t) { return '<button class="lv" data-hf="types:' + esc(t) + '" aria-pressed="' + ((HOME.types || []).indexOf(t) >= 0) + '">' + (TYPE_IC[t] || '') + typeHtml(t) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">いじめの段階（選ぶと、いじめの事案だけに絞る）</div><div class="lvs">' + C.BULLY_LEVELS.map(function (b) { return '<button class="lv" data-hf="levels:' + b.k + '" aria-pressed="' + ((HOME.levels || []).indexOf(b.k) >= 0) + '">' + esc(b.label) + '</button>'; }).join('') + '</div>' +
           '<div class="lab">対応の状況（選ばなければすべて）</div><div class="lvs">' + C.STATUS.map(function (s0) { return '<button class="lv" data-hf="status:' + s0.k + '" aria-pressed="' + ((HOME.status || []).indexOf(s0.k) >= 0) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') + '</div>' +
           '<div class="acts"><button class="btn" data-hgr="1">' + D().grade + '年だけ・絞り込みなしに戻す</button><button class="btn primary" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
@@ -3639,6 +3818,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     '物損': SVG('<path d="M4 6h7l-2 5 3 2-1 5H4zM14 6h6v12h-7l1-4-3-2z"/>'),
     'いじめ': SVG('<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17v.5"/>'),
     'けが': SVG('<rect x="3" y="8" width="18" height="8" rx="4" transform="rotate(-35 12 12)"/><path d="M11 11l2 2M13 11l-2 2"/>'),
+    '虞犯': SVG('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M12 8v5M12 16v.5"/>'), // 盾に「！」（非行のおそれ）
     'その他': SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12h.5M12 12h.5M16 12h.5"/>')
   };
   var ST_IC = {
@@ -3668,7 +3848,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t === 'いじめ') {
         var lv = C.BULLY_LEVELS.filter(function (b) { return b.k === levelOf(x); })[0];
         h += '<span class="itg ib2" style="background:' + lv.c + ';color:' + lv.t + ';border-color:' + lv.c + '">' + TYPE_IC['いじめ'] + 'いじめ・' + esc(lv.label) + '</span>';
-      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + esc(t) + '</span>';
+      } else h += '<span class="itg">' + (TYPE_IC[t] || TYPE_IC['その他']) + typeHtml(t) + '</span>';
     });
     var st = C.STATUS.filter(function (s0) { return s0.k === rp.status; })[0] || C.STATUS[0];
     h += '<span class="itg ist st-' + st.k + '">' + ST_IC[st.k] + esc(st.label) + '</span>';
@@ -3710,7 +3890,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function viewHtml(x) {
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
-    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + esc(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
+    var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + typesHtml(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
       '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
@@ -3817,7 +3997,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function formHtml() {
     var f = I.form, rp = f.rep, b = isBully(f.type), ts = typesOf(f.type);
     var h = '<form class="form iform" id="incForm"><h2>' + (f.edit ? '事案を直す' : '事案を登録') + '<span class="idraft" id="idraft"></span></h2>' +
-      '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + esc(t) + '</button>'; }).join('') + '</div>' +
+      '<div class="lab">事案の種別（複数選べます）</div><div class="itypes">' + C.INCIDENT_TYPES.map(function (t) { return '<button type="button" class="lv" data-ty="' + esc(t) + '" aria-pressed="' + (ts.indexOf(t) >= 0) + '">' + typeHtml(t) + '</button>'; }).join('') + '</div>' +
       '<label>関係する児童' + (onlyDamage(f.type) ? '' : 'と関係図（矢印＝加害）') + '</label><div class="iq"><span class="iqw"><input id="fQ" value="" placeholder="名前・よみで児童を足す（' + esc(srchGrades().map(function (g0) { return g0 + '年'; }).join('・')) + '）" autocomplete="off"><button type="button" class="iqc" id="fQset" title="検索の設定（探す学年）" aria-label="検索の設定"></button></span>' +
       (onlyDamage(f.type) ? '' : '<button type="button" class="btn" id="fUnk" title="誰か分からない児童（加害者が不明など）のカードを足す">＋ ？（不明の児童）</button>') + '</div><div id="fSugg"></div>';
     if (onlyDamage(f.type)) h += '<div class="ikids">' + f.dg.d.nodes.map(function (n) { return '<span class="chip">' + esc(kidName(n.id)) + '<button type="button" data-kdel="' + n.id + '" aria-label="外す">×</button></span>'; }).join('') + '</div>';
@@ -4840,6 +5020,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       rel[q.i][q.t].push(q.j); rel[q.j][q.t].push(q.i);
     });
     var side = C.ATTRS.filter(function (at) { return at.side; });
+    // 備考から家庭環境の言葉を抜いた残り（家庭環境は下の行にまとめて出すので、二度書かない）
+    var memoRest = function (m) { var t = String(m || ''); C.familyWords(t).forEach(function (w) { t = t.split(w).join(''); }); return t.replace(/^[、。\s]+|[、。\s]+$/g, '').replace(/([、。])[、。\s]+/g, '$1'); };
     var card = function (i) {
       var s = kids[i], a = s.a || {}, oc = App.classColor(s.old);
       // 項目ごとに決まった位置に出す（無い項目は見えないアイコンで場所を取る）
@@ -4847,13 +5029,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var who = function (js) { return js.map(function (j) { return esc(kids[j].name); }).join('・'); };
       var bot = (rel[i].far.length ? '<div><b>離</b> ' + who(rel[i].far) + '</div>' : '') + (rel[i].near.length ? '<div><b>つ</b> ' + who(rel[i].near) + '</div>' : '');
       var top = side.filter(function (at) { return a[at.k] | 0; }).map(function (at) { return '<div>' + App.mark(at, 1) + ' ' + esc(a[at.k + '_t'] || '') + '</div>'; }).join('') +
-        (a.memo ? '<div><b>備考</b> ' + esc(a.memo) + '</div>' : '');
+        (memoRest(a.memo) ? '<div><b>備考</b> ' + esc(memoRest(a.memo)) + '</div>' : '') +
+        // 備考の欄のいちばん下：家庭環境（備考の定型の言葉から）と兄弟（備考の窓の兄弟から）。前の右端の「家庭環境」の枠をここにまとめた
+        (C.familyWords(a.memo).length || (a.sib && a.sib.length) ? '<div class="pc-famline">' + (C.familyWords(a.memo).length ? '<b>家庭</b> ' + esc(C.familyWords(a.memo).join('・')) + '　' : '') + (a.sib && a.sib.length ? '<b>兄弟</b> ' + esc(C.sibText(a.sib)) : '') + '</div>' : '');
       return '<div class="pc ' + (s.male ? 'm' : 'f') + '"><div class="pc-in">' +
         '<div class="pc-band" style="background:' + oc.c + '"></div>' +
         '<div class="pc-l"><div class="pc-ic">' + ic(true) + (a.sp ? '<span class="pc-sp">特支</span>' : '') + '</div><div class="pc-kana">' + esc(s.kana || '') + '</div><div class="pc-name">' + esc(s.name) + '</div>' +
         '<div class="pc-ic">' + ic(false) + '<span class="pc-ji">' + App.incBox(S.ji[i], S.jv[i], '', true) + '</span>' + '</div></div>' +
         '<div class="pc-r"><div class="pc-t fit">' + top + '</div><div class="pc-b fit">' + bot + '</div></div>' +
-        '<div class="pc-fam"><div>家庭環境</div><div>父子・母子</div><div>生保・就援</div><div>兄弟（　 年）</div></div>' +
         '</div></div>';
     };
     var pages = [], total = 0;

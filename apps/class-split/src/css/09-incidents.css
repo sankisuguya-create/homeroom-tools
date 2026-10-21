@@ -125,3 +125,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
 .itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
 .irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}
+/* ふりがな（虞犯）：小さく、行の高さを変えない */
+.itg ruby rt,.lv ruby rt,.meta ruby rt{font-size:.55em;line-height:1}
+.itg ruby{ruby-position:over}

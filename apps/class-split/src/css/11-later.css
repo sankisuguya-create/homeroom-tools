@@ -65,3 +65,15 @@
 .idate input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:auto;height:auto;margin:0;padding:0;opacity:0;cursor:pointer}
 #toast.stay{border:2px solid #B00020}
 #toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
+/* 学力の順位の窓：1行に1人。太い線より上が「賢い」。⠿ を押して上下に動かす */
+.rklist{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:6px;touch-action:none}
+.rkrow{display:flex;align-items:center;gap:8px;padding:3px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+.rkrow.top{background:#E3F4EA}
+.rkrow.cut{border-bottom:3px solid #009E73}
+.rkrow.drag{outline:2px solid var(--link);position:relative;z-index:1}
+.rkn{width:4.2em}
+.rkh{flex:1;cursor:grab;user-select:none;padding:4px 2px}
+.rkh small{margin-left:8px;color:var(--sub)}
+.rkrow.tierend{border-bottom:2px solid #9AA3AB}
+.rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
+.rkrow.top .rkt{color:#007A57;font-weight:700}

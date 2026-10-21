@@ -44,6 +44,11 @@
     C.AREAS.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
+    // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える
+    var tierMax = 0; P.kids.forEach(function (s) { var t = s.a && s.a.tier | 0; if (t > tierMax) tierMax = t; });
+    if ((gen.w.acad | 0) > 0) for (var tr = 2; tr <= tierMax; tr++) (function (tr) {
+      MET.push({ k: 'acad' + tr, grp: 'acad', label: '学力' + tr + '段', w: C.LEVEL_W[gen.w.acad | 0], tol: 1, v: function (s) { return (s.a && s.a.tier | 0) === tr ? 1 : 0; } });
+    })(tr);
     // ＋（程度2）：＋はアイコン2つ分ではなく、担任の負担が明確に増える印。項目ごとと、4項目のどれかが＋の児童の人数。必ず守る条件で各組の上限（均等割の切り上げ）を超えさせない
     var heavyAt = C.ATTRS.filter(function (at) { return at.heavy; });
     heavyAt.forEach(function (at) {
@@ -339,6 +344,7 @@
       C.ATTRS.forEach(function (at) { a[at.k] = s.a[at.k] | 0; if ((at.side || at.ctx) && s.a[at.k + '_t']) a[at.k + '_t'] = s.a[at.k + '_t']; if (at.ctx && s.a[at.k + '_i']) a[at.k + '_i'] = s.a[at.k + '_i'].slice(); });
       if (s.a.sp) a.sp = 1;
       if (s.a.memo) a.memo = s.a.memo;
+      if (s.a.sib && s.a.sib.length) a.sib = C.nextSibs(s.a.sib); // 兄弟の学年は1つ上げて写す
       return { id: s.id, cls: num[i].cls, no: num[i].no, a: a };
     });
   }

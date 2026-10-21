@@ -27,6 +27,9 @@
   };
   function D() { return App.st.data; }
   function esc(s) { return App.esc(s); }
+  // 事案の種別の名前。読みにくい種別（虞犯）は漢字の上にふりがなを付ける
+  function typeHtml(t) { var r = (C.TYPE_RUBY || {})[t]; return r ? '<ruby>' + esc(t) + '<rt>' + esc(r) + '</rt></ruby>' : esc(t); }
+  function typesHtml(type) { return typesOf(type).map(typeHtml).join('・') || esc(type); }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
   function incOf(id) { return D().incidents.filter(function (x) { return x.id === id; })[0] || (ALLINC || []).filter(function (x) { return x.id === id; })[0]; }
   function kidName(id) { if (E.isUnknown(id)) return '（不明の児童）'; var s = D().kids[id]; return s ? s.name : id; }

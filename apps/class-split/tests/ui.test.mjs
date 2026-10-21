@@ -271,6 +271,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.selectOption('#isort', 'new');
   ok(await p.locator('.icard').count() === n0, 'この学年だけに戻せる');
   await p.click('#iadd2nd');
+  ok(await p.locator('[data-ty="虞犯"] ruby rt', { hasText: 'ぐはん' }).count() === 1, '事案の種別に「虞犯」（ふりがな付き）');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
@@ -348,12 +349,15 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const autoBefore = await p.locator('td.cell.auto[data-k="k7"]').count();
   await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-score]'); await p.waitForSelector('.sctab');
   const n = await p.locator('.scin').count();
-  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String(i)).join('\n')); await p.click('[data-scpaste]');
+  await p.fill('#scPaste', Array.from({ length: n }, (_, i) => String((i * 37) % 101)).join('\n')); await p.click('[data-scpaste]'); // 点数は満点（100）を超えないように
   await p.fill('#scTop', '10'); await p.locator('#scTop').dispatchEvent('input');
   await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('.sctab'));
   const nAuto = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0]; return y.rows.filter(r => r.a.k7s).length; });
-  ok(nAuto >= 1 && nAuto <= Math.round(n * 0.1), `点数の上位1割に「賢い」が付く（${nAuto}人／${n}人。手動で付いている児童は数えない）`);
+  const per = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], g = {}, top = App.topIds(d.scores[d.fy], App.scoreGroup(d, y)); y.rows.forEach(r => { const k = r.cls + (d.kids[r.id].male ? 'm' : 'f'); g[k] = g[k] || { n: 0, t: 0 }; g[k].n++; if (top[r.id]) g[k].t++; }); return Object.values(g); });
+  ok(nAuto >= 1 && per.every(x => x.t >= 1 && x.t <= Math.max(1, Math.round(x.n * 0.1)) + 1), `点数の上位1割は、組の中の男女ごとに付く（${per.length}組×男女、点数で付いた${nAuto}人）`);
   ok(await p.locator('td.cell[data-k="k1"] .mk, td.cell[data-k="k1"] svg').count() === k1Before, '学力しんどさは点数と連動しない');
+  const tiers = await p.evaluate(() => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], c = {}; y.rows.forEach(r => { if (r.a.tier) c[r.a.tier] = (c[r.a.tier] || 0) + 1; }); const P = { kids: y.rows.map(r => ({ id: r.id, male: d.kids[r.id].male, old: r.cls, a: r.a, area: '' })), pairs: [], inc: [], nc: 4 }; return { c, met: Engine.prepare(P, Engine.defaultGen()).MET.filter(m => m.grp === 'acad').length }; });
+  ok(tiers.c[1] > 0 && tiers.c[2] > 0 && tiers.c[5] > 0 && tiers.met >= 4, `点数を10％刻みの段に分け、2段から下もクラス分けでそろえる（段ごとの人数 ${JSON.stringify(tiers.c)}・そろえる段 ${tiers.met}）`);
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('#okbtn');
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
   await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
@@ -416,6 +420,42 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#ptxt', '組\t番号\t児童ID\t名前\tよみ\t性別\n1\t40\t99990001\t新入 ハナ\tしんにゅう はな\t女');
   await p.click('#okbtn'); await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
   ok(/追加1人/.test(await p.textContent('#toast')), '貼った児童が名簿に登録される');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 学力の順位：数字を打つとその位置へ、名前をドラッグして入れ替え。保存すると順位の上位に「賢い」
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="2"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k7"]');
+  const td = p.locator('td.cell[data-k="k7"]').first(), bb = await td.boundingBox();
+  await p.mouse.click(bb.x + bb.width - 4, bb.y + bb.height - 4); await p.click('[data-rank]'); await p.waitForSelector('#rklist');
+  const ids = () => p.locator('[data-rk]').evaluateAll(es => es.map(e => e.dataset.rk));
+  const n = (await ids()).length, last = (await ids())[n - 1];
+  await p.fill('[data-rkn="' + last + '"]', '1'); await p.keyboard.press('Enter');
+  ok((await ids())[0] === last, '順位の数字を打つと、その位置へ動く');
+  const before = await ids(), h1 = await p.locator('[data-rkh="' + before[1] + '"]').boundingBox(), h0 = await p.locator('[data-rk="' + before[0] + '"]').boundingBox();
+  await p.mouse.move(h1.x + 10, h1.y + h1.height / 2); await p.mouse.down(); await p.mouse.move(h1.x + 10, h0.y + 3, { steps: 6 }); await p.mouse.up();
+  const after = await ids();
+  ok(after[0] === before[1] && after[1] === before[0], '名前をドラッグして入れ替えられる');
+  await p.fill('#rkTop', '10'); await p.locator('#rkTop').dispatchEvent('input');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.querySelector('#rklist'));
+  const res = await p.evaluate(top => { const d = App.st.data, y = d.years.filter(y => y.fy === d.fy)[0], sc = d.scores[d.fy]; return { use: sc.use, first: sc.r[top], auto: y.rows.filter(r => r.a.k7s).map(r => r.id) }; }, after[0]);
+  ok(res.use === 'rank' && res.first === 1 && (res.auto.includes(after[0]) || (await p.evaluate(id => App.st.data.years.filter(y => y.fy === App.st.data.fy)[0].rows.find(r => r.id === id).a.k7m, after[0]))), '保存すると順位で決め、1位の児童は「賢い」');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 備考の窓：兄弟を足して保存すると、名簿の備考の欄に出る
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 900 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.memo.cc');
+  await p.locator('td.memo.cc').nth(1).click(); await p.waitForSelector('#mtx');
+  await p.click('[data-sbadd]'); await p.selectOption('[data-sbr="0"]', '姉'); await p.selectOption('[data-sbg="0"]', '7'); await p.fill('[data-sbn="0"]', 'ハナ');
+  await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.getElementById('mtx'));
+  ok(await p.locator('td.memo .msib', { hasText: '姉（中1）ハナ' }).count() === 1, '備考の窓で兄弟を足すと、名簿の備考の欄に出る');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

@@ -8,7 +8,8 @@
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
     // クラス分けテストの点数：満点と、学年で上位何割を「賢い」にするかの既定（年度・学年ごとに直せる）
-    SCORE_DEF: { max: 100, top: 0.1 },
+    SCORE_DEF: { max: 100, top: 0.1 }, // top＝段の刻み（1段＝賢い）
+    TIER_MAX: 10, // 段は10段まで（刻みが細かくても、下の方はまとめる）
     // 備考の定型の言葉（選ぶと備考の入力欄に入る）
     MEMO_PICKS: [
       { label: '発達特性', items: ['自閉症', '自閉傾向', 'ADHD傾向', 'LD傾向', '感覚過敏', 'こだわりが強い', '切り替えが苦手'] },
@@ -38,7 +39,8 @@
       { k: 'sex',  label: '男女',   s: '男女', w: 3 },
       { k: 'old',  label: '旧学級', s: '旧',   w: 3 },
       { k: 'area', label: '地区',   s: '地区', w: 0 },
-      { k: 'inc',  label: '事案数', s: '事案', w: 1 }  // 0にすると案を作る条件に入れない
+      { k: 'inc',  label: '事案数', s: '事案', w: 1 },  // 0にすると案を作る条件に入れない
+      { k: 'acad', label: '学力の段', s: '段', w: 2 }   // 点数・順位の2段から下（1段＝賢いは「賢い」の重み）を組ごとにそろえる
     ],
     // 段階 → 計算に使う重み
     LEVEL_W: [0, 1, 2.5, 5, 5],
@@ -62,7 +64,8 @@
       { c: '#2E9E4F', t: '#FFFFFF', l: '#E2F3E7' }
     ],
     AREAS: ['東', '西', '南', '北'],
-    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', 'その他'],
+    INCIDENT_TYPES: ['対人', '物損', 'いじめ', 'けが', '虞犯', 'その他'],
+    TYPE_RUBY: { '虞犯': 'ぐはん' }, // 事案の種別のふりがな（画面で漢字の上に出す）
     // 事案の記録の時間帯（学校の時程）。設定で並びと名前を変えられる
     TIME_SLOTS: ['朝休み', '1校時', '2校時', '中休み', '3校時', '4校時', '給食', '昼休み', '掃除', '5校時', '6校時', '放課後'],
     // 記録の欄の定型文（右の「記入補助」に、選んでいる欄の分を出す。押すかドラッグで入る）
@@ -139,6 +142,25 @@
   };
 
   // 新しい組（クラス分けの枠）の名前。番号は決定の後に別の操作で決める（それまでは A組＝1組 の仮）
+  // 兄弟：[{ r: 続柄, g: 学年（0＝未就学、1〜6、7〜9＝中1〜3、10＝高校以上）, n: 名前（任意） }]。決定で来年度に写す時は学年を1つ上げる
+  CONFIG.SIB_REL = ['兄', '姉', '弟', '妹'];
+  CONFIG.SIB_GRADES = [[0, '未就学'], [1, '1年'], [2, '2年'], [3, '3年'], [4, '4年'], [5, '5年'], [6, '6年'], [7, '中1'], [8, '中2'], [9, '中3'], [10, '高校以上']];
+  CONFIG.normSibs = function (list) {
+    if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
+    return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
+      var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
+      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+    });
+  };
+  CONFIG.sibText = function (list) {
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+  };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
+  CONFIG.familyWords = function (memo) {
+    var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');
+    return grp ? grp.items.filter(function (w) { return m.indexOf(w) >= 0; }) : [];
+  };
   CONFIG.newClass = function (k) { return String.fromCharCode(65 + k) + '組'; };
 
   // 卒業・転出の後に残す年数。既定は5年度（利用者の方針）。事案に関わった児童は、設定にかかわらず5年度は消さない

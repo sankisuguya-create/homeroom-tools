@@ -62,12 +62,15 @@
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(at.label) + '" style="max-width:520px"><h2>' + esc(s.name) + 'の' + esc(at.label) + '</h2>' +
           '<div class="lvpick">' + opts.map(function (o) { return '<button type="button" class="lvopt" data-lvset="' + o[0] + '" aria-pressed="' + (cur === o[0]) + '"><span class="ic">' + o[1] + '</span><span>' + esc(o[2]) + '</span></button>'; }).join('') + '</div>' +
-          (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? 'クラス分けテストの点数で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数の上位にも「賢い」が付きます。') +
-            '<div style="margin-top:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button></div></div>' : '') +
+          (at.k === 'k7' ? '<div class="notebox">' + (r.a.k7s ? '点数か順位で上位なので、「賢い」が付いています（手動の印とは別）。' : '手動の印のほかに、クラス分けテストの点数か学力の順位の上位にも「賢い」が付きます。') +
+            '<div style="margin-top:6px;display:flex;flex-direction:column;align-items:flex-start;gap:6px"><button type="button" class="btn primary" data-score="1">クラス分けテストの点数を入力</button>' +
+            '<button type="button" class="btn primary" data-rank="1">学力の順位を入力</button></div>' +
+            '<p class="note">「賢い」は、点数と順位のうち、最後に保存した方の上位で決めます' + (D().scores[R.fy] ? '（今は' + (D().scores[R.fy].use === 'rank' ? '順位' : '点数') + '）' : '') + '。</p></div>' : '') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
       },
       click: function (t) {
         if (t.closest('[data-score]')) { App.closeDlg(); scoreDialog(Y); return true; }
+        if (t.closest('[data-rank]')) { App.closeDlg(); rankDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
         if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }); return true; }
@@ -116,19 +119,19 @@
   }
 
   // クラス分けテストの点数：出席番号順の表に手で入れるか、Excel などの列（点数だけ、または 番号・名前・点数）を貼る。
-  // 満点と上位の割合も決める。学年で上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
+  // 満点と上位の割合も決める。組の中の男女ごとに、上位の児童に「賢い」が付く（手動の印は消さない。学力しんどさとは連動しない）
   function scoreDialog(Y) {
     var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
     var F = { max: sc0.max || C.SCORE_DEF.max, top: sc0.top || C.SCORE_DEF.top, s: Object.assign({}, sc0.s || {}) };
     var rows = Y.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
-    var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }); };
+    var tops = function () { return App.topIds({ max: F.max, top: F.top, s: F.s }, App.scoreGroup(d, Y)); }; // 組の中の男女ごとの上位
     App.openDlg({
       noEnter: true, focus: 'scPaste',
       html: function () {
         var tp = tops(), n = Object.keys(F.s).length;
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="クラス分けテストの点数" style="max-width:760px"><h2>クラス分けテストの点数（' + fy + '年度 ' + grade + '年）</h2>' +
           '<div class="scset"><label>満点 <input type="number" id="scMax" min="1" max="10000" value="' + F.max + '"> 点</label>' +
-          '<label>学年で上位 <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％を「賢い」にする</label>' +
+          '<label>組の男女ごとに上から <input type="number" id="scTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」。2段から下は印なしで、クラス分けで組ごとにそろえる）</label>' +
           '<span class="note">入力 ' + n + '人・上位 ' + Object.keys(tp).length + '人（同点は含める）</span></div>' +
           '<label class="ctxl">まとめて貼る（Excel などから。1行に1人：点数だけなら下の表の順、または「組・番号・点数」「名前・点数」）<textarea id="scPaste" rows="3" placeholder="例）1	1	85"></textarea></label>' +
           '<div class="acts" style="margin-top:4px;justify-content:flex-start"><button type="button" class="btn" data-scpaste="1">貼った値を表に入れる</button></div>' +
@@ -160,27 +163,131 @@
         return true;
       },
       onOk: function () {
-        var v = { max: F.max, top: F.top, s: F.s };
+        var v = { max: F.max, top: F.top, s: F.s, r: sc0.r || {}, use: 'score' }; // 順位は残す。この窓で保存したら点数で決める
         d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
         App.save(function () { return App.pf().setScores(fy, grade, v); });
       }
     });
   }
 
+  // 学力の順位：組の中の男女ごと（1組の男子・1組の女子…）に、上から1位・2位…の並び。上の切り替えで組と男女を選ぶ。
+  // 順位の数字を打つか、名前をドラッグして入れ替える（指・ペンでも動く）。
+  // 上位の割合（点数と共用）の線より上の児童に「賢い」が付く。保存すると、点数ではなく順位で決める
+  function rankDialog(Y) {
+    var d = D(), fy = R.fy, grade = Y.grade, esc = App.esc, sc0 = d.scores[fy] || {};
+    var F = { top: sc0.top || C.SCORE_DEF.top };
+    var r0 = sc0.r || {}, s0 = sc0.s || {}, grp = App.scoreGroup(d, Y), byId = {};
+    Y.rows.forEach(function (r) { byId[r.id] = r; });
+    // 組ごと・男女ごとの並び。始めは 前の順位 → 点数の高い順 → 番号
+    var G = {}, keys = [];
+    Y.rows.slice().sort(function (a, b) {
+      var ra = r0[a.id] || 1e9, rb = r0[b.id] || 1e9; if (ra !== rb) return ra - rb;
+      var sa = s0[a.id] == null ? -1 : s0[a.id], sb = s0[b.id] == null ? -1 : s0[b.id]; if (sa !== sb) return sb - sa;
+      return a.no - b.no;
+    }).forEach(function (r) { var k = grp(r.id); if (!G[k]) { G[k] = []; keys.push(k); } G[k].push(r.id); });
+    keys.sort(function (a, b) { var p = a.split(':'), q = b.split(':'); return (+p[0] - +q[0]) || (p[1] === 'm' ? -1 : 1); });
+    var cur = keys.filter(function (k) { return +k.split(':')[0] === (R.scope === 'cls' ? R.cls : 0); })[0] || keys[0];
+    var label = function (k) { var p = k.split(':'); return (+p[0] + 1) + '組・' + (p[1] === 'm' ? '男子' : '女子'); };
+    var order = function () { return G[cur] || []; };
+    var cut = function () { return Math.max(1, Math.round(order().length * F.top)); };
+    // 段：1段は上位の割合まで、2段から下は並びの位置で刻む（名簿の計算 App.tiers と同じ決め方）
+    var tierAt = function (i) { var n = order().length; return i < cut() ? 1 : Math.max(2, Math.min(C.TIER_MAX, Math.floor(i / (n * F.top)) + 1)); };
+    var row = function (id, i) {
+      var r = byId[id], s = d.kids[id], t = tierAt(i), last = i === order().length - 1 || tierAt(i + 1) !== t;
+      return '<div class="rkrow' + (t === 1 ? ' top' : '') + (i === cut() - 1 ? ' cut' : last ? ' tierend' : '') + '" data-rk="' + id + '">' +
+        '<span class="rkt">' + t + '段</span>' +
+        '<input type="number" class="rkn" data-rkn="' + id + '" min="1" max="' + order().length + '" value="' + (i + 1) + '" aria-label="順位">' +
+        '<span class="rkh" data-rkh="' + id + '" title="ドラッグで入れ替える">⠿ ' + esc(s.name) + '<small>' + (r.cls + 1) + '-' + r.no + '</small></span>' +
+        (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') + '</div>';
+    };
+    var list = function () { return order().map(row).join(''); };
+    var redraw = function () { var el = App.$('rklist'); if (el) { var st = el.scrollTop; el.innerHTML = list(); el.scrollTop = st; } var n = App.$('rkcnt'); if (n) n.textContent = label(cur) + '：上位 ' + cut() + '人に「賢い」'; };
+    var moveTo = function (id, pos) { var o = order(), i = o.indexOf(id); if (i < 0) return; o.splice(i, 1); o.splice(Math.max(0, Math.min(o.length, pos)), 0, id); };
+    App.openDlg({
+      noEnter: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力の順位" style="max-width:600px"><h2>学力の順位（' + fy + '年度 ' + grade + '年）</h2>' +
+          '<div class="rbar rktabs">' + keys.map(function (k) { return '<button type="button" class="tab" data-rkg="' + k + '" aria-selected="' + (k === cur) + '"><span class="band" style="background:' + App.classColor(+k.split(':')[0]).c + '"></span>' + label(k) + '（' + G[k].length + '）</button>'; }).join('') + '</div>' +
+          '<div class="scset"><label>組の男女ごとに上から <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」）</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
+          (Object.keys(s0).length ? '<button type="button" class="btn" data-rkscore="1">この組・男女を点数の順に並べ直す</button>' : '') + '</div>' +
+          '<p class="note">学力は組の中の男女ごとに比べます。順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
+          '<div class="rklist" id="rklist">' + list() + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存（全部の組・男女を順位で決める）</button></div></div></div>';
+      },
+      input: function (t) { if (t.id === 'rkTop') { var p = +t.value; if (p >= 1 && p <= 99) { F.top = p / 100; redraw(); } } },
+      click: function (t) {
+        var b = t.closest('[data-rkg]'); if (b) { cur = b.dataset.rkg; App.refreshDlg(); return true; }
+        if (t.closest('[data-rkscore]')) { order().sort(function (a, c) { var sa = s0[a] == null ? -1 : s0[a], sc = s0[c] == null ? -1 : s0[c]; return sc - sa; }); redraw(); return true; }
+        return false;
+      },
+      onOk: function () {
+        var r = {}; keys.forEach(function (k) { G[k].forEach(function (id, i) { r[id] = i + 1; }); }); // 順位は組・男女の中での順位
+        var v = { max: sc0.max || C.SCORE_DEF.max, top: F.top, s: s0, r: r, use: 'rank' };
+        d.scores[fy] = v; App.applyScores(d); App.closeDlg(); render();
+        App.save(function () { return App.pf().setScores(fy, grade, v); });
+      }
+    });
+    // 順位の数字：打ち終えたら（Enter か欄を出た時）その位置へ
+    var commit = function (t) { var n = Math.floor(+t.value); if (n >= 1) { moveTo(t.dataset.rkn, n - 1); redraw(); var el = document.querySelector('[data-rkn="' + t.dataset.rkn + '"]'); if (el) el.focus(); } };
+    var layer = App.$('layer'), H = {};
+    H.change = function (e) { if (e.target.dataset && e.target.dataset.rkn) commit(e.target); };
+    H.keydown = function (e) { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.rkn) { e.preventDefault(); e.target.blur(); } };
+    // ドラッグ：⠿ を押して上下に動かすと、指の下の行の位置へ入れる（動かすたびに並びを描き直す）
+    var drag = null;
+    H.pointerdown = function (e) {
+      var h = e.target.closest && e.target.closest('[data-rkh]'); if (!h) return;
+      e.preventDefault(); drag = h.dataset.rkh; layer.setPointerCapture && layer.setPointerCapture(e.pointerId);
+      var rw = h.closest('.rkrow'); if (rw) rw.classList.add('drag');
+    };
+    H.pointermove = function (e) {
+      if (!drag) return;
+      var el = document.elementFromPoint(e.clientX, e.clientY), rw = el && el.closest && el.closest('[data-rk]'), box = App.$('rklist');
+      if (box) { var q = box.getBoundingClientRect(); if (e.clientY < q.top + 24) box.scrollTop -= 12; else if (e.clientY > q.bottom - 24) box.scrollTop += 12; } // 端に寄せると流す
+      if (!rw || rw.dataset.rk === drag) return;
+      moveTo(drag, order().indexOf(rw.dataset.rk)); redraw();
+      var me = document.querySelector('[data-rk="' + drag + '"]'); if (me) me.classList.add('drag');
+    };
+    H.pointerup = H.pointercancel = function () { if (!drag) return; drag = null; redraw(); };
+    Object.keys(H).forEach(function (k) { layer.addEventListener(k, H[k]); });
+    // 窓を閉じたら外す（開くたびに増やさない）
+    var dlg = App.dlg, prevClose = dlg.onClose;
+    dlg.onClose = function () { Object.keys(H).forEach(function (k) { layer.removeEventListener(k, H[k]); }); if (prevClose) prevClose(); };
+  }
+
   function memoDialog(Y, r) {
-    var s = D().kids[r.id], fy = R.fy, grade = Y.grade;
+    var s = D().kids[r.id], fy = R.fy, grade = Y.grade, esc = App.esc;
+    var SB = C.normSibs(r.a.sib || []), memoNow = r.a.memo || '';
+    var sibRows = function () {
+      return SB.map(function (x, i) {
+        return '<div class="sibrow"><select data-sbr="' + i + '">' + C.SIB_REL.map(function (q) { return '<option' + (q === x.r ? ' selected' : '') + '>' + q + '</option>'; }).join('') + '</select>' +
+          '<select data-sbg="' + i + '">' + C.SIB_GRADES.map(function (q) { return '<option value="' + q[0] + '"' + (q[0] === x.g ? ' selected' : '') + '>' + q[1] + '</option>'; }).join('') + '</select>' +
+          '<input data-sbn="' + i + '" value="' + esc(x.n) + '" maxlength="20" placeholder="名前（なくてよい）">' +
+          '<button type="button" class="btn ib" data-sbdel="' + i + '" aria-label="この兄弟を消す">✕</button></div>';
+      }).join('') || '<div class="note">兄弟はいません（いれば「＋兄弟を足す」）</div>';
+    };
     App.openDlg({
       focus: 'mtx',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
           '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
-          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(r.a.memo || '') + '</textarea>' +
+          '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(memoNow) + '</textarea>' +
           // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
           '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
-          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります。</div>' +
+          '<div class="lab" style="margin-top:10px">兄弟（この学校にいない兄弟も）</div><div id="sibs">' + sibRows() + '</div>' +
+          '<button type="button" class="btn" data-sbadd="1">＋兄弟を足す</button>' +
+          '<div class="note">学年の先生全員が見られます。クラス替えを決定すると、来年度の名簿にも写ります（兄弟の学年は1つ上がります）。個人票の印刷では、備考の欄の下に家庭環境と兄弟をまとめて出します。</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
+      click: function (t) {
+        var b;
+        if (t.closest('[data-sbadd]')) { memoNow = App.$('mtx').value; SB.push({ r: '兄', g: Math.min(10, grade + 1), n: '' }); App.refreshDlg(); return true; }
+        if ((b = t.closest('[data-sbdel]'))) { memoNow = App.$('mtx').value; SB.splice(+b.dataset.sbdel, 1); App.refreshDlg(); return true; }
+        return false;
+      },
       input: function (t) {
+        if (t.dataset.sbr != null) { SB[+t.dataset.sbr].r = t.value; return; }
+        if (t.dataset.sbg != null) { SB[+t.dataset.sbg].g = +t.value; return; }
+        if (t.dataset.sbn != null) { SB[+t.dataset.sbn].n = t.value; return; }
         if (!t.dataset.mpick || !t.value) return;
         var ta = App.$('mtx'), w = t.value, a = ta.selectionStart, b = ta.selectionEnd, v = ta.value;
         var before = v.slice(0, a), after = v.slice(b), sep = before && !/[、。\s]$/.test(before) ? '、' : '';
@@ -188,10 +295,12 @@
         var pos = Math.min(400, (before + sep + w).length); ta.focus(); ta.setSelectionRange(pos, pos);
       },
       onOk: function () {
-        var text = App.$('mtx').value.trim().slice(0, 400);
+        var text = App.$('mtx').value.trim().slice(0, 400), sb = C.normSibs(SB), changedSib = JSON.stringify(sb) !== JSON.stringify(C.normSibs(r.a.sib || []));
         if (text) r.a.memo = text; else delete r.a.memo;
+        if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
         App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
   }
@@ -341,7 +450,7 @@
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
         (showPairs ? '<td class="pr' + (pe || pairsOf(r.id).length ? ' cc' : '') + '"' + (pe || pairsOf(r.id).length ? ' data-rpair="' + r.id + '"' : '') + '>' + pairMarks(r.id) + '</td>' : '') +
-        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo ? ' title="' + esc(r.a.memo) + '"' : '') + '><div>' + esc(r.a.memo || '') + '</div></td></tr>';
+        '<td class="memo' + (edit ? ' cc' : '') + '"' + (edit ? ' data-memo="' + r.id + '"' : '') + (r.a.memo || r.a.sib ? ' title="' + esc((r.a.memo || '') + (r.a.sib ? '　兄弟：' + C.sibText(r.a.sib) : '')) + '"' : '') + '><div>' + esc(r.a.memo || '') + (r.a.sib ? ' <small class="msib">兄弟：' + esc(C.sibText(r.a.sib)) + '</small>' : '') + '</div></td></tr>';
     });
     if (!rows.length) h += '<tr><td colspan="16" class="empty">該当する児童はいません</td></tr>';
     return h + '</tbody></table></div>';

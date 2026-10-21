@@ -52,21 +52,41 @@
       onOk: function () { App.closeDlg(); o.onOk(O.slice()); }
     });
   };
-  // クラス分けテストの点数から「賢い」を足す：学年で点数の上位（割合は年度ごと）。手動の印（k7m）は残し、どちらかで賢い。
-  // a.k7s＝点数で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
-  App.topIds = function (sc) {
-    var ids = Object.keys((sc && sc.s) || {}); if (!ids.length) return {};
-    ids.sort(function (x, y) { return sc.s[y] - sc.s[x]; });
-    var n = Math.max(1, Math.round(ids.length * (sc.top || g.CONFIG.SCORE_DEF.top))), cut = sc.s[ids[n - 1]], out = {};
-    ids.forEach(function (id) { if (sc.s[id] >= cut) out[id] = 1; }); // 同点は境目の点まで全員
+  // クラス分けテストの点数・学力の順位から「賢い」を足す。学力は組の中の男女ごと（1組の男子、1組の女子…）に比べ、
+  // それぞれの上位（割合は年度ごと）に付ける。手動の印（k7m）は残し、どちらかで賢い。
+  // a.k7s＝点数・順位で付いた印（名簿で薄く出す）。学力しんどさとは連動しない
+  // groupOf(id) は比べる組（例 '0:m'）。渡さなければ全体を1つとして比べる
+  // 学力の段：組の男女ごとに、上から「刻み」（sc.top。例 10％）ずつ 1段・2段・3段…に分ける。1段＝「賢い」。
+  // 2段から下は印を出さないが、クラス分けで組ごとの人数をそろえる（厳密な順位で分けると条件がきつすぎるので、段でそろえる）。
+  // 1段は同点・同じ順位を境目まで全員入れる。2段から下は並びの位置で分ける
+  App.tiers = function (sc, groupOf) {
+    var out = {}; if (!sc) return out;
+    var rank = sc.use === 'rank', map = rank ? sc.r || {} : sc.s || {}, step = sc.top || g.CONFIG.SCORE_DEF.top, groups = {};
+    Object.keys(map).forEach(function (id) { var k = groupOf ? groupOf(id) : ''; if (k == null) return; (groups[k] = groups[k] || []).push(id); });
+    Object.keys(groups).forEach(function (k) {
+      var ids = groups[k], n = ids.length;
+      ids.sort(function (x, y) { return rank ? map[x] - map[y] : map[y] - map[x]; });
+      var n1 = Math.max(1, Math.round(n * step)), cut = map[ids[n1 - 1]];
+      ids.forEach(function (id, i) {
+        out[id] = (rank ? map[id] <= cut : map[id] >= cut) ? 1 : Math.max(2, Math.min(g.CONFIG.TIER_MAX, Math.floor(i / (n * step)) + 1));
+      });
+    });
     return out;
+  };
+  App.topIds = function (sc, groupOf) { var t = App.tiers(sc, groupOf), out = {}; Object.keys(t).forEach(function (id) { if (t[id] === 1) out[id] = 1; }); return out; };
+  // 学力を比べる組：その年度の組と男女
+  App.scoreGroup = function (d, y) {
+    var at = {}; y.rows.forEach(function (r) { var s = d.kids[r.id]; at[r.id] = r.cls + ':' + (s && s.male ? 'm' : 'f'); });
+    return function (id) { return at[id]; };
   };
   App.applyScores = function (d) {
     d.scores = d.scores || {};
     (d.years || []).forEach(function (y) {
-      var top = App.topIds(d.scores[y.fy]);
+      var tier = App.tiers(d.scores[y.fy], App.scoreGroup(d, y)), top = {};
+      Object.keys(tier).forEach(function (id) { if (tier[id] === 1) top[id] = 1; });
       y.rows.forEach(function (r) {
         var a = r.a; if (!('k7m' in a)) a.k7m = a.k7 | 0;
+        if (tier[r.id]) a.tier = tier[r.id]; else delete a.tier; // 画面の中だけの値（保存しない）
         if (top[r.id] && !a.k7m) { a.k7 = 1; a.k7s = 1; } else { a.k7 = a.k7m; delete a.k7s; }
       });
     });
