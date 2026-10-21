@@ -93,6 +93,7 @@
         var iso3 = dd.getFullYear() + '-' + ('0' + (dd.getMonth() + 1)).slice(-2) + '-' + ('0' + dd.getDate()).slice(-2);
         var dg3 = { nodes: t3.map(function (id, i) { return { id: id, x: 110 + i * 200, y: 110 + (i % 2) * 70 }; }), groups: [], edges: [{ f: 'k:' + t3[0], t: 'k:' + t3[1] }, { f: 'k:' + t3[0], t: 'k:' + t3[2] }] };
         var rp3 = demoReport('いじめ', iso3, dg3, function () { return .2; }, pick2);
+        rp3.level = 'f2'; // 被害の児童が2人で、様式Ⅱを児童ごとに作る見本
         var x3 = demoIncident({ date: iso3, type: 'いじめ', title: '', url: '', ids: t3, diagram: dg3, report: rp3 });
         x3.id = S.nextInc++; incFy[x3.id] = FY; S.inc.push(x3);
       }
@@ -113,6 +114,21 @@
           r.a.memo = w.filter(function (v, i) { return w.indexOf(v) === i; }).join('。');
         }
       });
+      // クラス分けテストの点数（今年度と前年度）。学力しんどさは低め・賢いは高め。数人は欠席で点数なし。
+      // 上位の割合（top）に入った児童は「賢い」が自動で付く（App.applyScores）。別の乱数で作る
+      if (grade <= 6) {
+        var RS = E.rngOf(9000 + grade);
+        [FY - 1, FY].forEach(function (fyS) {
+          if (fyS < entry) return;
+          var sc = { max: 100, top: C.SCORE_DEF.top, s: {} };
+          yearRows(fyS, fyS - entry + 1).forEach(function (r) {
+            if (RS() < .04) return;
+            var v = 62 + (RS() + RS() + RS() - 1.5) * 30 - (r.a.k1 | 0) * 14 + (r.a.k7 | 0) * 16;
+            sc.s[r.id] = Math.max(0, Math.min(100, Math.round(v)));
+          });
+          ((S.scores = S.scores || {})[grade] = S.scores[grade] || {})[fyS] = sc;
+        });
+      }
       // つける・離す・組に固定（今年度の学年の分）
       var cur = ids.slice(), pairs = [], used = {};
       var two = function () { var a, b; do { a = pick(cur); b = pick(cur); } while (a === b || used[a] || used[b]); used[a] = used[b] = 1; return [a, b]; };
@@ -141,6 +157,7 @@
   }
 
   // 本番の incidentInput_ と同じ：関係図があれば、関係する児童と役割は関係図から決める
+  var RL = E.rngOf(5151); // いじめの報告の段階の見本だけに使う乱数
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
@@ -184,6 +201,8 @@
         rp.s2.kikan = pick(P.kikan);
       }
     }
+    // いじめの報告の段階：多くは簡易、ときどき様式Ⅰ・Ⅱ、まれに重大事態（別の乱数。ほかの見本の並びを変えない）
+    if (/いじめ/.test(type)) { var lv = RL(); rp.level = lv < .55 ? 'light' : lv < .82 ? 'f1' : lv < .97 ? 'f2' : 'grave'; }
     return rp;
   }
   function E_REPORT() { return g.Report; }
