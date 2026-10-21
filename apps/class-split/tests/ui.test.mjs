@@ -115,10 +115,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.dlg.more #onlyInc').isChecked() && await p.locator('#main .state', { hasText: '事案のある児童だけ' }).count() === 1, `${w}x${h} 絞り込むと帯に状態が出る`);
   await p.keyboard.press('Escape'); await p.click('#unfilter');
   ok(await p.locator('#main .state').count() === 0, `${w}x${h} 解除で状態が消える`);
-  await p.click('#rmore'); await p.click('.dlg.more #rorder');
-  await p.click('[data-ord="0:female"]'); await p.click('[data-ord="1:kana"]'); await p.keyboard.press('Enter');
-  const sx = await p.locator('td.nm .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
-  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 並び順（女が先）が名簿に効く`);
+  // 見出しを押した順に優先：性別（1回目＝男が先、2回目＝女が先）→ 名前（よみ）
+  await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="sex"]'); await p.click('th[data-csort="kana"]');
+  const sx = await p.locator('td.sxc .sx').allTextContents(), fN = sx.filter(x => x === '女').length;
+  ok(sx.slice(0, fN).every(x => x === '女') && fN > 0 && fN < sx.length, `${w}x${h} 見出しの性別を2回押すと女が先`);
+  ok(await p.locator('th[data-csort="sex"] .sa b').textContent() === '1' && await p.locator('th[data-csort="kana"] .sa b').textContent() === '2', `${w}x${h} 押した順に第一・第二の印`);
   ok(await p.locator('#main .state', { hasText: '並び順' }).count() === 1, `${w}x${h} 並び順を変えると帯に出る`);
   await p.click('#unorder');
   ok(await p.locator('#main .state').count() === 0 && (await p.locator('td.nm').first().evaluate(e => e.closest('tr').cells[0].textContent)) === '1', `${w}x${h} 戻すで番号順`);
@@ -230,6 +231,12 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
   ok(await p.locator('.decided', { hasText: 'A組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 1, '決定の直後は組の番号が仮');
+  {
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#xlsOut')]);
+    const buf = fs.readFileSync(await dl.path()), txt = buf.toString('utf8');
+    ok(buf.slice(0, 2).toString() === 'PK' && txt.includes('生徒管理番号') && txt.includes('仮番号') && txt.includes('>A組<'), '決定した組を Excel（次年度組編成の列）で出せる');
+    if (process.env.XLSX_OUT) fs.writeFileSync(process.env.XLSX_OUT, buf);
+  }
   await p.click('#cnames'); await p.click('[data-cn="0:2"]'); await p.keyboard.press('Enter');
   await p.waitForSelector('.decided:has-text("A組＝2組")');
   ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');

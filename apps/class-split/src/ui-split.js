@@ -120,6 +120,7 @@
   /* @include split/split-pairs.js */
   /* @include split/split-actions.js */
   /* @include split/split-zoom.js */
+  /* @include split/split-excel.js */
 
   App.screens.split = {
     enter: function () {
@@ -140,6 +141,7 @@
     click: function (t, e) {
       var x;
       if (t.closest('#zreset')) { zoomReset(); return true; }
+      if (t.closest('#xlsOut')) { exportExcel(); return true; }
       if ((x = t.closest('[data-del]'))) {
         e.stopPropagation(); delDialog(+x.dataset.del); return true;
       }

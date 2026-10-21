@@ -196,24 +196,21 @@
     });
   }
 
-  // ===== 並び順（第一〜第三優先）。クラス分けと同じ窓。この端末にだけ覚える =====
-  // 行には id・kana・male・cls・no・a・n（その年度の事案の件数）を持たせて比べる
-  var SORT_KEYS = [
-    { k: 'cls', label: '組', f: function (s) { return s.cls; } },
-    { k: 'no', label: '出席番号', f: function (s) { return s.no; } },
-    { k: 'male', label: '男女（男が先）', f: function (s) { return s.male ? 0 : 1; } },
-    { k: 'female', label: '男女（女が先）', f: function (s) { return s.male ? 1 : 0; } },
-    { k: 'kana', label: 'よみ（五十音）', f: null },
-    { k: 'inc', label: '事案の件数（多い順）', f: function (s) { return -s.n; } },
-    { k: 'care', label: '配慮項目の数（多い順）', f: function (s) { var n = 0; C.ATTRS.forEach(function (at) { if (!at.good && (s.a[at.k] | 0)) n += s.a[at.k] | 0; }); return -n; } }
-  ];
-  var DEF_ORDER = ['cls', 'no', ''];
-  var ORDER = (function () { try { var v = JSON.parse(localStorage.getItem('classSplit.rosterOrder')); if (Array.isArray(v) && v.length === 3) return v; } catch (e) { /* 読めない時は既定 */ } return DEF_ORDER.slice(); })();
-  function setOrder(O) {
-    ORDER = O;
-    try { localStorage.setItem('classSplit.rosterOrder', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
-    render();
+  // ===== 並び順：見出しを押した順に、第一・第二…の優先にする。この端末に覚える =====
+  // 1回目：その列を次の優先に足す（数の列は多い順、組・番号・よみ・性別は小さい順）。2回目：向きを逆に。3回目：外す。
+  // どれも選んでいない時は、組→番号→よみ
+  var NUM_DESC = { cls: false, no: false, kana: false, sex: false }; // ここに無い列（印・事案・つける離す・備考・特支）は多い順から
+  var SORT = (function () { try { var v = JSON.parse(localStorage.getItem('classSplit.rosterSort')); if (Array.isArray(v)) return v.filter(function (x) { return x && x.k; }); } catch (e) { /* 読めない時は既定 */ } return []; })();
+  function saveSort() { try { localStorage.setItem('classSplit.rosterSort', JSON.stringify(SORT)); } catch (e) { /* 覚えられなくても今の画面には効く */ } }
+  function clickSort(k) {
+    var i = SORT.map(function (x) { return x.k; }).indexOf(k), first = NUM_DESC[k] === false ? 1 : -1;
+    if (i < 0) SORT.push({ k: k, dir: first });
+    else if (SORT[i].dir === first) SORT[i].dir = -first;
+    else SORT.splice(i, 1);
+    saveSort(); render();
   }
+  var SORT_LABEL = { cls: '組', no: '番号', kana: 'よみ', sex: '性別', sp: '特支', ji: '事案数', pr: 'つける離す', memo: '備考' };
+  function sortLabel(k) { var at = C.ATTRS.filter(function (a) { return a.k === k; })[0]; return at ? at.label : SORT_LABEL[k] || k; }
 
   // 「その他…」の窓：年度・全校の事案・絞り込み・つける離す・名簿を貼る・使い方
   function moreDialog() {
@@ -228,7 +225,7 @@
           }).join('') + '</div></section>' +
           '<section><h3>表示</h3><div class="rbar"><button class="tab" data-scope="school" aria-selected="' + (R.scope === 'school') + '">全校の事案</button>' +
           '<label class="chk"><input type="checkbox" id="onlyInc"' + (R.onlyInc ? ' checked' : '') + '>事案のある児童だけ</label>' +
-          '<button class="btn" id="rorder">並び順…</button></div></section>' +
+          '</div></section>' +
           '<section><h3>編集</h3><div class="rbar">' +
           (pairEdit() ? '<button class="btn" id="rpairs">つける・離す…（' + d.pairs.length + '件）</button>' : '<span class="note">つける・離すは、今年度・決定前だけ直せます。</span>') +
           '</div></section>' +
@@ -240,7 +237,7 @@
       input: function (t) { App.screens.roster.input(t); App.refreshDlg(); },
       // 窓の中のボタンは名簿の操作と同じ。押したら窓を閉じてから行う（次の窓を開けるように）
       click: function (t) {
-        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste,#rorder')) return false;
+        if (!t.closest('button[data-fy],button[data-scope],#rpairs,#paste')) return false;
         App.closeDlg(); return App.screens.roster.click(t);
       }
     });
@@ -271,8 +268,7 @@
       if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
         (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
       if (R.onlyInc) h += '<span class="state">事案のある児童だけ<button class="btn" id="unfilter">解除</button></span>';
-      if (ORDER.join() !== DEF_ORDER.join()) h += '<span class="state">並び順：' + ORDER.filter(String).map(function (k) { return SORT_KEYS.filter(function (q) { return q.k === k; })[0].label; }).join('→') +
-        '<button class="btn" id="rorder">変える</button><button class="btn" id="unorder">戻す</button></span>';
+      if (SORT.length) h += '<span class="state">並び順：' + SORT.map(function (x) { return App.esc(sortLabel(x.k)) + (x.dir > 0 ? '↑' : '↓'); }).join('→') + '<button class="btn" id="unorder">解除</button></span>';
     }
     // 名簿を貼る：年度の初めや転入の時にすぐ使えるよう、上の帯に出す（直せる年度だけ）
     h += '<span class="sp"></span>' + (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') + '<button class="btn" id="rmore" aria-haspopup="dialog">その他…</button>';
@@ -311,9 +307,10 @@
   }
 
   // 押すと並べ替える見出し
-  function sth(k, cls, label, title) {
-    var on = R.col && R.col.k === k;
-    return '<th class="' + cls + ' sorth' + (on ? ' on' : '') + '" data-csort="' + k + '" title="' + (title ? title + '：' : '') + '押すとこの列で並べる">' + label + (on ? '<span class="sa">' + (R.col.dir > 0 ? '▼' : '▲') + '</span>' : '') + '</th>';
+  function sth(k, cls, label, title, style) {
+    var i = SORT.map(function (x) { return x.k; }).indexOf(k), on = i >= 0;
+    return '<th class="' + cls + ' sorth' + (on ? ' on' : '') + '" data-csort="' + k + '"' + (style ? ' style="' + style + '"' : '') + ' title="' + (title ? title + '：' : '') + '押した順に並べる優先になる（もう一度で逆、3回目で外す）">' + label +
+      (on ? '<span class="sa"><b>' + (i + 1) + '</b>' + (SORT[i].dir > 0 ? '▲' : '▼') + '</span>' : '') + '</th>';
   }
   function table(Y, edit) {
     var d = D(), esc = App.esc, showPairs = R.fy === d.fy, pe = pairEdit();
@@ -322,18 +319,24 @@
     });
     if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
-    // 見出しを押した列で並べる（もう一度押すと逆順、3回目で元の並び順）。同じ値の中は並び順の窓の順
-    var colVal = function (x) {
-      var k = R.col.k;
-      return k === 'ji' ? x.n : k === 'pr' ? pairsOf(x.id).length : k === 'memo' ? (x.a.memo ? 1 : 0) : k === 'sp' ? (x.a.sp ? 1 : 0) : x.a[k] | 0;
+    // 見出しを押した順の優先で並べる。最後は 組→番号→よみ
+    var val = function (x, k) {
+      return k === 'cls' ? x.cls : k === 'no' ? x.no : k === 'sex' ? (x.male ? 0 : 1) : k === 'ji' ? x.n : k === 'pr' ? pairsOf(x.id).length : k === 'memo' ? (x.a.memo ? 1 : 0) : k === 'sp' ? (x.a.sp ? 1 : 0) : x.a[k] | 0;
     };
-    rows.sort(function (a, b) { return (R.col ? (colVal(b) - colVal(a)) * R.col.dir : 0) || App.byKeys(SORT_KEYS, ORDER, a, b); });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? '<th>組</th>' : '') + '<th>番号</th><th style="text-align:left">名前</th>' + sth('sp', 'spc', '特支', '特別支援学級') +
+    var keys = SORT.concat([{ k: 'cls', dir: 1 }, { k: 'no', dir: 1 }, { k: 'kana', dir: 1 }]);
+    rows.sort(function (a, b) {
+      for (var q = 0; q < keys.length; q++) {
+        var k = keys[q].k, d0 = k === 'kana' ? String(a.kana).localeCompare(String(b.kana), 'ja') : val(a, k) - val(b, k);
+        if (d0) return d0 * keys[q].dir;
+      }
+      return a.id < b.id ? -1 : 1;
+    });
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? sth('cls', '', '組') : '') + sth('no', '', '番号') + sth('kana', '', '名前', 'よみの順', 'text-align:left') + sth('sex', 'sxc', '性別') + sth('sp', 'spc', '特支', '特別支援学級') +
       C.ATTRS.map(function (at) { return sth(at.k, 'an', App.esc(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考') + '</tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
-        '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span>' + App.nameBox(s.name) + '</td>' +
+        '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '">' + App.nameBox(s.name) + '</td><td class="sxc"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span></td>' +
         '<td class="cell spc" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
         '<td class="ji cc" data-kid="' + r.id + '">' + App.incBox(x.n, incsOf(r.id, R.fy).filter(function (y) { return App.isVictim(y, r.id); }).length, 'この年度の事案' + x.n + '件（かっこは被害の件数）', true) + '</td>' +
@@ -564,9 +567,7 @@
       // 事案・つける離す・備考は、欄のどこを押しても同じ窓
       if (td && ((e && inCorner(td, e)) || td.matches('.ji,.pr,.memo'))) { cornerDialog(td); return true; }
       if ((x = t.closest('[data-csort]'))) {
-        var ck = x.dataset.csort;
-        R.col = !R.col || R.col.k !== ck ? { k: ck, dir: 1 } : R.col.dir > 0 ? { k: ck, dir: -1 } : null; // 多い順→少ない順→元の並び
-        render(); return true;
+        clickSort(x.dataset.csort); return true;
       }
       if ((x = t.closest('[data-fy]'))) { R.fy = +x.dataset.fy; render(); return true; }
       if ((x = t.closest('[data-cls]'))) { R.scope = 'cls'; R.cls = +x.dataset.cls; render(); return true; }
@@ -601,8 +602,7 @@
       if (t.closest('#rpairs')) { openPairs(null); return true; }
       if (t.closest('#rmore')) { moreDialog(); return true; }
       if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
-      if (t.closest('#unorder')) { setOrder(DEF_ORDER.slice()); return true; }
-      if (t.closest('#rorder')) { App.orderDialog({ title: '名簿の並び順', keys: SORT_KEYS, def: DEF_ORDER, cur: ORDER, onOk: setOrder }); return true; }
+      if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }
       if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
       // 事案の登録・直すは事案管理の画面で行う（開いていた児童を入れておく）
       if (t.closest('#addInc')) { App.st.incFocus = { add: true, kid: R.kid }; App.go('incidents'); return true; }
