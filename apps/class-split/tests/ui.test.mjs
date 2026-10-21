@@ -81,8 +81,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-w="k4"][data-lv="3"]');
   await p.keyboard.press('Enter');
   await p.waitForFunction(n => document.querySelectorAll('.tab[data-p]').length === n + 1, before);
-  const name = await p.locator('.tab[data-p]').last().textContent();
-  ok(/保の分散重視/.test(name), `${w}x${h} 案の名前に方針が付く：${name.trim().slice(0, 30)}`);
+  const name = await p.locator('.tab[data-p]').last().getAttribute('title'), lab = (await p.locator('.tab[data-p]').last().textContent()).trim();
+  ok(/保の分散重視/.test(name), `${w}x${h} 案の名前に方針が付く（カーソルで出る）：${name.trim().slice(0, 30)}`);
+  ok(/^案[A-Z]/.test(lab) && /違反 \d+・偏り△ \d+/.test(name), `${w}x${h} タブは「案A」だけで、違反の数はカーソルで出る：${lab}`);
 
   // 入れ替え：2人を選ぶと確認の枠、Enterで実行、Ctrl+Zで戻る
   const pair = await p.evaluate(() => {

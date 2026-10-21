@@ -5,6 +5,9 @@
 .tab .k{font-size:.72rem;color:var(--sub);font-weight:400}
 .tab .v{font-size:.78rem;color:var(--sub);font-weight:400}
 .tab .v.bad{color:var(--alert);font-weight:700}
+.tab.vbad{color:var(--alert);font-weight:700}
+.btn.icb{padding:4px 8px;display:inline-flex;align-items:center}
+.bic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tab .x{border:0;background:none;color:var(--sub);cursor:pointer;padding:0 2px;line-height:1}
 .tab.cmp{border-style:dashed}
 .vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}

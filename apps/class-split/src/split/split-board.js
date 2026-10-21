@@ -29,21 +29,26 @@
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
-      h += '<span class="tab" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="ダブルクリックで名前を変える">' +
-        (pi < 9 ? '<span class="k">' + (pi + 1) + '</span>' : '') + App.esc(planName(p)) + '<span class="v ' + (v ? 'bad' : '') + '">違反' + v + '・△' + a.warn.length + '</span>' +
+      // タブは「案A」だけ。名前・違反と偏りの数・近道はカーソルで出す（違反がある案は字を赤く）
+      var tip = planName(p) + '\n違反 ' + v + '・偏り△ ' + a.warn.length + (pi < 9 ? '\n切り替え：' + (pi + 1) + ' キー' : '') + '\nダブルクリックで名前を変える';
+      h += '<span class="tab' + (v ? ' vbad' : '') + '" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="' + App.esc(tip) + '" aria-label="' + App.esc(planName(p) + '。違反' + v + '・偏り' + a.warn.length) + '">' +
+        '案' + App.esc(p.letter) +
         (S.plans.length > 1 && !S.decision ? '<button class="x" data-del="' + pi + '" aria-label="' + p.letter + 'を削除">×</button>' : '') + '</span>';
     });
-    h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
+    h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '" title="' + S.plans.length + '案を比べる（0 キー）">比較</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
     h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
     // ボタンは「その他」の窓に隠さず、作業の順に帯に並べる：直す → 条件 → 見せ方 → 出す → 決める
-    var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
+    var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '" aria-label="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
+    // 並び順と印刷はアイコンだけ（説明はカーソルで）
+    var IC_ORD = '<svg class="bic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M3.5 16.5 7 20l3.5-3.5M17 20V4M13.5 7.5 17 4l3.5 3.5"/></svg>';
+    var IC_PRT = '<svg class="bic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 17H4V9h16v8h-3M7 14h10v7H7z"/></svg>';
     h += '<span class="bacts">';
     if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '</span>' +
-      b('cnames', '組の番号を決める…', '', 'primary') + b('prt', '個人票を印刷…', '', '', np) + b('xlsOut', 'Excel で出す', '決定した組を「次年度組編成」の Excel で出す', 'primary') + b('undoDecide', '決定を取り消す…', '', 'danger');
+      b('cnames', '組の番号を決める…', '', 'primary') + b('prt', IC_PRT, '個人票を印刷', 'icb', np) + b('xlsOut', 'Excel で出す', '決定した組を「次年度組編成」の Excel で出す', 'primary') + b('undoDecide', '決定を取り消す…', '', 'danger');
     else h += b('undo', '↶', '戻す（Ctrl+Z）', '', np || !p.hist.length) + b('redo', '↷', 'やり直す（Ctrl+Y）', '', np || !p.fut.length) + b('dup', '複製', 'この案を写して新しい案にする（D）', '', np) +
       '<span class="bsep"></span>' + b('pairs', 'つける離す', 'つける・離す・組に固定（P）') + b('trans', '転入生') +
-      '<span class="bsep"></span>' + b('order', '⇅ 並び順', '組の中のカードの並び順', 'ordbtn', np) + b('prt', '印刷', '個人票を印刷', '', np);
+      '<span class="bsep"></span>' + b('order', IC_ORD, '組の中のカードの並び順', 'ordbtn icb', np) + b('prt', IC_PRT, '個人票を印刷', 'icb', np);
     h += b('fs', '⛶', '全画面（F）') + b('hbtn', '?', 'ショートカット一覧（?）');
     if (!ro) h += '<span class="bsep"></span>' + b('decide', '決定', App.st.grade >= 6 ? '6年は決定しません' : 'この案でクラス替えを決める（来年度の名簿を作る）', 'warnbtn', np || App.st.grade >= 6) + b('gen', '案を作る', '（G）', 'primary');
     return '<div class="bar">' + h + '</span></div>';
