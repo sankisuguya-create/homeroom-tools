@@ -15,7 +15,7 @@
     var e = emptyReport(); r = r || {};
     var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
     e.level = C.BULLY_LEVELS.some(function (x) { return x.k === r.level; }) ? r.level : '';
-    e.status = C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
+    e.status = r.status === 'done' ? 'watch' : C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
     e.reported = /^\d{4}-\d{2}-\d{2}$/.test(String(r.reported || '')) ? String(r.reported) : ''; // 市教委（生徒指導担当）へ報告した日。空＝未報告
     e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
     e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });

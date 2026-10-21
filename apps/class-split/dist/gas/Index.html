@@ -669,7 +669,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .inx svg{width:18px;height:18px;width:16px;height:16px}
 .irx:not(:empty){margin-top:4px}
 /* 報告済み：カードの右上（タグの列のいちばん上）。濃い緑の地に白い字で、ほかのタグと見分ける */
-.itg.irp{background:#1F6B3A;border-color:#1F6B3A;color:#fff;font-weight:700;justify-content:center}
 .irpb[aria-pressed="true"]{background:#1F6B3A;border-color:#1F6B3A;color:#fff}
 /* ふりがな（虞犯）：小さく、行の高さを変えない */
 .itg ruby rt,.lv ruby rt,.meta ruby rt{font-size:.55em;line-height:1}
@@ -739,8 +738,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .ihb svg{width:24px;height:24px;flex:none}
 .ihs input{flex:1;border:0;background:none;font:inherit;font-size:1rem;outline:none;min-width:0}
 .ihs:focus-within{border-color:var(--link)}
-.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
-.icard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
+.icards{padding:0 0 6px 6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
+.icard{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
 .icard:hover{border-color:var(--link)}
 .icm{display:flex;flex-direction:column;gap:2px;min-width:0}
 .icm .d{font-size:.78rem;color:var(--sub)}
@@ -753,7 +752,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .itg svg{width:13px;height:13px;flex:none}
 .itg.ig{font-weight:700;justify-content:center}
 .ist.st-open{border-color:#C8641A;color:#8A3F06;font-weight:700}
-.ist.st-done{border-color:#2E8A4A;color:#1F5E33}
 .ist.st-watch{border-color:#1E6FD9;color:#14498F}
 .ist.st-closed{color:var(--sub)}
 .istat{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0}
@@ -778,7 +776,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .chip.plusin{outline:3px solid #D7263D;outline-offset:1px}
 .icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
 .icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
-.icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
 .icard.ic-closed{border:2px solid #9AA3AB;padding:7px 9px}
 .icard em.rc{font-style:normal;font-weight:700;margin-right:1px}
 .ihsort{gap:6px}
@@ -813,6 +810,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .rfy{display:inline-flex;align-items:center;gap:6px;color:inherit}
 .rfy select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#1A1A1A}
 .rkk{width:2.2em;display:flex;justify-content:center}
+/* 報告済みのバッジ：カードの左下で枠に重ねる。金色の丸に「報」、右上に青い✓ */
+.irbadge{position:absolute;left:-7px;bottom:-9px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,#FFF1B8 0,#E8C14A 45%,#B8891A 100%);border:1.5px solid #8A6410;color:#3A2600;font-weight:700;font-size:15px;line-height:1;
+  box-shadow:0 1px 2px #0004;z-index:2;pointer-events:none}
+.irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -908,7 +910,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
     SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
     // 事案の対応の状況（事案カードの右に出す）。既定は「対応中」
-    STATUS: [{ k: 'open', label: '対応中' }, { k: 'done', label: '指導済み' }, { k: 'watch', label: '経過観察' }, { k: 'closed', label: '解消' }],
+    STATUS: [{ k: 'open', label: '対応中' }, { k: 'watch', label: '経過観察' }, { k: 'closed', label: '解消' }], // 「指導済み」（done）はやめた。以前の値は経過観察として読む（report.js）
     // いじめの報告の段階。簡易→様式Ⅰ→様式Ⅱ→重大事態の順に、同じ色相で濃くする（文字でも段階を書く）
     BULLY_LEVELS: [
       { k: 'light', label: '簡易', c: '#F6D3CC', t: '#5A1A10' },
@@ -1599,7 +1601,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var e = emptyReport(); r = r || {};
     var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
     e.level = C.BULLY_LEVELS.some(function (x) { return x.k === r.level; }) ? r.level : '';
-    e.status = C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
+    e.status = r.status === 'done' ? 'watch' : C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
     e.reported = /^\d{4}-\d{2}-\d{2}$/.test(String(r.reported || '')) ? String(r.reported) : ''; // 市教委（生徒指導担当）へ報告した日。空＝未報告
     e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
     e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
@@ -2174,7 +2176,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     })(dg.edges[0]) : (names[0] || '') + 'が';
     // 対応の状況：古い事案ほど解消・指導済みが多い
     var age = (Date.now() - new Date(date).getTime()) / 864e5;
-    rp.status = age < 14 ? pick(['open', 'open', 'done']) : age < 90 ? pick(['done', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'done', 'watch']);
+    rp.status = age < 14 ? pick(['open', 'open', 'watch']) : age < 90 ? pick(['watch', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'closed', 'watch']);
     // 報告済み：いじめで、1週間より前の事案で、対応中でないもの（乱数は使わない＝ほかの見本の値を変えない）
     if (/いじめ/.test(type) && age >= 7 && rp.status !== 'open') rp.reported = Rp.addDays(date, 7);
     rp.s1.hk.push(row(pick(P.hk)));
@@ -2419,7 +2421,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_8d2038463b9f';
+  var PAGE_BUILD = 'BUILD_d42eda3a00f1';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3724,6 +3726,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   // 事案の一覧で探す学年と絞り込み（開いている間だけ覚える。校務PCは共用なので、次の先生の画面に残さない。空＝この学年だけ）
   var HOME = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
+  if (HOME.status) HOME.status = HOME.status.filter(function (k) { return k !== 'done'; }); // やめた「指導済み」での絞り込みは外す
   function homeGrades() { return HOME.grades && HOME.grades.length ? HOME.grades : [D().grade]; }
   function homeOthers() { return homeGrades().some(function (g0) { return g0 !== D().grade; }); }
   function homeList() {
@@ -3746,7 +3749,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   // 並び替え。同じ順位は新しい順
   var byNew = function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; };
-  var ST_RANK = { open: 0, watch: 1, done: 2, closed: 3 };
+  var ST_RANK = { open: 0, watch: 1, closed: 2 };
   var SORTS = [
     { k: 'imp', label: '対応中が先（次に新しい順）', f: function (a, b) { return (ST_RANK[(a.report || {}).status || 'open'] - ST_RANK[(b.report || {}).status || 'open']) || byNew(a, b); } },
     { k: 'new', label: '新しい順', f: byNew }
@@ -3876,12 +3879,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
   var ST_IC = {
     open: SVG('<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'),
-    done: SVG('<path d="M5 12l4 4 10-10"/>'),
     watch: SVG('<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
     closed: SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>')
   };
-  // 報告済み：書類に✓の印（生徒指導担当が一覧で見分けられるように、カードの右上に出す）
+  // 報告済み：書類に✓の印（見る画面の報告のボタン）
   var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
+  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの左下に、枠に重ねて置く（タグの列には入れない）
+  function repBadge(rp) {
+    if (!rp.reported) return '';
+    var t = esc(Rp.md(rp.reported)) + 'に報告済み';
+    return '<span class="irbadge" title="' + t + '" aria-label="' + t + '">報<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l5 5L21 5" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13l5 5L21 5" stroke="#1E5FC0" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  }
   // いじめの報告の段階：決めていなければ、様式Ⅱ用の追記があれば様式Ⅱ、なければ様式Ⅰ
   function levelOf(x) {
     var rp = x.report || Rp.emptyReport();
@@ -3895,7 +3903,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
   function tagsHtml(x) {
     var rp = x.report || Rp.emptyReport(), h = '<div class="itags">';
-    if (rp.reported) h += '<span class="itg irp" title="' + esc(Rp.md(rp.reported)) + 'に報告">' + REP_IC + '報告済み</span>';
     var gs = gradesOf(x); if (gs.length) h += '<span class="itg ig">' + gs.join('・') + '年</span>';
     typesOf(x.type).forEach(function (t) {
       if (t === 'いじめ') {
@@ -3934,7 +3941,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return list.map(function (x) {
       var st0 = (x.report || {}).status || 'open';
       return '<button class="icard ic-' + st0 + '" data-isel="' + x.id + '"><div class="icm"><span class="d">' + esc(App.span(x)) + '</span><b>' + esc(titleOf(x)) + '</b>' +
-        '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id], c = ROLE_CH[r]; return (c ? '<em class="rc r-' + r + '">' + c + '</em>' : '') + esc(kidName(id)); }).join('、') + '</span></div>' + tagsHtml(x) + '</button>';
+        '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id], c = ROLE_CH[r]; return (c ? '<em class="rc r-' + r + '">' + c + '</em>' : '') + esc(kidName(id)); }).join('、') + '</span></div>' + tagsHtml(x) + repBadge(x.report || Rp.emptyReport()) + '</button>';
     }).join('');
   }
   function rowsView(rows) {

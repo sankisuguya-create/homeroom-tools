@@ -17,6 +17,7 @@
   }
   // 事案の一覧で探す学年と絞り込み（開いている間だけ覚える。校務PCは共用なので、次の先生の画面に残さない。空＝この学年だけ）
   var HOME = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incHome') || '{}'); } catch (e) { return {}; } })();
+  if (HOME.status) HOME.status = HOME.status.filter(function (k) { return k !== 'done'; }); // やめた「指導済み」での絞り込みは外す
   function homeGrades() { return HOME.grades && HOME.grades.length ? HOME.grades : [D().grade]; }
   function homeOthers() { return homeGrades().some(function (g0) { return g0 !== D().grade; }); }
   function homeList() {
@@ -39,7 +40,7 @@
   }
   // 並び替え。同じ順位は新しい順
   var byNew = function (a, b) { return a.date < b.date ? 1 : a.date > b.date ? -1 : b.id - a.id; };
-  var ST_RANK = { open: 0, watch: 1, done: 2, closed: 3 };
+  var ST_RANK = { open: 0, watch: 1, closed: 2 };
   var SORTS = [
     { k: 'imp', label: '対応中が先（次に新しい順）', f: function (a, b) { return (ST_RANK[(a.report || {}).status || 'open'] - ST_RANK[(b.report || {}).status || 'open']) || byNew(a, b); } },
     { k: 'new', label: '新しい順', f: byNew }

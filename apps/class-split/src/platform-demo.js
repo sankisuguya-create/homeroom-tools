@@ -194,7 +194,7 @@
     })(dg.edges[0]) : (names[0] || '') + 'が';
     // 対応の状況：古い事案ほど解消・指導済みが多い
     var age = (Date.now() - new Date(date).getTime()) / 864e5;
-    rp.status = age < 14 ? pick(['open', 'open', 'done']) : age < 90 ? pick(['done', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'done', 'watch']);
+    rp.status = age < 14 ? pick(['open', 'open', 'watch']) : age < 90 ? pick(['watch', 'watch', 'watch', 'open']) : pick(['closed', 'closed', 'closed', 'watch']);
     // 報告済み：いじめで、1週間より前の事案で、対応中でないもの（乱数は使わない＝ほかの見本の値を変えない）
     if (/いじめ/.test(type) && age >= 7 && rp.status !== 'open') rp.reported = Rp.addDays(date, 7);
     rp.s1.hk.push(row(pick(P.hk)));
