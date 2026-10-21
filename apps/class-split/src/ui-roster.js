@@ -215,7 +215,7 @@
     var row = function (id, i) {
       var r = byId[id], s = d.kids[id], t = tierAt(i), last = i === order().length - 1 || tierAt(i + 1) !== t;
       return '<div class="rkrow' + (t === 1 ? ' top' : '') + (i === cut() - 1 ? ' cut' : last ? ' tierend' : '') + '" data-rk="' + id + '">' +
-        '<span class="rkt">' + t + '段</span>' +
+        '<span class="rkt" title="' + t + '段">' + (i + 1) + '位</span>' +
         '<input type="number" class="rkn" data-rkn="' + id + '" min="1" max="' + order().length + '" value="' + (i + 1) + '" aria-label="順位">' +
         '<span class="rkh" data-rkh="' + id + '" title="ドラッグで入れ替える">⠿ ' + esc(s.name) + '<small>' + (r.cls + 1) + '-' + r.no + '</small></span>' +
         (s0[id] != null ? '<span class="note">' + s0[id] + '点</span>' : '') + '</div>';
