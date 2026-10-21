@@ -81,8 +81,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-w="k4"][data-lv="3"]');
   await p.keyboard.press('Enter');
   await p.waitForFunction(n => document.querySelectorAll('.tab[data-p]').length === n + 1, before);
-  const name = await p.locator('.tab[data-p]').last().textContent();
-  ok(/保の分散重視/.test(name), `${w}x${h} 案の名前に方針が付く：${name.trim().slice(0, 30)}`);
+  const name = await p.locator('.tab[data-p]').last().getAttribute('title'), lab = (await p.locator('.tab[data-p]').last().textContent()).trim();
+  ok(/保の分散重視/.test(name), `${w}x${h} 案の名前に方針が付く（カーソルで出る）：${name.trim().slice(0, 30)}`);
+  ok(/^案[A-Z]/.test(lab) && /違反 \d+・偏り△ \d+/.test(name), `${w}x${h} タブは「案A」だけで、違反の数はカーソルで出る：${lab}`);
 
   // 入れ替え：2人を選ぶと確認の枠、Enterで実行、Ctrl+Zで戻る
   const pair = await p.evaluate(() => {
@@ -303,7 +304,18 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-irep]');
   await p.waitForSelector('[data-irep][aria-pressed="true"]');
   ok(/報告済み/.test(await p.textContent('[data-irep]')), '見る画面で「報告済み」にできる（日付が入る）');
-  await p.click('#ihome'); ok(await p.locator('.icard .irp').count() > 0, '報告済みの事案は、カードの右上に印が出る'); await p.locator('.icard').first().click();
+  await p.click('#ihome'); ok(await p.locator('.icard .irbadge').count() > 0, '報告済みの事案は、カードの右上にバッジが出る');
+  {
+    const cb = await p.locator('.icard:has(.irbadge)').first().boundingBox(), bb = await p.locator('.icard .irbadge').first().boundingBox();
+    ok(bb.x + bb.width > cb.x + cb.width && bb.y < cb.y, 'バッジはカードの右上の枠に重なる');
+    const all = await p.locator('.icard').count();
+    await p.click('#ihset'); await p.click('[data-hf="rep:yes"]'); await p.keyboard.press('Escape');
+    const yes = await p.locator('.icard').count();
+    ok(yes > 0 && yes === await p.locator('.icard .irbadge').count(), '検索の設定で「報告済み」を選ぶと、バッジのある事案だけ');
+    await p.click('#ihset'); await p.click('[data-hf="rep:yes"]'); await p.click('[data-hf="rep:no"]'); await p.keyboard.press('Escape');
+    ok(await p.locator('.icard').count() === all - yes && await p.locator('.icard .irbadge').count() === 0, '「未報告」を選ぶと、バッジの無い事案だけ');
+    await p.click('#ihset'); await p.click('[data-hgr]'); await p.keyboard.press('Escape');
+  } await p.locator('.icard').first().click();
   await p.click('[data-iout="f1"]'); await p.waitForSelector('.iout');
   ok(await p.locator('#itmpl').count() === 1, '試行でも様式の Excel を選んで出力できる');
   ok(await p.locator('.icopy td', { hasText: '朝休み、訴えがあった' }).count() === 1 && await p.locator('.icopy td', { hasText: 'H22' }).count() === 1, '様式Ⅰのコピー用の表に時系列と態様の○が出る');
@@ -459,7 +471,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
-  await p.click('#acadB'); await p.waitForSelector('.sctab');
+  // 見本は今年度を順位で決めているので、学力の窓は順位のタブで開く
+  await p.click('#acadB'); await p.waitForSelector('#rklist');
+  ok(await p.locator('[data-acaduse="rank"]').isChecked(), '見本の今年度は順位で「賢い」を決めている');
+  await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
   await p.click('[data-acadtab="rank"]'); await p.waitForSelector('#rklist');
   ok(await p.locator('[data-acadtab="rank"][aria-selected="true"]').count() === 1, '学力の窓で点数と順位をタブで切り替えられる');
   await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');

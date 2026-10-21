@@ -41,12 +41,17 @@
   };
   var ST_IC = {
     open: SVG('<circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/>'),
-    done: SVG('<path d="M5 12l4 4 10-10"/>'),
     watch: SVG('<path d="M2 12s4-6 10-6 10 6 10 6-4 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/>'),
     closed: SVG('<circle cx="12" cy="12" r="8"/><path d="M8 12l3 3 5-6"/>')
   };
-  // 報告済み：書類に✓の印（生徒指導担当が一覧で見分けられるように、カードの右上に出す）
+  // 報告済み：書類に✓の印（見る画面の報告のボタン）
   var REP_IC = SVG('<path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/><path d="M9 14l2.5 2.5L16 11"/>');
+  // 報告済みのバッジ：金色の丸に「報」、右上に青い✓。カードの右上に、枠に重ねて置く（学年のタグに重なってよい）
+  function repBadge(rp) {
+    if (!rp.reported) return '';
+    var t = esc(Rp.md(rp.reported)) + 'に報告済み';
+    return '<span class="irbadge" title="' + t + '" aria-label="' + t + '">報<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l5 5L21 5" stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 13l5 5L21 5" stroke="#1E5FC0" stroke-width="3.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+  }
   // いじめの報告の段階：決めていなければ、様式Ⅱ用の追記があれば様式Ⅱ、なければ様式Ⅰ
   function levelOf(x) {
     var rp = x.report || Rp.emptyReport();
@@ -60,7 +65,6 @@
   }
   function tagsHtml(x) {
     var rp = x.report || Rp.emptyReport(), h = '<div class="itags">';
-    if (rp.reported) h += '<span class="itg irp" title="' + esc(Rp.md(rp.reported)) + 'に報告">' + REP_IC + '報告済み</span>';
     var gs = gradesOf(x); if (gs.length) h += '<span class="itg ig">' + gs.join('・') + '年</span>';
     typesOf(x.type).forEach(function (t) {
       if (t === 'いじめ') {
@@ -74,7 +78,7 @@
   }
   function matchQ(x, q) {
     if (!q) return true;
-    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail].concat(x.ids.map(kidName));
+    var rp = x.report || Rp.emptyReport(), txt = [x.type, x.title, x.detail, rp.reported ? '報告済み' : '未報告'].concat(x.ids.map(kidName)); // 「報告済み」「未報告」でも探せる
     ['hk', 'kk', 'sd'].forEach(function (k) { rp.s1[k].forEach(function (r) { txt.push(r.t); }); });
     var all = txt.join(' ').replace(/[ 　]/g, '');
     return q.split(/[ 　]+/).filter(Boolean).every(function (w) { return all.indexOf(w) >= 0; });
@@ -99,7 +103,7 @@
     return list.map(function (x) {
       var st0 = (x.report || {}).status || 'open';
       return '<button class="icard ic-' + st0 + '" data-isel="' + x.id + '"><div class="icm"><span class="d">' + esc(App.span(x)) + '</span><b>' + esc(titleOf(x)) + '</b>' +
-        '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id], c = ROLE_CH[r]; return (c ? '<em class="rc r-' + r + '">' + c + '</em>' : '') + esc(kidName(id)); }).join('、') + '</span></div>' + tagsHtml(x) + '</button>';
+        '<span class="k">' + x.ids.map(function (id) { var r = x.roles && x.roles[id], c = ROLE_CH[r]; return (c ? '<em class="rc r-' + r + '">' + c + '</em>' : '') + esc(kidName(id)); }).join('、') + '</span></div>' + tagsHtml(x) + repBadge(x.report || Rp.emptyReport()) + '</button>';
     }).join('');
   }
   function rowsView(rows) {

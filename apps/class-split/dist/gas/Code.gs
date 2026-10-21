@@ -88,7 +88,7 @@
     // 指導の欄の「よくある手順」（チェックすると、その文の行ができる）。保護者への連絡が無いまま登録すると一度だけ知らせる
     SD_STEPS: ['複数の教員で、関係する児童から個別に聴き取りをした', '管理職に報告した', 'いじめ対応チームを招集し、対応を協議した', '被害児童の保護者に、事実と学校の対応を電話で伝えた', '加害児童の保護者に、事実と指導の内容を伝えた'],
     // 事案の対応の状況（事案カードの右に出す）。既定は「対応中」
-    STATUS: [{ k: 'open', label: '対応中' }, { k: 'done', label: '指導済み' }, { k: 'watch', label: '経過観察' }, { k: 'closed', label: '解消' }],
+    STATUS: [{ k: 'open', label: '対応中' }, { k: 'watch', label: '経過観察' }, { k: 'closed', label: '解消' }], // 「指導済み」（done）はやめた。以前の値は経過観察として読む（report.js）
     // いじめの報告の段階。簡易→様式Ⅰ→様式Ⅱ→重大事態の順に、同じ色相で濃くする（文字でも段階を書く）
     BULLY_LEVELS: [
       { k: 'light', label: '簡易', c: '#F6D3CC', t: '#5A1A10' },
@@ -779,7 +779,7 @@
     var e = emptyReport(); r = r || {};
     var rows = function (a) { return (a || []).filter(function (x) { return x && String(x.t || '').trim(); }).map(function (x) { return { d: String(x.d || ''), p: String(x.p || ''), t: String(x.t || '') }; }); };
     e.level = C.BULLY_LEVELS.some(function (x) { return x.k === r.level; }) ? r.level : '';
-    e.status = C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
+    e.status = r.status === 'done' ? 'watch' : C.STATUS.some(function (x) { return x.k === r.status; }) ? r.status : 'open';
     e.reported = /^\d{4}-\d{2}-\d{2}$/.test(String(r.reported || '')) ? String(r.reported) : ''; // 市教委（生徒指導担当）へ報告した日。空＝未報告
     e.light = !!r.light; e.found = String(r.found || ''); e.other = String(r.other || '');
     e.modes = C.MODES.map(function (m, i) { return !!(r.modes && r.modes[i]); });
@@ -1023,7 +1023,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_1fe28ac245c4';
+var SERVER_BUILD = 'BUILD_70d5e7a44849';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

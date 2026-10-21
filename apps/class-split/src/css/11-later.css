@@ -13,8 +13,8 @@
 .ihb svg{width:24px;height:24px;flex:none}
 .ihs input{flex:1;border:0;background:none;font:inherit;font-size:1rem;outline:none;min-width:0}
 .ihs:focus-within{border-color:var(--link)}
-.icards{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
-.icard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
+.icards{padding:16px 14px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:8px;margin-top:8px}
+.icard{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:8px 10px;cursor:pointer;font:inherit;color:var(--ink)}
 .icard:hover{border-color:var(--link)}
 .icm{display:flex;flex-direction:column;gap:2px;min-width:0}
 .icm .d{font-size:.78rem;color:var(--sub)}
@@ -27,7 +27,6 @@
 .itg svg{width:13px;height:13px;flex:none}
 .itg.ig{font-weight:700;justify-content:center}
 .ist.st-open{border-color:#C8641A;color:#8A3F06;font-weight:700}
-.ist.st-done{border-color:#2E8A4A;color:#1F5E33}
 .ist.st-watch{border-color:#1E6FD9;color:#14498F}
 .ist.st-closed{color:var(--sub)}
 .istat{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:6px 0}
@@ -52,7 +51,6 @@
 .chip.plusin{outline:3px solid #D7263D;outline-offset:1px}
 .icard.ic-open{border:2px solid #C8641A;padding:7px 9px}
 .icard.ic-watch{border:2px solid #1E6FD9;padding:7px 9px}
-.icard.ic-done{border:2px solid #2E8A4A;padding:7px 9px}
 .icard.ic-closed{border:2px solid #9AA3AB;padding:7px 9px}
 .icard em.rc{font-style:normal;font-weight:700;margin-right:1px}
 .ihsort{gap:6px}
@@ -87,3 +85,9 @@
 .rfy{display:inline-flex;align-items:center;gap:6px;color:inherit}
 .rfy select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#1A1A1A}
 .rkk{width:2.2em;display:flex;justify-content:center}
+/* 報告済みのバッジ：カードの右上で枠に重ねる（学年のタグに重なってよい）。金色の丸に「報」、右上に青い✓ */
+.irbadge{position:absolute;right:-9px;top:-9px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,#FFF1B8 0,#E8C14A 45%,#B8891A 100%);border:1.5px solid #8A6410;color:#3A2600;font-weight:700;font-size:15px;line-height:1;
+  box-shadow:0 1px 2px #0004;z-index:2;pointer-events:none}
+.irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
+.irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
