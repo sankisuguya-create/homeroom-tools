@@ -2795,7 +2795,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var App = g.App, C = g.CONFIG, E = g.Engine;
-  var R = { fy: 0, cls: 0, scope: 'cls', onlyInc: false, kid: null, form: null, school: null, col: null };
+  var R = { fy: 0, cls: 0, scope: 'cls', kid: null, form: null, school: null, col: null };
 
   function D() { return App.st.data; }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
@@ -3150,7 +3150,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     } });
   }
 
-  function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.onlyInc = false; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
+  function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
 
   function render() {
     var d = D(), esc = App.esc;
@@ -3174,16 +3174,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     else {
       if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
         (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
-      if (R.onlyInc) h += '<span class="state">事案のある児童だけ<button class="btn" id="unfilter">解除</button></span>';
       if (SORT.length) h += '<span class="state">並び順：' + SORT.map(function (x) { return App.esc(sortLabel(x.k)) + (x.dir > 0 ? '↑' : '↓'); }).join('→') + '<button class="btn" id="unorder">解除</button></span>';
     }
     // 名簿を貼る：年度の初めや転入の時にすぐ使えるよう、上の帯に出す（直せる年度だけ）
     // 「その他」の窓をやめ、年度・全校の事案・絞り込み・使い方を帯に出す
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
     h += '<span class="sp"></span>' +
-      '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '年度（' + yearOf(fy).grade + '年）' + (fy === d.fy ? '・今年度' : fy > d.fy ? '・準備中' : '') + '</option>'; }).join('') + '</select></label>' +
+      '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '</option>'; }).join('') + '</select></label>' +
       (R.scope !== 'school' ? '<button class="btn" id="acadB" title="クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）">学力…</button>' : '') +
-      '<button class="btn" id="onlyIncB" aria-pressed="' + !!R.onlyInc + '" title="事案のある児童だけを出す">事案のある児童</button>' +
       '<button class="btn" data-scope="' + (R.scope === 'school' ? 'cls' : 'school') + '" aria-pressed="' + (R.scope === 'school') + '">全校の事案</button>' +
       (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
       '<button class="btn" id="rhelp" title="名簿の使い方">?</button>';
@@ -3232,7 +3230,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var rows = Y.rows.filter(function (r) { return R.scope === 'grade' || r.cls === R.cls; }).map(function (r) {
       return { r: r, n: incsOf(r.id, R.fy).length };
     });
-    if (R.onlyInc) rows = rows.filter(function (x) { return x.n > 0; });
     rows.forEach(function (x) { var s = d.kids[x.r.id]; x.id = x.r.id; x.kana = s.kana; x.male = s.male; x.cls = x.r.cls; x.no = x.r.no; x.a = x.r.a; });
     // 見出しを押した順の優先で並べる。最後は 組→番号→よみ
     var val = function (x, k) {
@@ -3516,8 +3513,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#rhelp')) { helpDialog(); return true; }
       if (t.closest('#acadB')) { App.acadDialog(); return true; }
-      if (t.closest('#onlyIncB')) { R.onlyInc = !R.onlyInc; render(); return true; }
-      if (t.closest('#unfilter')) { R.onlyInc = false; render(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }
       if (t.closest('[data-rpair],[data-memo]')) return true; // 文字や相手の入力は角から
       // 事案の登録・直すは事案管理の画面で行う（開いていた児童を入れておく）
@@ -3526,7 +3521,6 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return false;
     },
     input: function (t) {
-      if (t.id === 'onlyInc') { R.onlyInc = t.checked; render(); return; }
       if (t.id === 'rfy') { R.fy = +t.value; render(); return; }
     },
     key: function (e) {
