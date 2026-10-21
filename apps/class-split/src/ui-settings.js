@@ -66,7 +66,7 @@
       h += yearTab();
     }
     // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
-    h += '<p class="note" style="margin-top:16px">版：' + esc(App.pf().build || '試行（見本）') + '</p>';
+    h += '<p class="note" style="margin-top:16px">版：' + esc(App.buildLabel()) + '</p>';
     App.$('main').innerHTML = h + '</div>';
   }
 
