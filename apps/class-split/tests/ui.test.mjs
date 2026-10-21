@@ -485,6 +485,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 学力の順位の窓：低い画面（1366×768 を125%表示した大きさ）でも、児童の一覧が潰れない
+{
+  const p = await browser.newPage({ viewport: { width: 1093, height: 614 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
+  await p.click('#acadB'); await p.waitForSelector('#rklist');
+  const hgt = await p.evaluate(() => document.getElementById('rklist').getBoundingClientRect().height);
+  ok(hgt >= 250, `低い画面でも順位の一覧が見える（高さ ${Math.round(hgt)}px）`);
+  ok(await p.locator('.rkdlg [data-act="ok"]').isVisible(), '保存のボタンが画面の中に残る');
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

@@ -227,11 +227,11 @@
     App.openDlg({
       noEnter: true,
       html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="学力（順位）" style="max-width:600px">' + acadHead(Y, 'rank', F) +
+        return '<div class="pop" data-close="1"><div class="dlg rkdlg" role="dialog" aria-modal="true" aria-label="学力（順位）" style="max-width:600px">' + acadHead(Y, 'rank', F) +
           '<div class="rbar rktabs">' + keys.map(function (k) { return '<button type="button" class="tab" data-rkg="' + k + '" aria-selected="' + (k === cur) + '"><span class="band" style="background:' + App.classColor(+k.split(':')[0]).c + '"></span>' + label(k) + '（' + G[k].length + '）</button>'; }).join('') + '</div>' +
           '<div class="scset"><label>組の男女ごとに上から <input type="number" id="rkTop" min="1" max="99" value="' + Math.round(F.top * 100) + '"> ％刻みで段に分ける（1段＝「賢い」）</label><span class="note" id="rkcnt">' + label(cur) + '：上位 ' + cut() + '人に「賢い」</span>' +
           (Object.keys(s0).length ? '<button type="button" class="btn" data-rkscore="1">この組・男女を点数の順に並べ直す</button>' : '') + '</div>' +
-          '<p class="note">順位の数字を打つと、その位置へ動きます。名前（⠿）をドラッグしても入れ替えられます。太い線より上の児童に「賢い」が付きます。</p>' +
+          '<p class="note">順位の数字を打つか、名前（⠿）をドラッグして並べ替えます。太い線より上に「賢い」が付きます。</p>' +
           '<div class="rklist" id="rklist">' + list() + '</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">保存（全部の組・男女の順位）</button></div></div></div>';
       },

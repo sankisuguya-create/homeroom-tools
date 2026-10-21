@@ -64,7 +64,12 @@
 #toast.stay{border:2px solid #B00020}
 #toast #tclose{margin-left:8px;background:none;border:0;color:inherit;font-size:1.1em;cursor:pointer}
 /* 学力の順位の窓：1行に1人。太い線より上が「賢い」。⠿ を押して上下に動かす */
-.rklist{max-height:56vh;overflow:auto;border:1px solid var(--line);border-radius:6px;touch-action:none}
+.rklist{flex:1 0 auto;height:min(56vh,520px);min-height:min(50vh,360px);overflow:auto;border:1px solid var(--line);border-radius:6px;touch-action:none}
+/* 順位の窓：画面が低くても（拡大表示でも）一覧が潰れないよう、上の部分を詰め、一覧に高さを確保する（足りなければ窓ごと流す） */
+.dlg.rkdlg{gap:8px}
+.dlg.rkdlg>*{flex-shrink:0}
+.dlg.rkdlg .note{margin:0}
+.rktabs .tab{padding:2px 8px;font-size:.85rem}
 .rkrow{display:flex;align-items:center;gap:8px;padding:3px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
 .rkrow.top{background:#E3F4EA}
 .rkrow.cut{border-bottom:3px solid #009E73}
@@ -91,3 +96,4 @@
   box-shadow:0 1px 2px #0004;z-index:2;pointer-events:none}
 .irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
+.dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
