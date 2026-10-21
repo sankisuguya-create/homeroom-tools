@@ -77,3 +77,13 @@
 .rkrow.tierend{border-bottom:2px solid #9AA3AB}
 .rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
 .rkrow.top .rkt{color:#007A57;font-weight:700}
+/* 学力の窓の上：点数・順位の切り替えと「賢い」の決め方 */
+.acadtabs{align-items:center;flex-wrap:wrap}
+.acaduse{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.9rem}
+.acadman{margin:-4px 0 8px;font-size:.88rem}.acadman summary{cursor:pointer;color:var(--sub)}
+/* 設定のタブ：学校の設定とこの端末だけの表示を分ける */
+.rbar .sgrp{font-size:.78rem;color:var(--sub);align-self:center}
+.rbar .bsep{width:1px;align-self:stretch;background:var(--line);margin:0 6px}
+.rfy{display:inline-flex;align-items:center;gap:6px;color:inherit}
+.rfy select{font:inherit;padding:4px 6px;border:1px solid var(--line);border-radius:6px;background:#fff;color:#1A1A1A}
+.rkk{width:2.2em;display:flex;justify-content:center}

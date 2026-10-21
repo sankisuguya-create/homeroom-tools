@@ -25,27 +25,6 @@
       '<span class="jr">' + jn + '</span></div>';
   }
 
-  function moreDialog() {
-    var ro = !!S.decision, np = S.view !== 'plan';
-    var btn = function (id, label, kbd, off) { return '<button class="btn" id="' + id + '"' + (off ? ' disabled' : '') + '>' + label + (kbd ? '<kbd>' + kbd + '</kbd>' : '') + '</button>'; };
-    App.openDlg({
-      noEnter: true,
-      html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg more" role="dialog" aria-modal="true" aria-label="その他" style="max-width:560px"><h2>その他</h2>' +
-          (ro ? '' : '<section><h3>案</h3><div class="rbar">' + btn('dup', '複製', 'D', np) + (S.plans.length > 1 ? btn('delp', '削除', 'Del', np) : '') + '</div></section>' +
-            '<section><h3>条件と児童</h3><div class="rbar">' + btn('pairs', 'つける・離す…', 'P') + btn('trans', '転入生…') + '</div></section>') +
-          '<section><h3>表示</h3><div class="rbar">' + btn('prt', '個人票を印刷…', '', np) + btn('fs', '全画面', 'F') + btn('hbtn', 'ショートカット一覧', '?') + '</div></section>' +
-          (ro ? '' : '<section><h3>決める</h3><div class="rbar">' + btn('decide', '決定…', '', App.st.grade >= 6) + (App.st.grade >= 6 ? '<span class="note">6年は決定しません</span>' : '') + '</div></section>') +
-          '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
-      },
-      click: function (t) {
-        var b = t.closest('button[id]');
-        if (!b || b.disabled) return false;
-        App.closeDlg(); return App.screens.split.click(t);
-      }
-    });
-  }
-
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
@@ -57,13 +36,17 @@
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '"><span class="k">0</span>比較（' + S.plans.length + '案）</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
     h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
-    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '<button class="btn primary" id="xlsOut" title="決定した組を「次年度組編成」の Excel で出す">Excel で出す</button><button class="btn primary" id="cnames">組の番号を決める…</button><button class="btn danger" id="undoDecide">決定を取り消す…</button></span>';
-    else h += '<button class="btn" id="undo"' + (S.view !== 'plan' || !p.hist.length ? ' disabled' : '') + '>↶ 戻す<kbd>Ctrl+Z</kbd></button>' +
-      '<button class="btn" id="redo"' + (S.view !== 'plan' || !p.fut.length ? ' disabled' : '') + '>↷<kbd>Ctrl+Y</kbd></button>';
-    // 編集中に毎回は使わない操作は「その他…」の窓へ（キーの近道はそのまま効く）
-    h += '<button class="btn ordbtn" id="order"' + (S.view !== 'plan' ? ' disabled' : '') + '>⇅ 並び順…</button><button class="btn" id="smore" aria-haspopup="dialog">その他…</button>';
-    if (!ro) h += '<button class="btn primary" id="gen">案を作る<kbd>G</kbd></button>';
-    return '<div class="bar">' + h + '</div>';
+    // ボタンは「その他」の窓に隠さず、作業の順に帯に並べる：直す → 条件 → 見せ方 → 出す → 決める
+    var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
+    h += '<span class="bacts">';
+    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '</span>' +
+      b('cnames', '組の番号を決める…', '', 'primary') + b('prt', '個人票を印刷…', '', '', np) + b('xlsOut', 'Excel で出す', '決定した組を「次年度組編成」の Excel で出す', 'primary') + b('undoDecide', '決定を取り消す…', '', 'danger');
+    else h += b('undo', '↶', '戻す（Ctrl+Z）', '', np || !p.hist.length) + b('redo', '↷', 'やり直す（Ctrl+Y）', '', np || !p.fut.length) + b('dup', '複製', 'この案を写して新しい案にする（D）', '', np) +
+      '<span class="bsep"></span>' + b('pairs', 'つける離す', 'つける・離す・組に固定（P）') + b('trans', '転入生') +
+      '<span class="bsep"></span>' + b('order', '⇅ 並び順', '組の中のカードの並び順', 'ordbtn', np) + b('prt', '印刷', '個人票を印刷', '', np);
+    h += b('fs', '⛶', '全画面（F）') + b('hbtn', '?', 'ショートカット一覧（?）');
+    if (!ro) h += '<span class="bsep"></span>' + b('decide', '決定', App.st.grade >= 6 ? '6年は決定しません' : 'この案でクラス替えを決める（来年度の名簿を作る）', 'warnbtn', np || App.st.grade >= 6) + b('gen', '案を作る', '（G）', 'primary');
+    return '<div class="bar">' + h + '</span></div>';
   }
 
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
