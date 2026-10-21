@@ -128,6 +128,15 @@
             var v = 62 + (RS() + RS() + RS() - 1.5) * 30 - (r.a.k1 | 0) * 14 + (r.a.k7 | 0) * 16;
             sc.s[r.id] = Math.max(0, Math.min(100, Math.round(v)));
           });
+          // 学力の順位（組・男女の中での順位）。点数の高い順に付け、点数の無い児童は後ろ。今年度は順位で「賢い」を決める見本
+          var grp = {};
+          yearRows(fyS, fyS - entry + 1).forEach(function (r) { var k = r.cls + ':' + (S.kids[r.id].male ? 'm' : 'f'); (grp[k] = grp[k] || []).push(r); });
+          sc.r = {};
+          Object.keys(grp).forEach(function (k) {
+            grp[k].sort(function (p, q) { var a = sc.s[p.id] == null ? -1 : sc.s[p.id], b = sc.s[q.id] == null ? -1 : sc.s[q.id]; return b - a || p.no - q.no; })
+              .forEach(function (r, i) { sc.r[r.id] = i + 1; });
+          });
+          sc.use = fyS === FY ? 'rank' : 'score';
           ((S.scores = S.scores || {})[grade] = S.scores[grade] || {})[fyS] = sc;
         });
       }

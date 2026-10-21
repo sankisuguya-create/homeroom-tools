@@ -459,7 +459,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
-  await p.click('#acadB'); await p.waitForSelector('.sctab');
+  // 見本は今年度を順位で決めているので、学力の窓は順位のタブで開く
+  await p.click('#acadB'); await p.waitForSelector('#rklist');
+  ok(await p.locator('[data-acaduse="rank"]').isChecked(), '見本の今年度は順位で「賢い」を決めている');
+  await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
   await p.click('[data-acadtab="rank"]'); await p.waitForSelector('#rklist');
   ok(await p.locator('[data-acadtab="rank"][aria-selected="true"]').count() === 1, '学力の窓で点数と順位をタブで切り替えられる');
   await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
