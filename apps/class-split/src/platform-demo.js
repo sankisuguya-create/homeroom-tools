@@ -169,6 +169,7 @@
 
   // 本番の incidentInput_ と同じ：関係図があれば、関係する児童と役割は関係図から決める
   var RL = E.rngOf(5151); // いじめの報告の段階の見本だけに使う乱数
+  var RR = E.rngOf(6161); // 報告済みの見本だけに使う乱数
   function demoIncident(x) {
     var dg = x.diagram ? E.normDiagram(x.diagram) : null;
     if (dg && !dg.nodes.length) dg = null;
@@ -216,6 +217,12 @@
     }
     // いじめの報告の段階：多くは簡易、ときどき様式Ⅰ・Ⅱ、まれに重大事態（別の乱数。ほかの見本の並びを変えない）
     if (/いじめ/.test(type)) { var lv = RL(); rp.level = lv < .55 ? 'light' : lv < .82 ? 'f1' : lv < .97 ? 'f2' : 'grave'; }
+    // 報告済み（市教委へ報告した日）：いじめは多く、ほかは少し。報告は事案の数日後。最近（3日以内）の事案はまだ
+    if (age > 3 && RR() < (/いじめ/.test(type) ? .7 : .15)) {
+      var rd = new Date(date); rd.setDate(rd.getDate() + 2 + Math.floor(RR() * 5));
+      if (rd > new Date()) rd = new Date();
+      rp.reported = rd.getFullYear() + '-' + ('0' + (rd.getMonth() + 1)).slice(-2) + '-' + ('0' + rd.getDate()).slice(-2);
+    }
     return rp;
   }
   function E_REPORT() { return g.Report; }
