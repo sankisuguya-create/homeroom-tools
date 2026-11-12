@@ -10,6 +10,7 @@
 | [ダンスカウント表](apps/dance-count/) | 集団演技を8カウント単位で作成・印刷する | [概要](apps/dance-count/README.md) |
 | [アイコンメーカー](apps/icon-maker/) | 校務資料用の統一アイコンを作る | [概要](apps/icon-maker/README.md) |
 | [回収チェック表](apps/collection-check/) | 同意書・集金などの回収を名簿×品目の表で追う | [概要](apps/collection-check/README.md) |
+| [教室の時計](apps/classroom-clock/) | 教室のモニターに時計・タイマー・ストップウォッチを映す。操作は手元のPCだけ | [概要](apps/classroom-clock/README.md) |
 | [クラス替え](apps/class-split/) | 学年の名簿（配慮項目・事案・経年の記録）とクラス替えの案づくり・入れ替え・決定（見本） | [概要](apps/class-split/README.md) |
 
 机の配置図は、場所（体育館・プールなど）と体育館の用具の立体を足して、別リポジトリ flow-line-guide の `apps/haichi/`（配置図）へ移しました。
@@ -35,6 +36,8 @@ node apps/icon-maker/scripts/build.mjs
 node apps/icon-maker/tests/test-app.mjs
 node --test apps/class-split/tests/engine.test.mjs
 node apps/class-split/tests/ui.test.mjs
+node --test apps/classroom-clock/tests/core.test.mjs
+node apps/classroom-clock/tests/ui.test.mjs
 ```
 
 `dist/`を直しても次のビルドで上書きされます。変更は各`src/`または`shared/`へ入れます。

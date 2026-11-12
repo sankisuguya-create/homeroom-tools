@@ -19,7 +19,7 @@ jobs:
       - name: 生成物と正本の一致
         run: python3 scripts/build.py --check
       - name: 計算とサーバーのテスト
-        run: node --test apps/class-split/tests/engine.test.mjs apps/class-split/tests/gas.test.mjs apps/class-split/tests/paste.test.mjs
+        run: node --test apps/class-split/tests/engine.test.mjs apps/class-split/tests/gas.test.mjs apps/class-split/tests/paste.test.mjs apps/classroom-clock/tests/core.test.mjs
       - name: Playwright を入れる
         run: |
           npm install -g playwright@1.56.1
@@ -28,3 +28,4 @@ jobs:
         run: |
           node apps/class-split/tests/ui.test.mjs
           node --test apps/class-split/tests/gas-ui.test.mjs
+          node apps/classroom-clock/tests/ui.test.mjs

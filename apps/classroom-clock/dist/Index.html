@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>教室の時計</title>
+<style>
+/* ▼ src/view.css から。直すのは src のほう ▼ */
+/* モニターに映す面。操作の部品は置かない。
+   ui-layout の S（4pxの刻み）の注意は、この面が cq 単位で縮むために出る。画面の大きさに比例させるのが目的なので残す。
+   寸法は cq 単位（この面自身の大きさに対する割合）で書く：
+   手元の小さな見本でも、モニターの全画面でも、同じ見た目で縮む。 */
+.cv{
+  --bg:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--line:#C9CED4;
+  --fill:#D7E8F8;--edge:#0F5EA8;        /* 残り時間の面（ふつう） */
+  --wfill:#FBE3B4;--wedge:#C86A00;--wtext:#A85800;  /* 残り1分 */
+  --alert:#C0330A;                      /* おわり */
+  position:relative;width:100%;height:100%;container-type:size;overflow:hidden;
+  background:var(--bg);color:var(--ink);
+  font-family:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+  font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;
+}
+.cv[data-theme=dark]{
+  --bg:#101418;--ink:#F2F4F6;--sub:#A0A9B4;--line:#3A424B;
+  --fill:#1F4F80;--edge:#7DB8F5;--wfill:#6E4A0E;--wedge:#F2A93B;--wtext:#F2A93B;--alert:#FF9A7A;
+}
+.cv *{box-sizing:border-box}
+.cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
+.cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:5.5cqmin;font-weight:700;color:var(--sub);line-height:1.2;min-height:1.2em}
+.cv-main{display:grid;grid-template-columns:minmax(0,1fr);place-items:center;min-height:0;gap:2cqh 4cqw}
+.cv-analog{display:none;height:100%;max-width:100%;aspect-ratio:1;min-height:0}
+.cv-read{display:flex;flex-direction:column;align-items:center;gap:2.5cqh;min-width:0;max-width:100%}
+.cv-label{font-size:8cqmin;font-weight:700;line-height:1.2}
+.cv-label:empty,.cv-sub:empty{display:none}
+.cv-big{font-size:min(23cqw,52cqh);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+.cv-b2{font-size:.42em;color:var(--sub);margin-left:.08em}
+.cv-bar{width:72cqw;height:3.5cqh;border-radius:2cqh;background:var(--line);overflow:hidden}
+.cv-bar i{display:block;height:100%;background:var(--edge)}
+.cv-sub{font-size:7cqmin;font-weight:700;line-height:1.25;text-align:center}
+.cv-laps{list-style:none;margin:0;padding:0;font-size:5.5cqmin;font-weight:700;color:var(--sub);display:flex;flex-wrap:wrap;justify-content:center;gap:1cqh 4cqw}
+.cv-laps:empty{display:none}
+
+/* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
+.cv[data-face=analog] .cv-analog{display:block}
+.cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(0,1fr)}
+.cv[data-face=analog] .cv-big{font-size:min(12cqw,30cqh)}
+.cv[data-face=analog] .cv-bar{display:none}
+.cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
+.cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+.cv[data-face=analog][data-mode=clock] .cv-big{display:none}
+.cv[data-mode=clock] .cv-bar,.cv[data-mode=sw] .cv-bar{display:none}
+.cv[data-mode=clock] .cv-now{display:none}
+.cv[data-face=analog] .cv-now{display:none}
+
+/* 残り1分・おわり：色に加えて、言葉（もうすぐ おわり／おわり）と面の大きさで伝える。 */
+.cv[data-phase=warn] .cv-big,.cv[data-phase=warn] .cv-label{color:var(--wtext)}
+.cv[data-phase=warn] .cv-bar i{background:var(--wedge)}
+.cv[data-phase=over] .cv-big,.cv[data-phase=over] .cv-label{color:var(--alert)}
+
+.cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:2.5}
+.cv-tick{stroke:var(--sub);stroke-width:.8}
+.cv-tick5{stroke:var(--ink);stroke-width:2.2}
+.cv-num{fill:var(--ink);font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.cv-sector{fill:var(--fill)}
+.cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
+.cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
+.cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
+.cv-hh{stroke:var(--ink);stroke-width:6;stroke-linecap:round}
+.cv-mh{stroke:var(--ink);stroke-width:3.6;stroke-linecap:round}
+.cv-sh{stroke:var(--alert);stroke-width:1.2;stroke-linecap:round}
+.cv-pin{fill:var(--ink)}
+
+/* 合図は音と同時に画面でも出す（消音・聞こえにくい児童への保険）。点滅は1秒に1回（3Hz未満）。 */
+.cv.flash::after{content:"";position:absolute;inset:0;border:3.5cqmin solid var(--alert);pointer-events:none;animation:cvflash 1s steps(2,jump-none) infinite}
+@keyframes cvflash{from{opacity:1}to{opacity:0}}
+.cv-banner{position:absolute;left:50%;top:4cqh;transform:translateX(-50%);max-width:92cqw;padding:2cqh 5cqw;border-radius:3cqh;
+  background:var(--ink);color:var(--bg);font-size:9cqmin;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-banner:empty{display:none}
+.cv-hint{position:absolute;left:50%;bottom:2cqh;transform:translateX(-50%);padding:1cqh 3cqw;border-radius:2cqh;
+  background:var(--ink);color:var(--bg);font-size:4cqmin;font-weight:700;white-space:nowrap;opacity:.9}
+.cv-hint:empty{display:none}
+/* ▲ src/view.css ここまで ▲ */
+
+/* ---- 操作画面（教師の手元のPCだけに出す） ---- */
+:root{
+  --paper:#F6F7F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
+  --accent:#0F5EA8;--on:#FFFFFF;--alert:#C0330A;
+  --s1:4px;--s2:8px;--s3:16px;--s4:24px;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:var(--s3);height:100%;padding:var(--s3)}
+.stage{display:grid;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);min-height:0}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;font-weight:700;min-height:24px}
+.stage-head .dot{width:10px;height:10px;border-radius:50%;background:var(--sub)}
+.stage-head.live{color:var(--accent)} .stage-head.live .dot{background:var(--accent)}
+.preview{min-height:0;display:grid;place-items:center}
+.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
+.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.card h2{margin:0;font-size:13px;color:var(--sub)}
+button,select,input{font:inherit;color:inherit}
+.btn{height:48px;padding:0 var(--s2);border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.main{background:var(--accent);color:var(--on);border-color:var(--accent)}
+.btn.danger{color:var(--alert)}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.seg button{height:48px;border:0;border-left:1px solid var(--rule);background:var(--sheet);font-weight:700;cursor:pointer}
+.seg button:first-child{border-left:0}
+.seg button[aria-checked=true]{background:var(--accent);color:var(--on)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
+.sw{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw::after{content:"";flex:0 0 44px;height:26px;border-radius:13px;background:var(--rule);
+  background-image:radial-gradient(circle at 13px 50%,#fff 9px,transparent 10px)}
+.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 31px 50%,#fff 9px,transparent 10px)}
+.field{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--s2);min-height:48px;font-weight:700}
+.field select,.field input[type=range]{height:48px;width:100%}
+.field select{border:1px solid var(--rule);border-radius:8px;background:var(--sheet);padding:0 var(--s2)}
+.fold{display:flex;flex-direction:column;gap:var(--s2)}
+details.card>summary{cursor:pointer;font-weight:700;min-height:48px;display:flex;align-items:center;list-style:none}
+details.card>summary::before{content:"▶";font-size:11px;margin-right:var(--s2);color:var(--sub)}
+details.card[open]>summary::before{content:"▼"}
+.note{font-size:13px;color:var(--sub);margin:0}
+.warn{font-size:13px;color:var(--alert);margin:0;font-weight:700}
+textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid var(--rule);border-radius:8px;padding:var(--s2)}
+.alarm{display:grid;grid-template-columns:120px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
+.alarm input{height:48px;border:1px solid var(--rule);border-radius:8px;padding:0 var(--s2);min-width:0}
+.alarm .x{width:48px}
+@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.pv-box{max-height:none}}
+</style>
+
+<div class="app">
+  <section class="stage">
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターにはまだ出していません）</span></div>
+    <div class="preview"><div class="pv-box" id="pv"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="card">
+      <button class="btn main" id="goMonitor" data-flow="1">モニターに出す</button>
+      <p class="note" id="monNote">モニターを「拡張」でつなぐと、操作の画面は手元だけに残り、モニターには時計だけが出ます。</p>
+    </div>
+
+    <div class="card">
+      <div class="seg" role="radiogroup" id="segMode" data-flow="2">
+        <button role="radio" data-v="clock">時計</button>
+        <button role="radio" data-v="timer">タイマー</button>
+        <button role="radio" data-v="sw">ストップウォッチ</button>
+      </div>
+      <div class="seg" role="radiogroup" id="segFace">
+        <button role="radio" data-v="digital">デジタル</button>
+        <button role="radio" data-v="analog">アナログ</button>
+      </div>
+    </div>
+
+    <div class="card" id="ctlTimer" hidden>
+      <h2>何分？（押すとすぐ始まる）</h2>
+      <div class="grid4" id="presets"></div>
+      <div class="row">
+        <button class="btn" id="tMinus">−1分</button>
+        <button class="btn" id="tPlus">＋1分</button>
+      </div>
+      <div class="row">
+        <button class="btn main" id="tToggle" data-flow="3">スタート</button>
+        <button class="btn" id="tReset">もとに戻す</button>
+      </div>
+    </div>
+
+    <div class="card" id="ctlSw" hidden>
+      <div class="row">
+        <button class="btn main" id="sToggle">スタート</button>
+        <button class="btn" id="sLap">ラップ</button>
+        <button class="btn" id="sReset">ゼロに</button>
+      </div>
+    </div>
+
+    <div class="card" id="ctlClock" hidden>
+      <button class="sw" role="switch" id="swSched">時間割の残り時間とチャイム</button>
+      <p class="note" id="schedNote"></p>
+    </div>
+
+    <details class="card" id="dSound">
+      <summary data-group="fold-dSound">音と声</summary>
+      <div class="fold">
+      <div class="field">音量<input type="range" id="vol" min="0" max="1" step="0.05"></div>
+      <div class="field">おわりの音<select id="endTune">
+        <option value="chime">チャイム（4音）</option><option value="soft">やわらかい音</option>
+        <option value="beep">ピピピ</option><option value="none">鳴らさない</option></select></div>
+      <button class="sw" role="switch" id="swWarn">のこり1分で知らせる</button>
+      <button class="sw" role="switch" id="swTick">さいごの10秒をカチカチ</button>
+      <button class="sw" role="switch" id="swVoice">声でも知らせる（「あと1分です」など）</button>
+      <p class="note" id="voiceNote" hidden>この端末には日本語の声が入っていないため、声は出ません。</p>
+      <button class="sw" role="switch" id="swFlash">音と同時に画面のふちを光らせる</button>
+      <button class="btn" id="testSound">試しに鳴らす</button>
+      </div>
+    </details>
+
+    <details class="card" id="dAlarm">
+      <summary data-group="fold-dAlarm">時刻で鳴らす（アラーム）</summary>
+      <div class="fold">
+      <div id="alarms"></div>
+      <button class="btn" id="addAlarm">アラームを足す</button>
+      <p class="note">鳴る時刻に、言葉をモニターに大きく出して読み上げます（例：10:25 かたづけ）。</p>
+      </div>
+    </details>
+
+    <details class="card" id="dSched">
+      <summary data-group="fold-dSched">時間割（日課）</summary>
+      <div class="fold">
+      <div class="field">今日の日課<select id="pattern"></select></div>
+      <textarea id="schedText" spellcheck="false"></textarea>
+      <p class="note">1行に1つ「名前 はじまり-おわり」。例：1時間目 8:45-9:30</p>
+      <p class="warn" id="schedErr" hidden></p>
+      <button class="sw" role="switch" id="swChime">はじまりとおわりにチャイムを鳴らす</button>
+      </div>
+    </details>
+
+    <details class="card" id="dLook">
+      <summary data-group="fold-dLook">見た目</summary>
+      <div class="fold">
+      <div class="seg" role="radiogroup" id="segTheme">
+        <button role="radio" data-v="light">明るい</button>
+        <button role="radio" data-v="dark">暗い</button>
+      </div>
+      <p class="note">プロジェクターや明るい教室では「明るい」、まぶしいときは「暗い」。</p>
+      </div>
+    </details>
+  </section>
+</div>
+
+<script>
+/* ▼ src/core.js から。直すのは src のほう ▼ */
+/* 時間の計算の正本。画面にも音にも触れない（node のテストからそのまま読む）。
+   決まり：残り時間・経過時間は「数えた回数」ではなく時刻の差から出す。
+   タブが裏に回って処理が間引かれても、読み込み直しても、ずれない。 */
+var ClockCore = (function () {
+  'use strict';
+  var SEC = 1000, MIN = 60000, HOUR = 3600000;
+  var TIMER_MAX = 180 * MIN;
+  var LATE_LIMIT = 5 * SEC;   // これより遅れて気づいた合図は鳴らさない（スリープ明けに古い合図をまとめて鳴らさない）
+
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function hm2min(hm) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(hm || '');
+    if (!m) return null;
+    var h = +m[1], mi = +m[2];
+    return (h > 23 || mi > 59) ? null : h * 60 + mi;
+  }
+  function dayStart(ts) { var d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function atHm(ts, hm) { var m = hm2min(hm); return m === null ? null : dayStart(ts) + m * MIN; }
+
+  function fmtClock(ts) { var d = new Date(ts); return { h: String(d.getHours()), m: pad(d.getMinutes()), s: pad(d.getSeconds()) }; }
+  function fmtDate(ts) { var d = new Date(ts); return (d.getMonth() + 1) + '月' + d.getDate() + '日（' + '日月火水木金土'.charAt(d.getDay()) + '）'; }
+  function fmtHmJa(ts) { var d = new Date(ts); return d.getHours() + '時' + (d.getMinutes() ? d.getMinutes() + '分' : ''); }
+  /* 残りは切り上げる：0:00 が出るのは終わった瞬間だけ（「0:00 なのにまだ鳴らない」1秒を作らない） */
+  function fmtRemain(ms) { var s = Math.max(0, Math.ceil(ms / SEC)); return Math.floor(s / 60) + ':' + pad(s % 60); }
+  function fmtOver(ms) { var s = Math.max(0, Math.floor(ms / SEC)); return '+' + Math.floor(s / 60) + ':' + pad(s % 60); }
+  function fmtSw(ms) { var t = Math.floor(Math.max(0, ms) / 100), s = Math.floor(t / 10); return { main: Math.floor(s / 60) + ':' + pad(s % 60), tenth: '.' + (t % 10) }; }
+  function ceilMin(ms) { return Math.max(1, Math.ceil(ms / MIN)); }
+
+  /* ---- タイマー ---- { dur, left, running, endAt, started }
+     不変条件：running のとき残りは endAt - now、止まっているとき残りは left。 */
+  function newTimer(dur) { return { dur: dur, left: dur, running: false, endAt: 0, started: false }; }
+  function timerLeft(t, now) { return t.running ? t.endAt - now : t.left; }
+  function timerStart(t, now) {
+    if (t.running) return;
+    if (t.left <= 0) t.left = t.dur;          // 終わったあとのスタートは同じ長さでもう一度
+    t.running = true; t.started = true; t.endAt = now + t.left;
+  }
+  function timerPause(t, now) { if (!t.running) return; t.left = t.endAt - now; t.running = false; }
+  function timerReset(t) { t.running = false; t.started = false; t.left = t.dur; t.endAt = 0; }
+  function timerPreset(t, dur, now) { t.dur = dur; t.left = dur; t.running = false; timerStart(t, now); }
+  function timerAdd(t, ms, now) {
+    var left = timerLeft(t, now);
+    var next = left <= 0 ? (ms > 0 ? ms : 0) : left + ms;   // 終わったあとの＋は「今から」延ばす
+    if (next < MIN && ms < 0) next = left > 0 ? Math.min(left, MIN) : left;  // −は1分より下へ行かない
+    if (next > TIMER_MAX) next = TIMER_MAX;
+    if (t.running) t.endAt = now + next; else { t.left = next; if (!t.started && next > 0) t.dur = next; }
+  }
+
+  /* ---- ストップウォッチ ---- { running, startAt, acc, laps[] } */
+  function newSw() { return { running: false, startAt: 0, acc: 0, laps: [] }; }
+  function swElapsed(w, now) { return w.acc + (w.running ? now - w.startAt : 0); }
+  function swStart(w, now) { if (!w.running) { w.running = true; w.startAt = now; } }
+  function swStop(w, now) { if (w.running) { w.acc = swElapsed(w, now); w.running = false; } }
+  function swLap(w, now) { var e = swElapsed(w, now); if (e > 0) w.laps.push(e); }
+  function swReset(w) { w.running = false; w.acc = 0; w.startAt = 0; w.laps = []; }
+
+  /* ---- 時間割 ---- rows: [{name, s:'08:45', e:'09:30'}]
+     今が授業中なら {kind:'in'}、次の授業まで60分以内なら {kind:'before'}、どちらでもなければ null。
+     60分で切るのは、アナログ盤の扇形（長針1周）で表せる範囲に合わせるため。 */
+  function schedNow(rows, now) {
+    var next = null;
+    for (var i = 0; i < rows.length; i++) {
+      var s = atHm(now, rows[i].s), e = atHm(now, rows[i].e);
+      if (s === null || e === null || e <= s) continue;
+      if (now >= s && now < e) return { kind: 'in', name: rows[i].name, startAt: s, endAt: e };
+      if (s > now && (!next || s < next.startAt)) next = { kind: 'before', name: rows[i].name, startAt: s, endAt: e };
+    }
+    return next && next.startAt - now <= HOUR ? next : null;
+  }
+
+  /* ---- 合図 ---- (prev, now] の間に通りすぎた合図を返す。状態は書きかえない。 */
+  function events(state, prev, now) {
+    var out = [];
+    if (!(prev < now)) return out;
+    if (now - prev > LATE_LIMIT) prev = now - LATE_LIMIT;
+    function crossed(ts) { return ts !== null && ts > prev && ts <= now; }
+    var t = state.timer;
+    if (t && t.running) {
+      if (crossed(t.endAt)) out.push({ type: 'timerEnd' });
+      else {
+        if (t.dur >= 2 * MIN && crossed(t.endAt - MIN)) out.push({ type: 'timerWarn' });
+        for (var k = 10; k >= 1; k--) {
+          if (t.dur > k * SEC && crossed(t.endAt - k * SEC)) { out.push({ type: 'tick', left: k }); break; }
+        }
+      }
+    }
+    (state.alarms || []).forEach(function (a) {
+      if (a.on && crossed(atHm(now, a.hm))) out.push({ type: 'alarm', hm: a.hm, label: a.label || '' });
+    });
+    var sc = state.sched;
+    if (sc && sc.on && sc.chime) {
+      var rows = (sc.patterns[sc.pattern] || { rows: [] }).rows, done = {};
+      rows.forEach(function (r) {
+        [['start', r.s], ['end', r.e]].forEach(function (p) {
+          var ts = atHm(now, p[1]);
+          if (crossed(ts) && !done[ts]) { done[ts] = 1; out.push({ type: 'chime', edge: p[0], name: r.name }); }
+        });
+      });
+    }
+    return out;
+  }
+
+  return {
+    SEC: SEC, MIN: MIN, HOUR: HOUR, TIMER_MAX: TIMER_MAX,
+    hm2min: hm2min, atHm: atHm, fmtClock: fmtClock, fmtDate: fmtDate, fmtHmJa: fmtHmJa,
+    fmtRemain: fmtRemain, fmtOver: fmtOver, fmtSw: fmtSw, ceilMin: ceilMin,
+    newTimer: newTimer, timerLeft: timerLeft, timerStart: timerStart, timerPause: timerPause,
+    timerReset: timerReset, timerPreset: timerPreset, timerAdd: timerAdd,
+    newSw: newSw, swElapsed: swElapsed, swStart: swStart, swStop: swStop, swLap: swLap, swReset: swReset,
+    schedNow: schedNow, events: events
+  };
+})();
+if (typeof module !== 'undefined') module.exports = ClockCore;
+/* ▲ src/core.js ここまで ▲ */
+/* ▼ src/sound.js から。直すのは src のほう ▼ */
+/* 音。音源ファイルを持たず、ブラウザの中で合成する（通信なし・読み込み待ちなし）。
+   ブラウザは利用者が画面を押すまで音を止めるので、最初の操作で unlock() を呼ぶ。 */
+var ClockSound = (function () {
+  'use strict';
+  var ctx = null, master = null, vol = 0.8, played = [], jaVoice = null;
+
+  function unlock() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!ctx) { ctx = new AC(); master = ctx.createGain(); master.gain.value = vol; master.connect(ctx.destination); }
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  function ready() { return !!ctx && ctx.state === 'running'; }
+  function setVol(v) { vol = v; if (master) master.gain.value = v; }
+
+  /* 1音。倍音を少し足した正弦波を、打ってから減衰させる（鐘・木琴に近い鳴り方）。 */
+  function note(freq, at, len, gain, type) {
+    var t0 = ctx.currentTime + at, g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+    g.connect(master);
+    [[1, 1], [2, 0.28], [3, 0.1]].forEach(function (h) {
+      if (type === 'square' && h[0] > 1) return;
+      var o = ctx.createOscillator(), hg = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq * h[0]; hg.gain.value = h[1];
+      o.connect(hg); hg.connect(g); o.start(t0); o.stop(t0 + len + 0.05);
+    });
+  }
+  var E5 = 659.25, C5 = 523.25, D5 = 587.33, G4 = 392.0;
+  var TUNES = {
+    /* 学校のチャイムの前半4音 */
+    chime: function () { [E5, C5, D5, G4].forEach(function (f, i) { note(f, i * 0.6, i === 3 ? 2.2 : 1.1, 0.5); }); return 4000; },
+    /* 前半＋後半の8音（時間割の区切り） */
+    school: function () { [E5, C5, D5, G4, G4, D5, E5, C5].forEach(function (f, i) { note(f, i * 0.6 + (i > 3 ? 0.6 : 0), (i % 4) === 3 ? 2.2 : 1.1, 0.5); }); return 7000; },
+    soft: function () { note(880, 0, 1.6, 0.45); note(659.25, 0.55, 2.2, 0.45); return 2800; },
+    beep: function () { for (var r = 0; r < 3; r++) for (var i = 0; i < 3; i++) note(2000, r * 0.9 + i * 0.16, 0.1, 0.22, 'square'); return 2700; },
+    warn: function () { note(783.99, 0, 1.4, 0.4); return 1400; },
+    tick: function () { note(1000, 0, 0.07, 0.25); return 80; },
+    none: function () { return 0; }
+  };
+  /* 鳴らして、鳴り終わるまでのミリ秒を返す（声をその後ろに置くため）。 */
+  function play(name) {
+    played.push(name);
+    if (name === 'none' || !TUNES[name]) return 0;
+    unlock();
+    if (!ctx) return 0;
+    return TUNES[name]();
+  }
+
+  function pickVoice() {
+    if (!window.speechSynthesis) return;
+    var vs = speechSynthesis.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
+    jaVoice = vs.filter(function (v) { return v.localService; })[0] || vs[0] || null;
+  }
+  if (window.speechSynthesis) {
+    pickVoice();
+    if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', pickVoice);
+  }
+  function canSpeak() { return !!jaVoice; }
+  /* 日本語の声が端末に無いときは読まない（外国語の声で日本語を読ませない）。 */
+  function speak(text, delayMs) {
+    played.push('voice:' + text);
+    if (!jaVoice) return;
+    setTimeout(function () {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP'; u.voice = jaVoice; u.volume = vol; u.rate = 0.95;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }, delayMs || 0);
+  }
+  return { unlock: unlock, ready: ready, setVol: setVol, play: play, speak: speak, canSpeak: canSpeak, played: played };
+})();
+/* ▲ src/sound.js ここまで ▲ */
+/* ▼ src/view.js から。直すのは src のほう ▼ */
+/* モニターに映す面を作る。同じ関数で、手元の見本とモニター用の窓の両方を描く
+   （描き方が1つなので、見本とモニターが食い違わない）。 */
+var ClockView = (function () {
+  'use strict';
+  var C = ClockCore;
+
+  function pt(deg, r) { var a = (deg - 90) * Math.PI / 180; return (100 + r * Math.cos(a)).toFixed(2) + ' ' + (100 + r * Math.sin(a)).toFixed(2); }
+  /* 12時の位置から時計回りに a0→a1 度の扇形 */
+  function sectorPath(a0, a1, r) {
+    var span = Math.min(a1 - a0, 359.9);
+    return 'M100 100L' + pt(a0, r) + 'A' + r + ' ' + r + ' 0 ' + (span > 180 ? 1 : 0) + ' 1 ' + pt(a0 + span, r) + 'Z';
+  }
+  function faceSvg() {
+    var s = '<circle class="cv-face" cx="100" cy="100" r="97"/><path class="cv-sector" d=""/>';
+    for (var i = 0; i < 60; i++) {
+      var five = i % 5 === 0;
+      s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 7 : 5) + '" x2="100" y2="' + (five ? 15 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
+    }
+    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 72).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
+    s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
+      + '<line class="cv-hh" x1="100" y1="108" x2="100" y2="52"/>'
+      + '<line class="cv-mh" x1="100" y1="110" x2="100" y2="22"/>'
+      + '<line class="cv-sh" x1="100" y1="116" x2="100" y2="16"/>'
+      + '<circle class="cv-pin" cx="100" cy="100" r="4"/>';
+    return s;
+  }
+
+  function create(doc, root) {
+    root.className = 'cv';
+    root.lang = 'ja';
+    root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="0 0 200 200" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
+      + '<div class="cv-bar"><i></i></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
+      + '<div class="cv-banner"></div><div class="cv-hint"></div>';
+    var q = function (s) { return root.querySelector(s); };
+    var el = { date: q('.cv-date'), now: q('.cv-now'), label: q('.cv-label'), b1: q('.cv-b1'), b2: q('.cv-b2'), bar: q('.cv-bar i'),
+      sub: q('.cv-sub'), laps: q('.cv-laps'), banner: q('.cv-banner'), hint: q('.cv-hint'),
+      sector: q('.cv-sector'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
+    var last = {};
+    function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
+    function attr(k, node, name, v) { if (last[k] !== v) { last[k] = v; node.setAttribute(name, v); } }
+
+    function update(state, now, fx) {
+      fx = fx || {};
+      var mode = state.mode, d = new Date(now), c = C.fmtClock(now);
+      var label = '', b1 = '', b2 = '', sub = '', phase = 'idle', bar = 0, goal = null, laps = '';
+      if (mode === 'clock') {
+        b1 = c.h + ':' + c.m; b2 = ':' + c.s;
+        if (state.sched.on) {
+          var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
+          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; }
+          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; }
+        }
+      } else if (mode === 'timer') {
+        var t = state.timer, left = C.timerLeft(t, now);
+        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); }
+        else {
+          var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
+          b1 = C.fmtRemain(left); label = soon ? 'もうすぐ おわり' : 'のこり';
+          phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
+          bar = Math.min(1, left / t.dur);
+          if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
+          else if (t.started) sub = 'とまっています';
+        }
+      } else {
+        var w = state.sw, sw = C.fmtSw(C.swElapsed(w, now));
+        label = 'ストップウォッチ'; b1 = sw.main; b2 = sw.tenth;
+        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + 'かいめ ' + f.main + f.tenth; }).join('\n');
+      }
+      attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
+      attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
+      txt('date', C.fmtDate(now)); txt('now', c.h + ':' + c.m);
+      txt('label', label); txt('b1', b1); txt('b2', b2); txt('sub', sub);
+      attr('bar', el.bar, 'style', 'width:' + (bar * 100).toFixed(1) + '%');
+      if (last.lapsTxt !== laps) {
+        last.lapsTxt = laps; el.laps.textContent = '';
+        if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
+      }
+      if (state.face === 'analog') {
+        var sec = d.getSeconds(), min = d.getMinutes() + sec / 60, hr = (d.getHours() % 12) + min / 60;
+        var am = min * 6;
+        attr('hh', el.hh, 'transform', 'rotate(' + (hr * 30).toFixed(2) + ' 100 100)');
+        attr('mh', el.mh, 'transform', 'rotate(' + am.toFixed(2) + ' 100 100)');
+        attr('sh', el.sh, 'transform', 'rotate(' + (sec * 6) + ' 100 100)');
+        /* 残り時間を「今の長針から、終わりの位置まで」の面で塗る。長針1周（60分）以内だけ。 */
+        var remain = goal === null ? 0 : goal - now, show = remain > 0 && remain <= C.HOUR;
+        var a1 = am + remain / C.HOUR * 360;
+        attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 86) : '');
+        var g = show ? pt(a1, 86).split(' ') : ['100', '100'];
+        attr('gx', el.goal, 'x2', g[0]); attr('gy', el.goal, 'y2', g[1]);
+      }
+      var flash = !!(fx.flashUntil && now < fx.flashUntil);
+      if (last.flash !== flash) { last.flash = flash; root.classList.toggle('flash', flash); }
+      txt('banner', fx.banner && now < fx.banner.until ? fx.banner.text : '');
+      txt('hint', fx.hint || '');
+    }
+    return { update: update, root: root };
+  }
+  return { create: create, sectorPath: sectorPath };
+})();
+/* ▲ src/view.js ここまで ▲ */
+
+(function () {
+  'use strict';
+  document.documentElement.lang = 'ja';
+  var C = ClockCore, S = ClockSound;
+  var KEY = 'classroom-clock-v1';
+  var PRESETS = [1, 3, 5, 10, 15, 20, 30, 45];
+  var DEFAULT_ROWS = [
+    ['朝の会', '8:30', '8:40'], ['1時間目', '8:45', '9:30'], ['2時間目', '9:35', '10:20'],
+    ['3時間目', '10:40', '11:25'], ['4時間目', '11:30', '12:15'], ['給食', '12:15', '13:00'],
+    ['そうじ', '13:20', '13:35'], ['5時間目', '13:40', '14:25'], ['6時間目', '14:30', '15:15']
+  ];
+  function rowsOf(list) { return list.map(function (r) { return { name: r[0], s: pad(r[1]), e: pad(r[2]) }; }); }
+  function pad(hm) { var p = hm.split(':'); return (p[0].length < 2 ? '0' : '') + p[0] + ':' + p[1]; }
+
+  /* ---- 状態。設定とタイマーは端末に保存し、読み込み直しても続きから ---- */
+  var state = {
+    mode: 'clock', face: 'digital', theme: 'light',
+    timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
+    sound: { vol: 0.8, endTune: 'chime', warn: true, tick: false, voice: true, flash: true },
+    alarms: [],
+    sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
+  };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved) Object.keys(state).forEach(function (k) { if (saved[k] !== undefined) state[k] = saved[k]; });
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var views = [ClockView.create(document, $('pv'))];
+  var fx = { flashUntil: 0, banner: null, hint: '' };
+  var mon = null;  // モニター用の窓
+
+  /* ---- 合図：音・声・画面 ---- */
+  function signal(ev, now) {
+    var snd = state.sound, ms = 0, say = '', banner = '';
+    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune); say = 'おわりです'; banner = 'おわり'; }
+    else if (ev.type === 'timerWarn') { if (!snd.warn) return; ms = S.play('warn'); say = 'あと1分です'; }
+    else if (ev.type === 'tick') { if (snd.tick) S.play('tick'); return; }
+    else if (ev.type === 'alarm') { ms = S.play('chime'); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
+    else if (ev.type === 'chime') {
+      ms = S.play('school');
+      say = ev.name + (ev.edge === 'start' ? 'が はじまります' : 'が おわりです');
+      banner = ev.name + (ev.edge === 'start' ? ' はじまり' : ' おわり');
+    }
+    if (snd.voice && say) S.speak(say, ms);
+    if (snd.flash) fx.flashUntil = now + 6000;
+    if (banner) fx.banner = { text: banner, until: now + 15000 };
+  }
+
+  /* ---- 1回の刻み。表示と合図は時刻から出す ---- */
+  var prev = Date.now();
+  function tick() {
+    var now = Date.now();
+    C.events(state, prev, now).forEach(function (ev) { signal(ev, now); });
+    prev = now;
+    fx.hint = '';
+    views[0].update(state, now, fx);
+    if (mon && !mon.win.closed) {
+      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'ここを押すと 全画面になります';
+      mon.view.update(state, now, fx);
+    } else if (mon) { mon = null; syncUi(); }
+    updateButtons(now);
+  }
+  setInterval(tick, 100);
+
+  /* ---- モニターに出す ----
+     ミラーリング（複製）では手元とモニターが同じ画面なので、操作の部品を手元だけに出すことは原理的にできない。
+     「拡張」でつなぎ、時計だけの窓をモニター側に開く。Chrome の画面配置の許可があれば、窓をモニターへ自動で置く。 */
+  async function openMonitor() {
+    S.unlock();
+    if (mon && !mon.win.closed) { mon.win.focus(); return; }
+    var feat = 'popup,width=960,height=540';
+    var target = null;
+    try {
+      if (window.getScreenDetails) {
+        var sd = await window.getScreenDetails();
+        target = sd.screens.filter(function (s) { return s !== sd.currentScreen; })[0] || null;
+        if (target) feat = 'popup,left=' + target.availLeft + ',top=' + target.availTop + ',width=' + target.availWidth + ',height=' + target.availHeight;
+      }
+    } catch (e) {}
+    var w = window.open('', 'classroom-clock-monitor', feat);
+    if (!w) { $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
+    var d = w.document;
+    d.open();
+    d.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>教室の時計（モニター）</title><style>html,body{margin:0;height:100%;overflow:hidden;cursor:none}'
+      + document.querySelector('style').textContent.split('/* ---- 操作画面')[0] + '</style></head><body><div id="m" style="width:100vw;height:100vh"></div></body></html>');
+    d.close();
+    mon = { win: w, view: ClockView.create(d, d.getElementById('m')), full: false };
+    d.addEventListener('click', function () {
+      S.unlock();
+      var el = d.documentElement;
+      var p = target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen();
+      if (p && p.then) p.then(function () { mon.full = true; }, function () {});
+    });
+    w.addEventListener('keydown', function (e) { if (e.key === 'Escape') mon.full = false; });
+    syncUi();
+  }
+
+  /* 画面が暗くならないように（モニター表示中だけ） */
+  var lock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && !lock && navigator.wakeLock) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', function () { lock = null; }); }
+      if (!on && lock) { lock.release(); lock = null; }
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && mon) keepAwake(true); });
+
+  /* ---- 操作 ---- */
+  function seg(id, get, set) {
+    var box = $(id);
+    box.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; set(b.dataset.v); changed(); });
+    return function () { box.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.v === get())); }); };
+  }
+  function sw(id, get, set) {
+    var b = $(id);
+    b.addEventListener('click', function () { set(!get()); changed(); });
+    return function () { b.setAttribute('aria-checked', String(!!get())); };
+  }
+  var syncs = [
+    seg('segMode', function () { return state.mode; }, function (v) { state.mode = v; }),
+    seg('segFace', function () { return state.face; }, function (v) { state.face = v; }),
+    seg('segTheme', function () { return state.theme; }, function (v) { state.theme = v; }),
+    sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
+    sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
+    sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),
+    sw('swTick', function () { return state.sound.tick; }, function (v) { state.sound.tick = v; }),
+    sw('swVoice', function () { return state.sound.voice; }, function (v) { state.sound.voice = v; }),
+    sw('swFlash', function () { return state.sound.flash; }, function (v) { state.sound.flash = v; })
+  ];
+  function changed() { S.unlock(); save(); syncUi(); tick(); }
+
+  PRESETS.forEach(function (m) {
+    var b = document.createElement('button'); b.className = 'btn'; b.textContent = m + '分';
+    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN, Date.now()); prev = Date.now(); changed(); };
+    $('presets').appendChild(b);
+  });
+  $('tToggle').onclick = function () { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); };
+  $('tReset').onclick = function () { C.timerReset(state.timer); fx.flashUntil = 0; fx.banner = null; changed(); };
+  $('tPlus').onclick = function () { C.timerAdd(state.timer, C.MIN, Date.now()); changed(); };
+  $('tMinus').onclick = function () { C.timerAdd(state.timer, -C.MIN, Date.now()); changed(); };
+  $('sToggle').onclick = function () { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); };
+  $('sLap').onclick = function () { C.swLap(state.sw, Date.now()); changed(); };
+  $('sReset').onclick = function () { C.swReset(state.sw); changed(); };
+  $('goMonitor').onclick = function () { openMonitor(); };
+
+  $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
+  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.play(this.value); };
+  $('testSound').onclick = function () { S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('あと1分です', ms); };
+
+  /* アラーム */
+  function drawAlarms() {
+    var box = $('alarms'); box.textContent = '';
+    state.alarms.forEach(function (a, i) {
+      var row = document.createElement('div'); row.className = 'alarm';
+      var t = document.createElement('input'); t.type = 'time'; t.value = a.hm; t.setAttribute('aria-label', '時刻'); t.dataset.group = 'atime';
+      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = 'かたづけ'; l.setAttribute('aria-label', '出す言葉'); l.dataset.group = 'alabel';
+      var x = document.createElement('button'); x.className = 'btn x danger'; x.textContent = '×'; x.setAttribute('aria-label', 'このアラームを消す');
+      t.onchange = function () { a.hm = t.value; save(); };
+      l.oninput = function () { a.label = l.value; save(); };
+      x.onclick = function () { state.alarms.splice(i, 1); save(); drawAlarms(); };
+      row.append(t, l, x); box.appendChild(row);
+    });
+  }
+  $('addAlarm').onclick = function () {
+    var d = new Date(Date.now() + 10 * C.MIN);
+    state.alarms.push({ on: true, hm: ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), label: '' });
+    save(); drawAlarms();
+  };
+
+  /* 時間割：1行1つの文字で編む（スプレッドシートの日課表から貼り付けられる形） */
+  function schedToText(rows) { return rows.map(function (r) { return r.name + ' ' + r.s.replace(/^0/, '') + '-' + r.e.replace(/^0/, ''); }).join('\n'); }
+  function parseSched(text) {
+    var rows = [], bad = [];
+    text.split('\n').forEach(function (line, i) {
+      line = line.replace(/[０-９：－〜～]/g, function (c) { return { '：': ':', '－': '-', '〜': '-', '～': '-' }[c] || String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim();
+      if (!line) return;
+      var m = /^(.*?)[\s\t]*(\d{1,2}:\d{2})\s*[-\t ]\s*(\d{1,2}:\d{2})$/.exec(line);
+      if (!m || !m[1] || C.hm2min(m[2]) === null || C.hm2min(m[3]) === null || C.hm2min(m[3]) <= C.hm2min(m[2])) { bad.push(i + 1); return; }
+      rows.push({ name: m[1].trim(), s: pad(m[2]), e: pad(m[3]) });
+    });
+    return { rows: rows, bad: bad };
+  }
+  function drawPatterns() {
+    var sel = $('pattern'); sel.textContent = '';
+    Object.keys(state.sched.patterns).forEach(function (k) { var o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o); });
+    sel.value = state.sched.pattern;
+    $('schedText').value = schedToText(state.sched.patterns[state.sched.pattern].rows);
+  }
+  $('pattern').onchange = function () { state.sched.pattern = this.value; save(); drawPatterns(); syncUi(); };
+  $('schedText').oninput = function () {
+    var r = parseSched(this.value);
+    state.sched.patterns[state.sched.pattern].rows = r.rows;
+    $('schedErr').hidden = !r.bad.length;
+    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目が読めません（読めた行だけ使います）' : '';
+    save(); syncUi();
+  };
+
+  /* ---- 画面の状態を合わせる ---- */
+  function syncUi() {
+    syncs.forEach(function (f) { f(); });
+    $('ctlTimer').hidden = state.mode !== 'timer';
+    $('ctlSw').hidden = state.mode !== 'sw';
+    $('ctlClock').hidden = state.mode !== 'clock';
+    var live = !!(mon && !mon.win.closed);
+    $('stageHead').classList.toggle('live', live);
+    $('stageText').textContent = live ? 'モニターに出しています（この見本と同じものが出ます）' : '見本（モニターにはまだ出していません）';
+    $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
+    keepAwake(live);
+    var n = state.sched.patterns[state.sched.pattern].rows.length;
+    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」の日課（' + n + 'こ）で数えます。日課は下の「時間割」で直せます。' : '「' + state.sched.pattern + '」の日課がまだ空です。下の「時間割」に入れてください。';
+    $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
+    $('endTune').value = state.sound.endTune;
+    $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
+  }
+  var lastBtn = '';
+  function updateButtons(now) {
+    var t = state.timer, w = state.sw;
+    var k = (t.running ? 1 : 0) + '' + (C.timerLeft(t, now) <= 0 ? 1 : 0) + (w.running ? 1 : 0);
+    if (k === lastBtn) return; lastBtn = k;
+    $('tToggle').textContent = t.running ? (C.timerLeft(t, now) <= 0 ? 'とめる' : 'いちじ停止') : (t.started && t.left > 0 ? 'つづける' : 'スタート');
+    $('sToggle').textContent = w.running ? 'とめる' : (w.acc ? 'つづける' : 'スタート');
+  }
+  setTimeout(syncUi, 800);  // 声の一覧は少し遅れて届く
+  window.addEventListener('beforeunload', function () { if (mon && !mon.win.closed) mon.win.close(); });
+  drawAlarms(); drawPatterns(); syncUi(); tick();
+  window.__cc = { state: state, sound: S, openMonitor: openMonitor };
+})();
+</script>
+</body>
+</html>
