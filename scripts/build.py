@@ -54,6 +54,7 @@ PAGES = [
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
     (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
     (CLOCK_SRC / "Index.html", CLOCK_DIST / "Index.html", [CLOCK_SRC], True),
+    (CLOCK_SRC / "sounds.html", CLOCK_DIST / "sounds.html", [CLOCK_SRC], True),
 ]
 
 # 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。

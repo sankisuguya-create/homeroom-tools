@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>教室の時計 音の試聴</title>
+<style>
+:root{--paper:#EAE6DE;--surf:#FBFAF7;--track:#DED9CF;--ink:#22262B;--sub:#565B62;--acc:#22262B;--on:#FBFAF7;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.5 var(--font)}
+main{max-width:560px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:24px}
+h1{font-size:16px;margin:0;letter-spacing:.04em}
+h2{font-size:12px;color:var(--sub);margin:0 0 8px;letter-spacing:.08em}
+.row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;background:var(--surf);border-radius:14px;padding:8px 12px 8px 8px;margin-bottom:6px}
+.row b{font-size:14px} .row small{display:block;color:var(--sub);font-size:11px}
+.row .tag{font-size:11px;color:var(--sub)}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.play{width:48px;height:48px;border-radius:50%;background:var(--acc);color:var(--on);display:grid;place-items:center}
+.play svg{width:18px;height:18px;fill:currentColor}
+.row.on .play{background:#A63B25}
+.stop{height:48px;border-radius:12px;background:var(--track);font-weight:700}
+.vol{display:flex;align-items:center;gap:12px;background:var(--surf);border-radius:14px;padding:0 16px;min-height:56px}
+.vol input{flex:1;accent-color:var(--acc);height:48px}
+.note{font-size:11px;color:var(--sub);margin:0}
+</style>
+<main>
+  <h1>音の試聴</h1>
+  <div class="vol"><span>音量</span><input type="range" id="vol" min="0" max="1" step="0.05" value="0.8" aria-label="音量"><button class="stop" id="stopAll" style="padding:0 16px">すべて止める</button></div>
+
+  <section><h2>終了音・アラーム（実際は止めるまで最長30秒くり返す。ここでは3回で止める）</h2><div id="end"></div></section>
+  <section><h2>予告・カウント</h2><div id="cue"></div></section>
+  <section><h2>時間割のチャイム</h2><div id="chime"></div></section>
+  <section><h2>読み上げ（端末の日本語音声）</h2><div id="voice"></div><p class="note" id="vnote"></p></section>
+  <p class="note">音はすべてブラウザの中で合成しています（音のファイル・通信なし）。聞こえ方はスピーカーで変わるので、教室のモニターでも確かめてください。</p>
+</main>
+<script>
+/* ▼ src/sound.js から。直すのは src のほう ▼ */
+/* 音。音源ファイルを持たず、ブラウザの中で合成する（通信なし・読み込み待ちなし）。
+   ブラウザは利用者が画面を押すまで音を止めるので、最初の操作で unlock() を呼ぶ。
+   音の型は既存のタイマーアプリ・キッチンタイマーに合わせる：
+     終了音は止めるまで繰り返す（最長30秒）／予告は短い「ピッ ピッ」／残り10秒は毎秒「ピッ」。 */
+var ClockSound = (function () {
+  'use strict';
+  var ctx = null, master = null, vol = 0.8, played = [], jaVoice = null;
+  var buses = [], timers = [];
+  var LOOP_MAX = 30000;
+
+  function unlock() {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!ctx) { ctx = new AC(); master = ctx.createGain(); master.gain.value = vol; master.connect(ctx.destination); }
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  function ready() { return !!ctx && ctx.state === 'running'; }
+  function setVol(v) { vol = v; if (master) master.gain.value = v; }
+
+  /* 1音。type が sine のときは倍音を足して鐘・木琴に近づける。 */
+  function note(bus, freq, at, len, gain, type) {
+    var t0 = ctx.currentTime + at, g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(gain, t0 + 0.006);
+    if (type === 'square') g.gain.setValueAtTime(gain, t0 + len * 0.8);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + len);
+    g.connect(bus);
+    (type === 'square' ? [[1, 1]] : [[1, 1], [2, 0.3], [3, 0.12], [4.2, 0.06]]).forEach(function (h) {
+      var o = ctx.createOscillator(), hg = ctx.createGain();
+      o.type = type || 'sine'; o.frequency.value = freq * h[0]; hg.gain.value = h[1];
+      o.connect(hg); hg.connect(g); o.start(t0); o.stop(t0 + len + 0.05);
+    });
+  }
+  var E5 = 659.25, C5 = 523.25, D5 = 587.33, G4 = 392.0, G5 = 783.99, C6 = 1046.5, E6 = 1318.5;
+  /* 1回分の鳴り。ms はその長さ、loop は繰り返す間隔（終了音・アラームだけ）。 */
+  var TUNES = {
+    /* 電子音：キッチンタイマーの「ピピピピッ」 */
+    alarm: { ms: 1000, loop: 1000, f: function (b) { for (var i = 0; i < 4; i++) note(b, 2048, i * 0.12, 0.07, 0.16, 'square'); } },
+    /* ベル：目覚まし時計のように細かく打ち続ける */
+    bell: { ms: 1500, loop: 1800, f: function (b) { for (var i = 0; i < 14; i++) note(b, i % 2 ? 2350 : 2500, i * 0.1, 0.35, 0.18); } },
+    /* マリンバ：上がる3音（スマートフォンのアラームに多い型） */
+    marimba: { ms: 1400, loop: 1600, f: function (b) { [C6, E6, G5 * 2].forEach(function (f, i) { note(b, f / 2, i * 0.18, 0.6, 0.45); note(b, f / 2, 0.75 + i * 0.18, 0.6, 0.45); }); } },
+    /* 学校のチャイム（8音）。繰り返さない */
+    school: { ms: 7000, f: function (b) { [E5, C5, D5, G4, G4, D5, E5, C5].forEach(function (f, i) { note(b, f, i * 0.6 + (i > 3 ? 0.6 : 0), (i % 4) === 3 ? 2.2 : 1.2, 0.5); }); } },
+    /* 予告：短い「ピッ ピッ」 */
+    warn: { ms: 450, f: function (b) { note(b, 1568, 0, 0.12, 0.18, 'square'); note(b, 1568, 0.25, 0.12, 0.18, 'square'); } },
+    /* 残り10秒：毎秒「ピッ」 */
+    tick: { ms: 100, f: function (b) { note(b, 1568, 0, 0.06, 0.12, 'square'); } }
+  };
+  function bus() { var g = ctx.createGain(); g.connect(master); buses.push(g); return g; }
+  /* 鳴らして、最初の1回が鳴り終わるまでのミリ秒を返す（声をその後ろに置くため）。
+     loop の音は stop() まで、最長30秒くり返す。声がある時は2回目までの間をあけ、声を音と重ねない。 */
+  function play(name, opts) {
+    played.push(name);
+    var t = TUNES[name];
+    if (!t) return 0;
+    unlock();
+    if (!ctx) return 0;
+    var b = bus();
+    t.f(b);
+    if (t.loop) {
+      var gap = opts && opts.voiceGap ? 2600 : 0, start = Date.now();
+      var next = function () {
+        if (Date.now() - start > LOOP_MAX || buses.indexOf(b) < 0) return;
+        t.f(b); timers.push(setTimeout(next, t.loop));
+      };
+      timers.push(setTimeout(next, t.loop + gap));
+    }
+    return t.ms;
+  }
+  /* 鳴っている音をすべて止める（画面や操作ボタンを押した時） */
+  function stop() {
+    timers.forEach(clearTimeout); timers = [];
+    buses.forEach(function (g) { try { g.disconnect(); } catch (e) {} }); buses = [];
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+  function ringing() { return timers.length > 0 && buses.length > 0; }
+
+  function pickVoice() {
+    if (!window.speechSynthesis) return;
+    var vs = speechSynthesis.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
+    jaVoice = vs.filter(function (v) { return v.localService; })[0] || vs[0] || null;
+  }
+  if (window.speechSynthesis) {
+    pickVoice();
+    if (speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', pickVoice);
+  }
+  function canSpeak() { return !!jaVoice; }
+  /* 日本語の声が端末に無いときは読まない（外国語の声で日本語を読ませない）。 */
+  function speak(text, delayMs) {
+    played.push('voice:' + text);
+    if (!jaVoice) return;
+    timers.push(setTimeout(function () {
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'ja-JP'; u.voice = jaVoice; u.volume = vol; u.rate = 1;
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    }, delayMs || 0));
+  }
+  return { unlock: unlock, ready: ready, setVol: setVol, play: play, stop: stop, ringing: ringing, speak: speak, canSpeak: canSpeak, played: played };
+})();
+/* ▲ src/sound.js ここまで ▲ */
+(function () {
+  'use strict';
+  var S = ClockSound, PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  function row(box, title, sub, tag, fn) {
+    var r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="play" aria-label="' + title + 'を鳴らす">' + PLAY + '</button><div><b></b><small></small></div><span class="tag"></span>';
+    r.querySelector('b').textContent = title; r.querySelector('small').textContent = sub; r.querySelector('.tag').textContent = tag;
+    r.querySelector('.play').onclick = function () {
+      S.stop(); document.querySelectorAll('.row.on').forEach(function (x) { x.classList.remove('on'); });
+      S.unlock(); r.classList.add('on'); var ms = fn() || 1500;
+      setTimeout(function () { r.classList.remove('on'); }, ms);
+    };
+    document.getElementById(box).appendChild(r);
+  }
+  function loop3(name, ms) { return function () { S.play(name); setTimeout(S.stop, ms * 3 - 100); return ms * 3; }; }
+  row('end', '電子音', 'キッチンタイマーの「ピピピピッ」。既定', '1秒ごと', loop3('alarm', 1000));
+  row('end', 'ベル', '目覚まし時計のように細かく打つ', '1.8秒ごと', loop3('bell', 1800));
+  row('end', 'マリンバ', '上がる3音を2回', '1.6秒ごと', loop3('marimba', 1600));
+  row('end', 'チャイム', '学校のチャイム（8音）。くり返さない', '7秒', function () { return S.play('school'); });
+  row('cue', '1分前の予告', '「ピッ ピッ」', '1回', function () { return S.play('warn'); });
+  row('cue', '10秒前からカウント', '毎秒「ピッ」を10回', '10秒', function () {
+    for (var k = 0; k < 10; k++) setTimeout(function () { S.play('tick'); }, k * 1000);
+    return 10000;
+  });
+  row('cue', '終了の流れ', 'カウント3回 → 電子音 → 「時間です」', '約7秒', function () {
+    for (var k = 0; k < 3; k++) setTimeout(function () { S.play('tick'); }, k * 1000);
+    setTimeout(function () { var ms = S.play('alarm', { voiceGap: true }); S.speak('時間です', ms); }, 3000);
+    setTimeout(S.stop, 7400); return 7400;
+  });
+  row('chime', '授業のはじまり', 'チャイム＋「1時間目が始まります」', '約9秒', function () { var ms = S.play('school'); S.speak('1時間目が始まります', ms); return ms + 2500; });
+  row('chime', '授業のおわり', 'チャイム＋「1時間目が終わりました」', '約9秒', function () { var ms = S.play('school'); S.speak('1時間目が終わりました', ms); return ms + 2500; });
+  ['あと1分です', '時間です', '片付け'].forEach(function (t) {
+    row('voice', t, t === '片付け' ? 'アラームのメッセージの例' : 'タイマー', '', function () { S.speak(t, 0); return 1800; });
+  });
+  document.getElementById('vol').oninput = function () { S.setVol(+this.value); };
+  document.getElementById('stopAll').onclick = function () { S.stop(); document.querySelectorAll('.row.on').forEach(function (x) { x.classList.remove('on'); }); };
+  setTimeout(function () { document.getElementById('vnote').textContent = S.canSpeak() ? '' : 'この端末・ブラウザには日本語の音声がないため、読み上げは鳴りません（学校の端末では鳴る見込み）。'; }, 800);
+})();
+</script>
+</body>
+</html>

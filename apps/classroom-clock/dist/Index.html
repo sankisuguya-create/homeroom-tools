@@ -10,38 +10,47 @@
    ui-layout の S（4pxの刻み）の注意は、この面が cq 単位で縮むために出る。画面の大きさに比例させるのが目的なので残す。
    寸法は cq 単位（この面自身の大きさに対する割合）で書く：
    手元の小さな見本でも、モニターの全画面でも、同じ見た目で縮む。 */
+/* 配色は2つ（docs/preview/luxury.html の A・B）。
+   A 象牙：明るい教室。色は紺1色＋赤い三角。B 夜：まぶしい時。色は琥珀1色＋珊瑚の三角。
+   遠くから読むもの（数字・針・5分目盛り・残りの面）はコントラストを保ち、高級感は線の強弱・余白・地色で出す。 */
 .cv{
-  --bg:#FFFFFF;--ink:#1A1A1A;--sub:#4A525B;--line:#C9CED4;
-  --fill:#A9CBEE;--edge:#0F5EA8;        /* 残り時間の面（ふつう） */
-  --wfill:#F7C873;--wedge:#C86A00;--wtext:#A85800;  /* 残り1分 */
-  --alert:#C0330A;                      /* おわり */
+  --bg:#F3F0EA;--dial:#FBFAF7;--ink:#22262B;--sub:#5E636A;--hair:#B9B3A8;--line:#E2DDD3;
+  --fill:#D2D9E1;--edge:#2D4A6B;                       /* 残り時間の面（ふつう） */
+  --wfill:#F1D7B4;--wedge:#B4600A;--wtext:#9A5208;     /* 残り1分 */
+  --alert:#A63B25;                                     /* 終了・赤い三角・秒針 */
+  --shadow:0 .8cqmin 2.4cqmin rgba(60,50,30,.14);
+  --num:"Segoe UI Variable Display","Segoe UI","Roboto","Helvetica Neue","Inter","Yu Gothic UI","Noto Sans CJK JP",sans-serif;
+  --wnum:300;
   position:relative;width:100%;height:100%;container-type:size;overflow:hidden;
   background:var(--bg);color:var(--ink);
   font-family:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
   font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;
 }
 .cv[data-theme=dark]{
-  --bg:#101418;--ink:#F2F4F6;--sub:#A0A9B4;--line:#3A424B;
-  --fill:#1D5A96;--edge:#7DB8F5;--wfill:#7A5210;--wedge:#F2A93B;--wtext:#F2A93B;--alert:#FF9A7A;
+  --bg:#121417;--dial:#1A1D21;--ink:#ECE8E1;--sub:#9AA0A8;--hair:#454B53;--line:#2C3137;
+  --fill:#4A3A22;--edge:#D9A55B;--wfill:#5A2E22;--wedge:#EE8A6A;--wtext:#EE8A6A;--alert:#EE8A6A;
+  --shadow:0 .8cqmin 2.4cqmin rgba(0,0,0,.5);
 }
+/* 「数字を太く」：後ろの席から細い数字が読みにくい時 */
+.cv[data-bold="1"]{--wnum:600}
 .cv *{box-sizing:border-box}
 .cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
-.cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:5.5cqmin;font-weight:700;color:var(--sub);line-height:1.2;min-height:1.2em}
+.cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:4.6cqmin;font-weight:700;color:var(--sub);letter-spacing:.12em;line-height:1.2;min-height:1.2em}
 .cv-main{display:grid;grid-template-columns:minmax(0,1fr);place-items:center;min-height:0;gap:2cqh 4cqw}
 .cv-analog{display:none;height:100%;max-width:100%;aspect-ratio:1;min-height:0}
 .cv-read{display:flex;flex-direction:column;align-items:center;gap:2.5cqh;min-width:0;max-width:100%}
 .cv-label{font-size:8cqmin;font-weight:700;line-height:1.2}
 .cv-label:empty,.cv-sub:empty{display:none}
-.cv-big{font-size:min(23cqw,52cqh);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+.cv-big{font-family:var(--num);font-size:min(25cqw,56cqh);font-weight:var(--wnum);line-height:1;white-space:nowrap;letter-spacing:-.02em}
 .cv-b2{font-size:.42em;color:var(--sub);margin-left:.08em}
 .cv-gauge{display:none;width:88cqw}
-.cv-bar{position:relative;height:26cqh;border-radius:1.5cqh;background:var(--line);overflow:hidden;border:.6cqmin solid var(--ink)}
+.cv-bar{position:relative;height:22cqh;border-radius:2cqh;background:var(--line);overflow:hidden;box-shadow:inset 0 0 0 .3cqmin var(--hair)}
 /* 目盛りの数字（分）。棒の下に、位置を合わせて置く */
-.cv-scale{position:relative;height:7cqmin;margin-top:1cqh;font-size:5.5cqmin;font-weight:700;color:var(--ink)}
+.cv-scale{position:relative;height:7cqmin;margin-top:1.6cqh;font-family:var(--num);font-size:5cqmin;font-weight:500;color:var(--sub)}
 .cv-scale span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%);line-height:1}
-.cv-scale span::before{content:"";position:absolute;left:50%;top:-1.2cqh;height:1cqh;border-left:.4cqmin solid var(--ink)}
+.cv-scale span::before{content:"";position:absolute;left:50%;top:-1.4cqh;height:1cqh;border-left:.25cqmin solid var(--hair)}
 .cv-bar i{display:block;height:100%;background:var(--edge)}
-.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .35cqw),var(--bg) calc(100% / var(--n) - .35cqw) calc(100% / var(--n)))}
+.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .25cqw),var(--bg) calc(100% / var(--n) - .25cqw) calc(100% / var(--n)))}
 /* 横棒：残りを長さで見せる。数字は棒の上に小さく */
 .cv[data-face=bar][data-bar="1"] .cv-gauge{display:block}
 .cv[data-face=bar][data-bar="1"] .cv-big{font-size:min(15cqw,30cqh)}
@@ -71,22 +80,23 @@
 .cv[data-phase=paused] .cv-big{opacity:.4}
 .cv[data-phase=over] .cv-big,.cv[data-phase=over] .cv-label{color:var(--alert)}
 
-.cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:3}
-.cv-tick{stroke:var(--ink);stroke-width:1.2}
-.cv-tick5{stroke:var(--ink);stroke-width:3}
-.cv-num{fill:var(--ink);font-size:24px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.cv-face{fill:var(--dial);stroke:var(--hair);stroke-width:1;filter:drop-shadow(var(--shadow))}
+.cv-tick{stroke:var(--sub);stroke-width:.9}
+.cv-tick5{stroke:var(--ink);stroke-width:2.8}
+.cv-num{fill:var(--ink);font-family:var(--num);font-size:22px;font-weight:500;text-anchor:middle;dominant-baseline:central;letter-spacing:-.02em}
 .cv-sector{fill:var(--fill)}
-.cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
+.cv-goal{stroke:var(--edge);stroke-width:2;stroke-linecap:round}
 .cv-tri{fill:var(--alert)}
 .cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
 .cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
-.cv-hh{stroke:var(--ink);stroke-width:8;stroke-linecap:round}
-.cv-mh{stroke:var(--ink);stroke-width:5;stroke-linecap:round}
-.cv-sh{stroke:var(--alert);stroke-width:1.5;stroke-linecap:round}
+/* 針は先細りの面で描く（根元が太く、先が細い）。中心に座金 */
+.cv-hh,.cv-mh{fill:var(--ink)}
+.cv-sh{stroke:var(--alert);stroke-width:1.2;stroke-linecap:round}
 .cv-pin{fill:var(--ink)}
+.cv-pin2{fill:var(--dial)}
 
 /* 合図は音と同時に画面でも出す（消音・聞こえにくい児童への保険）。点滅は1秒に1回（3Hz未満）。 */
-.cv.flash::after{content:"";position:absolute;inset:0;border:3.5cqmin solid var(--alert);pointer-events:none;animation:cvflash 1s steps(2,jump-none) infinite}
+.cv.flash::after{content:"";position:absolute;inset:0;border:2cqmin solid var(--alert);pointer-events:none;animation:cvflash 1s steps(2,jump-none) infinite}
 @keyframes cvflash{from{opacity:1}to{opacity:0}}
 .cv-banner{position:absolute;left:50%;top:4cqh;transform:translateX(-50%);max-width:92cqw;padding:2cqh 5cqw;border-radius:3cqh;
   background:var(--ink);color:var(--bg);font-size:9cqmin;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -96,74 +106,96 @@
 .cv-hint:empty{display:none}
 /* ▲ src/view.css ここまで ▲ */
 
-/* ---- 操作画面（教師の手元のPCだけに出す） ---- */
+/* ---- 操作画面（教師の手元のPCだけに出す） ----
+   見た目は docs/preview/luxury.html の A（象牙）・B（夜）。枠線で区切らず面の明暗で区切る。
+   強い塗りはスタート（丸いボタン）1つだけ。選択は溝の中を滑る白い面で示す。 */
 :root{
-  --paper:#F7F6F2;--tint:#D7E8F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
-  --accent:#0F5EA8;--on:#FFFFFF;--alert:#C0330A;
+  --paper:#EAE6DE;--surf:#FBFAF7;--track:#DED9CF;--ink:#22262B;--sub:#565B62;--rule:#D3CDC2;
+  --accent:#22262B;--on:#FBFAF7;--alert:#A63B25;--focus:#2D4A6B;
   --s1:4px;--s2:8px;--s3:16px;--s4:24px;
   --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+  --num:"Segoe UI Variable Display","Segoe UI","Roboto","Helvetica Neue","Inter","Yu Gothic UI","Noto Sans CJK JP",sans-serif;
+}
+body[data-theme=dark]{
+  --paper:#16181B;--surf:#23272C;--track:#2C3137;--ink:#ECE8E1;--sub:#9AA0A8;--rule:#353A41;
+  --accent:#ECE8E1;--on:#16181B;--alert:#EE8A6A;--focus:#D9A55B;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%}
 body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.4}
-.app{display:grid;grid-template-columns:minmax(0,1fr) 336px;gap:var(--s3);height:100%;padding:var(--s3)}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:var(--s4);height:100%;padding:var(--s4)}
 .stage{display:grid;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);min-height:0}
-.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;font-weight:700;min-height:24px}
-.stage-head .dot{width:10px;height:10px;border-radius:50%;background:var(--sub)}
-.stage-head.live{color:var(--accent)} .stage-head.live .dot{background:var(--accent)}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:12px;min-height:24px;letter-spacing:.04em}
+.stage-head .dot{width:8px;height:8px;border-radius:50%;background:var(--rule)}
+.stage-head.live{color:var(--ink)} .stage-head.live .dot{background:var(--alert)}
+.kbd{margin-left:auto;font-size:11px}
 .preview{min-height:0;display:grid;place-items:center}
-.pv-box{cursor:pointer;width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
-.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
-.card{background:var(--sheet);border:2px solid var(--rule);border-radius:14px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
-.card h2{margin:0;font-size:13px;color:var(--sub)}
+.pv-box{cursor:pointer;width:100%;max-height:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.14)}
+.panel{display:flex;flex-direction:column;gap:var(--s4);overflow:auto;min-height:0;padding:var(--s1)}
+.card{display:flex;flex-direction:column;gap:var(--s2)}
+.card+.card,.card+details,details+details{border-top:1px solid var(--rule);padding-top:var(--s4)}
 button,select,input{font:inherit;color:inherit}
-.btn{height:48px;padding:0 var(--s2);border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;white-space:nowrap}
-.btn:hover{border-color:var(--accent)}
-.btn.main{background:var(--accent);color:var(--on);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn{height:48px;padding:0 var(--s2);border:0;border-radius:12px;background:var(--surf);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:13px;transition:background .15s}
+.btn:hover{background:var(--track)}
 .btn.danger{color:var(--alert)}
-/* 1回だけ押す操作なので強い塗りにしない（強い塗りは授業中にくり返す主操作に1つだけ） */
-#goMonitor{color:var(--accent);border-color:var(--accent)}
-.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
-/* 選んでいる側は淡い塗り＋青枠＋✓（強い塗りは主操作だけに使う。design/ui-patterns の型） */
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--s2)}
-.seg button{height:48px;padding:0 2px;min-width:0;font-size:14px;white-space:nowrap;border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer}
-.seg button[aria-checked=true]{background:var(--tint);border-color:var(--accent)}
-.seg button{height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;position:relative}
-.seg button[aria-checked=true]::after{content:"✓";position:absolute;top:2px;right:6px;font-size:11px;color:var(--accent)}
-/* アイコン：線で描く 24×24。文字は添え字として小さく */
-.ic{width:22px;height:22px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.ic .f{fill:currentColor;stroke:none}
-.cap{font-size:11px;font-weight:700;line-height:1}
-.btn{gap:6px;font-size:13px}
 .btn.icon{width:48px;flex:none;padding:0}
-.ficon{display:flex;align-items:center;color:var(--sub)}
-.kbd{margin-left:auto;font-weight:400;font-size:11px}
-.sw .lab{display:flex;align-items:center;gap:8px}
-summary [data-ic]{display:flex;align-items:center;gap:8px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
-.sw{display:flex;align-items:center;gap:var(--s3);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
-.sw .lab{flex:1}
-.sw .st{font-size:13px;color:var(--sub);width:16px}
+.btn .cap{color:var(--sub)}
+#goMonitor{background:transparent;box-shadow:inset 0 0 0 1px var(--rule)}
+#goMonitor:hover{background:var(--surf)}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+/* 再生の列：−1・丸いスタート・＋1、その下にリセット等 */
+.ctl{display:grid;grid-template-columns:1fr 64px 1fr;align-items:center;gap:var(--s3)}
+.ctl .btn{width:48px;justify-self:center;background:transparent;font-family:var(--num);font-size:15px;color:var(--sub)}
+.ctl .btn:hover{background:var(--surf)}
+.btn.main{justify-self:center;width:64px;height:64px;border-radius:50%;background:var(--accent);color:var(--on);box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.btn.main:hover{background:var(--accent);filter:brightness(1.15)}
+.btn.main .ic{width:26px;height:26px}
+.btn.main .cap,.ctl .btn .cap{display:none}
+.sub2{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+.sub2 .btn{background:transparent;height:48px}
+.sub2 .btn:hover{background:var(--surf)}
+/* 切り替え：溝の中を白い面が滑る（design/ui-patterns のセグメントの高級版） */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
+.seg button{height:52px;padding:0 2px;min-width:0;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .2s,color .2s}
+.seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid4 .btn{font-family:var(--num);font-weight:500}
+.grid4 .btn b{font-weight:500}
+.grid4 .btn.sel{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ic .f{fill:currentColor;stroke:none}
+.cap{font-size:11px;font-weight:700;line-height:1;letter-spacing:.02em}
+.sw{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw .lab{flex:1;display:flex;align-items:center;gap:10px}
+.sw .lab .ic{color:var(--sub)}
+.sw .st{font-size:11px;color:var(--sub);width:14px}
 .sw[aria-checked=true] .st::after{content:"入"}
 .sw[aria-checked=false] .st::after{content:"切"}
-.sw::after{content:"";flex:0 0 44px;height:26px;border-radius:13px;background:var(--rule);
-  background-image:radial-gradient(circle at 13px 50%,#fff 9px,transparent 10px)}
-.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 31px 50%,#fff 9px,transparent 10px)}
+.sw::after{content:"";flex:0 0 40px;height:24px;border-radius:12px;background:var(--track);transition:background .2s;
+  background-image:radial-gradient(circle at 12px 50%,var(--surf) 8px,transparent 9px)}
+.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 28px 50%,var(--on) 8px,transparent 9px)}
 .field{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:48px;font-weight:700}
 .field select,.field input[type=range]{height:48px;width:100%}
-.field select{border:1px solid var(--rule);border-radius:8px;background:var(--sheet);padding:0 var(--s2)}
-.fold{display:flex;flex-direction:column;gap:var(--s2)}
-details.card>summary{cursor:pointer;font-weight:700;min-height:48px;display:flex;align-items:center;list-style:none}
-details.card>summary::before{content:"▶";font-size:11px;margin-right:var(--s2);color:var(--sub)}
-details.card[open]>summary::before{content:"▼"}
-.note{font-size:13px;color:var(--sub);margin:0}
-.warn{font-size:13px;color:var(--alert);margin:0;font-weight:700}
-textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid var(--rule);border-radius:8px;padding:var(--s2)}
-.alarm{display:grid;grid-template-columns:120px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
-.alarm input{height:48px;border:1px solid var(--rule);border-radius:8px;padding:0 var(--s2);min-width:0}
-.alarm .x{width:48px}
+.field select{border:0;border-radius:12px;background:var(--surf);padding:0 var(--s2)}
+input[type=range]{accent-color:var(--accent)}
+.ficon{display:flex;align-items:center;color:var(--sub)}
+.fold{display:flex;flex-direction:column;gap:var(--s2);padding-top:var(--s2)}
+details.card>summary{cursor:pointer;font-weight:700;min-height:48px;padding-right:6px;display:flex;align-items:center;list-style:none;color:var(--ink)}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:1.5px solid var(--sub);border-bottom:1.5px solid var(--sub);transform:rotate(45deg);transition:transform .2s}
+details.card[open]>summary::after{transform:rotate(-135deg)}
+summary [data-ic]{display:flex;align-items:center;gap:10px}
+summary [data-ic] .ic{color:var(--sub)}
+.note{font-size:11px;color:var(--sub);margin:0}
+.warn{font-size:12px;color:var(--alert);margin:0;font-weight:700}
+textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-radius:12px;background:var(--surf);color:var(--ink);padding:var(--s3)}
+.alarm{display:grid;grid-template-columns:112px minmax(0,1fr) 48px;gap:var(--s2);align-items:center;margin-bottom:var(--s2)}
+.alarm input{height:48px;border:0;border-radius:12px;background:var(--surf);padding:0 var(--s2);min-width:0;color:var(--ink)}
+.alarm .x{width:48px;background:transparent}
 @media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.pv-box{max-height:none}}
 </style>
 
@@ -194,21 +226,19 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
 
     <div class="card" id="ctlTimer" hidden>
       <div class="grid4" id="presets"></div>
-      <div class="row">
-        <button class="btn" id="tMinus" aria-label="1分へらす">−1</button>
-        <button class="btn" id="tPlus" aria-label="1分ふやす">＋1</button>
+      <div class="ctl">
+        <button class="btn" id="tMinus" data-tier="std" aria-label="1分へらす">−1</button>
+        <button class="btn main" data-tier="main" id="tToggle" data-flow="3"></button>
+        <button class="btn" id="tPlus" data-tier="std" aria-label="1分ふやす">＋1</button>
       </div>
-      <div class="row">
-        <button class="btn main" id="tToggle" data-flow="3"></button>
-        <button class="btn" id="tReset" data-ic="reset">リセット</button>
-      </div>
+      <div class="sub2"><button class="btn" id="tReset" data-ic="reset">リセット</button></div>
     </div>
 
     <div class="card" id="ctlSw" hidden>
-      <div class="row">
-        <button class="btn main" id="sToggle"></button>
-        <button class="btn" id="sLap" data-ic="lap">ラップ</button>
-        <button class="btn" id="sReset" data-ic="reset">リセット</button>
+      <div class="ctl">
+        <button class="btn" id="sLap" data-tier="std" data-ic="lap">ラップ</button>
+        <button class="btn main" data-tier="main" id="sToggle"></button>
+        <button class="btn" id="sReset" data-tier="std" data-ic="reset">リセット</button>
       </div>
     </div>
 
@@ -216,6 +246,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       <button class="sw" role="switch" id="swSched" data-ic="calendar">時間割</button>
       <p class="note" id="schedNote"></p>
       <button class="sw" role="switch" id="swDark" data-ic="moon">ダーク</button>
+      <button class="sw" role="switch" id="swBold" data-ic="bold">数字を太く</button>
     </div>
 
     <details class="card" id="dSound">
@@ -497,10 +528,10 @@ var ClockView = (function () {
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
       + '<path class="cv-tri" d=""/>'
       /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
-      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="50"/>'
-      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="13"/>'
+      + '<path class="cv-hh" d="M95.5 100L98.6 48L101.4 48L104.5 100Z"/>'
+      + '<path class="cv-mh" d="M97 100L99.2 12L100.8 12L103 100Z"/>'
       + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="10"/>'
-      + '<circle class="cv-pin" cx="100" cy="100" r="5.5"/>';
+      + '<circle class="cv-pin" cx="100" cy="100" r="6"/><circle class="cv-pin2" cx="100" cy="100" r="2"/>';
     return s;
   }
 
@@ -561,7 +592,7 @@ var ClockView = (function () {
         laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
-      attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
+      attr('theme', root, 'data-theme', state.theme); attr('bold', root, 'data-bold', state.bold ? '1' : '0'); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
       txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
       attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
@@ -647,6 +678,7 @@ var ClockView = (function () {
     reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>',
     lap: '<path d="M5 21V4h12l-2.5 4 2.5 4H5"/>',
     monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    bold: '<path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/>',
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     speaker: '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7"/>',
     volume: '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
@@ -766,6 +798,7 @@ var ClockView = (function () {
   var syncs = [
     seg('segMode', function () { return state.mode; }, function (v) { state.mode = v; }),
     seg('segFace', function () { return state.face; }, function (v) { state.face = v; }),
+    sw('swBold', function () { return !!state.bold; }, function (v) { state.bold = v; }),
     sw('swDark', function () { return state.theme === 'dark'; }, function (v) { state.theme = v ? 'dark' : 'light'; }),
     sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
     sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
@@ -777,7 +810,7 @@ var ClockView = (function () {
   function changed() { S.unlock(); save(); syncUi(); tick(); }
 
   PRESETS.forEach(function (m) {
-    var b = document.createElement('button'); b.className = 'btn'; b.innerHTML = '<b style="font-size:17px">' + m + '</b><span class="cap">分</span>'; b.setAttribute('aria-label', m + '分');
+    var b = document.createElement('button'); b.className = 'btn'; b.innerHTML = '<b style="font-size:16px">' + m + '</b>'; b.setAttribute('aria-label', m + '分');
     b.onclick = function () { C.timerPreset(state.timer, m * C.MIN); changed(); };
     $('presets').appendChild(b);
   });
@@ -860,6 +893,8 @@ var ClockView = (function () {
   /* ---- 画面の状態を合わせる ---- */
   function syncUi() {
     syncs.forEach(function (f) { f(); });
+    document.body.dataset.theme = state.theme;
+    document.querySelectorAll('#presets .btn').forEach(function (b, k) { b.classList.toggle('sel', PRESETS[k] * C.MIN === state.timer.dur); });
     $('ctlTimer').hidden = state.mode !== 'timer';
     $('ctlSw').hidden = state.mode !== 'sw';
     var live = !!(mon && !mon.win.closed);

@@ -24,14 +24,14 @@ const lowContrast = () => p.evaluate(() => {
   const bg = el => { for (; el; el = el.parentElement) { const c = getComputedStyle(el).backgroundColor; if (!/rgba\(.*, 0\)|transparent/.test(c)) return c; } return 'rgb(255,255,255)'; };
   const out = [];
   document.querySelectorAll('body *').forEach(el => {
-    if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || !el.getClientRects().length) return;
+    if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim()) || !el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true })) return;
     const a = L(getComputedStyle(el).color), b = L(bg(el)), r = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
     if (r < 4.5) out.push(el.textContent.trim().slice(0, 12) + ' ' + r.toFixed(1));
   });
   return out;
 });
 for (const theme of ['light', 'dark']) {
-  if (theme === 'dark') await p.click('#swDark');
+  if (theme === 'dark') { await p.click('#swDark'); await ctx.clock.runFor(600); await p.waitForTimeout(600); }
   const low = await lowContrast();
   ok(low.length === 0, `文字のコントラスト 4.5 以上（${theme}） ` + low.join(' / '));
 }
@@ -62,7 +62,7 @@ await p.click('#segFace [data-v=analog]');
 await p.click('#tReset'); await p.click('#tToggle');
 const d = await p.getAttribute('#pv .cv-sector', 'd');
 ok(!!d && d.startsWith('M100'), 'アナログ盤に残り時間の扇形');
-ok(await p.evaluate(() => ['.cv-hh', '.cv-mh', '.cv-sh'].every(q => document.querySelector('#pv ' + q).getAttribute('y1') === '100')), '針は中心から（反対側に突き出さない）');
+ok(await p.evaluate(() => document.querySelector('#pv .cv-sh').getAttribute('y1') === '100' && ['.cv-hh', '.cv-mh'].every(q => /L104\.5 100Z|L103 100Z/.test(document.querySelector('#pv ' + q).getAttribute('d')))), '針は中心から（反対側に突き出さない）');
 ok(/A95\.5 95\.5/.test(d), '扇形は円周まで塗り切る');
 ok(!!(await p.getAttribute('#pv .cv-tri', 'd')), '終わりの位置に赤い三角');
 await p.click('#segFace [data-v=bar]');

@@ -32,6 +32,8 @@
 
 設定・タイマーの途中経過はこの端末のブラウザに保存される。読み込み直しても続きから。
 
+音は `dist/sounds.html` で鳴らし比べられる。
+
 ## 直すとき
 
 正本は `src/`。`python3 scripts/build.py` で `dist/Index.html` が出る。

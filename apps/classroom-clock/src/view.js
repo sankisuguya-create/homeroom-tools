@@ -20,10 +20,10 @@ var ClockView = (function () {
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
       + '<path class="cv-tri" d=""/>'
       /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
-      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="50"/>'
-      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="13"/>'
+      + '<path class="cv-hh" d="M95.5 100L98.6 48L101.4 48L104.5 100Z"/>'
+      + '<path class="cv-mh" d="M97 100L99.2 12L100.8 12L103 100Z"/>'
       + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="10"/>'
-      + '<circle class="cv-pin" cx="100" cy="100" r="5.5"/>';
+      + '<circle class="cv-pin" cx="100" cy="100" r="6"/><circle class="cv-pin2" cx="100" cy="100" r="2"/>';
     return s;
   }
 
@@ -84,7 +84,7 @@ var ClockView = (function () {
         laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
-      attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
+      attr('theme', root, 'data-theme', state.theme); attr('bold', root, 'data-bold', state.bold ? '1' : '0'); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
       txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
       attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');

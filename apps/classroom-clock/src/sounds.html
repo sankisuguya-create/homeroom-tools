@@ -1,0 +1,72 @@
+<title>教室の時計 音の試聴</title>
+<style>
+:root{--paper:#EAE6DE;--surf:#FBFAF7;--track:#DED9CF;--ink:#22262B;--sub:#565B62;--acc:#22262B;--on:#FBFAF7;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:13px/1.5 var(--font)}
+main{max-width:560px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:24px}
+h1{font-size:16px;margin:0;letter-spacing:.04em}
+h2{font-size:12px;color:var(--sub);margin:0 0 8px;letter-spacing:.08em}
+.row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:12px;background:var(--surf);border-radius:14px;padding:8px 12px 8px 8px;margin-bottom:6px}
+.row b{font-size:14px} .row small{display:block;color:var(--sub);font-size:11px}
+.row .tag{font-size:11px;color:var(--sub)}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+.play{width:48px;height:48px;border-radius:50%;background:var(--acc);color:var(--on);display:grid;place-items:center}
+.play svg{width:18px;height:18px;fill:currentColor}
+.row.on .play{background:#A63B25}
+.stop{height:48px;border-radius:12px;background:var(--track);font-weight:700}
+.vol{display:flex;align-items:center;gap:12px;background:var(--surf);border-radius:14px;padding:0 16px;min-height:56px}
+.vol input{flex:1;accent-color:var(--acc);height:48px}
+.note{font-size:11px;color:var(--sub);margin:0}
+</style>
+<main>
+  <h1>音の試聴</h1>
+  <div class="vol"><span>音量</span><input type="range" id="vol" min="0" max="1" step="0.05" value="0.8" aria-label="音量"><button class="stop" id="stopAll" style="padding:0 16px">すべて止める</button></div>
+
+  <section><h2>終了音・アラーム（実際は止めるまで最長30秒くり返す。ここでは3回で止める）</h2><div id="end"></div></section>
+  <section><h2>予告・カウント</h2><div id="cue"></div></section>
+  <section><h2>時間割のチャイム</h2><div id="chime"></div></section>
+  <section><h2>読み上げ（端末の日本語音声）</h2><div id="voice"></div><p class="note" id="vnote"></p></section>
+  <p class="note">音はすべてブラウザの中で合成しています（音のファイル・通信なし）。聞こえ方はスピーカーで変わるので、教室のモニターでも確かめてください。</p>
+</main>
+<script>
+/* @include sound.js */
+(function () {
+  'use strict';
+  var S = ClockSound, PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+  function row(box, title, sub, tag, fn) {
+    var r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="play" aria-label="' + title + 'を鳴らす">' + PLAY + '</button><div><b></b><small></small></div><span class="tag"></span>';
+    r.querySelector('b').textContent = title; r.querySelector('small').textContent = sub; r.querySelector('.tag').textContent = tag;
+    r.querySelector('.play').onclick = function () {
+      S.stop(); document.querySelectorAll('.row.on').forEach(function (x) { x.classList.remove('on'); });
+      S.unlock(); r.classList.add('on'); var ms = fn() || 1500;
+      setTimeout(function () { r.classList.remove('on'); }, ms);
+    };
+    document.getElementById(box).appendChild(r);
+  }
+  function loop3(name, ms) { return function () { S.play(name); setTimeout(S.stop, ms * 3 - 100); return ms * 3; }; }
+  row('end', '電子音', 'キッチンタイマーの「ピピピピッ」。既定', '1秒ごと', loop3('alarm', 1000));
+  row('end', 'ベル', '目覚まし時計のように細かく打つ', '1.8秒ごと', loop3('bell', 1800));
+  row('end', 'マリンバ', '上がる3音を2回', '1.6秒ごと', loop3('marimba', 1600));
+  row('end', 'チャイム', '学校のチャイム（8音）。くり返さない', '7秒', function () { return S.play('school'); });
+  row('cue', '1分前の予告', '「ピッ ピッ」', '1回', function () { return S.play('warn'); });
+  row('cue', '10秒前からカウント', '毎秒「ピッ」を10回', '10秒', function () {
+    for (var k = 0; k < 10; k++) setTimeout(function () { S.play('tick'); }, k * 1000);
+    return 10000;
+  });
+  row('cue', '終了の流れ', 'カウント3回 → 電子音 → 「時間です」', '約7秒', function () {
+    for (var k = 0; k < 3; k++) setTimeout(function () { S.play('tick'); }, k * 1000);
+    setTimeout(function () { var ms = S.play('alarm', { voiceGap: true }); S.speak('時間です', ms); }, 3000);
+    setTimeout(S.stop, 7400); return 7400;
+  });
+  row('chime', '授業のはじまり', 'チャイム＋「1時間目が始まります」', '約9秒', function () { var ms = S.play('school'); S.speak('1時間目が始まります', ms); return ms + 2500; });
+  row('chime', '授業のおわり', 'チャイム＋「1時間目が終わりました」', '約9秒', function () { var ms = S.play('school'); S.speak('1時間目が終わりました', ms); return ms + 2500; });
+  ['あと1分です', '時間です', '片付け'].forEach(function (t) {
+    row('voice', t, t === '片付け' ? 'アラームのメッセージの例' : 'タイマー', '', function () { S.speak(t, 0); return 1800; });
+  });
+  document.getElementById('vol').oninput = function () { S.setVol(+this.value); };
+  document.getElementById('stopAll').onclick = function () { S.stop(); document.querySelectorAll('.row.on').forEach(function (x) { x.classList.remove('on'); }); };
+  setTimeout(function () { document.getElementById('vnote').textContent = S.canSpeak() ? '' : 'この端末・ブラウザには日本語の音声がないため、読み上げは鳴りません（学校の端末では鳴る見込み）。'; }, 800);
+})();
+</script>
