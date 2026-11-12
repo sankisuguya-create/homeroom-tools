@@ -42,7 +42,7 @@ var ClockCore = (function () {
   function timerAdd(t, ms, now) {
     var left = timerLeft(t, now);
     var next = left <= 0 ? (ms > 0 ? ms : 0) : left + ms;   // 終わったあとの＋は「今から」延ばす
-    if (next < MIN && ms < 0) next = left > 0 ? Math.min(left, MIN) : left;  // −は1分より下へ行かない
+    if (ms < 0 && next < -ms) next = left > 0 ? Math.min(left, -ms) : left;  // −は1回分（1分・10秒）より下へ行かない
     if (next > TIMER_MAX) next = TIMER_MAX;
     if (t.running) t.endAt = now + next; else { t.left = next; if (!t.started && next > 0) t.dur = next; }
   }

@@ -125,11 +125,11 @@ textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-r
     <div class="card" id="ctlTimer" hidden>
       <div class="grid4" id="presets"></div>
       <div class="ctl">
-        <button class="btn" id="tMinus" data-tier="std" aria-label="1分へらす">−1</button>
+        <button class="btn" id="tMinus" data-tier="std" aria-label="1分へらす">−1分</button>
         <button class="btn main" data-tier="main" id="tToggle" data-flow="3"></button>
-        <button class="btn" id="tPlus" data-tier="std" aria-label="1分ふやす">＋1</button>
+        <button class="btn" id="tPlus" data-tier="std" aria-label="1分ふやす">＋1分</button>
       </div>
-      <div class="sub2"><button class="btn" id="tReset" data-ic="reset">リセット</button></div>
+      <div class="sub2"><button class="btn" id="tMinus10" aria-label="10秒へらす">−10秒</button><button class="btn" id="tReset" data-ic="reset">リセット</button><button class="btn" id="tPlus10" aria-label="10秒ふやす">＋10秒</button></div>
     </div>
 
     <div class="card" id="ctlSw" hidden>
@@ -384,6 +384,8 @@ textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-r
   $('tReset').onclick = function () { C.timerReset(state.timer); fx.flashUntil = 0; fx.banner = null; changed(); };
   $('tPlus').onclick = function () { C.timerAdd(state.timer, C.MIN, Date.now()); changed(); };
   $('tMinus').onclick = function () { C.timerAdd(state.timer, -C.MIN, Date.now()); changed(); };
+  $('tPlus10').onclick = function () { C.timerAdd(state.timer, 10 * C.SEC, Date.now()); changed(); };
+  $('tMinus10').onclick = function () { C.timerAdd(state.timer, -10 * C.SEC, Date.now()); changed(); };
   $('sToggle').onclick = function () { toggle(); };
   /* スタート／一時停止。ボタン・見本やモニターの画面のクリック・スペースキーの3つから同じ動き */
   function toggle() {
