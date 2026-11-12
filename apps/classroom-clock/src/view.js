@@ -14,16 +14,16 @@ var ClockView = (function () {
     var s = '<circle class="cv-face" cx="100" cy="100" r="97"/><path class="cv-sector" d=""/>';
     for (var i = 0; i < 60; i++) {
       var five = i % 5 === 0;
-      s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 7 : 5) + '" x2="100" y2="' + (five ? 15 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
+      s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 4 : 4) + '" x2="100" y2="' + (five ? 17 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
     }
-    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 72).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
+    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 65).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
       + '<path class="cv-tri" d=""/>'
       /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
-      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="52"/>'
-      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="22"/>'
-      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="16"/>'
-      + '<circle class="cv-pin" cx="100" cy="100" r="4"/>';
+      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="50"/>'
+      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="13"/>'
+      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="10"/>'
+      + '<circle class="cv-pin" cx="100" cy="100" r="5.5"/>';
     return s;
   }
 
@@ -33,12 +33,12 @@ var ClockView = (function () {
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
       + '<div class="cv-main"><svg class="cv-analog" viewBox="-16 -16 232 232" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
-      + '<div class="cv-bar"><i></i><b></b></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
+      + '<div class="cv-gauge"><div class="cv-bar"><i></i><b></b></div><div class="cv-scale"></div></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
     var q = function (s) { return root.querySelector(s); };
     var el = { date: q('.cv-date'), now: q('.cv-now'), label: q('.cv-label'), b1: q('.cv-b1'), b2: q('.cv-b2'), bar: q('.cv-bar i'),
       sub: q('.cv-sub'), laps: q('.cv-laps'), banner: q('.cv-banner'), hint: q('.cv-hint'),
-      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
+      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), scale: q('.cv-scale'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
     var last = {};
     function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
     /* 数字を1字ずつ同じ幅の枠に入れる。BIZ UDPゴシックなど字幅が数字ごとに違う書体でも、
@@ -92,6 +92,10 @@ var ClockView = (function () {
       /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */
       var nmin = Math.round(total / C.MIN);
       attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
+      /* 横棒の目盛りの数字：棒の位置＝その時点の残り分。10分以下は1分ごと、30分以下は5分ごと、それより長ければ10分ごと */
+      var step = nmin <= 10 ? 1 : nmin <= 30 ? 5 : 10, sc = '';
+      if (bar >= 0 && nmin >= 1 && nmin <= 60) for (var m = 0; m <= nmin; m += step) sc += '<span style="left:' + (m / nmin * 100).toFixed(2) + '%">' + m + (m + step > nmin ? '分' : '') + '</span>';
+      if (last.scale !== sc) { last.scale = sc; el.scale.innerHTML = sc; }
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
