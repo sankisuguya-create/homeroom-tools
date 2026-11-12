@@ -41,6 +41,17 @@ var ClockView = (function () {
       sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
     var last = {};
     function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
+    /* 数字を1字ずつ同じ幅の枠に入れる。BIZ UDPゴシックなど字幅が数字ごとに違う書体でも、
+       桁の位置が動かない（1→2 で時刻が横にずれない）。tabular-nums は書体が対応していないと効かない。 */
+    function dg(k, v) {
+      if (last[k] === v) return; last[k] = v;
+      var html = '';
+      for (var i = 0; i < v.length; i++) {
+        var ch = v.charAt(i);
+        html += /[0-9]/.test(ch) ? '<i class="cv-d">' + ch + '</i>' : /[:.]/.test(ch) ? '<i class="cv-p">' + ch + '</i>' : ch;
+      }
+      el[k].innerHTML = html;
+    }
     function attr(k, node, name, v) { if (last[k] !== v) { last[k] = v; node.setAttribute(name, v); } }
 
     function update(state, now, fx) {
@@ -73,8 +84,8 @@ var ClockView = (function () {
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
       attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
-      txt('date', C.fmtDate(now)); txt('now', c.h + ':' + c.m);
-      txt('label', label); txt('b1', b1); txt('b2', b2); txt('sub', sub);
+      txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
+      txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
       attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
       attr('bar', el.bar, 'style', 'width:' + (Math.max(0, bar) * 100).toFixed(2) + '%');
       /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */

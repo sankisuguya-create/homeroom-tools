@@ -3,9 +3,9 @@
    寸法は cq 単位（この面自身の大きさに対する割合）で書く：
    手元の小さな見本でも、モニターの全画面でも、同じ見た目で縮む。 */
 .cv{
-  --bg:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--line:#C9CED4;
-  --fill:#D7E8F8;--edge:#0F5EA8;        /* 残り時間の面（ふつう） */
-  --wfill:#FBE3B4;--wedge:#C86A00;--wtext:#A85800;  /* 残り1分 */
+  --bg:#FFFFFF;--ink:#1A1A1A;--sub:#4A525B;--line:#C9CED4;
+  --fill:#A9CBEE;--edge:#0F5EA8;        /* 残り時間の面（ふつう） */
+  --wfill:#F7C873;--wedge:#C86A00;--wtext:#A85800;  /* 残り1分 */
   --alert:#C0330A;                      /* おわり */
   position:relative;width:100%;height:100%;container-type:size;overflow:hidden;
   background:var(--bg);color:var(--ink);
@@ -14,7 +14,7 @@
 }
 .cv[data-theme=dark]{
   --bg:#101418;--ink:#F2F4F6;--sub:#A0A9B4;--line:#3A424B;
-  --fill:#1F4F80;--edge:#7DB8F5;--wfill:#6E4A0E;--wedge:#F2A93B;--wtext:#F2A93B;--alert:#FF9A7A;
+  --fill:#1D5A96;--edge:#7DB8F5;--wfill:#7A5210;--wedge:#F2A93B;--wtext:#F2A93B;--alert:#FF9A7A;
 }
 .cv *{box-sizing:border-box}
 .cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
@@ -35,6 +35,10 @@
 .cv-sub{font-size:7cqmin;font-weight:700;line-height:1.25;text-align:center}
 .cv-laps{list-style:none;margin:0;padding:0;font-size:5.5cqmin;font-weight:700;color:var(--sub);display:flex;flex-wrap:wrap;justify-content:center;gap:1cqh 4cqw}
 .cv-laps:empty{display:none}
+/* 数字の枠。幅は 0〜9 で最も広い字に合わせる（字形は中央寄せ） */
+.cv i{font-style:normal}
+.cv-d{display:inline-block;width:.64em;text-align:center}
+.cv-p{display:inline-block;width:.34em;text-align:center}
 
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
@@ -53,7 +57,7 @@
 .cv[data-phase=over] .cv-big,.cv[data-phase=over] .cv-label{color:var(--alert)}
 
 .cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:2.5}
-.cv-tick{stroke:var(--sub);stroke-width:.8}
+.cv-tick{stroke:var(--sub);stroke-width:1.2}
 .cv-tick5{stroke:var(--ink);stroke-width:2.2}
 .cv-num{fill:var(--ink);font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:central}
 .cv-sector{fill:var(--fill)}
