@@ -183,6 +183,8 @@ button,select,input{font:inherit;color:inherit}
 .field select{border:0;border-radius:12px;background:var(--surf);padding:0 var(--s2)}
 input[type=range]{accent-color:var(--accent)}
 .ficon{display:flex;align-items:center;color:var(--sub)}
+#cues{display:flex;flex-direction:column;gap:var(--s2)}
+.flab{width:84px;font-size:12px;color:var(--sub);font-weight:700}
 .fold{display:flex;flex-direction:column;gap:var(--s2);padding-top:var(--s2)}
 details.card>summary{cursor:pointer;font-weight:700;min-height:48px;padding-right:6px;display:flex;align-items:center;list-style:none;color:var(--ink)}
 details.card>summary::-webkit-details-marker{display:none}
@@ -253,16 +255,12 @@ textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-r
       <summary data-group="fold-dSound"><span data-ic="speaker">音</span></summary>
       <div class="fold">
       <div class="field"><span class="ficon" data-ic="volume" title="音量"></span><input type="range" id="vol" min="0" max="1" step="0.05" aria-label="音量"></div>
-      <div class="field"><span class="ficon" data-ic="bell" title="終了音"></span><select id="endTune" aria-label="終了音">
+      <div id="cues"></div>
+      <div class="field"><span class="flab">終了音</span><select id="endTune" aria-label="終了音">
         <option value="alarm">電子音</option><option value="bell">ベル</option>
         <option value="marimba">マリンバ</option><option value="school">チャイム</option><option value="none">なし</option></select>
-        <button class="btn icon" id="testSound" data-ic="play" aria-label="試聴" title="試聴"></button></div>
-      <button class="sw" role="switch" id="swWarn">1分前の予告</button>
-      <button class="sw" role="switch" id="swTick">10秒前からカウント</button>
-      <div class="field"><span class="ficon" data-ic="voice" title="声"></span><select id="voiceKind" aria-label="声">
-        <option value="female">女性の声</option><option value="male">低い男性の声</option><option value="robot">ロボット</option><option value="off">声なし</option></select>
-        <button class="btn icon" id="testVoice" data-ic="play" aria-label="声の試聴" title="声の試聴"></button></div>
-      <p class="note" id="voiceNote" hidden>この端末に日本語音声なし</p>
+        <button class="btn icon" id="testSound" data-ic="play" aria-label="終了音の試聴" title="試聴"></button></div>
+      <p class="note" id="voiceNote" hidden>この端末に日本語音声なし（アラーム・時間割の読み上げは出ません）</p>
       <button class="sw" role="switch" id="swFlash">画面の点滅</button>
       </div>
     </details>
@@ -691,7 +689,7 @@ var ClockView = (function () {
   var state = {
     mode: 'clock', face: 'digital', theme: 'light',
     timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
-    sound: { vol: 0.8, endTune: 'alarm', warn: true, tick: false, voice: true, voiceKind: 'female', flash: true },
+    sound: { vol: 0.8, endTune: 'alarm', voice: true, flash: true, cues: { m1: 'female', s30: 'female', count: 'female', end: 'female' } },
     alarms: [],
     sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
   };
@@ -748,20 +746,22 @@ var ClockView = (function () {
   /* ---- 合図：音・声・画面 ---- */
   function signal(ev, now) {
     var snd = state.sound, ms = 0, say = '', banner = '';
-    /* タイマーの声：「残り1分」「残り30秒」「5・4・3・2・1」「そこまで」（録音した声。voices.js） */
-    var vk = snd.voiceKind || 'female', voiceOn = vk !== 'off';
-    var clip = function (k) { return voiceOn ? S.playClip(vk + '-' + k) : 0; };
+    /* タイマーの合図は区切りごとに音を選ぶ（CUES）。声は録音（voices.js）、beep は合成音 */
+    var cues = snd.cues || {};
+    var cue = function (k, clipKey, beep) {
+      var v = cues[k] || 'none';
+      if (v === 'none') return 0;
+      if (v === 'beep') { S.play(beep); return 0; }
+      return S.playClip(v + '-' + clipKey) || (S.play(beep), 0);
+    };
     if (ev.type === 'timerEnd') {
-      var vm = clip('end');
+      var vm = cues.end && cues.end !== 'none' ? S.playClip(cues.end + '-end') : 0;
       S.play(snd.endTune, { delay: vm ? vm + 200 : 0 }); banner = '終了';
       if (snd.flash) fx.flashUntil = now + 6000; fx.banner = { text: banner, until: now + 15000 }; return;
     }
-    else if (ev.type === 'timerWarn') { if (!snd.warn) return; if (!clip('m1')) S.play('warn'); return; }
-    else if (ev.type === 'timer30') { if (snd.warn) clip('s30'); return; }
-    else if (ev.type === 'tick') {
-      if (ev.left <= 5 && voiceOn && S.playClip(vk + '-c' + ev.left)) return;
-      if (snd.tick) S.play('tick'); return;
-    }
+    else if (ev.type === 'timerWarn') { cue('m1', 'm1', 'warn'); return; }
+    else if (ev.type === 'timer30') { cue('s30', 's30', 'warn'); return; }
+    else if (ev.type === 'tick') { if (ev.left <= 5) cue('count', 'c' + ev.left, 'tick'); return; }
     else if (ev.type === 'alarm') { ms = S.play(snd.endTune, { voiceGap: snd.voice && !!ev.label }); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
     else if (ev.type === 'chime') {
       ms = S.play('school');
@@ -852,8 +852,6 @@ var ClockView = (function () {
     sw('swDark', function () { return state.theme === 'dark'; }, function (v) { state.theme = v ? 'dark' : 'light'; }),
     sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
     sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
-    sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),
-    sw('swTick', function () { return state.sound.tick; }, function (v) { state.sound.tick = v; }),
     sw('swFlash', function () { return state.sound.flash; }, function (v) { state.sound.flash = v; })
   ];
   function changed() { S.unlock(); save(); syncUi(); tick(); }
@@ -882,19 +880,40 @@ var ClockView = (function () {
     e.preventDefault(); toggle();
   });
   /* 操作ボタンを押したら、鳴っている終了音・アラームは止める */
-  document.querySelector('.panel').addEventListener('click', function (e) { if (e.target.closest('button') && e.target.id !== 'testSound') S.stop(); }, true);
+  document.querySelector('.panel').addEventListener('click', function (e) { if (e.target.closest('button') && !/^testSound$/.test(e.target.closest('button').id) && !e.target.closest('#cues')) S.stop(); }, true);
   $('sLap').onclick = function () { C.swLap(state.sw, Date.now()); changed(); };
   $('sReset').onclick = function () { C.swReset(state.sw); changed(); };
   $('goMonitor').onclick = function () { openMonitor(); };
 
   $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
-  $('voiceKind').onchange = function () { state.sound.voiceKind = this.value; state.sound.voice = this.value !== 'off'; changed(); playVoiceSample(); };
-  $('testVoice').onclick = function () { S.stop(); playVoiceSample(); };
-  function playVoiceSample() {
-    var vk = state.sound.voiceKind; if (vk === 'off') return;
-    S.unlock(); var t = 0;
-    ['m1', 'c3', 'c2', 'c1', 'end'].forEach(function (k, i) { setTimeout(function () { S.playClip(vk + '-' + k); }, t); t += k === 'm1' ? 1600 : 1000; });
+  /* 区切りごとの音の選択。並びと既定はここ1か所 */
+  var VOICE_OPTS = [['female', '女性の声'], ['male', '低い男性の声'], ['robot', 'ロボット']];
+  var CUES = [
+    { k: 'm1', label: '残り1分', beep: ['warn', 'ピッピッ'], clips: ['m1'] },
+    { k: 's30', label: '残り30秒', beep: ['warn', 'ピッピッ'], clips: ['s30'] },
+    { k: 'count', label: '5・4・3・2・1', beep: ['tick', 'ピッ'], clips: ['c5', 'c4', 'c3', 'c2', 'c1'] },
+    { k: 'end', label: 'そこまで', beep: null, clips: ['end'] }
+  ];
+  if (!state.sound.cues) state.sound.cues = { m1: 'female', s30: 'female', count: 'female', end: 'female' };
+  function previewCue(c) {
+    S.stop(); S.unlock();
+    var v = state.sound.cues[c.k];
+    if (v === 'none') return;
+    if (v === 'beep') { c.clips.forEach(function (_, i) { setTimeout(function () { S.play(c.beep[0]); }, i * 1000); }); return; }
+    c.clips.forEach(function (ck, i) { setTimeout(function () { S.playClip(v + '-' + ck); }, i * 1000); });
   }
+  CUES.forEach(function (c) {
+    var row = document.createElement('div'); row.className = 'field';
+    var lab = document.createElement('span'); lab.className = 'flab'; lab.textContent = c.label;
+    var sel = document.createElement('select'); sel.id = 'cue-' + c.k; sel.setAttribute('aria-label', c.label + 'の音');
+    var opts = VOICE_OPTS.slice(); if (c.beep) opts.push(['beep', c.beep[1]]); opts.push(['none', 'なし']);
+    opts.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+    var b = document.createElement('button'); b.className = 'btn icon'; b.dataset.ic = 'play'; setBtn(b, 'play', '');
+    b.setAttribute('aria-label', c.label + 'の試聴'); b.title = '試聴';
+    sel.onchange = function () { state.sound.cues[c.k] = sel.value; state.sound.voice = true; changed(); previewCue(c); };
+    b.onclick = function () { previewCue(c); };
+    row.append(lab, sel, b); $('cues').appendChild(row);
+  });
   $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.stop(); S.play(this.value); setTimeout(S.stop, 3000); };
   $('testSound').onclick = function () { S.stop(); S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('時間です', ms); setTimeout(S.stop, 4000); };
 
@@ -962,7 +981,7 @@ var ClockView = (function () {
     $('schedNote').textContent = n ? '「' + state.sched.pattern + '」' + n + '件' : '「' + state.sched.pattern + '」は空（日課表で入力）';
     $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
     $('endTune').value = state.sound.endTune;
-    $('voiceKind').value = state.sound.voiceKind || 'female';
+    CUES.forEach(function (c) { $('cue-' + c.k).value = state.sound.cues[c.k] || 'none'; });
     $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
   }
   var lastBtn = '';
