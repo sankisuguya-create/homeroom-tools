@@ -42,7 +42,8 @@
 .cv-scale span{position:absolute;top:0;white-space:nowrap;transform:translateX(-50%);line-height:1}
 .cv-scale span::before{content:"";position:absolute;left:50%;top:-1.4cqh;height:1cqh;border-left:.25cqmin solid var(--hair)}
 .cv-bar i{display:block;height:100%;background:var(--edge)}
-.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .25cqw),var(--bg) calc(100% / var(--n) - .25cqw) calc(100% / var(--n)))}
+.cv-bar b{position:absolute;inset:0}
+.cv-bar b span{position:absolute;top:0;bottom:0;width:.3cqw;margin-left:-.15cqw;background:var(--bg)}
 /* 横棒：残りを長さで見せる。数字は棒の上に小さく */
 .cv[data-face=bar][data-bar="1"] .cv-gauge{display:block}
 .cv[data-face=bar][data-bar="1"] .cv-big{font-size:min(15cqw,30cqh)}

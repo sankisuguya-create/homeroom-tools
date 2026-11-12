@@ -90,11 +90,20 @@ var ClockView = (function () {
       attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
       attr('bar', el.bar, 'style', 'width:' + (Math.max(0, bar) * 100).toFixed(2) + '%');
       /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */
-      var nmin = Math.round(total / C.MIN);
-      attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
-      /* 横棒の目盛りの数字：棒の位置＝その時点の残り分。10分以下は1分ごと、30分以下は5分ごと、それより長ければ10分ごと */
-      var step = nmin <= 10 ? 1 : nmin <= 30 ? 5 : 10, sc = '';
-      if (bar >= 0 && nmin >= 1 && nmin <= 60) for (var m = 0; m <= nmin; m += step) sc += '<span style="left:' + (m / nmin * 100).toFixed(2) + '%">' + m + '</span>';
+      /* 横棒の目盛り。位置は実際の時間（秒）で決める：5:10 のように半端な長さでも、線と数字が残り時間と合う。
+         2分以下は10秒ごとの線・30秒ごとの数字（m:ss）、それより長ければ1分ごとの線と、1・5・10分ごとの数字 */
+      var tk = '', sc = '', sec = Math.round(total / C.SEC);
+      if (bar >= 0 && sec >= 20 && sec <= 3600) {
+        var short = sec <= 120, tickS = short ? 10 : 60;
+        var labS = short ? 30 : (sec <= 600 ? 60 : sec <= 1800 ? 300 : 600);
+        for (var u = tickS; u < sec; u += tickS) tk += '<span style="left:' + (u / sec * 100).toFixed(3) + '%"></span>';
+        for (var v = 0; v <= sec; v += labS) {
+          if (v > 0 && sec - v < labS * 0.4) continue;   // 右端の数字と重なる半端な目盛りは出さない
+          sc += '<span style="left:' + (v / sec * 100).toFixed(3) + '%">' + (short ? Math.floor(v / 60) + ':' + ('0' + v % 60).slice(-2) : v / 60) + '</span>';
+        }
+        if (sec % labS) sc += '<span style="left:100%">' + (short || sec % 60 ? Math.floor(sec / 60) + ':' + ('0' + sec % 60).slice(-2) : sec / 60) + '</span>';
+      }
+      if (last.tk !== tk) { last.tk = tk; el.ticks.innerHTML = tk; }
       if (last.scale !== sc) { last.scale = sc; el.scale.innerHTML = sc; }
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';

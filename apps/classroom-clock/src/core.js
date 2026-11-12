@@ -44,6 +44,7 @@ var ClockCore = (function () {
     var next = left <= 0 ? (ms > 0 ? ms : 0) : left + ms;   // 終わったあとの＋は「今から」延ばす
     if (ms < 0 && next < -ms) next = left > 0 ? Math.min(left, -ms) : left;  // −は1回分（1分・10秒）より下へ行かない
     if (next > TIMER_MAX) next = TIMER_MAX;
+    if (next > t.dur) t.dur = next;   // 延ばした分だけ全体の長さも伸ばす（横棒・扇形の割合が1を超えない）
     if (t.running) t.endAt = now + next; else { t.left = next; if (!t.started && next > 0) t.dur = next; }
   }
 
