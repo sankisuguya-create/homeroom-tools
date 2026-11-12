@@ -57,6 +57,7 @@ button,select,input{font:inherit;color:inherit}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
 .seg button{height:52px;padding:0 2px;min-width:0;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .2s,color .2s}
+.seg button:disabled{opacity:.3;cursor:default}
 .seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .grid4 .btn{font-family:var(--num);font-weight:500}
@@ -488,6 +489,12 @@ textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-r
   /* ---- 画面の状態を合わせる ---- */
   function syncUi() {
     syncs.forEach(function (f) { f(); });
+    /* そのモードで選べない表示は薄くして押せなくする（選んだ値は覚えておき、選べるモードに戻ったら使う） */
+    document.querySelectorAll('#segFace button').forEach(function (b) {
+      var okf = C.faceOk(state.mode, b.dataset.v, state.sched.on);
+      b.disabled = !okf; b.setAttribute('aria-checked', String(C.effFace(state) === b.dataset.v));
+      b.title = okf ? '' : (state.mode === 'sw' ? 'ストップウォッチはデジタルのみ' : '時間割を入れると使える');
+    });
     document.body.dataset.theme = state.theme;
     document.querySelectorAll('#presets .btn').forEach(function (b, k) { b.classList.toggle('sel', PRESETS[k] * C.MIN === state.timer.dur); });
     $('ctlTimer').hidden = state.mode !== 'timer';

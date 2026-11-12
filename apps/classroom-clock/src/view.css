@@ -24,7 +24,9 @@
   --shadow:0 .8cqmin 2.4cqmin rgba(0,0,0,.5);
 }
 /* 「数字を太く」：後ろの席から細い数字が読みにくい時 */
-.cv[data-bold="1"]{--wnum:600}
+/* タイマー・ストップウォッチの数字は時計より少し太く（読み取る対象なので） */
+.cv[data-mode=timer],.cv[data-mode=sw]{--wnum:400}
+.cv[data-bold="1"][data-mode]{--wnum:600}
 .cv *{box-sizing:border-box}
 .cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
 .cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:4.6cqmin;font-weight:700;color:var(--sub);letter-spacing:.12em;line-height:1.2;min-height:1.2em}
@@ -58,11 +60,12 @@
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
 .cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(30cqw,1fr)}
-.cv[data-face=analog] .cv-analog{width:auto;max-height:64cqw;max-width:none}
+.cv[data-face=analog] .cv-analog{width:auto;max-height:66cqw;max-width:none}
 .cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
 .cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
-.cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
-.cv[data-face=analog][data-mode=clock] .cv-big{display:none}
+/* 時計のアナログ：タイマーと同じく時計を左に、右に今の時刻（時:分）を大きく */
+.cv[data-face=analog][data-mode=clock] .cv-big{font-size:min(13cqw,34cqh)}
+.cv[data-face=analog][data-mode=clock] .cv-b2{display:none}
 .cv[data-mode=clock] .cv-now{display:none}
 .cv[data-face=analog] .cv-now{display:none}
 

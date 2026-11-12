@@ -80,6 +80,10 @@ ok((await p.textContent('#pv .cv-label')) === '' , 'モニターの表示に文�
 await p.evaluate(() => window.__cc.sound.unlock());
 await p.waitForTimeout(1500);
 ok(await p.evaluate(() => window.__cc.sound.playClip('robot-c3') > 0), '録音した声を変換して鳴らせる（24本）');
+await p.click('#segMode [data-v=sw]');
+ok(await p.evaluate(() => ['analog', 'bar'].every(v => document.querySelector('#segFace [data-v=' + v + ']').disabled) && document.querySelector('#pv').dataset.face === 'digital'), 'ストップウォッチではアナログ・横棒を選べず、デジタルで表示');
+await p.click('#segMode [data-v=clock]');
+ok(await p.evaluate(() => document.querySelector('#segFace [data-v=bar]').disabled && !document.querySelector('#segFace [data-v=analog]').disabled), '時計では時間割が切のとき横棒を選べない');
 ok(errs.length === 0, 'エラーなし ' + errs.join(' / '));
 await browser.close();
 process.exit(fails ? 1 : 0);

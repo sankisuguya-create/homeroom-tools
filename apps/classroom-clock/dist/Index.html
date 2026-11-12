@@ -32,7 +32,9 @@
   --shadow:0 .8cqmin 2.4cqmin rgba(0,0,0,.5);
 }
 /* 「数字を太く」：後ろの席から細い数字が読みにくい時 */
-.cv[data-bold="1"]{--wnum:600}
+/* タイマー・ストップウォッチの数字は時計より少し太く（読み取る対象なので） */
+.cv[data-mode=timer],.cv[data-mode=sw]{--wnum:400}
+.cv[data-bold="1"][data-mode]{--wnum:600}
 .cv *{box-sizing:border-box}
 .cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
 .cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:4.6cqmin;font-weight:700;color:var(--sub);letter-spacing:.12em;line-height:1.2;min-height:1.2em}
@@ -66,11 +68,12 @@
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
 .cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(30cqw,1fr)}
-.cv[data-face=analog] .cv-analog{width:auto;max-height:64cqw;max-width:none}
+.cv[data-face=analog] .cv-analog{width:auto;max-height:66cqw;max-width:none}
 .cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
 .cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
-.cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
-.cv[data-face=analog][data-mode=clock] .cv-big{display:none}
+/* 時計のアナログ：タイマーと同じく時計を左に、右に今の時刻（時:分）を大きく */
+.cv[data-face=analog][data-mode=clock] .cv-big{font-size:min(13cqw,34cqh)}
+.cv[data-face=analog][data-mode=clock] .cv-b2{display:none}
 .cv[data-mode=clock] .cv-now{display:none}
 .cv[data-face=analog] .cv-now{display:none}
 
@@ -162,6 +165,7 @@ button,select,input{font:inherit;color:inherit}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
 .seg button{height:52px;padding:0 2px;min-width:0;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .2s,color .2s}
+.seg button:disabled{opacity:.3;cursor:default}
 .seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .grid4 .btn{font-family:var(--num);font-weight:500}
@@ -395,7 +399,18 @@ var ClockCore = (function () {
     return out;
   }
 
+  /* 表示の形が、そのモードで意味を持つか。
+     時計：デジタル・アナログ。横棒は時間割の残りを出す時だけ。ストップウォッチ：デジタルだけ（残りが無いので扇形も棒も描けない）。 */
+  function faceOk(mode, face, schedOn) {
+    if (face === 'digital') return true;
+    if (mode === 'sw') return false;
+    if (mode === 'clock' && face === 'bar') return !!schedOn;
+    return true;
+  }
+  function effFace(state) { return faceOk(state.mode, state.face, state.sched && state.sched.on) ? state.face : 'digital'; }
+
   return {
+    faceOk: faceOk, effFace: effFace,
     SEC: SEC, MIN: MIN, HOUR: HOUR, TIMER_MAX: TIMER_MAX,
     hm2min: hm2min, atHm: atHm, fmtClock: fmtClock, fmtDate: fmtDate, fmtHmJa: fmtHmJa,
     fmtRemain: fmtRemain, fmtOver: fmtOver, fmtSw: fmtSw, ceilMin: ceilMin,
@@ -604,7 +619,7 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="-36 -36 272 272" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-30 -30 260 260" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
       + '<div class="cv-gauge"><div class="cv-bar"><i></i><b></b></div><div class="cv-scale"></div></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
@@ -656,7 +671,7 @@ var ClockView = (function () {
         b1 = sw.main; b2 = sw.tenth;
         laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
-      attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
+      attr('mode', root, 'data-mode', mode); var face = C.effFace(state); attr('face', root, 'data-face', face);
       attr('theme', root, 'data-theme', state.theme); attr('bold', root, 'data-bold', state.bold ? '1' : '0'); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
       txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
@@ -682,7 +697,7 @@ var ClockView = (function () {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
       }
-      if (state.face === 'analog') {
+      if (face === 'analog') {
         var sec = d.getSeconds(), min = d.getMinutes() + sec / 60, hr = (d.getHours() % 12) + min / 60;
         var am = min * 6;
         attr('hh', el.hh, 'transform', 'rotate(' + (hr * 30).toFixed(2) + ' 100 100)');
@@ -1008,6 +1023,12 @@ var ClockView = (function () {
   /* ---- 画面の状態を合わせる ---- */
   function syncUi() {
     syncs.forEach(function (f) { f(); });
+    /* そのモードで選べない表示は薄くして押せなくする（選んだ値は覚えておき、選べるモードに戻ったら使う） */
+    document.querySelectorAll('#segFace button').forEach(function (b) {
+      var okf = C.faceOk(state.mode, b.dataset.v, state.sched.on);
+      b.disabled = !okf; b.setAttribute('aria-checked', String(C.effFace(state) === b.dataset.v));
+      b.title = okf ? '' : (state.mode === 'sw' ? 'ストップウォッチはデジタルのみ' : '時間割を入れると使える');
+    });
     document.body.dataset.theme = state.theme;
     document.querySelectorAll('#presets .btn').forEach(function (b, k) { b.classList.toggle('sel', PRESETS[k] * C.MIN === state.timer.dur); });
     $('ctlTimer').hidden = state.mode !== 'timer';

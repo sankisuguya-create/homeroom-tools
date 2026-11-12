@@ -103,7 +103,18 @@ var ClockCore = (function () {
     return out;
   }
 
+  /* 表示の形が、そのモードで意味を持つか。
+     時計：デジタル・アナログ。横棒は時間割の残りを出す時だけ。ストップウォッチ：デジタルだけ（残りが無いので扇形も棒も描けない）。 */
+  function faceOk(mode, face, schedOn) {
+    if (face === 'digital') return true;
+    if (mode === 'sw') return false;
+    if (mode === 'clock' && face === 'bar') return !!schedOn;
+    return true;
+  }
+  function effFace(state) { return faceOk(state.mode, state.face, state.sched && state.sched.on) ? state.face : 'digital'; }
+
   return {
+    faceOk: faceOk, effFace: effFace,
     SEC: SEC, MIN: MIN, HOUR: HOUR, TIMER_MAX: TIMER_MAX,
     hm2min: hm2min, atHm: atHm, fmtClock: fmtClock, fmtDate: fmtDate, fmtHmJa: fmtHmJa,
     fmtRemain: fmtRemain, fmtOver: fmtOver, fmtSw: fmtSw, ceilMin: ceilMin,

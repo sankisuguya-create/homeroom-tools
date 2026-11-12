@@ -31,7 +31,7 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="-36 -36 272 272" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-30 -30 260 260" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
       + '<div class="cv-gauge"><div class="cv-bar"><i></i><b></b></div><div class="cv-scale"></div></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
@@ -83,7 +83,7 @@ var ClockView = (function () {
         b1 = sw.main; b2 = sw.tenth;
         laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
-      attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
+      attr('mode', root, 'data-mode', mode); var face = C.effFace(state); attr('face', root, 'data-face', face);
       attr('theme', root, 'data-theme', state.theme); attr('bold', root, 'data-bold', state.bold ? '1' : '0'); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
       txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
@@ -109,7 +109,7 @@ var ClockView = (function () {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
       }
-      if (state.face === 'analog') {
+      if (face === 'analog') {
         var sec = d.getSeconds(), min = d.getMinutes() + sec / 60, hr = (d.getHours() % 12) + min / 60;
         var am = min * 6;
         attr('hh', el.hh, 'transform', 'rotate(' + (hr * 30).toFixed(2) + ' 100 100)');
