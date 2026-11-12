@@ -37,7 +37,8 @@ var ClockCore = (function () {
   }
   function timerPause(t, now) { if (!t.running) return; t.left = t.endAt - now; t.running = false; }
   function timerReset(t) { t.running = false; t.started = false; t.left = t.dur; t.endAt = 0; }
-  function timerPreset(t, dur, now) { t.dur = dur; t.left = dur; t.running = false; timerStart(t, now); }
+  /* 時間を選ぶだけで、始めない（スタートは別の操作） */
+  function timerPreset(t, dur) { t.dur = dur; t.left = dur; t.running = false; t.started = false; t.endAt = 0; }
   function timerAdd(t, ms, now) {
     var left = timerLeft(t, now);
     var next = left <= 0 ? (ms > 0 ? ms : 0) : left + ms;   // 終わったあとの＋は「今から」延ばす

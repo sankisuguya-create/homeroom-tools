@@ -38,14 +38,26 @@ for (const theme of ['light', 'dark']) {
 await p.click('#swDark');
 await p.click('#segMode [data-v=timer]');
 await p.click('#presets button:nth-child(3)');   // 5分
-ok((await p.textContent('#pv .cv-b1')) === '5:00', '5分を押すと 5:00 から始まる');
-await ctx.clock.runFor(4 * 60 * 1000 + 1000);
-ok((await p.getAttribute('#pv', 'data-phase')) === 'warn', '残り1分で「もうすぐ」の状態');
+await ctx.clock.runFor(3000);
+ok((await p.textContent('#pv .cv-b1')) === '5:00', '5分を選んでも始まらない');
+await p.click('#pv');
+await ctx.clock.runFor(1500);
+ok((await p.textContent('#pv .cv-b1')) === '4:59', '画面クリックでスタート');
+await ctx.clock.runFor(4 * 60 * 1000);
+ok((await p.getAttribute('#pv', 'data-phase')) === 'warn', '残り1分で「残りわずか」の状態');
 await ctx.clock.runFor(60 * 1000);
-ok((await p.getAttribute('#pv', 'data-phase')) === 'over', '0で「おわり」');
+ok((await p.getAttribute('#pv', 'data-phase')) === 'over', '0で「終了」');
 const played = await p.evaluate(() => window.__cc.sound.played.slice());
-ok(played.includes('warn') && played.includes('chime'), '予告音と終了音が鳴る: ' + played.filter(x => !x.startsWith('voice')).join(','));
-ok(played.includes('voice:おわりです'), '声で「おわりです」');
+ok(played.includes('warn') && played.includes('alarm'), '予告音と終了音が鳴る: ' + played.filter(x => !x.startsWith('voice')).join(','));
+ok(played.includes('voice:時間です'), '音声で「時間です」');
+await ctx.clock.runFor(90 * 1000);
+ok((await p.textContent('#pv .cv-b1')) === '0:00' && (await p.textContent('#pv .cv-label')) === '終了', '終了後は 0:00 のまま（超過を数えない）');
+// ストップウォッチ：画面クリックとスペースでスタート／一時停止
+await p.click('#segMode [data-v=sw]');
+await p.click('#pv'); await ctx.clock.runFor(2000); await p.keyboard.press('Space');
+const t1 = await p.textContent('#pv .cv-b1'); await ctx.clock.runFor(3000);
+ok(t1 === '0:02' && (await p.textContent('#pv .cv-b1')) === t1, 'ストップウォッチを画面クリックで開始、スペースで一時停止');
+await p.click('#segMode [data-v=timer]');
 await p.click('#segFace [data-v=analog]');
 await p.click('#tReset'); await p.click('#tToggle');
 const d = await p.getAttribute('#pv .cv-sector', 'd');

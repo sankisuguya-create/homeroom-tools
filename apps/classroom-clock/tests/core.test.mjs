@@ -63,3 +63,9 @@ test('アラーム', () => {
   const ev = C.events({ alarms: [{ on: true, hm: '10:25', label: 'かたづけ' }] }, at(10, 24, 59.9), at(10, 25, 0.05));
   assert.equal(ev[0].label, 'かたづけ');
 });
+test('タイマー：時間を選んでも始まらない', () => {
+  const t = C.newTimer(5 * M);
+  C.timerPreset(t, 10 * M);
+  assert.equal(t.running, false);
+  assert.equal(C.timerLeft(t, at(9, 30)), 10 * M);
+});

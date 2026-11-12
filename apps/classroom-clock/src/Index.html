@@ -19,7 +19,7 @@ body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:
 .stage-head .dot{width:10px;height:10px;border-radius:50%;background:var(--sub)}
 .stage-head.live{color:var(--accent)} .stage-head.live .dot{background:var(--accent)}
 .preview{min-height:0;display:grid;place-items:center}
-.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.pv-box{cursor:pointer;width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
 .panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
 .card{background:var(--sheet);border:2px solid var(--rule);border-radius:14px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
 .card h2{margin:0;font-size:13px;color:var(--sub)}
@@ -64,7 +64,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
 
 <div class="app">
   <section class="stage">
-    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターにはまだ出していません）</span></div>
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニター未出力）　画面クリック・スペースキーでスタート／一時停止</span></div>
     <div class="preview"><div class="pv-box" id="pv"></div></div>
   </section>
 
@@ -88,7 +88,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     </div>
 
     <div class="card" id="ctlTimer" hidden>
-      <h2>何分？（押すとすぐ始まる）</h2>
+      <h2>時間を選ぶ</h2>
       <div class="grid4" id="presets"></div>
       <div class="row">
         <button class="btn" id="tMinus">−1分</button>
@@ -96,7 +96,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       </div>
       <div class="row">
         <button class="btn main" id="tToggle" data-flow="3">スタート</button>
-        <button class="btn" id="tReset">もとに戻す</button>
+        <button class="btn" id="tReset">リセット</button>
       </div>
     </div>
 
@@ -104,52 +104,52 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       <div class="row">
         <button class="btn main" id="sToggle">スタート</button>
         <button class="btn" id="sLap">ラップ</button>
-        <button class="btn" id="sReset">ゼロに</button>
+        <button class="btn" id="sReset">リセット</button>
       </div>
     </div>
 
     <div class="card">
-      <button class="sw" role="switch" id="swDark">暗い配色（まぶしいとき）</button>
+      <button class="sw" role="switch" id="swDark">ダークモード</button>
     </div>
 
     <div class="card" id="ctlClock" hidden>
-      <button class="sw" role="switch" id="swSched">時間割の残り時間とチャイム</button>
+      <button class="sw" role="switch" id="swSched">時間割と連動</button>
       <p class="note" id="schedNote"></p>
     </div>
 
     <details class="card" id="dSound">
-      <summary data-group="fold-dSound">音と声</summary>
+      <summary data-group="fold-dSound">音・音声</summary>
       <div class="fold">
       <div class="field">音量<input type="range" id="vol" min="0" max="1" step="0.05"></div>
-      <div class="field">おわりの音<select id="endTune">
-        <option value="chime">チャイム（4音）</option><option value="soft">やわらかい音</option>
-        <option value="beep">ピピピ</option><option value="none">鳴らさない</option></select></div>
-      <button class="sw" role="switch" id="swWarn">のこり1分で知らせる</button>
-      <button class="sw" role="switch" id="swTick">さいごの10秒をカチカチ</button>
-      <button class="sw" role="switch" id="swVoice">声でも知らせる（「あと1分です」など）</button>
-      <p class="note" id="voiceNote" hidden>この端末には日本語の声が入っていないため、声は出ません。</p>
-      <button class="sw" role="switch" id="swFlash">音と同時に画面のふちを光らせる</button>
-      <button class="btn" id="testSound">試しに鳴らす</button>
+      <div class="field">終了音<select id="endTune">
+        <option value="alarm">電子音（ピピピピッ）</option><option value="bell">ベル</option>
+        <option value="marimba">マリンバ</option><option value="school">チャイム（学校）</option><option value="none">なし</option></select></div>
+      <button class="sw" role="switch" id="swWarn">残り1分で予告音</button>
+      <button class="sw" role="switch" id="swTick">残り10秒のカウント音</button>
+      <button class="sw" role="switch" id="swVoice">音声で読み上げる</button>
+      <p class="note" id="voiceNote" hidden>この端末には日本語の音声がないため、読み上げは行われません。</p>
+      <button class="sw" role="switch" id="swFlash">鳴るときに画面の枠を点滅</button>
+      <button class="btn" id="testSound">試聴</button>
       </div>
     </details>
 
     <details class="card" id="dAlarm">
-      <summary data-group="fold-dAlarm">時刻で鳴らす（アラーム）</summary>
+      <summary data-group="fold-dAlarm">アラーム</summary>
       <div class="fold">
       <div id="alarms"></div>
-      <button class="btn" id="addAlarm">アラームを足す</button>
-      <p class="note">鳴る時刻に、言葉をモニターに大きく出して読み上げます（例：10:25 かたづけ）。</p>
+      <button class="btn" id="addAlarm">アラームを追加</button>
+      <p class="note">指定時刻にメッセージを表示し、読み上げます（例：10:25 片付け）。終了音は「音・音声」の設定に従います。</p>
       </div>
     </details>
 
     <details class="card" id="dSched">
       <summary data-group="fold-dSched">時間割（日課）</summary>
       <div class="fold">
-      <div class="field">今日の日課<select id="pattern"></select></div>
+      <div class="field">日課表<select id="pattern"></select></div>
       <textarea id="schedText" spellcheck="false"></textarea>
-      <p class="note">1行に1つ「名前 はじまり-おわり」。例：1時間目 8:45-9:30</p>
+      <p class="note">1行に1件「名前 開始-終了」。例：1時間目 8:45-9:30</p>
       <p class="warn" id="schedErr" hidden></p>
-      <button class="sw" role="switch" id="swChime">はじまりとおわりにチャイムを鳴らす</button>
+      <button class="sw" role="switch" id="swChime">開始・終了時にチャイム</button>
       </div>
     </details>
 
@@ -179,7 +179,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   var state = {
     mode: 'clock', face: 'digital', theme: 'light',
     timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
-    sound: { vol: 0.8, endTune: 'chime', warn: true, tick: false, voice: true, flash: true },
+    sound: { vol: 0.8, endTune: 'alarm', warn: true, tick: false, voice: true, flash: true },
     alarms: [],
     sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
   };
@@ -197,14 +197,14 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   /* ---- 合図：音・声・画面 ---- */
   function signal(ev, now) {
     var snd = state.sound, ms = 0, say = '', banner = '';
-    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune); say = 'おわりです'; banner = 'おわり'; }
+    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune, { voiceGap: snd.voice }); say = '時間です'; banner = '終了'; }
     else if (ev.type === 'timerWarn') { if (!snd.warn) return; ms = S.play('warn'); say = 'あと1分です'; }
     else if (ev.type === 'tick') { if (snd.tick) S.play('tick'); return; }
-    else if (ev.type === 'alarm') { ms = S.play('chime'); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
+    else if (ev.type === 'alarm') { ms = S.play(snd.endTune, { voiceGap: snd.voice && !!ev.label }); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
     else if (ev.type === 'chime') {
       ms = S.play('school');
-      say = ev.name + (ev.edge === 'start' ? 'が はじまります' : 'が おわりです');
-      banner = ev.name + (ev.edge === 'start' ? ' はじまり' : ' おわり');
+      say = ev.name + (ev.edge === 'start' ? 'が始まります' : 'が終わりました');
+      banner = ev.name + (ev.edge === 'start' ? ' 開始' : ' 終了');
     }
     if (snd.voice && say) S.speak(say, ms);
     if (snd.flash) fx.flashUntil = now + 6000;
@@ -220,7 +220,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     fx.hint = '';
     views[0].update(state, now, fx);
     if (mon && !mon.win.closed) {
-      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'ここを押すと 全画面になります';
+      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'クリックで全画面表示';
       mon.view.update(state, now, fx);
     } else if (mon) { mon = null; syncUi(); }
     updateButtons(now);
@@ -252,6 +252,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     mon = { win: w, view: ClockView.create(d, d.getElementById('m')), full: false };
     d.addEventListener('click', function () {
       S.unlock();
+      if (d.fullscreenElement) { toggle(); return; }
       var el = d.documentElement;
       var p = target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen();
       if (p && p.then) p.then(function () { mon.full = true; }, function () {});
@@ -297,21 +298,36 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
 
   PRESETS.forEach(function (m) {
     var b = document.createElement('button'); b.className = 'btn'; b.textContent = m + '分';
-    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN, Date.now()); prev = Date.now(); changed(); };
+    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN); changed(); };
     $('presets').appendChild(b);
   });
-  $('tToggle').onclick = function () { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); };
+  $('tToggle').onclick = function () { toggle(); };
+  function toggleTimer() { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); }
   $('tReset').onclick = function () { C.timerReset(state.timer); fx.flashUntil = 0; fx.banner = null; changed(); };
   $('tPlus').onclick = function () { C.timerAdd(state.timer, C.MIN, Date.now()); changed(); };
   $('tMinus').onclick = function () { C.timerAdd(state.timer, -C.MIN, Date.now()); changed(); };
-  $('sToggle').onclick = function () { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); };
+  $('sToggle').onclick = function () { toggle(); };
+  /* スタート／一時停止。ボタン・見本やモニターの画面のクリック・スペースキーの3つから同じ動き */
+  function toggle() {
+    if (S.ringing()) { S.stop(); fx.flashUntil = 0; fx.banner = null; if (state.mode !== 'timer' || C.timerLeft(state.timer, Date.now()) > 0) { changed(); return; } }
+    if (state.mode === 'timer') toggleTimer();
+    else if (state.mode === 'sw') { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); }
+    else changed();
+  }
+  $('pv').addEventListener('click', toggle);
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'Space' || /INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY/.test(e.target.tagName)) return;
+    e.preventDefault(); toggle();
+  });
+  /* 操作ボタンを押したら、鳴っている終了音・アラームは止める */
+  document.querySelector('.panel').addEventListener('click', function (e) { if (e.target.closest('button') && e.target.id !== 'testSound') S.stop(); }, true);
   $('sLap').onclick = function () { C.swLap(state.sw, Date.now()); changed(); };
   $('sReset').onclick = function () { C.swReset(state.sw); changed(); };
   $('goMonitor').onclick = function () { openMonitor(); };
 
   $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
-  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.play(this.value); };
-  $('testSound').onclick = function () { S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('あと1分です', ms); };
+  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.stop(); S.play(this.value); setTimeout(S.stop, 3000); };
+  $('testSound').onclick = function () { S.stop(); S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('時間です', ms); setTimeout(S.stop, 4000); };
 
   /* アラーム */
   function drawAlarms() {
@@ -319,7 +335,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     state.alarms.forEach(function (a, i) {
       var row = document.createElement('div'); row.className = 'alarm';
       var t = document.createElement('input'); t.type = 'time'; t.value = a.hm; t.setAttribute('aria-label', '時刻'); t.dataset.group = 'atime';
-      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = 'かたづけ'; l.setAttribute('aria-label', '出す言葉'); l.dataset.group = 'alabel';
+      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = '片付け'; l.setAttribute('aria-label', 'メッセージ'); l.dataset.group = 'alabel';
       var x = document.createElement('button'); x.className = 'btn x danger'; x.textContent = '×'; x.setAttribute('aria-label', 'このアラームを消す');
       t.onchange = function () { a.hm = t.value; save(); };
       l.oninput = function () { a.label = l.value; save(); };
@@ -357,7 +373,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     var r = parseSched(this.value);
     state.sched.patterns[state.sched.pattern].rows = r.rows;
     $('schedErr').hidden = !r.bad.length;
-    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目が読めません（読めた行だけ使います）' : '';
+    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目を読み取れません（読み取れた行のみ使用）' : '';
     save(); syncUi();
   };
 
@@ -369,11 +385,11 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     $('ctlClock').hidden = state.mode !== 'clock';
     var live = !!(mon && !mon.win.closed);
     $('stageHead').classList.toggle('live', live);
-    $('stageText').textContent = live ? 'モニターに出しています（この見本と同じものが出ます）' : '見本（モニターにはまだ出していません）';
+    $('stageText').textContent = live ? 'モニターに出力中（この見本と同じ表示）　画面クリック・スペースキーでスタート／一時停止' : '見本（モニター未出力）　画面クリック・スペースキーでスタート／一時停止';
     $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
     keepAwake(live);
     var n = state.sched.patterns[state.sched.pattern].rows.length;
-    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」の日課（' + n + 'こ）で数えます。日課は下の「時間割」で直せます。' : '「' + state.sched.pattern + '」の日課がまだ空です。下の「時間割」に入れてください。';
+    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」（' + n + '件）を使用中。編集は下の「時間割」から。' : '「' + state.sched.pattern + '」が空です。下の「時間割」で入力してください。';
     $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
     $('endTune').value = state.sound.endTune;
     $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
@@ -383,8 +399,8 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     var t = state.timer, w = state.sw;
     var k = (t.running ? 1 : 0) + '' + (C.timerLeft(t, now) <= 0 ? 1 : 0) + (w.running ? 1 : 0);
     if (k === lastBtn) return; lastBtn = k;
-    $('tToggle').textContent = t.running ? (C.timerLeft(t, now) <= 0 ? 'とめる' : 'いちじ停止') : (t.started && t.left > 0 ? 'つづける' : 'スタート');
-    $('sToggle').textContent = w.running ? 'とめる' : (w.acc ? 'つづける' : 'スタート');
+    $('tToggle').textContent = t.running ? (C.timerLeft(t, now) <= 0 ? 'リセット' : '一時停止') : (t.started && t.left > 0 ? '再開' : 'スタート');
+    $('sToggle').textContent = w.running ? '一時停止' : (w.acc ? '再開' : 'スタート');
   }
   setTimeout(syncUi, 800);  // 声の一覧は少し遅れて届く
   window.addEventListener('beforeunload', function () { if (mon && !mon.win.closed) mon.win.close(); });

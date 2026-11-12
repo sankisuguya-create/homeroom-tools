@@ -62,25 +62,26 @@ var ClockView = (function () {
         b1 = c.h + ':' + c.m; b2 = ':' + c.s;
         if (state.sched.on) {
           var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
-          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
-          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
+          if (sn && sn.kind === 'in') { sub = sn.name + '　終了まで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
+          else if (sn) { sub = '次は ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
           if (goal !== null) bar = Math.min(1, (goal - now) / total);
         }
       } else if (mode === 'timer') {
         var t = state.timer, left = C.timerLeft(t, now);
-        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); bar = 0; total = t.dur; }
+        /* 終わったら 0:00 で止める（超過は数えない） */
+        if (left <= 0) { phase = 'over'; label = '終了'; b1 = '0:00'; bar = 0; total = t.dur; }
         else {
           var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
-          b1 = C.fmtRemain(left); label = soon ? 'もうすぐ おわり' : 'のこり';
+          b1 = C.fmtRemain(left); label = soon ? '残りわずか' : '残り';
           phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
           bar = Math.min(1, left / t.dur); total = t.dur;
           if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
-          else if (t.started) sub = 'とまっています';
+          else if (t.started) sub = '一時停止中';
         }
       } else {
         var w = state.sw, sw = C.fmtSw(C.swElapsed(w, now));
         label = 'ストップウォッチ'; b1 = sw.main; b2 = sw.tenth;
-        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + 'かいめ ' + f.main + f.tenth; }).join('\n');
+        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '回目 ' + f.main + f.tenth; }).join('\n');
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
       attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
