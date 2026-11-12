@@ -8,6 +8,7 @@
   apps/dance-count/src/
   apps/collection-check/src/
   apps/class-split/src/
+  apps/classroom-clock/src/
 
 生成物:
   apps/note-assessment/gas/generated/
@@ -15,6 +16,7 @@
   apps/dance-count/dist/
   apps/collection-check/dist/
   apps/class-split/dist/
+  apps/classroom-clock/dist/
   apps/class-split/dist/gas/   （GAS に貼る3つ：Code.gs・Index.html・appsscript.json）
 
   python3 scripts/build.py
@@ -34,6 +36,9 @@ DANCE_DIST = DANCE / "dist"
 COLLECT = ROOT / "apps" / "collection-check"
 COLLECT_SRC = COLLECT / "src"
 COLLECT_DIST = COLLECT / "dist"
+CLOCK = ROOT / "apps" / "classroom-clock"
+CLOCK_SRC = CLOCK / "src"
+CLOCK_DIST = CLOCK / "dist"
 CLASS = ROOT / "apps" / "class-split"
 CLASS_SRC = CLASS / "src"
 CLASS_DIST = CLASS / "dist"
@@ -48,6 +53,7 @@ PAGES = [
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
     (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
+    (CLOCK_SRC / "Index.html", CLOCK_DIST / "Index.html", [CLOCK_SRC], True),
 ]
 
 # 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。

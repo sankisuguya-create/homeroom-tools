@@ -1,0 +1,394 @@
+<title>教室の時計</title>
+<style>
+/* @include view.css */
+
+/* ---- 操作画面（教師の手元のPCだけに出す） ---- */
+:root{
+  --paper:#F7F6F2;--tint:#D7E8F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
+  --accent:#0F5EA8;--on:#FFFFFF;--alert:#C0330A;
+  --s1:4px;--s2:8px;--s3:16px;--s4:24px;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:var(--s3);height:100%;padding:var(--s3)}
+.stage{display:grid;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);min-height:0}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;font-weight:700;min-height:24px}
+.stage-head .dot{width:10px;height:10px;border-radius:50%;background:var(--sub)}
+.stage-head.live{color:var(--accent)} .stage-head.live .dot{background:var(--accent)}
+.preview{min-height:0;display:grid;place-items:center}
+.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
+.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
+.card{background:var(--sheet);border:2px solid var(--rule);border-radius:14px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.card h2{margin:0;font-size:13px;color:var(--sub)}
+button,select,input{font:inherit;color:inherit}
+.btn{height:48px;padding:0 var(--s2);border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.main{background:var(--accent);color:var(--on);border-color:var(--accent)}
+.btn.danger{color:var(--alert)}
+/* 1回だけ押す操作なので強い塗りにしない（強い塗りは授業中にくり返す主操作に1つだけ） */
+#goMonitor{color:var(--accent);border-color:var(--accent)}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+/* 選んでいる側は淡い塗り＋青枠＋✓（強い塗りは主操作だけに使う。design/ui-patterns の型） */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--s2)}
+.seg button{height:48px;padding:0 2px;min-width:0;font-size:14px;white-space:nowrap;border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer}
+.seg button[aria-checked=true]{background:var(--tint);border-color:var(--accent)}
+.seg button[aria-checked=true]::before{content:"✓ "}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
+.sw{display:flex;align-items:center;gap:var(--s3);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw .lab{flex:1}
+.sw .st{font-size:13px;color:var(--sub);width:16px}
+.sw[aria-checked=true] .st::after{content:"入"}
+.sw[aria-checked=false] .st::after{content:"切"}
+.sw::after{content:"";flex:0 0 44px;height:26px;border-radius:13px;background:var(--rule);
+  background-image:radial-gradient(circle at 13px 50%,#fff 9px,transparent 10px)}
+.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 31px 50%,#fff 9px,transparent 10px)}
+.field{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--s2);min-height:48px;font-weight:700}
+.field select,.field input[type=range]{height:48px;width:100%}
+.field select{border:1px solid var(--rule);border-radius:8px;background:var(--sheet);padding:0 var(--s2)}
+.fold{display:flex;flex-direction:column;gap:var(--s2)}
+details.card>summary{cursor:pointer;font-weight:700;min-height:48px;display:flex;align-items:center;list-style:none}
+details.card>summary::before{content:"▶";font-size:11px;margin-right:var(--s2);color:var(--sub)}
+details.card[open]>summary::before{content:"▼"}
+.note{font-size:13px;color:var(--sub);margin:0}
+.warn{font-size:13px;color:var(--alert);margin:0;font-weight:700}
+textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid var(--rule);border-radius:8px;padding:var(--s2)}
+.alarm{display:grid;grid-template-columns:120px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
+.alarm input{height:48px;border:1px solid var(--rule);border-radius:8px;padding:0 var(--s2);min-width:0}
+.alarm .x{width:48px}
+@media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.pv-box{max-height:none}}
+</style>
+
+<div class="app">
+  <section class="stage">
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターにはまだ出していません）</span></div>
+    <div class="preview"><div class="pv-box" id="pv"></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="card">
+      <button class="btn" id="goMonitor" data-flow="1">モニターに出す</button>
+      <p class="note" id="monNote">モニターを「拡張」でつなぐと、操作の画面は手元だけに残り、モニターには時計だけが出ます。</p>
+    </div>
+
+    <div class="card">
+      <div class="seg" role="radiogroup" id="segMode" data-flow="2">
+        <button role="radio" data-v="clock">時計</button>
+        <button role="radio" data-v="timer">タイマー</button>
+        <button role="radio" data-v="sw">ストップウォッチ</button>
+      </div>
+      <div class="seg" role="radiogroup" id="segFace">
+        <button role="radio" data-v="digital">デジタル</button>
+        <button role="radio" data-v="analog">アナログ</button>
+        <button role="radio" data-v="bar">横棒</button>
+      </div>
+    </div>
+
+    <div class="card" id="ctlTimer" hidden>
+      <h2>何分？（押すとすぐ始まる）</h2>
+      <div class="grid4" id="presets"></div>
+      <div class="row">
+        <button class="btn" id="tMinus">−1分</button>
+        <button class="btn" id="tPlus">＋1分</button>
+      </div>
+      <div class="row">
+        <button class="btn main" id="tToggle" data-flow="3">スタート</button>
+        <button class="btn" id="tReset">もとに戻す</button>
+      </div>
+    </div>
+
+    <div class="card" id="ctlSw" hidden>
+      <div class="row">
+        <button class="btn main" id="sToggle">スタート</button>
+        <button class="btn" id="sLap">ラップ</button>
+        <button class="btn" id="sReset">ゼロに</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <button class="sw" role="switch" id="swDark">暗い配色（まぶしいとき）</button>
+    </div>
+
+    <div class="card" id="ctlClock" hidden>
+      <button class="sw" role="switch" id="swSched">時間割の残り時間とチャイム</button>
+      <p class="note" id="schedNote"></p>
+    </div>
+
+    <details class="card" id="dSound">
+      <summary data-group="fold-dSound">音と声</summary>
+      <div class="fold">
+      <div class="field">音量<input type="range" id="vol" min="0" max="1" step="0.05"></div>
+      <div class="field">おわりの音<select id="endTune">
+        <option value="chime">チャイム（4音）</option><option value="soft">やわらかい音</option>
+        <option value="beep">ピピピ</option><option value="none">鳴らさない</option></select></div>
+      <button class="sw" role="switch" id="swWarn">のこり1分で知らせる</button>
+      <button class="sw" role="switch" id="swTick">さいごの10秒をカチカチ</button>
+      <button class="sw" role="switch" id="swVoice">声でも知らせる（「あと1分です」など）</button>
+      <p class="note" id="voiceNote" hidden>この端末には日本語の声が入っていないため、声は出ません。</p>
+      <button class="sw" role="switch" id="swFlash">音と同時に画面のふちを光らせる</button>
+      <button class="btn" id="testSound">試しに鳴らす</button>
+      </div>
+    </details>
+
+    <details class="card" id="dAlarm">
+      <summary data-group="fold-dAlarm">時刻で鳴らす（アラーム）</summary>
+      <div class="fold">
+      <div id="alarms"></div>
+      <button class="btn" id="addAlarm">アラームを足す</button>
+      <p class="note">鳴る時刻に、言葉をモニターに大きく出して読み上げます（例：10:25 かたづけ）。</p>
+      </div>
+    </details>
+
+    <details class="card" id="dSched">
+      <summary data-group="fold-dSched">時間割（日課）</summary>
+      <div class="fold">
+      <div class="field">今日の日課<select id="pattern"></select></div>
+      <textarea id="schedText" spellcheck="false"></textarea>
+      <p class="note">1行に1つ「名前 はじまり-おわり」。例：1時間目 8:45-9:30</p>
+      <p class="warn" id="schedErr" hidden></p>
+      <button class="sw" role="switch" id="swChime">はじまりとおわりにチャイムを鳴らす</button>
+      </div>
+    </details>
+
+  </section>
+</div>
+
+<script>
+/* @include core.js */
+/* @include sound.js */
+/* @include view.js */
+
+(function () {
+  'use strict';
+  document.documentElement.lang = 'ja';
+  var C = ClockCore, S = ClockSound;
+  var KEY = 'classroom-clock-v1';
+  var PRESETS = [1, 3, 5, 10, 15, 20, 30, 45];
+  var DEFAULT_ROWS = [
+    ['朝の会', '8:30', '8:40'], ['1時間目', '8:45', '9:30'], ['2時間目', '9:35', '10:20'],
+    ['3時間目', '10:40', '11:25'], ['4時間目', '11:30', '12:15'], ['給食', '12:15', '13:00'],
+    ['そうじ', '13:20', '13:35'], ['5時間目', '13:40', '14:25'], ['6時間目', '14:30', '15:15']
+  ];
+  function rowsOf(list) { return list.map(function (r) { return { name: r[0], s: pad(r[1]), e: pad(r[2]) }; }); }
+  function pad(hm) { var p = hm.split(':'); return (p[0].length < 2 ? '0' : '') + p[0] + ':' + p[1]; }
+
+  /* ---- 状態。設定とタイマーは端末に保存し、読み込み直しても続きから ---- */
+  var state = {
+    mode: 'clock', face: 'digital', theme: 'light',
+    timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
+    sound: { vol: 0.8, endTune: 'chime', warn: true, tick: false, voice: true, flash: true },
+    alarms: [],
+    sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
+  };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved) Object.keys(state).forEach(function (k) { if (saved[k] !== undefined) state[k] = saved[k]; });
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var views = [ClockView.create(document, $('pv'))];
+  var fx = { flashUntil: 0, banner: null, hint: '' };
+  var mon = null;  // モニター用の窓
+
+  /* ---- 合図：音・声・画面 ---- */
+  function signal(ev, now) {
+    var snd = state.sound, ms = 0, say = '', banner = '';
+    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune); say = 'おわりです'; banner = 'おわり'; }
+    else if (ev.type === 'timerWarn') { if (!snd.warn) return; ms = S.play('warn'); say = 'あと1分です'; }
+    else if (ev.type === 'tick') { if (snd.tick) S.play('tick'); return; }
+    else if (ev.type === 'alarm') { ms = S.play('chime'); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
+    else if (ev.type === 'chime') {
+      ms = S.play('school');
+      say = ev.name + (ev.edge === 'start' ? 'が はじまります' : 'が おわりです');
+      banner = ev.name + (ev.edge === 'start' ? ' はじまり' : ' おわり');
+    }
+    if (snd.voice && say) S.speak(say, ms);
+    if (snd.flash) fx.flashUntil = now + 6000;
+    if (banner) fx.banner = { text: banner, until: now + 15000 };
+  }
+
+  /* ---- 1回の刻み。表示と合図は時刻から出す ---- */
+  var prev = Date.now();
+  function tick() {
+    var now = Date.now();
+    C.events(state, prev, now).forEach(function (ev) { signal(ev, now); });
+    prev = now;
+    fx.hint = '';
+    views[0].update(state, now, fx);
+    if (mon && !mon.win.closed) {
+      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'ここを押すと 全画面になります';
+      mon.view.update(state, now, fx);
+    } else if (mon) { mon = null; syncUi(); }
+    updateButtons(now);
+  }
+  setInterval(tick, 100);
+
+  /* ---- モニターに出す ----
+     ミラーリング（複製）では手元とモニターが同じ画面なので、操作の部品を手元だけに出すことは原理的にできない。
+     「拡張」でつなぎ、時計だけの窓をモニター側に開く。Chrome の画面配置の許可があれば、窓をモニターへ自動で置く。 */
+  async function openMonitor() {
+    S.unlock();
+    if (mon && !mon.win.closed) { mon.win.focus(); return; }
+    var feat = 'popup,width=960,height=540';
+    var target = null;
+    try {
+      if (window.getScreenDetails) {
+        var sd = await window.getScreenDetails();
+        target = sd.screens.filter(function (s) { return s !== sd.currentScreen; })[0] || null;
+        if (target) feat = 'popup,left=' + target.availLeft + ',top=' + target.availTop + ',width=' + target.availWidth + ',height=' + target.availHeight;
+      }
+    } catch (e) {}
+    var w = window.open('', 'classroom-clock-monitor', feat);
+    if (!w) { $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
+    var d = w.document;
+    d.open();
+    d.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>教室の時計（モニター）</title><style>html,body{margin:0;height:100%;overflow:hidden;cursor:none}'
+      + document.querySelector('style').textContent.split('/* ---- 操作画面')[0] + '</style></head><body><div id="m" style="width:100vw;height:100vh"></div></body></html>');
+    d.close();
+    mon = { win: w, view: ClockView.create(d, d.getElementById('m')), full: false };
+    d.addEventListener('click', function () {
+      S.unlock();
+      var el = d.documentElement;
+      var p = target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen();
+      if (p && p.then) p.then(function () { mon.full = true; }, function () {});
+    });
+    w.addEventListener('keydown', function (e) { if (e.key === 'Escape') mon.full = false; });
+    syncUi();
+  }
+
+  /* 画面が暗くならないように（モニター表示中だけ） */
+  var lock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && !lock && navigator.wakeLock) { lock = await navigator.wakeLock.request('screen'); lock.addEventListener('release', function () { lock = null; }); }
+      if (!on && lock) { lock.release(); lock = null; }
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible' && mon) keepAwake(true); });
+
+  /* ---- 操作 ---- */
+  function seg(id, get, set) {
+    var box = $(id);
+    box.addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; set(b.dataset.v); changed(); });
+    return function () { box.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.v === get())); }); };
+  }
+  function sw(id, get, set) {
+    var b = $(id), lab = document.createElement('span'), st = document.createElement('span');
+    lab.className = 'lab'; st.className = 'st'; lab.textContent = b.textContent; b.textContent = ''; b.append(lab, st);
+    b.addEventListener('click', function () { set(!get()); changed(); });
+    return function () { b.setAttribute('aria-checked', String(!!get())); };
+  }
+  var syncs = [
+    seg('segMode', function () { return state.mode; }, function (v) { state.mode = v; }),
+    seg('segFace', function () { return state.face; }, function (v) { state.face = v; }),
+    sw('swDark', function () { return state.theme === 'dark'; }, function (v) { state.theme = v ? 'dark' : 'light'; }),
+    sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
+    sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
+    sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),
+    sw('swTick', function () { return state.sound.tick; }, function (v) { state.sound.tick = v; }),
+    sw('swVoice', function () { return state.sound.voice; }, function (v) { state.sound.voice = v; }),
+    sw('swFlash', function () { return state.sound.flash; }, function (v) { state.sound.flash = v; })
+  ];
+  function changed() { S.unlock(); save(); syncUi(); tick(); }
+
+  PRESETS.forEach(function (m) {
+    var b = document.createElement('button'); b.className = 'btn'; b.textContent = m + '分';
+    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN, Date.now()); prev = Date.now(); changed(); };
+    $('presets').appendChild(b);
+  });
+  $('tToggle').onclick = function () { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); };
+  $('tReset').onclick = function () { C.timerReset(state.timer); fx.flashUntil = 0; fx.banner = null; changed(); };
+  $('tPlus').onclick = function () { C.timerAdd(state.timer, C.MIN, Date.now()); changed(); };
+  $('tMinus').onclick = function () { C.timerAdd(state.timer, -C.MIN, Date.now()); changed(); };
+  $('sToggle').onclick = function () { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); };
+  $('sLap').onclick = function () { C.swLap(state.sw, Date.now()); changed(); };
+  $('sReset').onclick = function () { C.swReset(state.sw); changed(); };
+  $('goMonitor').onclick = function () { openMonitor(); };
+
+  $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
+  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.play(this.value); };
+  $('testSound').onclick = function () { S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('あと1分です', ms); };
+
+  /* アラーム */
+  function drawAlarms() {
+    var box = $('alarms'); box.textContent = '';
+    state.alarms.forEach(function (a, i) {
+      var row = document.createElement('div'); row.className = 'alarm';
+      var t = document.createElement('input'); t.type = 'time'; t.value = a.hm; t.setAttribute('aria-label', '時刻'); t.dataset.group = 'atime';
+      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = 'かたづけ'; l.setAttribute('aria-label', '出す言葉'); l.dataset.group = 'alabel';
+      var x = document.createElement('button'); x.className = 'btn x danger'; x.textContent = '×'; x.setAttribute('aria-label', 'このアラームを消す');
+      t.onchange = function () { a.hm = t.value; save(); };
+      l.oninput = function () { a.label = l.value; save(); };
+      x.onclick = function () { state.alarms.splice(i, 1); save(); drawAlarms(); };
+      row.append(t, l, x); box.appendChild(row);
+    });
+  }
+  $('addAlarm').onclick = function () {
+    var d = new Date(Date.now() + 10 * C.MIN);
+    state.alarms.push({ on: true, hm: ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2), label: '' });
+    save(); drawAlarms();
+  };
+
+  /* 時間割：1行1つの文字で編む（スプレッドシートの日課表から貼り付けられる形） */
+  function schedToText(rows) { return rows.map(function (r) { return r.name + ' ' + r.s.replace(/^0/, '') + '-' + r.e.replace(/^0/, ''); }).join('\n'); }
+  function parseSched(text) {
+    var rows = [], bad = [];
+    text.split('\n').forEach(function (line, i) {
+      line = line.replace(/[０-９：－〜～]/g, function (c) { return { '：': ':', '－': '-', '〜': '-', '～': '-' }[c] || String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim();
+      if (!line) return;
+      var m = /^(.*?)[\s\t]*(\d{1,2}:\d{2})\s*[-\t ]\s*(\d{1,2}:\d{2})$/.exec(line);
+      if (!m || !m[1] || C.hm2min(m[2]) === null || C.hm2min(m[3]) === null || C.hm2min(m[3]) <= C.hm2min(m[2])) { bad.push(i + 1); return; }
+      rows.push({ name: m[1].trim(), s: pad(m[2]), e: pad(m[3]) });
+    });
+    return { rows: rows, bad: bad };
+  }
+  function drawPatterns() {
+    var sel = $('pattern'); sel.textContent = '';
+    Object.keys(state.sched.patterns).forEach(function (k) { var o = document.createElement('option'); o.value = o.textContent = k; sel.appendChild(o); });
+    sel.value = state.sched.pattern;
+    $('schedText').value = schedToText(state.sched.patterns[state.sched.pattern].rows);
+  }
+  $('pattern').onchange = function () { state.sched.pattern = this.value; save(); drawPatterns(); syncUi(); };
+  $('schedText').oninput = function () {
+    var r = parseSched(this.value);
+    state.sched.patterns[state.sched.pattern].rows = r.rows;
+    $('schedErr').hidden = !r.bad.length;
+    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目が読めません（読めた行だけ使います）' : '';
+    save(); syncUi();
+  };
+
+  /* ---- 画面の状態を合わせる ---- */
+  function syncUi() {
+    syncs.forEach(function (f) { f(); });
+    $('ctlTimer').hidden = state.mode !== 'timer';
+    $('ctlSw').hidden = state.mode !== 'sw';
+    $('ctlClock').hidden = state.mode !== 'clock';
+    var live = !!(mon && !mon.win.closed);
+    $('stageHead').classList.toggle('live', live);
+    $('stageText').textContent = live ? 'モニターに出しています（この見本と同じものが出ます）' : '見本（モニターにはまだ出していません）';
+    $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
+    keepAwake(live);
+    var n = state.sched.patterns[state.sched.pattern].rows.length;
+    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」の日課（' + n + 'こ）で数えます。日課は下の「時間割」で直せます。' : '「' + state.sched.pattern + '」の日課がまだ空です。下の「時間割」に入れてください。';
+    $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
+    $('endTune').value = state.sound.endTune;
+    $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
+  }
+  var lastBtn = '';
+  function updateButtons(now) {
+    var t = state.timer, w = state.sw;
+    var k = (t.running ? 1 : 0) + '' + (C.timerLeft(t, now) <= 0 ? 1 : 0) + (w.running ? 1 : 0);
+    if (k === lastBtn) return; lastBtn = k;
+    $('tToggle').textContent = t.running ? (C.timerLeft(t, now) <= 0 ? 'とめる' : 'いちじ停止') : (t.started && t.left > 0 ? 'つづける' : 'スタート');
+    $('sToggle').textContent = w.running ? 'とめる' : (w.acc ? 'つづける' : 'スタート');
+  }
+  setTimeout(syncUi, 800);  // 声の一覧は少し遅れて届く
+  window.addEventListener('beforeunload', function () { if (mon && !mon.win.closed) mon.win.close(); });
+  drawAlarms(); drawPatterns(); syncUi(); tick();
+  window.__cc = { state: state, sound: S, openMonitor: openMonitor };
+})();
+</script>

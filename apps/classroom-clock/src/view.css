@@ -1,0 +1,77 @@
+/* モニターに映す面。操作の部品は置かない。
+   ui-layout の S（4pxの刻み）の注意は、この面が cq 単位で縮むために出る。画面の大きさに比例させるのが目的なので残す。
+   寸法は cq 単位（この面自身の大きさに対する割合）で書く：
+   手元の小さな見本でも、モニターの全画面でも、同じ見た目で縮む。 */
+.cv{
+  --bg:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--line:#C9CED4;
+  --fill:#D7E8F8;--edge:#0F5EA8;        /* 残り時間の面（ふつう） */
+  --wfill:#FBE3B4;--wedge:#C86A00;--wtext:#A85800;  /* 残り1分 */
+  --alert:#C0330A;                      /* おわり */
+  position:relative;width:100%;height:100%;container-type:size;overflow:hidden;
+  background:var(--bg);color:var(--ink);
+  font-family:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+  font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none;
+}
+.cv[data-theme=dark]{
+  --bg:#101418;--ink:#F2F4F6;--sub:#A0A9B4;--line:#3A424B;
+  --fill:#1F4F80;--edge:#7DB8F5;--wfill:#6E4A0E;--wedge:#F2A93B;--wtext:#F2A93B;--alert:#FF9A7A;
+}
+.cv *{box-sizing:border-box}
+.cv-in{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr);padding:3cqmin 4cqmin}
+.cv-top{display:flex;justify-content:space-between;align-items:baseline;font-size:5.5cqmin;font-weight:700;color:var(--sub);line-height:1.2;min-height:1.2em}
+.cv-main{display:grid;grid-template-columns:minmax(0,1fr);place-items:center;min-height:0;gap:2cqh 4cqw}
+.cv-analog{display:none;height:100%;max-width:100%;aspect-ratio:1;min-height:0}
+.cv-read{display:flex;flex-direction:column;align-items:center;gap:2.5cqh;min-width:0;max-width:100%}
+.cv-label{font-size:8cqmin;font-weight:700;line-height:1.2}
+.cv-label:empty,.cv-sub:empty{display:none}
+.cv-big{font-size:min(23cqw,52cqh);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.01em}
+.cv-b2{font-size:.42em;color:var(--sub);margin-left:.08em}
+.cv-bar{display:none;position:relative;width:88cqw;height:26cqh;border-radius:2cqh;background:var(--line);overflow:hidden;border:.5cqmin solid var(--ink)}
+.cv-bar i{display:block;height:100%;background:var(--edge)}
+.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .35cqw),var(--bg) calc(100% / var(--n) - .35cqw) calc(100% / var(--n)))}
+/* 横棒：残りを長さで見せる。数字は棒の上に小さく */
+.cv[data-face=bar][data-bar="1"] .cv-bar{display:block}
+.cv[data-face=bar][data-bar="1"] .cv-big{font-size:min(15cqw,30cqh)}
+.cv-sub{font-size:7cqmin;font-weight:700;line-height:1.25;text-align:center}
+.cv-laps{list-style:none;margin:0;padding:0;font-size:5.5cqmin;font-weight:700;color:var(--sub);display:flex;flex-wrap:wrap;justify-content:center;gap:1cqh 4cqw}
+.cv-laps:empty{display:none}
+
+/* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
+.cv[data-face=analog] .cv-analog{display:block}
+.cv[data-face=analog] .cv-main{grid-template-columns:minmax(0,auto) minmax(34cqw,1fr)}
+.cv[data-face=analog] .cv-analog{max-width:58cqw}
+.cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
+.cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
+.cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
+.cv[data-face=analog][data-mode=clock] .cv-big{display:none}
+.cv[data-mode=clock] .cv-now{display:none}
+.cv[data-face=analog] .cv-now{display:none}
+
+/* 残り1分・おわり：色に加えて、言葉（もうすぐ おわり／おわり）と面の大きさで伝える。 */
+.cv[data-phase=warn] .cv-big,.cv[data-phase=warn] .cv-label{color:var(--wtext)}
+.cv[data-phase=warn] .cv-bar i{background:var(--wedge)}
+.cv[data-phase=over] .cv-big,.cv[data-phase=over] .cv-label{color:var(--alert)}
+
+.cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:2.5}
+.cv-tick{stroke:var(--sub);stroke-width:.8}
+.cv-tick5{stroke:var(--ink);stroke-width:2.2}
+.cv-num{fill:var(--ink);font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.cv-sector{fill:var(--fill)}
+.cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
+.cv-tri{fill:var(--alert)}
+.cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
+.cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
+.cv-hh{stroke:var(--ink);stroke-width:6;stroke-linecap:round}
+.cv-mh{stroke:var(--ink);stroke-width:3.6;stroke-linecap:round}
+.cv-sh{stroke:var(--alert);stroke-width:1.2;stroke-linecap:round}
+.cv-pin{fill:var(--ink)}
+
+/* 合図は音と同時に画面でも出す（消音・聞こえにくい児童への保険）。点滅は1秒に1回（3Hz未満）。 */
+.cv.flash::after{content:"";position:absolute;inset:0;border:3.5cqmin solid var(--alert);pointer-events:none;animation:cvflash 1s steps(2,jump-none) infinite}
+@keyframes cvflash{from{opacity:1}to{opacity:0}}
+.cv-banner{position:absolute;left:50%;top:4cqh;transform:translateX(-50%);max-width:92cqw;padding:2cqh 5cqw;border-radius:3cqh;
+  background:var(--ink);color:var(--bg);font-size:9cqmin;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cv-banner:empty{display:none}
+.cv-hint{position:absolute;left:50%;bottom:2cqh;transform:translateX(-50%);padding:1cqh 3cqw;border-radius:2cqh;
+  background:var(--ink);color:var(--bg);font-size:4cqmin;font-weight:700;white-space:nowrap;opacity:.9}
+.cv-hint:empty{display:none}
