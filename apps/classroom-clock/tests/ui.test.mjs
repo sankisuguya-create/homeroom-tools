@@ -29,6 +29,12 @@ await p.click('#segFace [data-v=analog]');
 await p.click('#tReset'); await p.click('#tToggle');
 const d = await p.getAttribute('#pv .cv-sector', 'd');
 ok(!!d && d.startsWith('M100'), 'アナログ盤に残り時間の扇形');
+ok(await p.evaluate(() => ['.cv-hh', '.cv-mh', '.cv-sh'].every(q => document.querySelector('#pv ' + q).getAttribute('y1') === '100')), '針は中心から（反対側に突き出さない）');
+ok(/A95\.5 95\.5/.test(d), '扇形は円周まで塗り切る');
+ok(!!(await p.getAttribute('#pv .cv-tri', 'd')), '終わりの位置に赤い三角');
+await p.click('#segFace [data-v=bar]');
+ok(await p.locator('#pv .cv-bar').isVisible(), '横棒で残り時間');
+await p.click('#segFace [data-v=analog]');
 // モニター窓：操作の部品が入っていない
 const [pop] = await Promise.all([p.waitForEvent('popup'), p.click('#goMonitor')]);
 await ctx.clock.runFor(300);

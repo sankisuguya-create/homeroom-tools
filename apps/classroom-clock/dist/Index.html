@@ -34,21 +34,24 @@
 .cv-label:empty,.cv-sub:empty{display:none}
 .cv-big{font-size:min(23cqw,52cqh);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.01em}
 .cv-b2{font-size:.42em;color:var(--sub);margin-left:.08em}
-.cv-bar{width:72cqw;height:3.5cqh;border-radius:2cqh;background:var(--line);overflow:hidden}
+.cv-bar{display:none;position:relative;width:88cqw;height:26cqh;border-radius:2cqh;background:var(--line);overflow:hidden;border:.5cqmin solid var(--ink)}
 .cv-bar i{display:block;height:100%;background:var(--edge)}
+.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .35cqw),var(--bg) calc(100% / var(--n) - .35cqw) calc(100% / var(--n)))}
+/* 横棒：残りを長さで見せる。数字は棒の上に小さく */
+.cv[data-face=bar][data-bar="1"] .cv-bar{display:block}
+.cv[data-face=bar][data-bar="1"] .cv-big{font-size:min(15cqw,30cqh)}
 .cv-sub{font-size:7cqmin;font-weight:700;line-height:1.25;text-align:center}
 .cv-laps{list-style:none;margin:0;padding:0;font-size:5.5cqmin;font-weight:700;color:var(--sub);display:flex;flex-wrap:wrap;justify-content:center;gap:1cqh 4cqw}
 .cv-laps:empty{display:none}
 
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
-.cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(0,1fr)}
-.cv[data-face=analog] .cv-big{font-size:min(12cqw,30cqh)}
-.cv[data-face=analog] .cv-bar{display:none}
+.cv[data-face=analog] .cv-main{grid-template-columns:minmax(0,auto) minmax(34cqw,1fr)}
+.cv[data-face=analog] .cv-analog{max-width:58cqw}
+.cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
 .cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
 .cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
 .cv[data-face=analog][data-mode=clock] .cv-big{display:none}
-.cv[data-mode=clock] .cv-bar,.cv[data-mode=sw] .cv-bar{display:none}
 .cv[data-mode=clock] .cv-now{display:none}
 .cv[data-face=analog] .cv-now{display:none}
 
@@ -63,6 +66,7 @@
 .cv-num{fill:var(--ink);font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:central}
 .cv-sector{fill:var(--fill)}
 .cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
+.cv-tri{fill:var(--alert)}
 .cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
 .cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
 .cv-hh{stroke:var(--ink);stroke-width:6;stroke-linecap:round}
@@ -83,7 +87,7 @@
 
 /* ---- 操作画面（教師の手元のPCだけに出す） ---- */
 :root{
-  --paper:#F6F7F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
+  --paper:#F7F6F2;--tint:#D7E8F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
   --accent:#0F5EA8;--on:#FFFFFF;--alert:#C0330A;
   --s1:4px;--s2:8px;--s3:16px;--s4:24px;
   --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
@@ -100,21 +104,28 @@ body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:
 .preview{min-height:0;display:grid;place-items:center}
 .pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
 .panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
-.card{background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
+.card{background:var(--sheet);border:2px solid var(--rule);border-radius:14px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
 .card h2{margin:0;font-size:13px;color:var(--sub)}
 button,select,input{font:inherit;color:inherit}
-.btn{height:48px;padding:0 var(--s2);border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:700;cursor:pointer;
+.btn{height:48px;padding:0 var(--s2);border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer;
   display:flex;align-items:center;justify-content:center;white-space:nowrap}
 .btn:hover{border-color:var(--accent)}
 .btn.main{background:var(--accent);color:var(--on);border-color:var(--accent)}
 .btn.danger{color:var(--alert)}
+/* 1回だけ押す操作なので強い塗りにしない（強い塗りは授業中にくり返す主操作に1つだけ） */
+#goMonitor{color:var(--accent);border-color:var(--accent)}
 .row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
-.seg button{height:48px;border:0;border-left:1px solid var(--rule);background:var(--sheet);font-weight:700;cursor:pointer}
-.seg button:first-child{border-left:0}
-.seg button[aria-checked=true]{background:var(--accent);color:var(--on)}
+/* 選んでいる側は淡い塗り＋青枠＋✓（強い塗りは主操作だけに使う。design/ui-patterns の型） */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--s2)}
+.seg button{height:48px;padding:0 2px;min-width:0;font-size:14px;white-space:nowrap;border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer}
+.seg button[aria-checked=true]{background:var(--tint);border-color:var(--accent)}
+.seg button[aria-checked=true]::before{content:"✓ "}
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
-.sw{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw{display:flex;align-items:center;gap:var(--s3);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw .lab{flex:1}
+.sw .st{font-size:13px;color:var(--sub);width:16px}
+.sw[aria-checked=true] .st::after{content:"入"}
+.sw[aria-checked=false] .st::after{content:"切"}
 .sw::after{content:"";flex:0 0 44px;height:26px;border-radius:13px;background:var(--rule);
   background-image:radial-gradient(circle at 13px 50%,#fff 9px,transparent 10px)}
 .sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 31px 50%,#fff 9px,transparent 10px)}
@@ -142,7 +153,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
 
   <section class="panel">
     <div class="card">
-      <button class="btn main" id="goMonitor" data-flow="1">モニターに出す</button>
+      <button class="btn" id="goMonitor" data-flow="1">モニターに出す</button>
       <p class="note" id="monNote">モニターを「拡張」でつなぐと、操作の画面は手元だけに残り、モニターには時計だけが出ます。</p>
     </div>
 
@@ -155,6 +166,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       <div class="seg" role="radiogroup" id="segFace">
         <button role="radio" data-v="digital">デジタル</button>
         <button role="radio" data-v="analog">アナログ</button>
+        <button role="radio" data-v="bar">横棒</button>
       </div>
     </div>
 
@@ -177,6 +189,10 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
         <button class="btn" id="sLap">ラップ</button>
         <button class="btn" id="sReset">ゼロに</button>
       </div>
+    </div>
+
+    <div class="card">
+      <button class="sw" role="switch" id="swDark">暗い配色（まぶしいとき）</button>
     </div>
 
     <div class="card" id="ctlClock" hidden>
@@ -220,16 +236,6 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       </div>
     </details>
 
-    <details class="card" id="dLook">
-      <summary data-group="fold-dLook">見た目</summary>
-      <div class="fold">
-      <div class="seg" role="radiogroup" id="segTheme">
-        <button role="radio" data-v="light">明るい</button>
-        <button role="radio" data-v="dark">暗い</button>
-      </div>
-      <p class="note">プロジェクターや明るい教室では「明るい」、まぶしいときは「暗い」。</p>
-      </div>
-    </details>
   </section>
 </div>
 
@@ -444,9 +450,11 @@ var ClockView = (function () {
     }
     for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 72).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
-      + '<line class="cv-hh" x1="100" y1="108" x2="100" y2="52"/>'
-      + '<line class="cv-mh" x1="100" y1="110" x2="100" y2="22"/>'
-      + '<line class="cv-sh" x1="100" y1="116" x2="100" y2="16"/>'
+      + '<path class="cv-tri" d=""/>'
+      /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
+      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="52"/>'
+      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="22"/>'
+      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="16"/>'
       + '<circle class="cv-pin" cx="100" cy="100" r="4"/>';
     return s;
   }
@@ -455,14 +463,14 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="0 0 200 200" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-16 -16 232 232" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
-      + '<div class="cv-bar"><i></i></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
+      + '<div class="cv-bar"><i></i><b></b></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
     var q = function (s) { return root.querySelector(s); };
     var el = { date: q('.cv-date'), now: q('.cv-now'), label: q('.cv-label'), b1: q('.cv-b1'), b2: q('.cv-b2'), bar: q('.cv-bar i'),
       sub: q('.cv-sub'), laps: q('.cv-laps'), banner: q('.cv-banner'), hint: q('.cv-hint'),
-      sector: q('.cv-sector'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
+      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
     var last = {};
     function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
     function attr(k, node, name, v) { if (last[k] !== v) { last[k] = v; node.setAttribute(name, v); } }
@@ -470,22 +478,23 @@ var ClockView = (function () {
     function update(state, now, fx) {
       fx = fx || {};
       var mode = state.mode, d = new Date(now), c = C.fmtClock(now);
-      var label = '', b1 = '', b2 = '', sub = '', phase = 'idle', bar = 0, goal = null, laps = '';
+      var label = '', b1 = '', b2 = '', sub = '', phase = 'idle', bar = -1, total = 0, goal = null, laps = '';
       if (mode === 'clock') {
         b1 = c.h + ':' + c.m; b2 = ':' + c.s;
         if (state.sched.on) {
           var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
-          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; }
-          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; }
+          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
+          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
+          if (goal !== null) bar = Math.min(1, (goal - now) / total);
         }
       } else if (mode === 'timer') {
         var t = state.timer, left = C.timerLeft(t, now);
-        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); }
+        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); bar = 0; total = t.dur; }
         else {
           var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
           b1 = C.fmtRemain(left); label = soon ? 'もうすぐ おわり' : 'のこり';
           phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
-          bar = Math.min(1, left / t.dur);
+          bar = Math.min(1, left / t.dur); total = t.dur;
           if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
           else if (t.started) sub = 'とまっています';
         }
@@ -498,7 +507,11 @@ var ClockView = (function () {
       attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); txt('now', c.h + ':' + c.m);
       txt('label', label); txt('b1', b1); txt('b2', b2); txt('sub', sub);
-      attr('bar', el.bar, 'style', 'width:' + (bar * 100).toFixed(1) + '%');
+      attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
+      attr('bar', el.bar, 'style', 'width:' + (Math.max(0, bar) * 100).toFixed(2) + '%');
+      /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */
+      var nmin = Math.round(total / C.MIN);
+      attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
@@ -512,8 +525,11 @@ var ClockView = (function () {
         /* 残り時間を「今の長針から、終わりの位置まで」の面で塗る。長針1周（60分）以内だけ。 */
         var remain = goal === null ? 0 : goal - now, show = remain > 0 && remain <= C.HOUR;
         var a1 = am + remain / C.HOUR * 360;
-        attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 86) : '');
-        var g = show ? pt(a1, 86).split(' ') : ['100', '100'];
+        /* 中心から円周（文字盤のふちの内側）まで塗り切る */
+        attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 95.5) : '');
+        var g = show ? pt(a1, 95.5).split(' ') : ['100', '100'];
+        /* 終わりの位置を、円の外の赤い三角の角でも示す（角が中心を向く） */
+        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 100) + 'L' + pt(a1 - 4.2, 114) + 'L' + pt(a1 + 4.2, 114) + 'Z' : '');
         attr('gx', el.goal, 'x2', g[0]); attr('gy', el.goal, 'y2', g[1]);
       }
       var flash = !!(fx.flashUntil && now < fx.flashUntil);
@@ -643,14 +659,15 @@ var ClockView = (function () {
     return function () { box.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.v === get())); }); };
   }
   function sw(id, get, set) {
-    var b = $(id);
+    var b = $(id), lab = document.createElement('span'), st = document.createElement('span');
+    lab.className = 'lab'; st.className = 'st'; lab.textContent = b.textContent; b.textContent = ''; b.append(lab, st);
     b.addEventListener('click', function () { set(!get()); changed(); });
     return function () { b.setAttribute('aria-checked', String(!!get())); };
   }
   var syncs = [
     seg('segMode', function () { return state.mode; }, function (v) { state.mode = v; }),
     seg('segFace', function () { return state.face; }, function (v) { state.face = v; }),
-    seg('segTheme', function () { return state.theme; }, function (v) { state.theme = v; }),
+    sw('swDark', function () { return state.theme === 'dark'; }, function (v) { state.theme = v ? 'dark' : 'light'; }),
     sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
     sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
     sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),

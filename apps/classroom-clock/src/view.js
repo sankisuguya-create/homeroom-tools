@@ -18,9 +18,11 @@ var ClockView = (function () {
     }
     for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 72).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
-      + '<line class="cv-hh" x1="100" y1="108" x2="100" y2="52"/>'
-      + '<line class="cv-mh" x1="100" y1="110" x2="100" y2="22"/>'
-      + '<line class="cv-sh" x1="100" y1="116" x2="100" y2="16"/>'
+      + '<path class="cv-tri" d=""/>'
+      /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
+      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="52"/>'
+      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="22"/>'
+      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="16"/>'
       + '<circle class="cv-pin" cx="100" cy="100" r="4"/>';
     return s;
   }
@@ -29,14 +31,14 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="0 0 200 200" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-16 -16 232 232" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
-      + '<div class="cv-bar"><i></i></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
+      + '<div class="cv-bar"><i></i><b></b></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
     var q = function (s) { return root.querySelector(s); };
     var el = { date: q('.cv-date'), now: q('.cv-now'), label: q('.cv-label'), b1: q('.cv-b1'), b2: q('.cv-b2'), bar: q('.cv-bar i'),
       sub: q('.cv-sub'), laps: q('.cv-laps'), banner: q('.cv-banner'), hint: q('.cv-hint'),
-      sector: q('.cv-sector'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
+      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
     var last = {};
     function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
     function attr(k, node, name, v) { if (last[k] !== v) { last[k] = v; node.setAttribute(name, v); } }
@@ -44,22 +46,23 @@ var ClockView = (function () {
     function update(state, now, fx) {
       fx = fx || {};
       var mode = state.mode, d = new Date(now), c = C.fmtClock(now);
-      var label = '', b1 = '', b2 = '', sub = '', phase = 'idle', bar = 0, goal = null, laps = '';
+      var label = '', b1 = '', b2 = '', sub = '', phase = 'idle', bar = -1, total = 0, goal = null, laps = '';
       if (mode === 'clock') {
         b1 = c.h + ':' + c.m; b2 = ':' + c.s;
         if (state.sched.on) {
           var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
-          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; }
-          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; }
+          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
+          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
+          if (goal !== null) bar = Math.min(1, (goal - now) / total);
         }
       } else if (mode === 'timer') {
         var t = state.timer, left = C.timerLeft(t, now);
-        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); }
+        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); bar = 0; total = t.dur; }
         else {
           var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
           b1 = C.fmtRemain(left); label = soon ? 'もうすぐ おわり' : 'のこり';
           phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
-          bar = Math.min(1, left / t.dur);
+          bar = Math.min(1, left / t.dur); total = t.dur;
           if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
           else if (t.started) sub = 'とまっています';
         }
@@ -72,7 +75,11 @@ var ClockView = (function () {
       attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
       txt('date', C.fmtDate(now)); txt('now', c.h + ':' + c.m);
       txt('label', label); txt('b1', b1); txt('b2', b2); txt('sub', sub);
-      attr('bar', el.bar, 'style', 'width:' + (bar * 100).toFixed(1) + '%');
+      attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
+      attr('bar', el.bar, 'style', 'width:' + (Math.max(0, bar) * 100).toFixed(2) + '%');
+      /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */
+      var nmin = Math.round(total / C.MIN);
+      attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
@@ -86,8 +93,11 @@ var ClockView = (function () {
         /* 残り時間を「今の長針から、終わりの位置まで」の面で塗る。長針1周（60分）以内だけ。 */
         var remain = goal === null ? 0 : goal - now, show = remain > 0 && remain <= C.HOUR;
         var a1 = am + remain / C.HOUR * 360;
-        attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 86) : '');
-        var g = show ? pt(a1, 86).split(' ') : ['100', '100'];
+        /* 中心から円周（文字盤のふちの内側）まで塗り切る */
+        attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 95.5) : '');
+        var g = show ? pt(a1, 95.5).split(' ') : ['100', '100'];
+        /* 終わりの位置を、円の外の赤い三角の角でも示す（角が中心を向く） */
+        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 100) + 'L' + pt(a1 - 4.2, 114) + 'L' + pt(a1 + 4.2, 114) + 'Z' : '');
         attr('gx', el.goal, 'x2', g[0]); attr('gy', el.goal, 'y2', g[1]);
       }
       var flash = !!(fx.flashUntil && now < fx.flashUntil);

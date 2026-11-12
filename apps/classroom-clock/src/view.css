@@ -26,21 +26,24 @@
 .cv-label:empty,.cv-sub:empty{display:none}
 .cv-big{font-size:min(23cqw,52cqh);font-weight:700;line-height:1;white-space:nowrap;letter-spacing:-.01em}
 .cv-b2{font-size:.42em;color:var(--sub);margin-left:.08em}
-.cv-bar{width:72cqw;height:3.5cqh;border-radius:2cqh;background:var(--line);overflow:hidden}
+.cv-bar{display:none;position:relative;width:88cqw;height:26cqh;border-radius:2cqh;background:var(--line);overflow:hidden;border:.5cqmin solid var(--ink)}
 .cv-bar i{display:block;height:100%;background:var(--edge)}
+.cv-bar b{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 calc(100% / var(--n) - .35cqw),var(--bg) calc(100% / var(--n) - .35cqw) calc(100% / var(--n)))}
+/* 横棒：残りを長さで見せる。数字は棒の上に小さく */
+.cv[data-face=bar][data-bar="1"] .cv-bar{display:block}
+.cv[data-face=bar][data-bar="1"] .cv-big{font-size:min(15cqw,30cqh)}
 .cv-sub{font-size:7cqmin;font-weight:700;line-height:1.25;text-align:center}
 .cv-laps{list-style:none;margin:0;padding:0;font-size:5.5cqmin;font-weight:700;color:var(--sub);display:flex;flex-wrap:wrap;justify-content:center;gap:1cqh 4cqw}
 .cv-laps:empty{display:none}
 
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
-.cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(0,1fr)}
-.cv[data-face=analog] .cv-big{font-size:min(12cqw,30cqh)}
-.cv[data-face=analog] .cv-bar{display:none}
+.cv[data-face=analog] .cv-main{grid-template-columns:minmax(0,auto) minmax(34cqw,1fr)}
+.cv[data-face=analog] .cv-analog{max-width:58cqw}
+.cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
 .cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
 .cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
 .cv[data-face=analog][data-mode=clock] .cv-big{display:none}
-.cv[data-mode=clock] .cv-bar,.cv[data-mode=sw] .cv-bar{display:none}
 .cv[data-mode=clock] .cv-now{display:none}
 .cv[data-face=analog] .cv-now{display:none}
 
@@ -55,6 +58,7 @@
 .cv-num{fill:var(--ink);font-size:17px;font-weight:700;text-anchor:middle;dominant-baseline:central}
 .cv-sector{fill:var(--fill)}
 .cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
+.cv-tri{fill:var(--alert)}
 .cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
 .cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
 .cv-hh{stroke:var(--ink);stroke-width:6;stroke-linecap:round}
