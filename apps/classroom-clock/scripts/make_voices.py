@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""教室の時計の読み上げ音声を作る（手元で1回だけ動かす。生成物は src/voices/ に置き、build.py が埋め込む）。
+"""教室の時計の読み上げ音声を作る（手元で1回だけ動かす。生成物は src/voices.js。build.py が画面に埋め込む）。
 
 方法（docs/design.md「音声」）:
   1. VOICEVOX ENGINE（無料・ローカル動作のニューラル音声合成）を http://127.0.0.1:50021 で起こしておく。
   2. 話者ごとに audio_query → synthesis で WAV を得る。
   3. ロボットは同じ文を「抑揚0（ピッチ平坦）」で合成し、リングモジュレーション・櫛形フィルタ・
      ビット落としで人間らしさの手がかりを消す（ボコーダー系ロボット声の定石）。
-  4. 無音を詰め、音量をそろえ（ピーク -1 dBFS）、ffmpeg で Opus 24kbps モノラルにする。
+  4. 無音を詰め、音量をそろえ（ピーク -1 dBFS）、ffmpeg で Opus 24kbps モノラルにし、src/voices.js に書く。
 
   python3 apps/classroom-clock/scripts/make_voices.py
 """
@@ -76,15 +76,22 @@ def write_opus(x, sr, path):
                     "-c:a", "libopus", "-b:a", "24k", "-application", "voip", str(path)], input=pcm, check=True)
 
 def main():
-    OUT.mkdir(parents=True, exist_ok=True)
+    import base64
+    from make_voices_hts import opus_b64
+    clips = {}
     for vk, v in VOICES.items():
         sid = style_id(v["name"], v["style"])
         for pk, text in PHRASES.items():
             x, sr = synth(text, v, sid)
             if v.get("robot"): x = robotize(x, sr)
-            write_opus(finish(x, sr), sr, OUT / ("%s-%s.ogg" % (vk, pk)))
+            clips["%s-%s" % (vk, pk)] = opus_b64(finish(x, sr), sr)
             print("  %s-%s  %s" % (vk, pk, text))
-    (OUT / "CREDITS.txt").write_text("VOICEVOX:冥鳴ひまり / VOICEVOX:青山龍星 / VOICEVOX:玄野武宏\n", encoding="utf-8")
+    body = ",\n".join('  "%s": "%s"' % (k, c) for k, c in sorted(clips.items()))
+    (OUT.parent / "voices.js").write_text(
+        "/* 録音した声。scripts/make_voices.py（VOICEVOX）が作る。直接直さない。\n"
+        "   声: VOICEVOX:冥鳴ひまり / VOICEVOX:青山龍星 / VOICEVOX:玄野武宏 */\n"
+        "var CLOCK_VOICES = {\n" + body + "\n};\n", encoding="utf-8")
+    print("src/voices.js を書いた。アプリ内のクレジット表記（src/Index.html の「声：」）も VOICEVOX の3名に直すこと")
 
 if __name__ == "__main__":
     sys.exit(main())

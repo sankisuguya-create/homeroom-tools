@@ -36,7 +36,7 @@
 
 声のクレジット：Open JTalk ＋ HTS voice tohoku-f01（(c) 2015 東北大学 伊藤・能勢研究室, CC BY 4.0）を WORLD で加工。
 
-声を VOICEVOX に差し替えるとき（私用PCで1回）：VOICEVOX を起動したまま `python3 apps/classroom-clock/scripts/make_voices.py` を実行し、できた `src/voices/*.ogg` を `voices.js` に書き出す（この手順は未整備。必要なら依頼する）。
+声を VOICEVOX に差し替えるとき（私用PCで1回）：VOICEVOX を起動したまま `pip install numpy` のうえ `python3 apps/classroom-clock/scripts/make_voices.py` を実行すると `src/voices.js` が置き換わる。続けて `python3 scripts/build.py`。アプリ内のクレジット表記も直す。
 
 ## 直すとき
 
