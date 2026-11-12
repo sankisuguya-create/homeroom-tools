@@ -34,7 +34,7 @@
 
 音は `dist/sounds.html` で鳴らし比べられる。
 
-声のクレジット：Open JTalk ＋ HTS voice tohoku-f01（(c) 2015 東北大学 伊藤・能勢研究室, CC BY 4.0）を WORLD で加工。
+声のクレジット：VOICEVOX:冥鳴ひまり / VOICEVOX:青山龍星 / VOICEVOX:玄野武宏（ロボットは玄野武宏を WORLD で平らにし加工）。予備の声（Open JTalk ＋ HTS voice tohoku-f01、東北大学, CC BY 4.0）は scripts/make_voices_hts.py で作れる。
 
 声を VOICEVOX に差し替えるとき（私用PC）：[docs/voicevox-steps.md](docs/voicevox-steps.md)。
 

@@ -44,6 +44,7 @@
 | 音の試聴ページ dist/sounds.html | 終了音・予告・チャイム・読み上げを鳴らし比べる。音の正本は同じ sound.js |
 | タイマーの合図は区切りごと（残り1分・残り30秒・5〜1・そこまで）に音を選ぶ：女性の声／低い男性の声／ロボット／合成音（ピッピッ・ピッ）／なし。終了音は別に選ぶ | 利用者の指定。声は VOICEVOX で作った録音を埋め込む（scripts/make_voices.py）。声のデータが無い時は合成音で代える |
 | 声の作り方：Open JTalk（HMM 音声合成）＋ HTS voice tohoku-f01 neutral（東北大学, CC BY 4.0）で女性の声を作り、WORLD（音声分析合成）で声の高さと響きを分けて加工して 低い男性（F0 約110Hz・響き0.8倍）とロボット（F0 平坦105Hz＋リングモジュレーション・櫛形フィルタ・ビット落とし）を作る（scripts/make_voices_hts.py） | VOICEVOX（ニューラル音声合成、品質はこちらが上）はこのクラウド環境で動かせなかった：モデル（voicevox_vvm）は git で取れるが暗号化されており、復号する実行部は GitHub のリリース配布で、この環境からは取れない。VOICEVOX を入れた私用PCで scripts/voicevox_export.py（Python 標準だけで動く）を実行して wav を voices-src/ に上げれば、クラウド側の scripts/voices_from_wav.py で差し替えられる（docs/voicevox-steps.md）（クレジット「VOICEVOX:冥鳴ひまり／青山龍星／玄野武宏」が要る） |
+| 現在の声は VOICEVOX（私用PCで書き出した wav を voices-src/ に置き、voices_from_wav.py で変換）。ロボットは WORLD で高さを105Hzに固定してから加工。加工は音量をそろえてから行う | 小さい音のままビットを落とすと声が崩れて聞き取れなくなった（声の高さが検出できないほど）ため |
 | 外部通信なし（build.py の検査対象） | 校内で止められる経路を持たない |
 
 ## 3. 入れなかったもの

@@ -7,6 +7,7 @@ VOICE_KINDS = ["female", "male", "robot"]
 SRC = pathlib.Path(__file__).resolve().parent.parent / "src"
 
 def robotize(x, sr):
+    x = x / (np.abs(x).max() + 1e-9) * 0.9                     # 先に音量をそろえる（小さいままビットを落とすと声が崩れる）
     t = np.arange(len(x)) / sr
     y = x * (0.55 + 0.45 * np.sin(2 * np.pi * 50 * t))        # リングモジュレーション（50Hzのうなり）
     d = int(sr * 0.006); z = np.copy(y); z[d:] += 0.6 * y[:-d]  # 櫛形フィルタ（金属的な響き）
