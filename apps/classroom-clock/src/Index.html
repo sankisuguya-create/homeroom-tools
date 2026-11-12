@@ -2,154 +2,181 @@
 <style>
 /* @include view.css */
 
-/* ---- 操作画面（教師の手元のPCだけに出す） ---- */
+/* ---- 操作画面（教師の手元のPCだけに出す） ----
+   見た目は docs/preview/luxury.html の A（象牙）・B（夜）。枠線で区切らず面の明暗で区切る。
+   強い塗りはスタート（丸いボタン）1つだけ。選択は溝の中を滑る白い面で示す。 */
 :root{
-  --paper:#F7F6F2;--tint:#D7E8F8;--sheet:#FFFFFF;--ink:#1A1A1A;--sub:#616870;--rule:#D5DAE0;
-  --accent:#0F5EA8;--on:#FFFFFF;--alert:#C0330A;
+  --paper:#EAE6DE;--surf:#FBFAF7;--track:#DED9CF;--ink:#22262B;--sub:#565B62;--rule:#D3CDC2;
+  --accent:#22262B;--on:#FBFAF7;--alert:#A63B25;--focus:#2D4A6B;
   --s1:4px;--s2:8px;--s3:16px;--s4:24px;
   --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+  --num:"Segoe UI Variable Display","Segoe UI","Roboto","Helvetica Neue","Inter","Yu Gothic UI","Noto Sans CJK JP",sans-serif;
+}
+body[data-theme=dark]{
+  --paper:#16181B;--surf:#23272C;--track:#2C3137;--ink:#ECE8E1;--sub:#9AA0A8;--rule:#353A41;
+  --accent:#ECE8E1;--on:#16181B;--alert:#EE8A6A;--focus:#D9A55B;
 }
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%}
-body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5}
-.app{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:var(--s3);height:100%;padding:var(--s3)}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.4}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:var(--s4);height:100%;padding:var(--s4)}
 .stage{display:grid;grid-template-rows:auto minmax(0,1fr);gap:var(--s2);min-height:0}
-.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;font-weight:700;min-height:24px}
-.stage-head .dot{width:10px;height:10px;border-radius:50%;background:var(--sub)}
-.stage-head.live{color:var(--accent)} .stage-head.live .dot{background:var(--accent)}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:12px;min-height:24px;letter-spacing:.04em}
+.stage-head .dot{width:8px;height:8px;border-radius:50%;background:var(--rule)}
+.stage-head.live{color:var(--ink)} .stage-head.live .dot{background:var(--alert)}
+.kbd{margin-left:auto;font-size:11px}
 .preview{min-height:0;display:grid;place-items:center}
-.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border:1px solid var(--rule);border-radius:8px;overflow:hidden}
-.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding-right:var(--s1)}
-.card{background:var(--sheet);border:2px solid var(--rule);border-radius:14px;padding:var(--s3);display:flex;flex-direction:column;gap:var(--s2)}
-.card h2{margin:0;font-size:13px;color:var(--sub)}
+.pv-box{cursor:pointer;width:100%;max-height:100%;aspect-ratio:16/9;border-radius:16px;overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.14)}
+.panel{display:flex;flex-direction:column;gap:var(--s4);overflow:auto;min-height:0;padding:var(--s1)}
+.card{display:flex;flex-direction:column;gap:var(--s2)}
+.card+.card,.card+details,details+details{border-top:1px solid var(--rule);padding-top:var(--s4)}
 button,select,input{font:inherit;color:inherit}
-.btn{height:48px;padding:0 var(--s2);border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;white-space:nowrap}
-.btn:hover{border-color:var(--accent)}
-.btn.main{background:var(--accent);color:var(--on);border-color:var(--accent)}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.btn{height:48px;padding:0 var(--s2);border:0;border-radius:12px;background:var(--surf);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;font-size:13px;transition:background .15s}
+.btn:hover{background:var(--track)}
 .btn.danger{color:var(--alert)}
-/* 1回だけ押す操作なので強い塗りにしない（強い塗りは授業中にくり返す主操作に1つだけ） */
-#goMonitor{color:var(--accent);border-color:var(--accent)}
+.btn.icon{width:48px;flex:none;padding:0}
+.btn .cap{color:var(--sub)}
+#goMonitor{background:transparent;box-shadow:inset 0 0 0 1px var(--rule)}
+#goMonitor:hover{background:var(--surf)}
 .row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
-/* 選んでいる側は淡い塗り＋青枠＋✓（強い塗りは主操作だけに使う。design/ui-patterns の型） */
-.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--s2)}
-.seg button{height:48px;padding:0 2px;min-width:0;font-size:14px;white-space:nowrap;border:2px solid var(--rule);border-radius:12px;background:var(--sheet);font-weight:700;cursor:pointer}
-.seg button[aria-checked=true]{background:var(--tint);border-color:var(--accent)}
-.seg button[aria-checked=true]::before{content:"✓ "}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s2)}
-.sw{display:flex;align-items:center;gap:var(--s3);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
-.sw .lab{flex:1}
-.sw .st{font-size:13px;color:var(--sub);width:16px}
+/* 再生の列：−1・丸いスタート・＋1、その下にリセット等 */
+.ctl{display:grid;grid-template-columns:1fr 64px 1fr;align-items:center;gap:var(--s3)}
+.ctl .btn{width:48px;justify-self:center;background:transparent;font-family:var(--num);font-size:15px;color:var(--sub)}
+.ctl .btn:hover{background:var(--surf)}
+.btn.main{justify-self:center;width:64px;height:64px;border-radius:50%;background:var(--accent);color:var(--on);box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.btn.main:hover{background:var(--accent);filter:brightness(1.15)}
+.btn.main .ic{width:26px;height:26px}
+.btn.main .cap,.ctl .btn .cap{display:none}
+.sub2{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+.sub2 .btn{background:transparent;height:48px}
+.sub2 .btn:hover{background:var(--surf)}
+/* 切り替え：溝の中を白い面が滑る（design/ui-patterns のセグメントの高級版） */
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
+.seg button{height:52px;padding:0 2px;min-width:0;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;transition:background .2s,color .2s}
+.seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.grid4 .btn{font-family:var(--num);font-weight:500}
+.grid4 .btn b{font-weight:500}
+.grid4 .btn.sel{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.ic{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ic .f{fill:currentColor;stroke:none}
+.cap{font-size:11px;font-weight:700;line-height:1;letter-spacing:.02em}
+.sw{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding:0;border:0;background:none;cursor:pointer;width:100%;text-align:left;font-weight:700}
+.sw .lab{flex:1;display:flex;align-items:center;gap:10px}
+.sw .lab .ic{color:var(--sub)}
+.sw .st{font-size:11px;color:var(--sub);width:14px}
 .sw[aria-checked=true] .st::after{content:"入"}
 .sw[aria-checked=false] .st::after{content:"切"}
-.sw::after{content:"";flex:0 0 44px;height:26px;border-radius:13px;background:var(--rule);
-  background-image:radial-gradient(circle at 13px 50%,#fff 9px,transparent 10px)}
-.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 31px 50%,#fff 9px,transparent 10px)}
-.field{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--s2);min-height:48px;font-weight:700}
+.sw::after{content:"";flex:0 0 40px;height:24px;border-radius:12px;background:var(--track);transition:background .2s;
+  background-image:radial-gradient(circle at 12px 50%,var(--surf) 8px,transparent 9px)}
+.sw[aria-checked=true]::after{background-color:var(--accent);background-image:radial-gradient(circle at 28px 50%,var(--on) 8px,transparent 9px)}
+.field{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:48px;font-weight:700}
 .field select,.field input[type=range]{height:48px;width:100%}
-.field select{border:1px solid var(--rule);border-radius:8px;background:var(--sheet);padding:0 var(--s2)}
-.fold{display:flex;flex-direction:column;gap:var(--s2)}
-details.card>summary{cursor:pointer;font-weight:700;min-height:48px;display:flex;align-items:center;list-style:none}
-details.card>summary::before{content:"▶";font-size:11px;margin-right:var(--s2);color:var(--sub)}
-details.card[open]>summary::before{content:"▼"}
-.note{font-size:13px;color:var(--sub);margin:0}
-.warn{font-size:13px;color:var(--alert);margin:0;font-weight:700}
-textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid var(--rule);border-radius:8px;padding:var(--s2)}
-.alarm{display:grid;grid-template-columns:120px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
-.alarm input{height:48px;border:1px solid var(--rule);border-radius:8px;padding:0 var(--s2);min-width:0}
-.alarm .x{width:48px}
+.field select{border:0;border-radius:12px;background:var(--surf);padding:0 var(--s2)}
+input[type=range]{accent-color:var(--accent)}
+.ficon{display:flex;align-items:center;color:var(--sub)}
+#cues{display:flex;flex-direction:column;gap:var(--s2)}
+.flab{width:84px;font-size:12px;color:var(--sub);font-weight:700}
+.fold{display:flex;flex-direction:column;gap:var(--s2);padding-top:var(--s2)}
+details.card>summary{cursor:pointer;font-weight:700;min-height:48px;padding-right:6px;display:flex;align-items:center;list-style:none;color:var(--ink)}
+details.card>summary::-webkit-details-marker{display:none}
+details.card>summary::after{content:"";margin-left:auto;width:7px;height:7px;border-right:1.5px solid var(--sub);border-bottom:1.5px solid var(--sub);transform:rotate(45deg);transition:transform .2s}
+details.card[open]>summary::after{transform:rotate(-135deg)}
+summary [data-ic]{display:flex;align-items:center;gap:10px}
+summary [data-ic] .ic{color:var(--sub)}
+.note{font-size:11px;color:var(--sub);margin:0}
+.warn{font-size:12px;color:var(--alert);margin:0;font-weight:700}
+textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-radius:12px;background:var(--surf);color:var(--ink);padding:var(--s3)}
+.alarm{display:grid;grid-template-columns:112px minmax(0,1fr) 48px;gap:var(--s2);align-items:center;margin-bottom:var(--s2)}
+.alarm input{height:48px;border:0;border-radius:12px;background:var(--surf);padding:0 var(--s2);min-width:0;color:var(--ink)}
+.alarm .x{width:48px;background:transparent}
 @media (max-width:900px){.app{grid-template-columns:1fr;height:auto}.pv-box{max-height:none}}
 </style>
 
 <div class="app">
   <section class="stage">
-    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターにはまだ出していません）</span></div>
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本</span><span class="kbd" title="見本・モニターの画面クリック、またはスペースキーでスタート／一時停止">クリック／Space＝開始・停止</span></div>
     <div class="preview"><div class="pv-box" id="pv"></div></div>
   </section>
 
   <section class="panel">
     <div class="card">
-      <button class="btn" id="goMonitor" data-flow="1">モニターに出す</button>
-      <p class="note" id="monNote">モニターを「拡張」でつなぐと、操作の画面は手元だけに残り、モニターには時計だけが出ます。</p>
+      <button class="btn" id="goMonitor" data-flow="1" data-ic="monitor" title="モニターを「拡張」でつなぐと、操作の画面は手元だけに残り、モニターには時計だけが出ます">モニターに出す</button>
+      <p class="note" id="monNote" hidden></p>
     </div>
 
     <div class="card">
       <div class="seg" role="radiogroup" id="segMode" data-flow="2">
-        <button role="radio" data-v="clock">時計</button>
-        <button role="radio" data-v="timer">タイマー</button>
-        <button role="radio" data-v="sw">ストップウォッチ</button>
+        <button role="radio" data-v="clock" data-ic="clock">時計</button>
+        <button role="radio" data-v="timer" data-ic="timer">タイマー</button>
+        <button role="radio" data-v="sw" data-ic="stopwatch">ストップウォッチ</button>
       </div>
       <div class="seg" role="radiogroup" id="segFace">
-        <button role="radio" data-v="digital">デジタル</button>
-        <button role="radio" data-v="analog">アナログ</button>
-        <button role="radio" data-v="bar">横棒</button>
+        <button role="radio" data-v="digital" data-ic="digital">デジタル</button>
+        <button role="radio" data-v="analog" data-ic="analog">アナログ</button>
+        <button role="radio" data-v="bar" data-ic="bar">横棒</button>
       </div>
     </div>
 
     <div class="card" id="ctlTimer" hidden>
-      <h2>何分？（押すとすぐ始まる）</h2>
       <div class="grid4" id="presets"></div>
-      <div class="row">
-        <button class="btn" id="tMinus">−1分</button>
-        <button class="btn" id="tPlus">＋1分</button>
+      <div class="ctl">
+        <button class="btn" id="tMinus" data-tier="std" aria-label="1分へらす">−1分</button>
+        <button class="btn main" data-tier="main" id="tToggle" data-flow="3"></button>
+        <button class="btn" id="tPlus" data-tier="std" aria-label="1分ふやす">＋1分</button>
       </div>
-      <div class="row">
-        <button class="btn main" id="tToggle" data-flow="3">スタート</button>
-        <button class="btn" id="tReset">もとに戻す</button>
-      </div>
+      <div class="sub2"><button class="btn" id="tMinus10" aria-label="10秒へらす">−10秒</button><button class="btn" id="tReset" data-ic="reset">リセット</button><button class="btn" id="tPlus10" aria-label="10秒ふやす">＋10秒</button></div>
     </div>
 
     <div class="card" id="ctlSw" hidden>
-      <div class="row">
-        <button class="btn main" id="sToggle">スタート</button>
-        <button class="btn" id="sLap">ラップ</button>
-        <button class="btn" id="sReset">ゼロに</button>
+      <div class="ctl">
+        <button class="btn" id="sLap" data-tier="std" data-ic="lap">ラップ</button>
+        <button class="btn main" data-tier="main" id="sToggle"></button>
+        <button class="btn" id="sReset" data-tier="std" data-ic="reset">リセット</button>
       </div>
     </div>
 
     <div class="card">
-      <button class="sw" role="switch" id="swDark">暗い配色（まぶしいとき）</button>
-    </div>
-
-    <div class="card" id="ctlClock" hidden>
-      <button class="sw" role="switch" id="swSched">時間割の残り時間とチャイム</button>
+      <button class="sw" role="switch" id="swSched" data-ic="calendar">時間割</button>
       <p class="note" id="schedNote"></p>
+      <button class="sw" role="switch" id="swDark" data-ic="moon">ダーク</button>
+      <button class="sw" role="switch" id="swBold" data-ic="bold">数字を太く</button>
     </div>
 
     <details class="card" id="dSound">
-      <summary data-group="fold-dSound">音と声</summary>
+      <summary data-group="fold-dSound"><span data-ic="speaker">音</span></summary>
       <div class="fold">
-      <div class="field">音量<input type="range" id="vol" min="0" max="1" step="0.05"></div>
-      <div class="field">おわりの音<select id="endTune">
-        <option value="chime">チャイム（4音）</option><option value="soft">やわらかい音</option>
-        <option value="beep">ピピピ</option><option value="none">鳴らさない</option></select></div>
-      <button class="sw" role="switch" id="swWarn">のこり1分で知らせる</button>
-      <button class="sw" role="switch" id="swTick">さいごの10秒をカチカチ</button>
-      <button class="sw" role="switch" id="swVoice">声でも知らせる（「あと1分です」など）</button>
-      <p class="note" id="voiceNote" hidden>この端末には日本語の声が入っていないため、声は出ません。</p>
-      <button class="sw" role="switch" id="swFlash">音と同時に画面のふちを光らせる</button>
-      <button class="btn" id="testSound">試しに鳴らす</button>
+      <div class="field"><span class="ficon" data-ic="volume" title="音量"></span><input type="range" id="vol" min="0" max="1" step="0.05" aria-label="音量"></div>
+      <div id="cues"></div>
+      <div class="field"><span class="flab">終了音</span><select id="endTune" aria-label="終了音">
+        <option value="alarm">電子音</option><option value="bell">ベル</option>
+        <option value="marimba">マリンバ</option><option value="school">チャイム</option><option value="none">なし</option></select>
+        <button class="btn icon" id="testSound" data-ic="play" aria-label="終了音の試聴" title="試聴"></button></div>
+      <p class="note" id="voiceCredit">声：VOICEVOX:冥鳴ひまり / VOICEVOX:青山龍星 / VOICEVOX:玄野武宏</p>
+      <p class="note" id="voiceNote" hidden>この端末に日本語音声なし（アラーム・時間割の読み上げは出ません）</p>
+      <button class="sw" role="switch" id="swFlash">画面の点滅</button>
       </div>
     </details>
 
     <details class="card" id="dAlarm">
-      <summary data-group="fold-dAlarm">時刻で鳴らす（アラーム）</summary>
+      <summary data-group="fold-dAlarm"><span data-ic="alarm">アラーム</span></summary>
       <div class="fold">
       <div id="alarms"></div>
-      <button class="btn" id="addAlarm">アラームを足す</button>
-      <p class="note">鳴る時刻に、言葉をモニターに大きく出して読み上げます（例：10:25 かたづけ）。</p>
+      <button class="btn" id="addAlarm" data-ic="plus">追加</button>
       </div>
     </details>
 
     <details class="card" id="dSched">
-      <summary data-group="fold-dSched">時間割（日課）</summary>
+      <summary data-group="fold-dSched"><span data-ic="calendar">日課表</span></summary>
       <div class="fold">
-      <div class="field">今日の日課<select id="pattern"></select></div>
-      <textarea id="schedText" spellcheck="false"></textarea>
-      <p class="note">1行に1つ「名前 はじまり-おわり」。例：1時間目 8:45-9:30</p>
+      <div class="field"><span class="ficon" data-ic="list" title="日課の種類"></span><select id="pattern" aria-label="日課の種類"></select></div>
+      <textarea id="schedText" spellcheck="false" aria-label="日課（1行に1件「名前 開始-終了」）" placeholder="1時間目 8:45-9:30"></textarea>
       <p class="warn" id="schedErr" hidden></p>
-      <button class="sw" role="switch" id="swChime">はじまりとおわりにチャイムを鳴らす</button>
+      <button class="sw" role="switch" id="swChime" data-ic="bell">チャイム</button>
       </div>
     </details>
 
@@ -158,6 +185,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
 
 <script>
 /* @include core.js */
+/* @include voices.js */
 /* @include sound.js */
 /* @include view.js */
 
@@ -179,7 +207,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   var state = {
     mode: 'clock', face: 'digital', theme: 'light',
     timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
-    sound: { vol: 0.8, endTune: 'chime', warn: true, tick: false, voice: true, flash: true },
+    sound: { vol: 0.8, endTune: 'alarm', voice: true, flash: true, cues: { m1: 'female', s30: 'female', count: 'female', end: 'female' } },
     alarms: [],
     sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
   };
@@ -190,6 +218,45 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
 
   var $ = function (id) { return document.getElementById(id); };
+
+  /* ---- アイコン（線で描く 24×24。外部ファイルを読まない） ---- */
+  var ICONS = {
+    clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    analog: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    timer: '<path d="M7 3h10M7 21h10M8 3v3l4 6-4 6v3M16 3v3l-4 6 4 6v3"/>',
+    stopwatch: '<circle cx="12" cy="14" r="8"/><path d="M12 10v4M10 2h4M12 2v4M19 6l1.5-1.5"/>',
+    digital: '<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10v4M9 10h2v4H9M14 10v1M14 13v1M16 10h2v2h-2v2h2"/>',
+    bar: '<rect x="2" y="8" width="20" height="8" rx="1.5"/><path class="f" d="M4 10h9v4H4z"/>',
+    play: '<path class="f" d="M8 5v14l11-7z"/>',
+    pause: '<path class="f" d="M6 5h4v14H6zM14 5h4v14h-4z"/>',
+    reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>',
+    lap: '<path d="M5 21V4h12l-2.5 4 2.5 4H5"/>',
+    monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    voice: '<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
+    bold: '<path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    speaker: '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7"/>',
+    volume: '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>',
+    bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>',
+    alarm: '<circle cx="12" cy="13" r="7"/><path d="M12 10v3l2 1.5M4 5l3-2M20 5l-3-2"/>',
+    calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+    list: '<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    x: '<path d="M6 6l12 12M18 6L6 18"/>'
+  };
+  function svg(name) { return '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[name] + '</svg>'; }
+  /* ボタンの中身：アイコン＋小さな添え字。添え字はアイコンの意味を確かめるためだけに置く */
+  function setBtn(el, name, cap) {
+    if (el.dataset.k === name + cap) return; el.dataset.k = name + cap;
+    el.innerHTML = svg(name) + (cap ? '<span class="cap">' + cap + '</span>' : '');
+    el.setAttribute('aria-label', cap); el.title = cap;
+  }
+  document.querySelectorAll('[data-ic]').forEach(function (el) {
+    var name = el.dataset.ic, text = el.textContent.trim();
+    if (el.matches('.sw')) return;            // スイッチは sw() で組む
+    if (el.matches('button')) setBtn(el, name, text);
+    else el.innerHTML = svg(name) + text;
+  });
   var views = [ClockView.create(document, $('pv'))];
   var fx = { flashUntil: 0, banner: null, hint: '' };
   var mon = null;  // モニター用の窓
@@ -197,14 +264,27 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   /* ---- 合図：音・声・画面 ---- */
   function signal(ev, now) {
     var snd = state.sound, ms = 0, say = '', banner = '';
-    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune); say = 'おわりです'; banner = 'おわり'; }
-    else if (ev.type === 'timerWarn') { if (!snd.warn) return; ms = S.play('warn'); say = 'あと1分です'; }
-    else if (ev.type === 'tick') { if (snd.tick) S.play('tick'); return; }
-    else if (ev.type === 'alarm') { ms = S.play('chime'); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
+    /* タイマーの合図は区切りごとに音を選ぶ（CUES）。声は録音（voices.js）、beep は合成音 */
+    var cues = snd.cues || {};
+    var cue = function (k, clipKey, beep) {
+      var v = cues[k] || 'none';
+      if (v === 'none') return 0;
+      if (v === 'beep') { S.play(beep); return 0; }
+      return S.playClip(v + '-' + clipKey) || (S.play(beep), 0);
+    };
+    if (ev.type === 'timerEnd') {
+      var vm = cues.end && cues.end !== 'none' ? S.playClip(cues.end + '-end') : 0;
+      S.play(snd.endTune, { delay: vm ? vm + 200 : 0 }); banner = '終了';
+      if (snd.flash) fx.flashUntil = now + 6000; fx.banner = { text: banner, until: now + 15000 }; return;
+    }
+    else if (ev.type === 'timerWarn') { cue('m1', 'm1', 'warn'); return; }
+    else if (ev.type === 'timer30') { cue('s30', 's30', 'warn'); return; }
+    else if (ev.type === 'tick') { if (ev.left <= 5) cue('count', 'c' + ev.left, 'tick'); return; }
+    else if (ev.type === 'alarm') { ms = S.play(snd.endTune, { voiceGap: snd.voice && !!ev.label }); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
     else if (ev.type === 'chime') {
       ms = S.play('school');
-      say = ev.name + (ev.edge === 'start' ? 'が はじまります' : 'が おわりです');
-      banner = ev.name + (ev.edge === 'start' ? ' はじまり' : ' おわり');
+      say = ev.name + (ev.edge === 'start' ? 'が始まります' : 'が終わりました');
+      banner = ev.name + (ev.edge === 'start' ? ' 開始' : ' 終了');
     }
     if (snd.voice && say) S.speak(say, ms);
     if (snd.flash) fx.flashUntil = now + 6000;
@@ -220,7 +300,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     fx.hint = '';
     views[0].update(state, now, fx);
     if (mon && !mon.win.closed) {
-      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'ここを押すと 全画面になります';
+      fx.hint = mon.win.document.fullscreenElement || mon.full ? '' : 'クリックで全画面表示';
       mon.view.update(state, now, fx);
     } else if (mon) { mon = null; syncUi(); }
     updateButtons(now);
@@ -243,7 +323,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
       }
     } catch (e) {}
     var w = window.open('', 'classroom-clock-monitor', feat);
-    if (!w) { $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
+    if (!w) { $('monNote').hidden = false; $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
     var d = w.document;
     d.open();
     d.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>教室の時計（モニター）</title><style>html,body{margin:0;height:100%;overflow:hidden;cursor:none}'
@@ -252,6 +332,7 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     mon = { win: w, view: ClockView.create(d, d.getElementById('m')), full: false };
     d.addEventListener('click', function () {
       S.unlock();
+      if (d.fullscreenElement) { toggle(); return; }
       var el = d.documentElement;
       var p = target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen();
       if (p && p.then) p.then(function () { mon.full = true; }, function () {});
@@ -278,40 +359,83 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
   }
   function sw(id, get, set) {
     var b = $(id), lab = document.createElement('span'), st = document.createElement('span');
-    lab.className = 'lab'; st.className = 'st'; lab.textContent = b.textContent; b.textContent = ''; b.append(lab, st);
+    lab.className = 'lab'; st.className = 'st'; lab.innerHTML = (b.dataset.ic ? svg(b.dataset.ic) : '') + b.textContent; b.textContent = ''; b.append(lab, st);
     b.addEventListener('click', function () { set(!get()); changed(); });
     return function () { b.setAttribute('aria-checked', String(!!get())); };
   }
   var syncs = [
     seg('segMode', function () { return state.mode; }, function (v) { state.mode = v; }),
     seg('segFace', function () { return state.face; }, function (v) { state.face = v; }),
+    sw('swBold', function () { return !!state.bold; }, function (v) { state.bold = v; }),
     sw('swDark', function () { return state.theme === 'dark'; }, function (v) { state.theme = v ? 'dark' : 'light'; }),
     sw('swSched', function () { return state.sched.on; }, function (v) { state.sched.on = v; }),
     sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
-    sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),
-    sw('swTick', function () { return state.sound.tick; }, function (v) { state.sound.tick = v; }),
-    sw('swVoice', function () { return state.sound.voice; }, function (v) { state.sound.voice = v; }),
     sw('swFlash', function () { return state.sound.flash; }, function (v) { state.sound.flash = v; })
   ];
   function changed() { S.unlock(); save(); syncUi(); tick(); }
 
   PRESETS.forEach(function (m) {
-    var b = document.createElement('button'); b.className = 'btn'; b.textContent = m + '分';
-    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN, Date.now()); prev = Date.now(); changed(); };
+    var b = document.createElement('button'); b.className = 'btn'; b.innerHTML = '<b style="font-size:16px">' + m + '</b>'; b.setAttribute('aria-label', m + '分');
+    b.onclick = function () { C.timerPreset(state.timer, m * C.MIN); changed(); };
     $('presets').appendChild(b);
   });
-  $('tToggle').onclick = function () { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); };
+  $('tToggle').onclick = function () { toggle(); };
+  function toggleTimer() { var t = state.timer, n = Date.now(); if (C.timerLeft(t, n) <= 0 && t.running) { C.timerReset(t); fx.flashUntil = 0; fx.banner = null; } else if (t.running) C.timerPause(t, n); else C.timerStart(t, n); prev = n; changed(); }
   $('tReset').onclick = function () { C.timerReset(state.timer); fx.flashUntil = 0; fx.banner = null; changed(); };
   $('tPlus').onclick = function () { C.timerAdd(state.timer, C.MIN, Date.now()); changed(); };
   $('tMinus').onclick = function () { C.timerAdd(state.timer, -C.MIN, Date.now()); changed(); };
-  $('sToggle').onclick = function () { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); };
+  $('tPlus10').onclick = function () { C.timerAdd(state.timer, 10 * C.SEC, Date.now()); changed(); };
+  $('tMinus10').onclick = function () { C.timerAdd(state.timer, -10 * C.SEC, Date.now()); changed(); };
+  $('sToggle').onclick = function () { toggle(); };
+  /* スタート／一時停止。ボタン・見本やモニターの画面のクリック・スペースキーの3つから同じ動き */
+  function toggle() {
+    if (S.ringing()) { S.stop(); fx.flashUntil = 0; fx.banner = null; if (state.mode !== 'timer' || C.timerLeft(state.timer, Date.now()) > 0) { changed(); return; } }
+    if (state.mode === 'timer') toggleTimer();
+    else if (state.mode === 'sw') { var w = state.sw, n = Date.now(); if (w.running) C.swStop(w, n); else C.swStart(w, n); changed(); }
+    else changed();
+  }
+  $('pv').addEventListener('click', toggle);
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'Space' || /INPUT|TEXTAREA|SELECT|BUTTON|SUMMARY/.test(e.target.tagName)) return;
+    e.preventDefault(); toggle();
+  });
+  /* 操作ボタンを押したら、鳴っている終了音・アラームは止める */
+  document.querySelector('.panel').addEventListener('click', function (e) { if (e.target.closest('button') && !/^testSound$/.test(e.target.closest('button').id) && !e.target.closest('#cues')) S.stop(); }, true);
   $('sLap').onclick = function () { C.swLap(state.sw, Date.now()); changed(); };
   $('sReset').onclick = function () { C.swReset(state.sw); changed(); };
   $('goMonitor').onclick = function () { openMonitor(); };
 
   $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
-  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.play(this.value); };
-  $('testSound').onclick = function () { S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('あと1分です', ms); };
+  /* 区切りごとの音の選択。並びと既定はここ1か所 */
+  var VOICE_OPTS = [['female', '女性の声'], ['male', '低い男性の声'], ['robot', 'ロボット']];
+  var CUES = [
+    { k: 'm1', label: '残り1分', beep: ['warn', 'ピッピッ'], clips: ['m1'] },
+    { k: 's30', label: '残り30秒', beep: ['warn', 'ピッピッ'], clips: ['s30'] },
+    { k: 'count', label: '5・4・3・2・1', beep: ['tick', 'ピッ'], clips: ['c5', 'c4', 'c3', 'c2', 'c1'] },
+    { k: 'end', label: 'そこまで', beep: null, clips: ['end'] }
+  ];
+  if (!state.sound.cues) state.sound.cues = { m1: 'female', s30: 'female', count: 'female', end: 'female' };
+  function previewCue(c) {
+    S.stop(); S.unlock();
+    var v = state.sound.cues[c.k];
+    if (v === 'none') return;
+    if (v === 'beep') { c.clips.forEach(function (_, i) { setTimeout(function () { S.play(c.beep[0]); }, i * 1000); }); return; }
+    c.clips.forEach(function (ck, i) { setTimeout(function () { S.playClip(v + '-' + ck); }, i * 1000); });
+  }
+  CUES.forEach(function (c) {
+    var row = document.createElement('div'); row.className = 'field';
+    var lab = document.createElement('span'); lab.className = 'flab'; lab.textContent = c.label;
+    var sel = document.createElement('select'); sel.id = 'cue-' + c.k; sel.setAttribute('aria-label', c.label + 'の音');
+    var opts = VOICE_OPTS.slice(); if (c.beep) opts.push(['beep', c.beep[1]]); opts.push(['none', 'なし']);
+    opts.forEach(function (o) { var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
+    var b = document.createElement('button'); b.className = 'btn icon'; b.dataset.ic = 'play'; setBtn(b, 'play', '');
+    b.setAttribute('aria-label', c.label + 'の試聴'); b.title = '試聴';
+    sel.onchange = function () { state.sound.cues[c.k] = sel.value; state.sound.voice = true; changed(); previewCue(c); };
+    b.onclick = function () { previewCue(c); };
+    row.append(lab, sel, b); $('cues').appendChild(row);
+  });
+  $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.stop(); S.play(this.value); setTimeout(S.stop, 3000); };
+  $('testSound').onclick = function () { S.stop(); S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('時間です', ms); setTimeout(S.stop, 4000); };
 
   /* アラーム */
   function drawAlarms() {
@@ -319,8 +443,8 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     state.alarms.forEach(function (a, i) {
       var row = document.createElement('div'); row.className = 'alarm';
       var t = document.createElement('input'); t.type = 'time'; t.value = a.hm; t.setAttribute('aria-label', '時刻'); t.dataset.group = 'atime';
-      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = 'かたづけ'; l.setAttribute('aria-label', '出す言葉'); l.dataset.group = 'alabel';
-      var x = document.createElement('button'); x.className = 'btn x danger'; x.textContent = '×'; x.setAttribute('aria-label', 'このアラームを消す');
+      var l = document.createElement('input'); l.type = 'text'; l.value = a.label; l.placeholder = '片付け'; l.setAttribute('aria-label', 'メッセージ'); l.dataset.group = 'alabel';
+      var x = document.createElement('button'); x.className = 'btn x danger'; x.innerHTML = svg('x'); x.setAttribute('aria-label', 'このアラームを消す');
       t.onchange = function () { a.hm = t.value; save(); };
       l.oninput = function () { a.label = l.value; save(); };
       x.onclick = function () { state.alarms.splice(i, 1); save(); drawAlarms(); };
@@ -357,25 +481,27 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     var r = parseSched(this.value);
     state.sched.patterns[state.sched.pattern].rows = r.rows;
     $('schedErr').hidden = !r.bad.length;
-    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目が読めません（読めた行だけ使います）' : '';
+    $('schedErr').textContent = r.bad.length ? r.bad.join('・') + '行目を読み取れません（読み取れた行のみ使用）' : '';
     save(); syncUi();
   };
 
   /* ---- 画面の状態を合わせる ---- */
   function syncUi() {
     syncs.forEach(function (f) { f(); });
+    document.body.dataset.theme = state.theme;
+    document.querySelectorAll('#presets .btn').forEach(function (b, k) { b.classList.toggle('sel', PRESETS[k] * C.MIN === state.timer.dur); });
     $('ctlTimer').hidden = state.mode !== 'timer';
     $('ctlSw').hidden = state.mode !== 'sw';
-    $('ctlClock').hidden = state.mode !== 'clock';
     var live = !!(mon && !mon.win.closed);
     $('stageHead').classList.toggle('live', live);
-    $('stageText').textContent = live ? 'モニターに出しています（この見本と同じものが出ます）' : '見本（モニターにはまだ出していません）';
-    $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
+    $('stageText').textContent = live ? 'モニターに出力中' : '見本';
+    setBtn($('goMonitor'), 'monitor', live ? 'モニターの窓を前へ' : 'モニターに出す');
     keepAwake(live);
     var n = state.sched.patterns[state.sched.pattern].rows.length;
-    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」の日課（' + n + 'こ）で数えます。日課は下の「時間割」で直せます。' : '「' + state.sched.pattern + '」の日課がまだ空です。下の「時間割」に入れてください。';
+    $('schedNote').textContent = n ? '「' + state.sched.pattern + '」' + n + '件' : '「' + state.sched.pattern + '」は空（日課表で入力）';
     $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
     $('endTune').value = state.sound.endTune;
+    CUES.forEach(function (c) { $('cue-' + c.k).value = state.sound.cues[c.k] || 'none'; });
     $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
   }
   var lastBtn = '';
@@ -383,8 +509,9 @@ textarea{font:14px/1.6 var(--font);width:100%;min-height:200px;border:1px solid 
     var t = state.timer, w = state.sw;
     var k = (t.running ? 1 : 0) + '' + (C.timerLeft(t, now) <= 0 ? 1 : 0) + (w.running ? 1 : 0);
     if (k === lastBtn) return; lastBtn = k;
-    $('tToggle').textContent = t.running ? (C.timerLeft(t, now) <= 0 ? 'とめる' : 'いちじ停止') : (t.started && t.left > 0 ? 'つづける' : 'スタート');
-    $('sToggle').textContent = w.running ? 'とめる' : (w.acc ? 'つづける' : 'スタート');
+    if (t.running && C.timerLeft(t, now) <= 0) setBtn($('tToggle'), 'reset', 'リセット');
+    else setBtn($('tToggle'), t.running ? 'pause' : 'play', t.running ? '一時停止' : (t.started && t.left > 0 ? '再開' : 'スタート'));
+    setBtn($('sToggle'), w.running ? 'pause' : 'play', w.running ? '一時停止' : (w.acc ? '再開' : 'スタート'));
   }
   setTimeout(syncUi, 800);  // 声の一覧は少し遅れて届く
   window.addEventListener('beforeunload', function () { if (mon && !mon.win.closed) mon.win.close(); });

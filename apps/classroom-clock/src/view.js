@@ -14,16 +14,16 @@ var ClockView = (function () {
     var s = '<circle class="cv-face" cx="100" cy="100" r="97"/><path class="cv-sector" d=""/>';
     for (var i = 0; i < 60; i++) {
       var five = i % 5 === 0;
-      s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 7 : 5) + '" x2="100" y2="' + (five ? 15 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
+      s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 4 : 4) + '" x2="100" y2="' + (five ? 17 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
     }
-    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 72).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
+    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 116).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
       + '<path class="cv-tri" d=""/>'
       /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
-      + '<line class="cv-hh" x1="100" y1="100" x2="100" y2="52"/>'
-      + '<line class="cv-mh" x1="100" y1="100" x2="100" y2="22"/>'
-      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="16"/>'
-      + '<circle class="cv-pin" cx="100" cy="100" r="4"/>';
+      + '<path class="cv-hh" d="M95.5 100L98.6 48L101.4 48L104.5 100Z"/>'
+      + '<path class="cv-mh" d="M97 100L99.2 12L100.8 12L103 100Z"/>'
+      + '<line class="cv-sh" x1="100" y1="100" x2="100" y2="10"/>'
+      + '<circle class="cv-pin" cx="100" cy="100" r="6"/><circle class="cv-pin2" cx="100" cy="100" r="2"/>';
     return s;
   }
 
@@ -31,16 +31,27 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="-16 -16 232 232" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-36 -36 272 272" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
-      + '<div class="cv-bar"><i></i><b></b></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
+      + '<div class="cv-gauge"><div class="cv-bar"><i></i><b></b></div><div class="cv-scale"></div></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
     var q = function (s) { return root.querySelector(s); };
     var el = { date: q('.cv-date'), now: q('.cv-now'), label: q('.cv-label'), b1: q('.cv-b1'), b2: q('.cv-b2'), bar: q('.cv-bar i'),
       sub: q('.cv-sub'), laps: q('.cv-laps'), banner: q('.cv-banner'), hint: q('.cv-hint'),
-      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
+      sector: q('.cv-sector'), tri: q('.cv-tri'), ticks: q('.cv-bar b'), scale: q('.cv-scale'), goal: q('.cv-goal'), hh: q('.cv-hh'), mh: q('.cv-mh'), sh: q('.cv-sh') };
     var last = {};
     function txt(k, v) { if (last[k] !== v) { last[k] = v; el[k].textContent = v; } }
+    /* 数字を1字ずつ同じ幅の枠に入れる。BIZ UDPゴシックなど字幅が数字ごとに違う書体でも、
+       桁の位置が動かない（1→2 で時刻が横にずれない）。tabular-nums は書体が対応していないと効かない。 */
+    function dg(k, v) {
+      if (last[k] === v) return; last[k] = v;
+      var html = '';
+      for (var i = 0; i < v.length; i++) {
+        var ch = v.charAt(i);
+        html += /[0-9]/.test(ch) ? '<i class="cv-d">' + ch + '</i>' : /[:.]/.test(ch) ? '<i class="cv-p">' + ch + '</i>' : ch;
+      }
+      el[k].innerHTML = html;
+    }
     function attr(k, node, name, v) { if (last[k] !== v) { last[k] = v; node.setAttribute(name, v); } }
 
     function update(state, now, fx) {
@@ -51,35 +62,40 @@ var ClockView = (function () {
         b1 = c.h + ':' + c.m; b2 = ':' + c.s;
         if (state.sched.on) {
           var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
-          if (sn && sn.kind === 'in') { sub = sn.name + '　おわりまで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
-          else if (sn) { sub = 'つぎは ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
+          if (sn && sn.kind === 'in') { sub = sn.name; goal = sn.endAt; total = sn.endAt - sn.startAt; }
+          else if (sn) { sub = '→ ' + sn.name; goal = sn.startAt; total = C.HOUR; }
           if (goal !== null) bar = Math.min(1, (goal - now) / total);
         }
       } else if (mode === 'timer') {
         var t = state.timer, left = C.timerLeft(t, now);
-        if (left <= 0) { phase = 'over'; label = 'おわり'; b1 = C.fmtOver(-left); bar = 0; total = t.dur; }
+        /* 終わったら 0:00 で止める（超過は数えない） */
+        if (left <= 0) { phase = 'over'; b1 = '0:00'; bar = 0; total = t.dur; }
         else {
           var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
-          b1 = C.fmtRemain(left); label = soon ? 'もうすぐ おわり' : 'のこり';
-          phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
+          b1 = C.fmtRemain(left); 
+          phase = soon ? 'warn' : (t.running ? 'run' : (t.started ? 'paused' : 'idle'));
           bar = Math.min(1, left / t.dur); total = t.dur;
-          if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
-          else if (t.started) sub = 'とまっています';
+          if (t.running) goal = t.endAt;
         }
       } else {
         var w = state.sw, sw = C.fmtSw(C.swElapsed(w, now));
-        label = 'ストップウォッチ'; b1 = sw.main; b2 = sw.tenth;
-        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + 'かいめ ' + f.main + f.tenth; }).join('\n');
+        if (!w.running && w.acc) phase = 'paused';
+        b1 = sw.main; b2 = sw.tenth;
+        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
-      attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
-      txt('date', C.fmtDate(now)); txt('now', c.h + ':' + c.m);
-      txt('label', label); txt('b1', b1); txt('b2', b2); txt('sub', sub);
+      attr('theme', root, 'data-theme', state.theme); attr('bold', root, 'data-bold', state.bold ? '1' : '0'); attr('phase', root, 'data-phase', phase);
+      txt('date', C.fmtDate(now)); dg('now', c.h + ':' + c.m);
+      txt('label', label); dg('b1', b1); dg('b2', b2); txt('sub', sub);
       attr('hasbar', root, 'data-bar', bar >= 0 ? '1' : '0');
       attr('bar', el.bar, 'style', 'width:' + (Math.max(0, bar) * 100).toFixed(2) + '%');
       /* 横棒の1分ごとの目盛り（60分以下のときだけ。多いと線が詰まって読めない） */
       var nmin = Math.round(total / C.MIN);
       attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
+      /* 横棒の目盛りの数字：棒の位置＝その時点の残り分。10分以下は1分ごと、30分以下は5分ごと、それより長ければ10分ごと */
+      var step = nmin <= 10 ? 1 : nmin <= 30 ? 5 : 10, sc = '';
+      if (bar >= 0 && nmin >= 1 && nmin <= 60) for (var m = 0; m <= nmin; m += step) sc += '<span style="left:' + (m / nmin * 100).toFixed(2) + '%">' + m + '</span>';
+      if (last.scale !== sc) { last.scale = sc; el.scale.innerHTML = sc; }
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';
         if (laps) laps.split('\n').forEach(function (s) { var li = doc.createElement('li'); li.textContent = s; el.laps.appendChild(li); });
@@ -97,7 +113,7 @@ var ClockView = (function () {
         attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 95.5) : '');
         var g = show ? pt(a1, 95.5).split(' ') : ['100', '100'];
         /* 終わりの位置を、円の外の赤い三角の角でも示す（角が中心を向く） */
-        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 100) + 'L' + pt(a1 - 4.2, 114) + 'L' + pt(a1 + 4.2, 114) + 'Z' : '');
+        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 99) + 'L' + pt(a1 - 3.6, 108) + 'L' + pt(a1 + 3.6, 108) + 'Z' : '');
         attr('gx', el.goal, 'x2', g[0]); attr('gy', el.goal, 'y2', g[1]);
       }
       var flash = !!(fx.flashUntil && now < fx.flashUntil);

@@ -37,11 +37,12 @@ var ClockCore = (function () {
   }
   function timerPause(t, now) { if (!t.running) return; t.left = t.endAt - now; t.running = false; }
   function timerReset(t) { t.running = false; t.started = false; t.left = t.dur; t.endAt = 0; }
-  function timerPreset(t, dur, now) { t.dur = dur; t.left = dur; t.running = false; timerStart(t, now); }
+  /* 時間を選ぶだけで、始めない（スタートは別の操作） */
+  function timerPreset(t, dur) { t.dur = dur; t.left = dur; t.running = false; t.started = false; t.endAt = 0; }
   function timerAdd(t, ms, now) {
     var left = timerLeft(t, now);
     var next = left <= 0 ? (ms > 0 ? ms : 0) : left + ms;   // 終わったあとの＋は「今から」延ばす
-    if (next < MIN && ms < 0) next = left > 0 ? Math.min(left, MIN) : left;  // −は1分より下へ行かない
+    if (ms < 0 && next < -ms) next = left > 0 ? Math.min(left, -ms) : left;  // −は1回分（1分・10秒）より下へ行かない
     if (next > TIMER_MAX) next = TIMER_MAX;
     if (t.running) t.endAt = now + next; else { t.left = next; if (!t.started && next > 0) t.dur = next; }
   }
@@ -79,6 +80,7 @@ var ClockCore = (function () {
       if (crossed(t.endAt)) out.push({ type: 'timerEnd' });
       else {
         if (t.dur >= 2 * MIN && crossed(t.endAt - MIN)) out.push({ type: 'timerWarn' });
+        if (t.dur >= MIN && crossed(t.endAt - 30 * SEC)) out.push({ type: 'timer30' });
         for (var k = 10; k >= 1; k--) {
           if (t.dur > k * SEC && crossed(t.endAt - k * SEC)) { out.push({ type: 'tick', left: k }); break; }
         }
