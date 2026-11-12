@@ -77,6 +77,9 @@ ok((await pop.textContent('.cv-b1')) === (await p.textContent('#pv .cv-b1')), '�
 await p.reload();
 ok((await p.getAttribute('#pv', 'data-mode')) === 'timer', '読み込み直しても続きから');
 ok((await p.textContent('#pv .cv-label')) === '' , 'モニターの表示に文の説明を出さない');
+await p.evaluate(() => window.__cc.sound.unlock());
+await p.waitForTimeout(1500);
+ok(await p.evaluate(() => window.__cc.sound.playClip('robot-c3') > 0), '録音した声を変換して鳴らせる（24本）');
 ok(errs.length === 0, 'エラーなし ' + errs.join(' / '));
 await browser.close();
 process.exit(fails ? 1 : 0);
