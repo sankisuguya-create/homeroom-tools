@@ -80,6 +80,7 @@ var ClockCore = (function () {
       if (crossed(t.endAt)) out.push({ type: 'timerEnd' });
       else {
         if (t.dur >= 2 * MIN && crossed(t.endAt - MIN)) out.push({ type: 'timerWarn' });
+        if (t.dur >= MIN && crossed(t.endAt - 30 * SEC)) out.push({ type: 'timer30' });
         for (var k = 10; k >= 1; k--) {
           if (t.dur > k * SEC && crossed(t.endAt - k * SEC)) { out.push({ type: 'tick', left: k }); break; }
         }

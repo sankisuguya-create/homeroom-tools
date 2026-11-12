@@ -259,7 +259,9 @@ textarea{font:13px/1.6 var(--font);width:100%;min-height:200px;border:0;border-r
         <button class="btn icon" id="testSound" data-ic="play" aria-label="試聴" title="試聴"></button></div>
       <button class="sw" role="switch" id="swWarn">1分前の予告</button>
       <button class="sw" role="switch" id="swTick">10秒前からカウント</button>
-      <button class="sw" role="switch" id="swVoice">読み上げ</button>
+      <div class="field"><span class="ficon" data-ic="voice" title="声"></span><select id="voiceKind" aria-label="声">
+        <option value="female">女性の声</option><option value="male">低い男性の声</option><option value="robot">ロボット</option><option value="off">声なし</option></select>
+        <button class="btn icon" id="testVoice" data-ic="play" aria-label="声の試聴" title="声の試聴"></button></div>
       <p class="note" id="voiceNote" hidden>この端末に日本語音声なし</p>
       <button class="sw" role="switch" id="swFlash">画面の点滅</button>
       </div>
@@ -370,6 +372,7 @@ var ClockCore = (function () {
       if (crossed(t.endAt)) out.push({ type: 'timerEnd' });
       else {
         if (t.dur >= 2 * MIN && crossed(t.endAt - MIN)) out.push({ type: 'timerWarn' });
+        if (t.dur >= MIN && crossed(t.endAt - 30 * SEC)) out.push({ type: 'timer30' });
         for (var k = 10; k >= 1; k--) {
           if (t.dur > k * SEC && crossed(t.endAt - k * SEC)) { out.push({ type: 'tick', left: k }); break; }
         }
@@ -403,6 +406,10 @@ var ClockCore = (function () {
 })();
 if (typeof module !== 'undefined') module.exports = ClockCore;
 /* ▲ src/core.js ここまで ▲ */
+/* ▼ src/voices.js から。直すのは src のほう ▼ */
+/* 録音した声。scripts/make_voices.py が作る。直接直さない */
+var CLOCK_VOICES = {};
+/* ▲ src/voices.js ここまで ▲ */
 /* ▼ src/sound.js から。直すのは src のほう ▼ */
 /* 音。音源ファイルを持たず、ブラウザの中で合成する（通信なし・読み込み待ちなし）。
    ブラウザは利用者が画面を押すまで音を止めるので、最初の操作で unlock() を呼ぶ。
@@ -419,6 +426,7 @@ var ClockSound = (function () {
     if (!AC) return;
     if (!ctx) { ctx = new AC(); master = ctx.createGain(); master.gain.value = vol; master.connect(ctx.destination); }
     if (ctx.state === 'suspended') ctx.resume();
+    decodeClips();
   }
   function ready() { return !!ctx && ctx.state === 'running'; }
   function setVol(v) { vol = v; if (master) master.gain.value = v; }
@@ -457,6 +465,11 @@ var ClockSound = (function () {
   /* 鳴らして、最初の1回が鳴り終わるまでのミリ秒を返す（声をその後ろに置くため）。
      loop の音は stop() まで、最長30秒くり返す。声がある時は2回目までの間をあけ、声を音と重ねない。 */
   function play(name, opts) {
+    if (opts && opts.delay) {   // 声のあとに鳴らす時
+      var o = { voiceGap: opts.voiceGap };
+      timers.push(setTimeout(function () { play(name, o); }, opts.delay));
+      return (TUNES[name] ? TUNES[name].ms : 0) + opts.delay;
+    }
     played.push(name);
     var t = TUNES[name];
     if (!t) return 0;
@@ -482,6 +495,31 @@ var ClockSound = (function () {
   }
   function ringing() { return timers.length > 0 && buses.length > 0; }
 
+  /* 録音した声（VOICEVOX で作った短い音声。voices.js に base64 で埋め込み）。
+     最初の操作で一度だけ AudioBuffer に変換し、以後は待ちなしで鳴らす。 */
+  var clipSrc = (typeof CLOCK_VOICES !== 'undefined') ? CLOCK_VOICES : {}, clips = {}, decoding = false;
+  function decodeClips() {
+    if (decoding || !ctx) return; decoding = true;
+    Object.keys(clipSrc).forEach(function (k) {
+      var bin = atob(clipSrc[k]), buf = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      ctx.decodeAudioData(buf.buffer).then(function (ab) { clips[k] = ab; }, function () {});
+    });
+  }
+  function hasClip(k) { return !!clipSrc[k]; }
+  /* 声を鳴らして長さ（ミリ秒）を返す。まだ変換が済んでいなければ 0 */
+  function playClip(k, delayMs) {
+    played.push('clip:' + k);
+    unlock(); decodeClips();
+    var ab = clips[k];
+    if (!ab) return 0;
+    var b = bus(), src = ctx.createBufferSource(), g = ctx.createGain();
+    g.gain.value = 1.6;   // 合成音より小さく聞こえるので持ち上げる
+    src.buffer = ab; src.connect(g); g.connect(b);
+    src.start(ctx.currentTime + (delayMs || 0) / 1000);
+    return Math.round(ab.duration * 1000);
+  }
+
   function pickVoice() {
     if (!window.speechSynthesis) return;
     var vs = speechSynthesis.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
@@ -502,7 +540,7 @@ var ClockSound = (function () {
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     }, delayMs || 0));
   }
-  return { unlock: unlock, ready: ready, setVol: setVol, play: play, stop: stop, ringing: ringing, speak: speak, canSpeak: canSpeak, played: played };
+  return { playClip: playClip, hasClip: hasClip, unlock: unlock, ready: ready, setVol: setVol, play: play, stop: stop, ringing: ringing, speak: speak, canSpeak: canSpeak, played: played };
 })();
 /* ▲ src/sound.js ここまで ▲ */
 /* ▼ src/view.js から。直すのは src のほう ▼ */
@@ -653,7 +691,7 @@ var ClockView = (function () {
   var state = {
     mode: 'clock', face: 'digital', theme: 'light',
     timer: C.newTimer(5 * C.MIN), sw: C.newSw(),
-    sound: { vol: 0.8, endTune: 'alarm', warn: true, tick: false, voice: true, flash: true },
+    sound: { vol: 0.8, endTune: 'alarm', warn: true, tick: false, voice: true, voiceKind: 'female', flash: true },
     alarms: [],
     sched: { on: false, chime: false, pattern: '通常', patterns: { '通常': { rows: rowsOf(DEFAULT_ROWS) }, '短縮': { rows: [] } } }
   };
@@ -678,6 +716,7 @@ var ClockView = (function () {
     reset: '<path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/>',
     lap: '<path d="M5 21V4h12l-2.5 4 2.5 4H5"/>',
     monitor: '<rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    voice: '<path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3zM5 11a7 7 0 0 0 14 0M12 18v3"/>',
     bold: '<path d="M7 4h6a4 4 0 0 1 0 8H7zM7 12h7a4 4 0 0 1 0 8H7z"/>',
     moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
     speaker: '<path d="M4 9h4l5-4v14l-5-4H4zM16.5 8.5a5 5 0 0 1 0 7"/>',
@@ -709,9 +748,20 @@ var ClockView = (function () {
   /* ---- 合図：音・声・画面 ---- */
   function signal(ev, now) {
     var snd = state.sound, ms = 0, say = '', banner = '';
-    if (ev.type === 'timerEnd') { ms = S.play(snd.endTune, { voiceGap: snd.voice }); say = '時間です'; banner = '終了'; }
-    else if (ev.type === 'timerWarn') { if (!snd.warn) return; ms = S.play('warn'); say = 'あと1分です'; }
-    else if (ev.type === 'tick') { if (snd.tick) S.play('tick'); return; }
+    /* タイマーの声：「残り1分」「残り30秒」「5・4・3・2・1」「そこまで」（録音した声。voices.js） */
+    var vk = snd.voiceKind || 'female', voiceOn = vk !== 'off';
+    var clip = function (k) { return voiceOn ? S.playClip(vk + '-' + k) : 0; };
+    if (ev.type === 'timerEnd') {
+      var vm = clip('end');
+      S.play(snd.endTune, { delay: vm ? vm + 200 : 0 }); banner = '終了';
+      if (snd.flash) fx.flashUntil = now + 6000; fx.banner = { text: banner, until: now + 15000 }; return;
+    }
+    else if (ev.type === 'timerWarn') { if (!snd.warn) return; if (!clip('m1')) S.play('warn'); return; }
+    else if (ev.type === 'timer30') { if (snd.warn) clip('s30'); return; }
+    else if (ev.type === 'tick') {
+      if (ev.left <= 5 && voiceOn && S.playClip(vk + '-c' + ev.left)) return;
+      if (snd.tick) S.play('tick'); return;
+    }
     else if (ev.type === 'alarm') { ms = S.play(snd.endTune, { voiceGap: snd.voice && !!ev.label }); banner = ev.hm.replace(/^0/, '') + '　' + (ev.label || 'アラーム'); say = ev.label || ''; }
     else if (ev.type === 'chime') {
       ms = S.play('school');
@@ -804,7 +854,6 @@ var ClockView = (function () {
     sw('swChime', function () { return state.sched.chime; }, function (v) { state.sched.chime = v; if (v) state.sched.on = true; }),
     sw('swWarn', function () { return state.sound.warn; }, function (v) { state.sound.warn = v; }),
     sw('swTick', function () { return state.sound.tick; }, function (v) { state.sound.tick = v; }),
-    sw('swVoice', function () { return state.sound.voice; }, function (v) { state.sound.voice = v; }),
     sw('swFlash', function () { return state.sound.flash; }, function (v) { state.sound.flash = v; })
   ];
   function changed() { S.unlock(); save(); syncUi(); tick(); }
@@ -839,6 +888,13 @@ var ClockView = (function () {
   $('goMonitor').onclick = function () { openMonitor(); };
 
   $('vol').oninput = function () { state.sound.vol = +this.value; S.setVol(state.sound.vol); save(); };
+  $('voiceKind').onchange = function () { state.sound.voiceKind = this.value; state.sound.voice = this.value !== 'off'; changed(); playVoiceSample(); };
+  $('testVoice').onclick = function () { S.stop(); playVoiceSample(); };
+  function playVoiceSample() {
+    var vk = state.sound.voiceKind; if (vk === 'off') return;
+    S.unlock(); var t = 0;
+    ['m1', 'c3', 'c2', 'c1', 'end'].forEach(function (k, i) { setTimeout(function () { S.playClip(vk + '-' + k); }, t); t += k === 'm1' ? 1600 : 1000; });
+  }
   $('endTune').onchange = function () { state.sound.endTune = this.value; changed(); S.stop(); S.play(this.value); setTimeout(S.stop, 3000); };
   $('testSound').onclick = function () { S.stop(); S.unlock(); var ms = S.play(state.sound.endTune); if (state.sound.voice) S.speak('時間です', ms); setTimeout(S.stop, 4000); };
 
@@ -906,6 +962,7 @@ var ClockView = (function () {
     $('schedNote').textContent = n ? '「' + state.sched.pattern + '」' + n + '件' : '「' + state.sched.pattern + '」は空（日課表で入力）';
     $('vol').value = state.sound.vol; S.setVol(state.sound.vol);
     $('endTune').value = state.sound.endTune;
+    $('voiceKind').value = state.sound.voiceKind || 'female';
     $('voiceNote').hidden = S.canSpeak() || !state.sound.voice;
   }
   var lastBtn = '';

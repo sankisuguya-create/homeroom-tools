@@ -13,6 +13,7 @@ var ClockSound = (function () {
     if (!AC) return;
     if (!ctx) { ctx = new AC(); master = ctx.createGain(); master.gain.value = vol; master.connect(ctx.destination); }
     if (ctx.state === 'suspended') ctx.resume();
+    decodeClips();
   }
   function ready() { return !!ctx && ctx.state === 'running'; }
   function setVol(v) { vol = v; if (master) master.gain.value = v; }
@@ -51,6 +52,11 @@ var ClockSound = (function () {
   /* 鳴らして、最初の1回が鳴り終わるまでのミリ秒を返す（声をその後ろに置くため）。
      loop の音は stop() まで、最長30秒くり返す。声がある時は2回目までの間をあけ、声を音と重ねない。 */
   function play(name, opts) {
+    if (opts && opts.delay) {   // 声のあとに鳴らす時
+      var o = { voiceGap: opts.voiceGap };
+      timers.push(setTimeout(function () { play(name, o); }, opts.delay));
+      return (TUNES[name] ? TUNES[name].ms : 0) + opts.delay;
+    }
     played.push(name);
     var t = TUNES[name];
     if (!t) return 0;
@@ -76,6 +82,31 @@ var ClockSound = (function () {
   }
   function ringing() { return timers.length > 0 && buses.length > 0; }
 
+  /* 録音した声（VOICEVOX で作った短い音声。voices.js に base64 で埋め込み）。
+     最初の操作で一度だけ AudioBuffer に変換し、以後は待ちなしで鳴らす。 */
+  var clipSrc = (typeof CLOCK_VOICES !== 'undefined') ? CLOCK_VOICES : {}, clips = {}, decoding = false;
+  function decodeClips() {
+    if (decoding || !ctx) return; decoding = true;
+    Object.keys(clipSrc).forEach(function (k) {
+      var bin = atob(clipSrc[k]), buf = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      ctx.decodeAudioData(buf.buffer).then(function (ab) { clips[k] = ab; }, function () {});
+    });
+  }
+  function hasClip(k) { return !!clipSrc[k]; }
+  /* 声を鳴らして長さ（ミリ秒）を返す。まだ変換が済んでいなければ 0 */
+  function playClip(k, delayMs) {
+    played.push('clip:' + k);
+    unlock(); decodeClips();
+    var ab = clips[k];
+    if (!ab) return 0;
+    var b = bus(), src = ctx.createBufferSource(), g = ctx.createGain();
+    g.gain.value = 1.6;   // 合成音より小さく聞こえるので持ち上げる
+    src.buffer = ab; src.connect(g); g.connect(b);
+    src.start(ctx.currentTime + (delayMs || 0) / 1000);
+    return Math.round(ab.duration * 1000);
+  }
+
   function pickVoice() {
     if (!window.speechSynthesis) return;
     var vs = speechSynthesis.getVoices().filter(function (v) { return /^ja/i.test(v.lang); });
@@ -96,5 +127,5 @@ var ClockSound = (function () {
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     }, delayMs || 0));
   }
-  return { unlock: unlock, ready: ready, setVol: setVol, play: play, stop: stop, ringing: ringing, speak: speak, canSpeak: canSpeak, played: played };
+  return { playClip: playClip, hasClip: hasClip, unlock: unlock, ready: ready, setVol: setVol, play: play, stop: stop, ringing: ringing, speak: speak, canSpeak: canSpeak, played: played };
 })();

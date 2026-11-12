@@ -48,8 +48,8 @@ ok((await p.getAttribute('#pv', 'data-phase')) === 'warn', '残り1分で色が�
 await ctx.clock.runFor(60 * 1000);
 ok((await p.getAttribute('#pv', 'data-phase')) === 'over', '0で「終了」');
 const played = await p.evaluate(() => window.__cc.sound.played.slice());
-ok(played.includes('warn') && played.includes('alarm'), '予告音と終了音が鳴る: ' + played.filter(x => !x.startsWith('voice')).join(','));
-ok(played.includes('voice:時間です'), '音声で「時間です」');
+ok(played.includes('alarm'), '予告音と終了音が鳴る: ' + played.filter(x => !x.startsWith('voice')).join(','));
+ok(['m1', 's30', 'c5', 'c4', 'c3', 'c2', 'c1', 'end'].every(k => played.includes('clip:female-' + k)), '声：残り1分・残り30秒・5〜1・そこまで');
 await ctx.clock.runFor(90 * 1000);
 ok((await p.textContent('#pv .cv-b1')) === '0:00' && (await p.getAttribute('#pv', 'data-phase')) === 'over', '終了後は 0:00 のまま（超過を数えない）');
 // ストップウォッチ：画面クリックとスペースでスタート／一時停止
