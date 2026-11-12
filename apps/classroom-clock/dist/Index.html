@@ -55,8 +55,8 @@
 
 /* アナログ：時計を左、読み取りを右。時計だけのときは時計を中央に置き、下に1行。 */
 .cv[data-face=analog] .cv-analog{display:block}
-.cv[data-face=analog] .cv-main{grid-template-columns:minmax(0,auto) minmax(34cqw,1fr)}
-.cv[data-face=analog] .cv-analog{max-width:62cqw}
+.cv[data-face=analog] .cv-main{grid-template-columns:auto minmax(30cqw,1fr)}
+.cv[data-face=analog] .cv-analog{width:auto;max-height:64cqw;max-width:none}
 .cv[data-face=analog] .cv-big{font-size:min(10cqw,30cqh)}
 .cv[data-face=analog] .cv-sub{font-size:6cqmin;white-space:nowrap}
 .cv[data-face=analog][data-mode=clock] .cv-main{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto}
@@ -67,20 +67,22 @@
 /* 残り1分・おわり：色に加えて、言葉（もうすぐ おわり／おわり）と面の大きさで伝える。 */
 .cv[data-phase=warn] .cv-big,.cv[data-phase=warn] .cv-label{color:var(--wtext)}
 .cv[data-phase=warn] .cv-bar i{background:var(--wedge)}
+/* 一時停止中は文字で書かず、数字を薄くして示す */
+.cv[data-phase=paused] .cv-big{opacity:.4}
 .cv[data-phase=over] .cv-big,.cv[data-phase=over] .cv-label{color:var(--alert)}
 
-.cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:3.5}
-.cv-tick{stroke:var(--ink);stroke-width:1.4}
-.cv-tick5{stroke:var(--ink);stroke-width:3.4}
-.cv-num{fill:var(--ink);font-size:23px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+.cv-face{fill:var(--bg);stroke:var(--ink);stroke-width:3}
+.cv-tick{stroke:var(--ink);stroke-width:1.2}
+.cv-tick5{stroke:var(--ink);stroke-width:3}
+.cv-num{fill:var(--ink);font-size:24px;font-weight:700;text-anchor:middle;dominant-baseline:central}
 .cv-sector{fill:var(--fill)}
 .cv-goal{stroke:var(--edge);stroke-width:3;stroke-linecap:round}
 .cv-tri{fill:var(--alert)}
 .cv[data-phase=warn] .cv-sector{fill:var(--wfill)}
 .cv[data-phase=warn] .cv-goal{stroke:var(--wedge)}
-.cv-hh{stroke:var(--ink);stroke-width:9;stroke-linecap:round}
+.cv-hh{stroke:var(--ink);stroke-width:8;stroke-linecap:round}
 .cv-mh{stroke:var(--ink);stroke-width:5;stroke-linecap:round}
-.cv-sh{stroke:var(--alert);stroke-width:1.8;stroke-linecap:round}
+.cv-sh{stroke:var(--alert);stroke-width:1.5;stroke-linecap:round}
 .cv-pin{fill:var(--ink)}
 
 /* 合図は音と同時に画面でも出す（消音・聞こえにくい児童への保険）。点滅は1秒に1回（3Hz未満）。 */
@@ -486,7 +488,7 @@ var ClockView = (function () {
       var five = i % 5 === 0;
       s += '<line class="' + (five ? 'cv-tick5' : 'cv-tick') + '" x1="100" y1="' + (five ? 4 : 4) + '" x2="100" y2="' + (five ? 17 : 10) + '" transform="rotate(' + (i * 6) + ' 100 100)"/>';
     }
-    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 65).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
+    for (var n = 1; n <= 12; n++) { var p = pt(n * 30, 116).split(' '); s += '<text class="cv-num" x="' + p[0] + '" y="' + p[1] + '">' + n + '</text>'; }
     s += '<line class="cv-goal" x1="100" y1="100" x2="100" y2="100"/>'
       + '<path class="cv-tri" d=""/>'
       /* 針は中心から先へだけ伸ばす（反対側へ突き出さない） */
@@ -501,7 +503,7 @@ var ClockView = (function () {
     root.className = 'cv';
     root.lang = 'ja';
     root.innerHTML = '<div class="cv-in"><div class="cv-top"><span class="cv-date"></span><span class="cv-now"></span></div>'
-      + '<div class="cv-main"><svg class="cv-analog" viewBox="-16 -16 232 232" aria-hidden="true">' + faceSvg() + '</svg>'
+      + '<div class="cv-main"><svg class="cv-analog" viewBox="-36 -36 272 272" aria-hidden="true">' + faceSvg() + '</svg>'
       + '<div class="cv-read"><div class="cv-label"></div><div class="cv-big"><span class="cv-b1"></span><span class="cv-b2"></span></div>'
       + '<div class="cv-gauge"><div class="cv-bar"><i></i><b></b></div><div class="cv-scale"></div></div><div class="cv-sub"></div><ol class="cv-laps"></ol></div></div></div>'
       + '<div class="cv-banner"></div><div class="cv-hint"></div>';
@@ -532,26 +534,26 @@ var ClockView = (function () {
         b1 = c.h + ':' + c.m; b2 = ':' + c.s;
         if (state.sched.on) {
           var sn = C.schedNow((state.sched.patterns[state.sched.pattern] || { rows: [] }).rows, now);
-          if (sn && sn.kind === 'in') { sub = sn.name + '　終了まで あと' + C.ceilMin(sn.endAt - now) + '分'; goal = sn.endAt; total = sn.endAt - sn.startAt; }
-          else if (sn) { sub = '次は ' + sn.name + '　あと' + C.ceilMin(sn.startAt - now) + '分'; goal = sn.startAt; total = C.HOUR; }
+          if (sn && sn.kind === 'in') { sub = sn.name; goal = sn.endAt; total = sn.endAt - sn.startAt; }
+          else if (sn) { sub = '→ ' + sn.name; goal = sn.startAt; total = C.HOUR; }
           if (goal !== null) bar = Math.min(1, (goal - now) / total);
         }
       } else if (mode === 'timer') {
         var t = state.timer, left = C.timerLeft(t, now);
         /* 終わったら 0:00 で止める（超過は数えない） */
-        if (left <= 0) { phase = 'over'; label = '終了'; b1 = '0:00'; bar = 0; total = t.dur; }
+        if (left <= 0) { phase = 'over'; b1 = '0:00'; bar = 0; total = t.dur; }
         else {
           var soon = left <= C.MIN && t.dur >= 2 * C.MIN;
-          b1 = C.fmtRemain(left); label = soon ? '残りわずか' : '残り';
-          phase = soon ? 'warn' : (t.running ? 'run' : 'idle');
+          b1 = C.fmtRemain(left); 
+          phase = soon ? 'warn' : (t.running ? 'run' : (t.started ? 'paused' : 'idle'));
           bar = Math.min(1, left / t.dur); total = t.dur;
-          if (t.running) { goal = t.endAt; sub = C.fmtHmJa(t.endAt + 999) + 'まで'; }
-          else if (t.started) sub = '一時停止中';
+          if (t.running) goal = t.endAt;
         }
       } else {
         var w = state.sw, sw = C.fmtSw(C.swElapsed(w, now));
-        label = 'ストップウォッチ'; b1 = sw.main; b2 = sw.tenth;
-        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '回目 ' + f.main + f.tenth; }).join('\n');
+        if (!w.running && w.acc) phase = 'paused';
+        b1 = sw.main; b2 = sw.tenth;
+        laps = w.laps.slice(-4).map(function (ms, i, a) { var f = C.fmtSw(ms); return (w.laps.length - a.length + i + 1) + '　' + f.main + f.tenth; }).join('\n');
       }
       attr('mode', root, 'data-mode', mode); attr('face', root, 'data-face', state.face);
       attr('theme', root, 'data-theme', state.theme); attr('phase', root, 'data-phase', phase);
@@ -564,7 +566,7 @@ var ClockView = (function () {
       attr('ticks', el.ticks, 'style', nmin >= 2 && nmin <= 60 ? '--n:' + nmin : 'display:none');
       /* 横棒の目盛りの数字：棒の位置＝その時点の残り分。10分以下は1分ごと、30分以下は5分ごと、それより長ければ10分ごと */
       var step = nmin <= 10 ? 1 : nmin <= 30 ? 5 : 10, sc = '';
-      if (bar >= 0 && nmin >= 1 && nmin <= 60) for (var m = 0; m <= nmin; m += step) sc += '<span style="left:' + (m / nmin * 100).toFixed(2) + '%">' + m + (m + step > nmin ? '分' : '') + '</span>';
+      if (bar >= 0 && nmin >= 1 && nmin <= 60) for (var m = 0; m <= nmin; m += step) sc += '<span style="left:' + (m / nmin * 100).toFixed(2) + '%">' + m + '</span>';
       if (last.scale !== sc) { last.scale = sc; el.scale.innerHTML = sc; }
       if (last.lapsTxt !== laps) {
         last.lapsTxt = laps; el.laps.textContent = '';
@@ -583,7 +585,7 @@ var ClockView = (function () {
         attr('sector', el.sector, 'd', show ? sectorPath(am, a1, 95.5) : '');
         var g = show ? pt(a1, 95.5).split(' ') : ['100', '100'];
         /* 終わりの位置を、円の外の赤い三角の角でも示す（角が中心を向く） */
-        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 100) + 'L' + pt(a1 - 4.2, 114) + 'L' + pt(a1 + 4.2, 114) + 'Z' : '');
+        attr('tri', el.tri, 'd', show ? 'M' + pt(a1, 99) + 'L' + pt(a1 - 3.6, 108) + 'L' + pt(a1 + 3.6, 108) + 'Z' : '');
         attr('gx', el.goal, 'x2', g[0]); attr('gy', el.goal, 'y2', g[1]);
       }
       var flash = !!(fx.flashUntil && now < fx.flashUntil);

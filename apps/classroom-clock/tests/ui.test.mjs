@@ -44,14 +44,14 @@ await p.click('#pv');
 await ctx.clock.runFor(1500);
 ok((await p.textContent('#pv .cv-b1')) === '4:59', '画面クリックでスタート');
 await ctx.clock.runFor(4 * 60 * 1000);
-ok((await p.getAttribute('#pv', 'data-phase')) === 'warn', '残り1分で「残りわずか」の状態');
+ok((await p.getAttribute('#pv', 'data-phase')) === 'warn', '残り1分で色が変わる状態');
 await ctx.clock.runFor(60 * 1000);
 ok((await p.getAttribute('#pv', 'data-phase')) === 'over', '0で「終了」');
 const played = await p.evaluate(() => window.__cc.sound.played.slice());
 ok(played.includes('warn') && played.includes('alarm'), '予告音と終了音が鳴る: ' + played.filter(x => !x.startsWith('voice')).join(','));
 ok(played.includes('voice:時間です'), '音声で「時間です」');
 await ctx.clock.runFor(90 * 1000);
-ok((await p.textContent('#pv .cv-b1')) === '0:00' && (await p.textContent('#pv .cv-label')) === '終了', '終了後は 0:00 のまま（超過を数えない）');
+ok((await p.textContent('#pv .cv-b1')) === '0:00' && (await p.getAttribute('#pv', 'data-phase')) === 'over', '終了後は 0:00 のまま（超過を数えない）');
 // ストップウォッチ：画面クリックとスペースでスタート／一時停止
 await p.click('#segMode [data-v=sw]');
 await p.click('#pv'); await ctx.clock.runFor(2000); await p.keyboard.press('Space');
@@ -76,6 +76,7 @@ ok(await pop.locator('button').count() === 0, 'モニター窓に操作の部品
 ok((await pop.textContent('.cv-b1')) === (await p.textContent('#pv .cv-b1')), 'モニターと見本が同じ表示');
 await p.reload();
 ok((await p.getAttribute('#pv', 'data-mode')) === 'timer', '読み込み直しても続きから');
+ok((await p.textContent('#pv .cv-label')) === '' , 'モニターの表示に文の説明を出さない');
 ok(errs.length === 0, 'エラーなし ' + errs.join(' / '));
 await browser.close();
 process.exit(fails ? 1 : 0);
