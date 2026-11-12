@@ -48,7 +48,7 @@
 
 | 出たメッセージ | 直し方 |
 |---|---|
-| VOICEVOX につながりません | VOICEVOX を起動してから、もう一度③の 3 を実行 |
+| VOICEVOX につながりません | VOICEVOX を起動してから、もう一度④を実行 |
 | 話者が見つかりません | VOICEVOX を最新版に入れ直す |
 | `python` は認識されていません（Windows） | ②の「Add python.exe to PATH」を入れ忘れ。Python を入れ直す |
 
