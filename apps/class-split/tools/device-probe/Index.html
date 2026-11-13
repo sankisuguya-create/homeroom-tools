@@ -17,7 +17,7 @@ function probe() {
   var ua = navigator.userAgent, d = navigator.userAgentData || null;
   var os = /CrOS/.test(ua) ? 'ChromeOS' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Macintosh|Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '不明';
   var tp = navigator.maxTouchPoints || 0;
-  if (os === 'macOS' && tp > 1) os = 'iPadOS（Macのふり）';
+  if (os === 'macOS' && tp > 0) os = 'iPadOS（Macのふり）';
   var long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
   var mobile = d ? !!d.mobile : /Mobi/.test(ua);
   var allow = { ChromeOS: 1, Windows: 1, macOS: 1 };
