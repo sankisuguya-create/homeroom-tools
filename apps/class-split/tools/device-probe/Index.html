@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><style>
+body{font-family:sans-serif;margin:16px;line-height:1.5;background:#fff;color:#1a1a1a}
+h1{font-size:20px;margin:0 0 8px}table{border-collapse:collapse;margin:8px 0}td,th{border:1px solid #c9d1d9;padding:4px 8px;text-align:left;font-size:14px}
+.ok{color:#0a6b2e;font-weight:700}.ng{color:#b00020;font-weight:700}button{font:inherit;padding:8px 14px;margin:4px 6px 4px 0}
+.note{color:#616870;font-size:13px}
+</style></head><body>
+<h1>端末の確かめ</h1>
+<p class="note">クラス替えの「端末の登録」が、この端末で使えるかを確かめるページです。個人情報は扱いません。</p>
+<div id="out"></div>
+<button id="w">① 書き込む</button><button id="r">② 読み直す（開き直した後に押す）</button><button id="c">消す</button>
+<div id="st"></div>
+<p class="note">手順：① を押す → このタブを閉じる → もう一度このページを開き、② を押す。「同じ値」と出れば、開き直しても残ります。<br>さらに、ブラウザを再起動してから ② も試してください。<br>最後に、画面を撮るかメモして、表の値と ①② の結果を知らせてください。</p>
+<script>
+// 判定：本番に入れる規則と同じ（許可するOSは本番では設定で変えられる。ここでは ChromeOS・Windows・macOS を見る）
+function probe() {
+  var ua = navigator.userAgent, d = navigator.userAgentData || null;
+  var os = /CrOS/.test(ua) ? 'ChromeOS' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Macintosh|Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : '不明';
+  var tp = navigator.maxTouchPoints || 0;
+  if (os === 'macOS' && tp > 1) os = 'iPadOS（Macのふり）';
+  var long = Math.max(screen.width, screen.height), short = Math.min(screen.width, screen.height);
+  var mobile = d ? !!d.mobile : /Mobi/.test(ua);
+  var allow = { ChromeOS: 1, Windows: 1, macOS: 1 };
+  var why = [];
+  if (!allow[os]) why.push('OS が ' + os);
+  if (mobile) why.push('携帯向け');
+  if (long < 1024) why.push('画面が小さい（長い辺 ' + long + 'px）');
+  return { os: os, uaPlatform: d ? d.platform : '（無し）', mobile: mobile, screen: screen.width + '×' + screen.height, long: long, short: short, dpr: devicePixelRatio, touch: tp, ok: !why.length, why: why, ua: ua };
+}
+var KEY = 'probe.secret';
+function read() { try { return localStorage.getItem(KEY); } catch (e) { return 'ERR:' + e.message; } }
+function show(msg) {
+  var p = probe(), esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  document.getElementById('out').innerHTML = '<table>' + [
+    ['判定', p.ok ? '<span class="ok">登録できる</span>' : '<span class="ng">弾く：' + esc(p.why.join('、')) + '</span>'],
+    ['OS', esc(p.os)], ['platform（自己申告）', esc(p.uaPlatform)], ['携帯向け', p.mobile ? 'はい' : 'いいえ'],
+    ['画面', esc(p.screen) + '（倍率 ' + p.dpr + '）'], ['タッチ点数', p.touch],
+    ['保存の場所', esc(location.origin)], ['保存した値', esc(read() || '（無し）')],
+    ['User-Agent', '<span class="note">' + esc(p.ua) + '</span>']
+  ].map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('') + '</table>';
+  if (msg) document.getElementById('st').innerHTML = msg;
+}
+document.getElementById('w').onclick = function () {
+  var v = Math.random().toString(36).slice(2, 10);
+  try { localStorage.setItem(KEY, v); try { sessionStorage.setItem('probe.w', v); } catch (e) {} show('<p class="ok">書き込みました：' + v + '</p>'); } catch (e) { show('<p class="ng">書き込めません：' + e.message + '</p>'); }
+};
+document.getElementById('r').onclick = function () {
+  var v = read(); show(v ? '<p class="ok">同じ値が残っています：' + v + '</p>' : '<p class="ng">残っていません</p>');
+};
+document.getElementById('c').onclick = function () { try { localStorage.removeItem(KEY); } catch (e) {} show('<p>消しました</p>'); };
+show(read() ? '<p class="ok">開いた時点で値が残っています：' + read() + '</p>' : '');
+// サーバーとのやりとりも通るか（本番では毎回、合い言葉を送る）
+if (window.google && google.script) google.script.run.withSuccessHandler(function (r) { document.getElementById('st').insertAdjacentHTML('beforeend', '<p class="note">サーバーとの通信：OK</p>'); }).echo(probe().os);
+</script></body></html>
