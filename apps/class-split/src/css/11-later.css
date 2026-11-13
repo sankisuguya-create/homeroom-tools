@@ -98,11 +98,6 @@
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
 
-/* 透かし：開いている人のアカウントを薄く敷く（画面の写真の出どころが分かるように）。操作は妨げない。印刷にも出る */
-#wm { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; overflow: hidden; opacity: .025; color: var(--ink, #000); user-select: none; }
-#wm .wmg { position: absolute; inset: -50%; display: flex; flex-wrap: wrap; gap: 90px 70px; align-content: center; justify-content: center; transform: rotate(-20deg); font: 11px sans-serif; white-space: nowrap; }
-@media print { #wm { opacity: .04; } }
-
 /* 放置の覆い：中身が透けない不透明。押すと戻る */
 #idle { position: fixed; inset: 0; z-index: 2147483001; border: 0; background: var(--bg, #eef1f4); color: var(--sub, #616870); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: inherit; cursor: pointer; }
 #idle[hidden] { display: none; }

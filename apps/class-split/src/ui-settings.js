@@ -134,7 +134,7 @@
     enter: function () {
       T.tab = 'attrs'; T.cand = null; T.log = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-      App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; App.paintMark(); render(); });
+      App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },
     click: function (t) {

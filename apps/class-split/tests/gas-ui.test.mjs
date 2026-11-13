@@ -120,15 +120,13 @@ await p2.goto('file://' + path.join(DIST, 'Index.html'));
 await p2.waitForSelector('[role=alert]');
 ok(true, '版がずれると警告');
 
-// 透かしと管理者：透かしに開いている人のメールが出る。管理者でない教員の設定は「表示」だけ
-ok((await p.locator('#wm').textContent()).includes(gas.env.user), '透かしに開いている人のメール');
+// 管理者：管理者でない教員の設定は「表示」だけ
 const st0 = gas.call('apiSettings').v.settings;
 gas.call('apiSaveSettings', { ...st0, teachers: [{ email: 'sato@edu.nishi.or.jp', grade: 5, cls: 1 }] });
 gas.env.user = 'sato@edu.nishi.or.jp';
 await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.gbtn');
 await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="view"]');
 ok(await p.locator('[data-stab="attrs"], [data-stab="year"], #ssave').count() === 0, '管理者でない教員には学校の設定と年度替わりを出さない');
-ok((await p.locator('#wm').textContent()).includes('sato@'), '透かしが開いている人に替わる');
 gas.env.user = 'stranger@edu.nishi.or.jp';
 ok(gas.call('apiListGrades').ok === false, '一覧に無い教員は読めない');
 gas.env.user = gas.env.owner;

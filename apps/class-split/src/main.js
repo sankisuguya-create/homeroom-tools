@@ -24,7 +24,7 @@
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
       return Promise.all([App.pf().listGrades(), App.pf().settings()]).then(function (r) {
         st.grades = r[0];
-        App.applySettings(r[1].settings); App.me = r[1].me; App.paintMark();
+        App.applySettings(r[1].settings); App.me = r[1].me;
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
         if (r[1].me.admin && App.pf().adminStatus && !App.adminChecked) {
@@ -130,15 +130,6 @@
     App.sv = undefined; App.saveState();
     App.paintTrial();
     App.go('menu');
-  };
-  // 透かし：開いている人のアカウントと日付を、斜めの文字で画面いっぱいに敷く
-  App.paintMark = function () {
-    var el = App.$('wm'), who = App.me && App.me.email;
-    if (!el) return;
-    if (!who) { el.innerHTML = ''; return; }
-    var d = new Date(), txt = App.esc(who + '  ' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()), h = '';
-    for (var i = 0; i < 60; i++) h += '<span>' + txt + '</span>';
-    el.innerHTML = '<div class="wmg">' + h + '</div>';
   };
   // 放置の覆い：操作が IDLE_MIN 分ないと画面を覆う（席を離れた間に児童がのぞく・触るのを防ぐ）。押すと戻る。データと入力中の内容はそのまま
   var IDLE_MIN = 3, idleAt = Date.now();
