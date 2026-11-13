@@ -396,7 +396,7 @@
       return later({ added: added, updated: updated, missing: missing });
     },
     savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
-    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0 } }); },
+    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0, admin: true, owner: true, ownerEmail: 'demo@' + C.TEACHER_DOMAIN } }); },
     saveSettings: function (x) { gen(); S.settings = clone(x); return later(S.settings); },
     leaveCandidates: function () {
       gen();

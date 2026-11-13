@@ -24,7 +24,7 @@
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
       return Promise.all([App.pf().listGrades(), App.pf().settings()]).then(function (r) {
         st.grades = r[0];
-        App.applySettings(r[1].settings); App.me = r[1].me;
+        App.applySettings(r[1].settings); App.me = r[1].me; App.paintMark();
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
       }, loadFailed);
@@ -126,6 +126,15 @@
     App.sv = undefined; App.saveState();
     App.paintTrial();
     App.go('menu');
+  };
+  // 透かし：開いている人のアカウントと日付を、斜めの文字で画面いっぱいに敷く
+  App.paintMark = function () {
+    var el = App.$('wm'), who = App.me && App.me.email;
+    if (!el) return;
+    if (!who) { el.innerHTML = ''; return; }
+    var d = new Date(), txt = App.esc(who + '  ' + d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()), h = '';
+    for (var i = 0; i < 60; i++) h += '<span>' + txt + '</span>';
+    el.innerHTML = '<div class="wmg">' + h + '</div>';
   };
   App.paintTrial();
   App.go('menu');

@@ -97,3 +97,8 @@
 .irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
+
+/* 透かし：開いている人のアカウントを薄く敷く（画面の写真の出どころが分かるように）。操作は妨げない。印刷にも出る */
+#wm { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; overflow: hidden; opacity: .08; color: var(--ink, #000); user-select: none; }
+#wm .wmg { position: absolute; inset: -50%; display: flex; flex-wrap: wrap; gap: 90px 70px; align-content: center; justify-content: center; transform: rotate(-20deg); font: 16px sans-serif; white-space: nowrap; }
+@media print { #wm { opacity: .12; } }

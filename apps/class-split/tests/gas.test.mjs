@@ -236,6 +236,28 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(hs.v.attrs.k5.help.length, 2, '有無だけの項目は2つまで');
     call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { keepYears: 0 }));
 
+    // 利用者と管理者：ドメインは市内共通なので、一覧に無い教員は通さない。所有者は一覧に無くても管理者
+    env.user = 'other@edu.nishi.or.jp';
+    assert.equal(call('apiListGrades').ok, false, '一覧に無い教員（他校）は拒否');
+    assert.equal(call('apiBoot', 4).ok, false);
+    assert.ok(ctx.doGet().h.includes('利用者に登録されていません'));
+    env.user = 'tanaka@edu.nishi.or.jp';
+    assert.equal(call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { teachers: [{ email: 'taro@kyoiku.edu.nishi.or.jp' }] })).ok, false, '児童のメールは一覧に入れられない');
+    assert.ok(call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { teachers: [{ email: 'Sato@edu.nishi.or.jp', grade: 4, cls: 1 }, { email: 'kyoto@edu.nishi.or.jp', admin: true }] })).ok);
+    assert.equal(call('apiSettings').v.me.admin, true, '所有者は一覧に無くても管理者');
+    env.user = 'sato@edu.nishi.or.jp';
+    assert.equal(call('apiListGrades').ok, true, '一覧の教員は通る');
+    assert.equal(call('apiSettings').v.me.admin, false);
+    const sx = call('apiSaveSettings', call('apiSettings').v.settings);
+    assert.equal(sx.ok, false, '管理者でない教員は設定を保存できない'); assert.ok(sx.err.includes('管理者'));
+    assert.equal(call('apiLeaveCandidates').ok, false); assert.equal(call('apiPurge', ['60000001']).ok, false, '管理者でない教員は記録を消せない');
+    env.user = 'kyoto@edu.nishi.or.jp';
+    assert.equal(call('apiSettings').v.me.admin, true, '印を付けた人は管理者');
+    assert.ok(call('apiSaveSettings', call('apiSettings').v.settings).ok);
+    env.owner = 'someone@edu.nishi.or.jp'; env.user = 'tanaka@edu.nishi.or.jp';
+    assert.equal(call('apiListGrades').ok, false, '所有者でなく一覧にも無ければ拒否');
+    env.owner = 'tanaka@edu.nishi.or.jp';
+
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
     ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);
     // 事案に関わった児童は、残す年数を0にしても卒業・転出から5年度は候補に出ず、消せない

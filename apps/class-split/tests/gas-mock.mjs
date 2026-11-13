@@ -33,6 +33,7 @@ export function makeGas(src) {
   const props = {};
   const env = {
     user: 'tanaka@edu.nishi.or.jp',
+    owner: 'tanaka@edu.nishi.or.jp', // スクリプトの所有者（自分として実行の「自分」）
     SpreadsheetApp: { create: n => { const s = new SS(n); store[s.id] = s; return s; }, openById: id => store[id] },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
@@ -41,7 +42,7 @@ export function makeGas(src) {
     HtmlService: { createHtmlOutput: h => ({ h, setTitle() { return this; } }), createHtmlOutputFromFile: f => ({ f, setTitle() { return this; }, addMetaTag() { return this; } }) },
     console
   };
-  env.Session = { getActiveUser: () => ({ getEmail: () => env.user }) };
+  env.Session = { getActiveUser: () => ({ getEmail: () => env.user }), getEffectiveUser: () => ({ getEmail: () => env.owner }) };
   const ctx = vm.createContext(env);
   vm.runInContext(src, ctx);
   const call = (fn, ...a) => JSON.parse(ctx[fn](...a));

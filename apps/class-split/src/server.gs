@@ -8,9 +8,11 @@ var DB_PROP = 'CLASS_SPLIT_DB_ID';
 // ===== 画面 =====
 function doGet() {
   var who = currentTeacher_();
-  if (!who.ok) {
+  if (!who.ok || !accessOf_(who.email).user) {
+    var msg = !who.ok ? 'このページは教員のアカウントで開いてください' : 'このアプリの利用者に登録されていません';
+    var sub = !who.ok ? ' では開けません。' : ' は登録されていません。使う場合は、このアプリの管理者に登録を頼んでください。';
     return HtmlService.createHtmlOutput('<!doctype html><html lang="ja"><meta charset="utf-8"><body style="font-family:sans-serif;padding:24px">' +
-      '<h1 style="font-size:20px">このページは教員のアカウントで開いてください</h1><p>' + escHtml_(who.email || '（アカウントが分かりません）') + ' では開けません。</p></body></html>')
+      '<h1 style="font-size:20px">' + msg + '</h1><p>' + escHtml_(who.email || '（アカウントが分かりません）') + sub + '</p></body></html>')
       .setTitle('クラス替え');
   }
   return HtmlService.createHtmlOutputFromFile('Index')
@@ -29,10 +31,29 @@ function currentTeacher_() {
   var ok = at > 0 && domain === CONFIG.TEACHER_DOMAIN && !student;
   return { ok: ok, email: email };
 }
+// 利用者：教員のドメインで、かつ設定の教員の一覧に載っている人と所有者だけ（ドメインは市内共通なので、ドメインだけでは他校の職員も通る）
+// 管理者：所有者と、一覧で管理者に印を付けた人。一覧が空の間は所有者だけが使える
+function ownerEmail_() {
+  try { return String(Session.getEffectiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { return ''; }
+}
+function accessOf_(email) {
+  email = String(email || '').toLowerCase();
+  var owner = ownerEmail_(), isOwner = !!email && email === owner, hit = null;
+  var list = [];
+  try { list = getSetting_('app', {}).teachers || []; } catch (e) { list = []; }
+  list.forEach(function (t) { if (String(t.email || '').trim().toLowerCase() === email) hit = t; });
+  return { user: isOwner || !!hit, admin: isOwner || !!(hit && hit.admin), owner: isOwner };
+}
 function requireTeacher_() {
   var who = currentTeacher_();
   if (!who.ok) throw userError_('教員のアカウントで開いてください');
+  if (!accessOf_(who.email).user) throw userError_('このアプリの利用者に登録されていません。管理者に登録を頼んでください');
   return who.email;
+}
+function requireAdmin_() {
+  var email = requireTeacher_();
+  if (!accessOf_(email).admin) throw userError_('この操作は管理者だけができます');
+  return email;
 }
 // 再試行しても直らない誤り（画面は再試行せずに表示する）
 function userError_(msg) { return new Error('USER:' + msg); }
@@ -748,14 +769,14 @@ function settings_() {
     slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || '') };
 }
 var apiSettings = api_(function () {
-  var email = requireTeacher_(), s = settings_(), me = { email: email, grade: 0, cls: -1 };
+  var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
   s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
   return { settings: s, me: me };
 });
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
 var apiSaveSettings = api_(function (s) {
-  var by = requireTeacher_();
+  var by = requireAdmin_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
@@ -772,8 +793,12 @@ var apiSaveSettings = api_(function (s) {
   });
   clean.types = (s.types || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 20);
   if (!clean.types.length) throw userError_('事案の種別を1つ以上入れてください');
-  clean.teachers = (s.teachers || []).filter(function (t) { return t && t.email; }).map(function (t) {
-    return { email: String(t.email).trim().toLowerCase(), grade: +t.grade || 0, cls: +t.cls || 0 };
+  clean.teachers = (s.teachers || []).filter(function (t) { return t && String(t.email || '').trim(); }).map(function (t) {
+    var e = String(t.email).trim().toLowerCase(), at = e.lastIndexOf('@');
+    if (at <= 0 || e.slice(at + 1) !== CONFIG.TEACHER_DOMAIN || /^\d{8}$/.test(e.slice(0, at))) throw userError_('教員のメールではありません：' + e.slice(0, 60));
+    return t;
+  }).map(function (t) {
+    return { email: String(t.email).trim().toLowerCase(), grade: +t.grade || 0, cls: +t.cls || 0, admin: !!t.admin };
   });
   withLock_(function () { setSetting_('app', clean); log_(by, 'saveSettings', 0); });
   return clean;
@@ -786,7 +811,7 @@ function rosterSheets_() {
 }
 // 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
 var apiLeaveCandidates = api_(function () {
-  requireTeacher_();
+  requireAdmin_();
   var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
   rosterSheets_().forEach(function (fy) {
@@ -802,7 +827,7 @@ var apiLeaveCandidates = api_(function () {
 // 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
 // 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
 var apiPurge = api_(function (ids) {
-  var by = requireTeacher_();
+  var by = requireAdmin_();
   if (!ids || !ids.length) throw userError_('消す児童を選んでください');
   var FY = CONFIG.fiscalYear(), set = {}, now = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
