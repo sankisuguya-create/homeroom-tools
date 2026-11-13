@@ -14,14 +14,18 @@ ENGINE = "http://127.0.0.1:50021"   # VOICEVOX が起動中に待ち受ける場
 
 # ---- ここだけ直せば声の調子を変えられる ----
 PHRASES = {
-    "m1": "残り1分", "s30": "残り30秒",
-    "c5": "ご", "c4": "よん", "c3": "さん", "c2": "にー", "c1": "いち",
-    "end": "そこまで",
+    # 文末の「。」で文の終わりとして読ませる（下がって終わる）。数字は1拍だと短く切れるので「ごー」「にー」と伸ばす
+    "m1": "残り1分。", "s30": "残り30秒。",
+    "c5": "ごー", "c4": "よん", "c3": "さん", "c2": "にー", "c1": "いち",
+    "end": "そこまで。",
 }
+# 語尾の母音を伸ばす倍率（「びょう」が「びょ」と短く聞こえるのを防ぐ）と、最短の長さ（秒）
+LAST_VOWEL_SCALE, LAST_VOWEL_MIN = 1.6, 0.14
 VOICES = {
     # キー: (話者名, スタイル名, 話速, 音高, 抑揚)
-    "female": ("冥鳴ひまり", "ノーマル", 1.0, 0.0, 1.0),
-    "male":   ("青山龍星", "ノーマル", 0.95, -0.04, 0.9),
+    # 音高は 0 のまま（ずらすと声質が崩れやすい）。抑揚は少し強めると平板さが減る
+    "female": ("冥鳴ひまり", "ノーマル", 1.05, 0.0, 1.15),
+    "male":   ("青山龍星", "ノーマル", 1.0, 0.0, 1.1),
     "robot":  ("玄野武宏", "ノーマル", 0.9, 0.0, 0.0),   # 抑揚0＝平らな読み。機械の響きは後でクラウド側で足す
 }
 # ------------------------------------------------
@@ -54,8 +58,11 @@ def main():
             return 1
         for pk, text in PHRASES.items():
             q = json.loads(call("POST", "/audio_query", text=text, speaker=sid))
+            # 最後の拍の母音を伸ばす（文末の母音は短く弱く読まれがち）
+            last = q["accent_phrases"][-1]["moras"][-1]
+            last["vowel_length"] = max(last["vowel_length"] * LAST_VOWEL_SCALE, LAST_VOWEL_MIN)
             q.update(speedScale=speed, pitchScale=pitch, intonationScale=into,
-                     prePhonemeLength=0.05, postPhonemeLength=0.1, outputSamplingRate=24000)
+                     prePhonemeLength=0.05, postPhonemeLength=0.2, outputSamplingRate=24000)
             wav = call("POST", "/synthesis", q, speaker=sid)
             with open(os.path.join(OUT, "%s-%s.wav" % (vk, pk)), "wb") as f:
                 f.write(wav)

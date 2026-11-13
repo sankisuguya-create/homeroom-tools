@@ -15,8 +15,10 @@ def robotize(x, sr):
 
 def finish(x, sr):
     """前後の無音を詰め、ピークを -1 dBFS にそろえる"""
-    a = np.abs(x); idx = np.where(a > a.max() * 0.02)[0]
-    x = x[max(0, idx[0] - int(sr * .01)):idx[-1] + int(sr * .04)]
+    # 語尾の弱い母音（「びょう」の「う」など）を切らないよう、閾値は低め・後ろに余白を長めに残し、最後は短く減衰させる
+    a = np.abs(x); idx = np.where(a > a.max() * 0.006)[0]
+    x = np.array(x[max(0, idx[0] - int(sr * .01)):idx[-1] + int(sr * .12)], dtype=np.float64)
+    n = min(len(x), int(sr * .03)); x[-n:] *= np.linspace(1, 0, n)
     return x / (np.abs(x).max() + 1e-9) * 0.89
 
 def opus_b64(x, sr):
