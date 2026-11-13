@@ -1023,7 +1023,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_9ddfe275a7a7';
+var SERVER_BUILD = 'BUILD_9fc987358d1c';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1091,6 +1091,7 @@ function setup() {
   var fy = CONFIG.fiscalYear();
   sheet_(ss, 'roster_' + fy, ROSTER_HEAD);
   sheet_(ss, 'attrs_' + fy, attrsHead_());
+  ensureWeeklyTrigger_();
   return ss.getUrl();
 }
 var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no'];
@@ -1253,6 +1254,7 @@ var apiListGrades = api_(function () {
 });
 
 var apiBoot = api_(function (grade) {
+  readLog_('boot', +grade);
   requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear(), entry = FY - grade + 1, years = [], kids = {}, idset = {};
@@ -1364,12 +1366,15 @@ var apiSavePairs = api_(function (grade, pairs, baseVer) {
 });
 
 // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ（消さない）
-var apiImportRoster = api_(function (fy, grade, rows) {
+// opt.dry：書かずに差分だけ返す（取り込む前の確認）。書く時は直前にデータの控えを取る
+var apiImportRoster = api_(function (fy, grade, rows, opt) {
   var by = requireTeacher_();
-  fy = +fy; grade = +grade;
+  fy = +fy; grade = +grade; opt = opt || {};
   var FY = CONFIG.fiscalYear();
   if (fy !== FY && fy !== FY + 1) throw userError_('今年度か来年度の名簿だけ入れられます');
   if (!rows || !rows.length) throw userError_('児童がいません');
+  if (opt.dry) return importDiff_(fy, grade, rows);
+  backup_('名簿の取り込みの前');
   return withLock_(function () {
     var name = 'roster_' + fy;
     sheet_(db_(), name, ROSTER_HEAD);
@@ -1391,6 +1396,24 @@ var apiImportRoster = api_(function (fy, grade, rows) {
     return { added: added.length, updated: updated, missing: missing };
   });
 });
+
+// 取り込む前の差分：追加・名前が変わる・ほかの学年にいる児童・貼った中にいない児童。
+// 別の学年や年度の表を貼って上書きする誤りを、書く前に見せて止める（名前の5割以上が変わる、またはほかの学年の児童がいる時は確かめを要る）
+function importDiff_(fy, grade, rows) {
+  var t = read_('roster_' + fy), byId = {}, ids = {}, classes = {}, added = 0, renamed = [], other = [];
+  t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
+  rows.forEach(function (x) {
+    var id = String(x.id), r = byId[id]; ids[id] = 1; classes[+x.cls] = 1;
+    if (!r) { added++; return; }
+    if (+r.grade !== grade) other.push(String(r.name) + '（' + r.grade + '年）');
+    else if (String(r.name).replace(/[\s　]/g, '') !== String(x.name).replace(/[\s　]/g, '')) renamed.push(String(r.name) + '→' + String(x.name).slice(0, 40));
+  });
+  var same = t.rows.filter(function (r) { return +r.grade === grade; });
+  var missing = same.filter(function (r) { return classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
+  var existing = rows.length - added - other.length;
+  return { added: added, renamed: renamed, other: other, missing: missing, existing: existing,
+    risky: other.length > 0 || (existing > 0 && renamed.length * 2 >= existing) };
+}
 
 // 事案の版：最後に直した時刻。直す時に読んだ時の版と比べ、ほかの先生が先に直していたら上書きしない
 function revOf_(at) { return at instanceof Date ? at.toISOString() : String(at || ''); }
@@ -1605,7 +1628,7 @@ var apiExportReport = api_(function (kind, values, incId, seq) {
   try { var it = file.getParents(); if (it.hasNext()) folder = it.next(); } catch (e) { folder = null; }
   var copy = folder ? folder.createFile(out) : DriveApp.createFile(out);
   log_(by, 'exportReport', +incId || 0);
-  return { name: name, url: copy.getUrl() };
+  return { name: name, url: copy.getUrl(), shared: sharedWith_(copy) };
 });
 
 // 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
@@ -1628,6 +1651,7 @@ var apiLoadDraft = api_(function (grade) {
 
 // 全校の事案（事案の一覧で、ほかの学年を探す時）
 var apiAllIncidents = api_(function () {
+  readLog_('allIncidents', 0);
   requireTeacher_();
   return incidents_();
 });
@@ -1635,6 +1659,7 @@ var apiAllIncidents = api_(function () {
 // 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
 // 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
 var apiSchoolKids = api_(function () {
+  readLog_('schoolKids', 0);
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
   return rosterRows_(FY).map(function (r) {
@@ -1647,6 +1672,7 @@ var apiSchoolKids = api_(function () {
 });
 
 var apiSchoolIncidents = api_(function () {
+  readLog_('schoolIncidents', 0);
   requireTeacher_();
   var cur = {};
   rosterRows_(CONFIG.fiscalYear()).forEach(function (r) { cur[r.id] = r; });
@@ -1776,6 +1802,75 @@ function removeRows_(name, pred) {
   return n;
 }
 
+// ===== 読み出しの記録 =====
+// 機微な読み出しも log に残す（誰が何を見たかを後から確かめられるように）。教員の確認を兼ねる。
+// 同じ人の同じ読み出しは10分に1回だけ書く（開き直すたびに行が増えないように）
+function readLog_(action, n) {
+  var by = requireTeacher_(), key = 'rl_' + by + '_' + action + '_' + n, c = CacheService.getScriptCache();
+  try { if (c.get(key)) return by; } catch (e) { return by; }
+  try { log_(by, action, n); c.put(key, '1', 600); } catch (e) { /* 記録に失敗しても読み出しは止めない */ }
+  return by;
+}
+var apiReadLog = api_(function () {
+  requireAdmin_();
+  var rows = read_('log').rows;
+  return rows.slice(-200).reverse().map(function (r) { return { at: r.at instanceof Date ? r.at.toISOString() : String(r.at), by: String(r.by), action: String(r.action), n: String(r.n) }; });
+});
+
+// ===== 共有の状態と控え =====
+// ファイルが所有者以外に見えるか：リンクの公開・編集者・閲覧者。見える相手の文を返す（空＝所有者だけ）
+function sharedWith_(file) {
+  var out = [];
+  try {
+    var acc = String(file.getSharingAccess());
+    if (acc !== 'PRIVATE') out.push(acc === 'ANYONE' || acc === 'ANYONE_WITH_LINK' ? 'リンクを知る全員' : 'ドメインのリンクを知る人');
+    var owner = ownerEmail_();
+    file.getEditors().concat(file.getViewers()).forEach(function (u) { var e = String(u.getEmail()).toLowerCase(); if (e && e !== owner && out.indexOf(e) < 0) out.push(e); });
+  } catch (e) { out.push('（確かめられませんでした）'); }
+  return out;
+}
+var BACKUP_FOLDER = 'クラス替え（控え）', BACKUP_KEEP = 6;
+function backupFolder_() {
+  var it = DriveApp.getFoldersByName(BACKUP_FOLDER);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(BACKUP_FOLDER);
+}
+// データの控え：スプレッドシートを丸ごと複製し、新しい順に BACKUP_KEEP 個だけ残す（個人情報の複製を増やしすぎない）
+function backup_(why) {
+  var id = PropertiesService.getScriptProperties().getProperty(DB_PROP);
+  if (!id) return '';
+  var folder = backupFolder_(), stamp = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd_HHmmss');
+  var copy = DriveApp.getFileById(id).makeCopy('クラス替え（控え）' + stamp + '_' + why, folder);
+  var list = [], it = folder.getFiles();
+  while (it.hasNext()) { var f = it.next(); if (String(f.getName()).indexOf('クラス替え（控え）') === 0) list.push(f); }
+  list.sort(function (a, b) { return b.getDateCreated() - a.getDateCreated(); });
+  list.slice(BACKUP_KEEP).forEach(function (f) { f.setTrashed(true); });
+  return copy.getId();
+}
+// 毎週の控え（setup が時刻のきっかけを作る）
+function weeklyBackup() { backup_('毎週'); }
+function ensureWeeklyTrigger_() {
+  var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'weeklyBackup'; });
+  if (!has) ScriptApp.newTrigger('weeklyBackup').timeBased().everyWeeks(1).onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
+}
+
+// ===== 管理者への知らせ =====
+// データ・スクリプト・控えのフォルダが所有者以外に共有されていないか。4〜5月は年度替わりの消し忘れも
+var apiAdminStatus = api_(function () {
+  var email = requireTeacher_();
+  if (!accessOf_(email).admin) return { warnings: [] };
+  var w = [], id = PropertiesService.getScriptProperties().getProperty(DB_PROP);
+  var chk = function (label, file) { var s = sharedWith_(file); if (s.length) w.push({ kind: 'share', text: label + 'が所有者以外にも見える状態です：' + s.slice(0, 5).join('、') + (s.length > 5 ? ' ほか' : '') + '。共有をやめてください（アプリの利用者の制限が効かなくなります）' }); };
+  try { if (id) chk('データのスプレッドシート', DriveApp.getFileById(id)); } catch (e) { w.push({ kind: 'share', text: 'データのスプレッドシートの共有の状態を確かめられませんでした' }); }
+  try { chk('このアプリのスクリプト', DriveApp.getFileById(ScriptApp.getScriptId())); } catch (e) { /* スクリプトの所在によっては読めない */ }
+  try { var it = DriveApp.getFoldersByName(BACKUP_FOLDER); if (it.hasNext()) chk('控えのフォルダ', it.next()); } catch (e) { }
+  var m = +Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M');
+  if (m === 4 || m === 5) {
+    var n = leaveCandidates_().length;
+    if (n) w.push({ kind: 'purge', text: '卒業・転出して残す年数を過ぎた児童が' + n + '人います。設定の「年度替わり」で記録を消してください' });
+  }
+  return { warnings: w };
+});
+
 // ===== 設定 =====
 // 項目の名前・頭文字・既定の重み、事案の種別、担任と学級、卒業・転出後に残す年数。正本は settings シートの app
 function defaultSettings_() {
@@ -1831,8 +1926,8 @@ function rosterSheets_() {
     .map(function (n) { return +n.slice(7); }).sort();
 }
 // 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
-var apiLeaveCandidates = api_(function () {
-  requireAdmin_();
+var apiLeaveCandidates = api_(function () { requireAdmin_(); return leaveCandidates_(); });
+function leaveCandidates_() {
   var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
   rosterSheets_().forEach(function (fy) {
@@ -1844,12 +1939,13 @@ var apiLeaveCandidates = api_(function () {
   return Object.keys(last).filter(function (id) { return !now[id] && CONFIG.purgeable(last[id].fy, FY, keep, !!cnt[id]); }).map(function (id) {
     var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
   }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
-});
+}
 // 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
 // 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
 var apiPurge = api_(function (ids) {
   var by = requireAdmin_();
   if (!ids || !ids.length) throw userError_('消す児童を選んでください');
+  backup_('記録を消す前');
   var FY = CONFIG.fiscalYear(), set = {}, now = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
   ids.forEach(function (id) { if (now[id]) throw userError_('今年度の名簿にいる児童は消せません'); set[String(id)] = 1; });

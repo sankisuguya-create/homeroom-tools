@@ -27,6 +27,10 @@
         App.applySettings(r[1].settings); App.me = r[1].me; App.paintMark();
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
+        if (r[1].me.admin && App.pf().adminStatus && !App.adminChecked) {
+          App.adminChecked = true;
+          App.pf().adminStatus().then(function (a) { App.adminWarnings = a.warnings || []; if (App.adminWarnings.length && App.st.screen === 'menu') App.screens.menu.render(); }, function () {});
+        }
       }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
@@ -136,6 +140,16 @@
     for (var i = 0; i < 60; i++) h += '<span>' + txt + '</span>';
     el.innerHTML = '<div class="wmg">' + h + '</div>';
   };
+  // 放置の覆い：操作が IDLE_MIN 分ないと画面を覆う（席を離れた間に児童がのぞく・触るのを防ぐ）。押すと戻る。データと入力中の内容はそのまま
+  var IDLE_MIN = 3, idleAt = Date.now();
+  var touch = function () { idleAt = Date.now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
+  setInterval(function () {
+    var cv = App.$('idle');
+    if (cv && cv.hidden && Date.now() - idleAt > IDLE_MIN * 60000) { cv.hidden = false; tip.hidden = true; }
+  }, 10000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { var cv = App.$('idle'); if (cv) cv.hidden = false; } });
+  App.$('idle').addEventListener('click', function (e) { e.stopPropagation(); App.$('idle').hidden = true; touch(); });
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);

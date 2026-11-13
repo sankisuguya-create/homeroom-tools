@@ -5,7 +5,9 @@
   App.screens.menu = {
     render: function () {
       var st = App.st;
-      App.$('main').innerHTML = '<div class="menu">' +
+      // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
+      var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
+      App.$('main').innerHTML = '<div class="menu">' + warn +
         '<section><h2>学年を選ぶ</h2><div class="grades">' + st.grades.map(function (x) {
           return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + x.grade + '年<small>' + x.count + '人・' + x.classes + '学級' + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +

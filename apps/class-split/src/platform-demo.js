@@ -381,9 +381,17 @@
       return later(S.decisions[grade]);
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
-    importRoster: function (fy, grade, rows) {
+    adminStatus: function () { return later({ warnings: [] }); },
+    readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    importRoster: function (fy, grade, rows, opt) {
       gen();
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
+      if (opt && opt.dry) {
+        var ren = [], add = 0; cur.forEach(function (r) { byId[r.id] = r; });
+        rows.forEach(function (x) { if (!byId[x.id]) add++; else if (S.kids[x.id].name.replace(/[\s　]/g, '') !== x.name.replace(/[\s　]/g, '')) ren.push(S.kids[x.id].name + '→' + x.name); });
+        var ex = rows.length - add;
+        return later({ added: add, renamed: ren, other: [], missing: [], existing: ex, risky: ex > 0 && ren.length * 2 >= ex });
+      }
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;

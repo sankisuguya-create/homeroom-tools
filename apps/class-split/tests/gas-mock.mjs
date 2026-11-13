@@ -31,13 +31,55 @@ export function makeGas(src) {
     getSheets() { return Object.values(this.sheets); }
   }
   const props = {};
+  const cache = {};
+  // ドライブ：共有の状態（sharing・editors・viewers）を持つファイルとフォルダ。テストから drive.share で変えられる
+  const drive = {
+    meta: {}, folders: {}, triggers: [], seq: 1,
+    iter: a => { let i = 0; return { hasNext: () => i < a.length, next: () => a[i++] }; },
+    m: id => (drive.meta[id] = drive.meta[id] || { sharing: 'PRIVATE', editors: [], viewers: [], trashed: false, created: new Date(Date.now() + drive.seq++) }),
+    wrap: (id, name) => {
+      const m = drive.m(id);
+      return {
+        getId: () => id, getName: () => name(), getUrl: () => 'mock://' + id, getSharingAccess: () => m.sharing,
+        getEditors: () => m.editors.map(e => ({ getEmail: () => e })), getViewers: () => m.viewers.map(e => ({ getEmail: () => e })),
+        getDateCreated: () => m.created, setTrashed: t => { m.trashed = t; },
+        makeCopy: (n, folder) => { const cid = 'copy' + drive.seq++; drive.copies[cid] = n; if (folder) folder._files.push(cid); return drive.file(cid); }
+      };
+    },
+    copies: {},
+    file: id => {
+      if (files[id]) return drive.wrap(id, () => files[id]);
+      if (store[id]) return drive.wrap(id, () => store[id].name);
+      if (drive.copies[id]) return drive.wrap(id, () => drive.copies[id]);
+      if (id === 'SCRIPT1') return drive.wrap(id, () => 'script');
+      return null;
+    },
+    folder: n => {
+      const id = 'folder' + drive.seq++, f = drive.wrap(id, () => n);
+      f._files = []; f.getFiles = () => drive.iter(f._files.filter(c => !drive.m(c).trashed).map(c => drive.file(c)));
+      return (drive.folders[id] = f);
+    },
+    share: (id, o) => Object.assign(drive.m(id), o),
+    live: () => Object.keys(drive.copies).filter(c => !drive.m(c).trashed)
+  };
   const env = {
     user: 'tanaka@edu.nishi.or.jp',
     owner: 'tanaka@edu.nishi.or.jp', // スクリプトの所有者（自分として実行の「自分」）
     SpreadsheetApp: { create: n => { const s = new SS(n); store[s.id] = s; return s; }, openById: id => store[id] },
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
-    DriveApp: { getFileById: id => { if (!files[id]) throw new Error('no access'); return { getName: () => files[id] }; } },
+    DriveApp: {
+      getFileById: id => { const f = drive.file(id); if (!f) throw new Error('no access'); return f; },
+      getFoldersByName: n => drive.iter(Object.values(drive.folders).filter(f => f.getName() === n)),
+      createFolder: n => drive.folder(n)
+    },
+    ScriptApp: {
+      getScriptId: () => 'SCRIPT1',
+      getProjectTriggers: () => drive.triggers.map(h => ({ getHandlerFunction: () => h })),
+      WeekDay: { SUNDAY: 'SUNDAY' },
+      newTrigger: h => { const b = { timeBased: () => b, everyWeeks: () => b, onWeekDay: () => b, atHour: () => b, create: () => { drive.triggers.push(h); return b; } }; return b; }
+    },
+    CacheService: { getScriptCache: () => ({ get: k => cache[k] || null, put: (k, v) => { cache[k] = v; } }) },
     Utilities: { formatDate: d => d.toISOString().slice(0, 10) },
     HtmlService: { createHtmlOutput: h => ({ h, setTitle() { return this; } }), createHtmlOutputFromFile: f => ({ f, setTitle() { return this; }, addMetaTag() { return this; } }) },
     console
@@ -47,6 +89,6 @@ export function makeGas(src) {
   vm.runInContext(src, ctx);
   const call = (fn, ...a) => JSON.parse(ctx[fn](...a));
   const db = () => store[props.CLASS_SPLIT_DB_ID];
-  return { ctx, env, call, db };
+  return { ctx, env, call, db, drive, props };
 }
 

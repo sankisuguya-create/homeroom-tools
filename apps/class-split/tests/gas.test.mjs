@@ -16,7 +16,7 @@ const strip = h => h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm
 
 for (const [label, src] of [['そのまま', CODE], ['コメントを消した形', strip(CODE)]]) {
   test(`サーバー（${label}）：名簿・配慮項目・案・事案・決定と取り消し`, () => {
-    const { ctx, env, call, db } = makeGas(src);
+    const { ctx, env, call, db, drive, props } = makeGas(src);
     ctx.setup();
     const FY = ctx.CONFIG.fiscalYear();
     // 4年 2学級×4人
@@ -257,6 +257,42 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.owner = 'someone@edu.nishi.or.jp'; env.user = 'tanaka@edu.nishi.or.jp';
     assert.equal(call('apiListGrades').ok, false, '所有者でなく一覧にも無ければ拒否');
     env.owner = 'tanaka@edu.nishi.or.jp';
+
+    // 取り込む前の差分：名前の半分以上が変わる・ほかの学年の児童がいる時は risky
+    const fake = [1, 2, 3, 4].map(n => ({ id: String(40000010 + n), name: '別人' + n, kana: '', male: true, cls: 0, no: n }));
+    const dr = call('apiImportRoster', FY, 4, fake, { dry: true });
+    assert.ok(dr.ok, dr.err); assert.equal(dr.v.renamed.length, 4); assert.equal(dr.v.risky, true, '名前が全部変わるのは別の表の疑い');
+    const dr2 = call('apiImportRoster', FY, 5, [{ id: '40000011', name: '児童11', kana: '', male: true, cls: 0, no: 1 }], { dry: true });
+    assert.equal(dr2.v.other.length, 1); assert.equal(dr2.v.risky, true, 'ほかの学年の児童がいる');
+    const cur = db().getSheetByName('roster_' + FY).data.find(r => r[0] === '40000012');
+    const dr3 = call('apiImportRoster', FY, 4, [{ id: '40000012', name: ' ' + String(cur[1]).replace(/(.)/, '$1　'), kana: '', male: true, cls: 0, no: 2 }, { id: '40009999', name: '新入', kana: '', male: false, cls: 0, no: 9 }], { dry: true });
+    assert.deepEqual([dr3.v.added, dr3.v.renamed.length, dr3.v.risky], [1, 0, false], '空白の違いは名前の変更にしない');
+    const nRows = db().getSheetByName('roster_' + FY).data.length;
+    call('apiImportRoster', FY, 4, fake, { dry: true });
+    assert.equal(db().getSheetByName('roster_' + FY).data.length, nRows, '差分の確認では書かない');
+    // 控え：取り込みの前に取る。6個を超えたら古いものから捨てる
+    const bk0 = drive.live().length;
+    call('apiImportRoster', FY, 4, [{ id: '40000011', name: '児童11', kana: 'じどう11', male: true, cls: 0, no: 1 }]);
+    assert.equal(drive.live().length, bk0 + 1, "取り込みの前に控え");
+    for (let i = 0; i < 8; i++) ctx.weeklyBackup();
+    assert.equal(drive.live().length, 6, '控えは6個まで');
+    assert.ok(drive.triggers.includes('weeklyBackup'), 'setup が毎週の控えのきっかけを作る');
+    // 共有の警告：データのスプレッドシートを共有すると管理者に知らせる。管理者でなければ空
+    assert.equal(call('apiAdminStatus').v.warnings.length, 0);
+    drive.share(props.CLASS_SPLIT_DB_ID, { editors: ['sato@edu.nishi.or.jp'] });
+    const ws = call('apiAdminStatus').v.warnings;
+    assert.ok(ws.some(w => w.kind === 'share' && w.text.includes('sato@')), '共有の相手を出す');
+    env.user = 'sato@edu.nishi.or.jp'; assert.equal(call('apiAdminStatus').v.warnings.length, 0, '管理者でない人には出さない');
+    assert.equal(call('apiReadLog').ok, false, '記録は管理者だけ');
+    call('apiBoot', 4); env.user = 'tanaka@edu.nishi.or.jp';
+    drive.share(props.CLASS_SPLIT_DB_ID, { editors: [], sharing: 'ANYONE_WITH_LINK' });
+    assert.ok(call('apiAdminStatus').v.warnings[0].text.includes('リンクを知る全員'));
+    drive.share(props.CLASS_SPLIT_DB_ID, { sharing: 'PRIVATE' });
+    // 読み出しの記録：開いた学年を残す（同じ人の同じ読み出しは10分に1回）
+    const lg = call('apiReadLog').v;
+    assert.ok(lg.some(r => r.by === 'sato@edu.nishi.or.jp' && r.action === 'boot' && r.n === '4'), '読み出しが記録に残る');
+    const nb = lg.length; call('apiBoot', 4); call('apiBoot', 4);
+    assert.ok(call('apiReadLog').v.length <= nb + 1, '開き直しで行が増え続けない');
 
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
     ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);

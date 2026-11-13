@@ -827,9 +827,15 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
 
 /* 透かし：開いている人のアカウントを薄く敷く（画面の写真の出どころが分かるように）。操作は妨げない。印刷にも出る */
-#wm { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; overflow: hidden; opacity: .08; color: var(--ink, #000); user-select: none; }
-#wm .wmg { position: absolute; inset: -50%; display: flex; flex-wrap: wrap; gap: 90px 70px; align-content: center; justify-content: center; transform: rotate(-20deg); font: 16px sans-serif; white-space: nowrap; }
-@media print { #wm { opacity: .12; } }
+#wm { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; overflow: hidden; opacity: .025; color: var(--ink, #000); user-select: none; }
+#wm .wmg { position: absolute; inset: -50%; display: flex; flex-wrap: wrap; gap: 90px 70px; align-content: center; justify-content: center; transform: rotate(-20deg); font: 11px sans-serif; white-space: nowrap; }
+@media print { #wm { opacity: .04; } }
+
+/* 放置の覆い：中身が透けない不透明。押すと戻る */
+#idle { position: fixed; inset: 0; z-index: 2147483001; border: 0; background: var(--bg, #eef1f4); color: var(--sub, #616870); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: inherit; cursor: pointer; }
+#idle[hidden] { display: none; }
+#idle b { font-size: 22px; color: var(--ink, #1A1A1A); }
+@media print { #idle { display: none !important; } }
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -837,6 +843,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
 <div id="wm" aria-hidden="true"></div>
+<button id="idle" hidden aria-label="画面を表示する"><b>画面を隠しています</b><span>押すと戻ります</span></button>
 <div class="toast" id="toast" hidden></div>
 <script>
 /* ▼ src/config.js から。直すのは src のほう ▼ */
@@ -2379,9 +2386,17 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return later(S.decisions[grade]);
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
-    importRoster: function (fy, grade, rows) {
+    adminStatus: function () { return later({ warnings: [] }); },
+    readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    importRoster: function (fy, grade, rows, opt) {
       gen();
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
+      if (opt && opt.dry) {
+        var ren = [], add = 0; cur.forEach(function (r) { byId[r.id] = r; });
+        rows.forEach(function (x) { if (!byId[x.id]) add++; else if (S.kids[x.id].name.replace(/[\s　]/g, '') !== x.name.replace(/[\s　]/g, '')) ren.push(S.kids[x.id].name + '→' + x.name); });
+        var ex = rows.length - add;
+        return later({ added: add, renamed: ren, other: [], missing: [], existing: ex, risky: ex > 0 && ren.length * 2 >= ex });
+      }
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;
@@ -2826,7 +2841,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   App.screens.menu = {
     render: function () {
       var st = App.st;
-      App.$('main').innerHTML = '<div class="menu">' +
+      // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
+      var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
+      App.$('main').innerHTML = '<div class="menu">' + warn +
         '<section><h2>学年を選ぶ</h2><div class="grades">' + st.grades.map(function (x) {
           return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + x.grade + '年<small>' + x.count + '人・' + x.classes + '学級' + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +
@@ -3514,6 +3531,27 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       onOk: function () {
         if (!P.res || !P.res.rows.length) return;
         var rows = P.res.rows;
+        App.closeDlg();
+        // 書く前に差分を見せる。別の学年・年度の表の疑いがある時は、語を打って確かめる
+        App.pf().importRoster(fy, grade, rows, { dry: true }).then(function (df) { importConfirm(fy, grade, rows, df); }, function (e) { App.toast(String(e && e.message || e)); });
+      }
+    });
+  }
+  function importConfirm(fy, grade, rows, df) {
+    var esc = App.esc, word = df.risky ? '上書きする' : '';
+    var list = function (title, a) { return a.length ? '<div><b>' + title + ' ' + a.length + '人</b><div class="note">' + esc(a.slice(0, 8).join('、')) + (a.length > 8 ? ' ほか' + (a.length - 8) + '人' : '') + '</div></div>' : ''; };
+    App.openDlg({
+      focus: word ? 'iword' : 'okbtn',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="取り込む前の確認" style="max-width:640px"><h2>' + fy + '年度 ' + grade + '年 に取り込む前の確認</h2>' +
+          '<div>追加 <b>' + df.added + '人</b>・すでにいる児童 <b>' + df.existing + '人</b></div>' +
+          list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
+          (df.risky ? '<div class="warnbox">別の学年や年度の表を貼っていないか確かめてください（' + (df.other.length ? 'ほかの学年の児童がいます' : 'すでにいる児童の半分以上で名前が変わります') + '）。取り込む直前に、データの控えを自動で取ります。</div>' +
+            '<label>このまま取り込むなら「<b>' + word + '</b>」と入力<br><input type="text" id="iword" style="width:100%;margin-top:4px" autocomplete="off"></label>' : '<p class="note">取り込む直前に、データの控えを自動で取ります。</p>') +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">取り込む（' + rows.length + '人）</button></div></div></div>';
+      },
+      onOk: function () {
+        if (word && App.$('iword').value.trim() !== word) { App.toast('入力した語が違います'); return; }
         App.closeDlg();
         App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
           return App.reload().then(function () {
@@ -4326,7 +4364,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           (kind !== 'f2' ? '<p class="note">加害の児童（関係図から）：' + (harms.map(function (id) { return esc(kidName(id)); }).join('、') || 'なし') + (harms.length > C.REPORT.harmRows.length ? '。' + (C.REPORT.harmRows.length + 1) + '人目からは人数だけを書きます' : '') + '</p>' : '') +
           '<div class="acts" style="justify-content:flex-start"><button class="btn primary" id="ixls"' + (st.pick.length ? '' : ' disabled') + '>Excel を作る' + (vs.length > 1 ? (st.pick.length ? '（選んだ' + st.pick.length + '人分・' + st.pick.length + 'ファイル）' : '（被害児童を選んでください）') : '（様式を複製して書き込む）') + '</button><span class="note">' + (App.mode === 'demo' ? (App.pf().template ? '選んだ様式に書き込み、ダウンロードします（元のファイルは変えません）' : '試行では、市教委の様式の Excel（.xlsx）をこの端末から選んでください') : App.settings && App.settings.template ? '元の様式は変えず、同じフォルダに複製を作ります' : '様式のファイルが設定されていません（設定の「事案と報告書」）') + '</span>' +
             (App.mode === 'demo' ? '<label class="btn ib">様式の Excel を選ぶ<input type="file" id="itmpl" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden></label>' + (App.pf().templateName ? '<span class="note">' + esc(App.pf().templateName) + '</span>' : '') : '') + '</div>' +
-          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '"' + (m.download ? ' download="' + esc(m.name) + '"' : ' target="_blank" rel="noopener"') + '>' + esc(m.name) + (m.download ? ' ⤓' : ' ↗') + '</a>（' + esc(kidName(m.victim)) + '）</div>'; }).join('') + '</div>' : '') +
+          (st.made.length ? '<div class="notebox">作りました：' + st.made.map(function (m) { return '<div><a href="' + esc(m.url) + '"' + (m.download ? ' download="' + esc(m.name) + '"' : ' target="_blank" rel="noopener"') + '>' + esc(m.name) + (m.download ? ' ⤓' : ' ↗') + '</a>（' + esc(kidName(m.victim)) + '）' + (m.shared && m.shared.length ? '<div class="warnbox">このファイルは所有者以外にも見えます：' + esc(m.shared.slice(0, 5).join('、')) + '。報告書には児童の情報が入るので、フォルダの共有を見直してください</div>' : '') + '</div>'; }).join('') + '</div>' : '') +
           '<h3>コピー用（Excel が作れない時）</h3><table class="icopy"><thead><tr><th>欄</th><th>セル</th><th>書く値</th><th></th></tr></thead><tbody>' +
           refs.map(function (r) { return '<tr><td>' + esc(L[r] || r) + '</td><td>' + r + '</td><td><pre>' + esc(String(cells[r])) + '</pre></td><td><button class="btn" data-icopy="' + r + '">コピー</button></td></tr>'; }).join('') +
           (refs.length ? '' : '<tr><td colspan="4" class="note">書く値がありません</td></tr>') + '</tbody></table>' +
@@ -5586,13 +5624,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
     // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
     var admin = !!(App.me && App.me.admin);
     if (!admin) T.tab = 'view';
-    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 4).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[4]) +
-      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
+    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 5).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[5]) +
+      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
       (admin ? '' : '<p class="note">配慮項目・利用者と担任・事案と報告書・年度替わりの設定は、管理者だけが変えられます。変えたい時は管理者に頼んでください。</p>');
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
@@ -5630,12 +5668,29 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       h += '<h3 style="margin:0 0 6px">クラス分けの盤面のアイコンの大きさ</h3><div class="lvs">' + App.ICON_SCALES.map(function (x) {
         return '<button class="lv" data-isz="' + x.v + '" aria-pressed="' + (x.v === cur) + '">' + x.label + '</button>';
       }).join('') + '</div><p class="note">押すとすぐに変わり、この端末だけに覚えます（ほかの先生の画面は変わりません）。<br>「標準」は、＋のアイコンが隣に重ならない範囲でいちばん大きい大きさです。大きくすると、＋のアイコンや＋の印が隣に重なることがあります。</p>';
+    } else if (T.tab === 'log') {
+      h += logTab();
     } else {
       h += yearTab();
     }
     // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
     h += '<p class="note" style="margin-top:16px">版：' + esc(App.buildLabel()) + '</p>';
     App.$('main').innerHTML = h + '</div>';
+  }
+
+  // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
+  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', classNames: '組の番号を決めた' };
+  function logTab() {
+    var esc = App.esc;
+    if (!T.log) {
+      App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
+      return '<div class="empty">読み込んでいます…</div>';
+    }
+    return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
+      (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
+        var d = new Date(r.at), at = isNaN(d) ? r.at : d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        return '<tr><td>' + esc(at) + '</td><td style="text-align:left">' + esc(r.by) + '</td><td style="text-align:left">' + esc(LOG_NAMES[r.action] || r.action) + '</td><td>' + esc(r.n) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<div class="empty">記録はありません</div>');
   }
 
   function yearTab() {
@@ -5678,14 +5733,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function set(fn) { fn(); T.dirty = true; }
   App.screens.settings = {
     enter: function () {
-      T.tab = 'attrs'; T.cand = null; T.dirty = false;
+      T.tab = 'attrs'; T.cand = null; T.log = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; App.paintMark(); render(); });
     },
     render: function () { if (T.s) render(); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }
@@ -5756,6 +5811,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         App.applySettings(r[1].settings); App.me = r[1].me; App.paintMark();
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
+        if (r[1].me.admin && App.pf().adminStatus && !App.adminChecked) {
+          App.adminChecked = true;
+          App.pf().adminStatus().then(function (a) { App.adminWarnings = a.warnings || []; if (App.adminWarnings.length && App.st.screen === 'menu') App.screens.menu.render(); }, function () {});
+        }
       }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
@@ -5865,6 +5924,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     for (var i = 0; i < 60; i++) h += '<span>' + txt + '</span>';
     el.innerHTML = '<div class="wmg">' + h + '</div>';
   };
+  // 放置の覆い：操作が IDLE_MIN 分ないと画面を覆う（席を離れた間に児童がのぞく・触るのを防ぐ）。押すと戻る。データと入力中の内容はそのまま
+  var IDLE_MIN = 3, idleAt = Date.now();
+  var touch = function () { idleAt = Date.now(); };
+  ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
+  setInterval(function () {
+    var cv = App.$('idle');
+    if (cv && cv.hidden && Date.now() - idleAt > IDLE_MIN * 60000) { cv.hidden = false; tip.hidden = true; }
+  }, 10000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { var cv = App.$('idle'); if (cv) cv.hidden = false; } });
+  App.$('idle').addEventListener('click', function (e) { e.stopPropagation(); App.$('idle').hidden = true; touch(); });
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);

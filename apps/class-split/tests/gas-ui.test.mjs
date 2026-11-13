@@ -89,6 +89,11 @@ await p.fill('#ptxt', '児童ID\t名前\tよみ\t性別\t組\t番号\n50000101\t
 await p.waitForSelector('#okbtn:not([disabled])');
 ok((await p.locator('#psum').textContent()).includes('2人'), '貼ると読み取った人数が出る');
 await p.keyboard.press('Control+Enter');
+await p.waitForSelector('[aria-label="取り込む前の確認"]');
+const conf = await p.locator('[aria-label="取り込む前の確認"]').textContent();
+ok(conf.includes('追加 1人') && !conf.includes('上書きする'), '取り込む前に差分を見せる（疑いが無ければ語の入力は要らない）');
+ok(!gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), '確認の前は書かない');
+await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
 await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
 ok(gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), '名簿がシートに入った');
 ok(await p.locator('table.r tbody tr').count() === 31, '1組が31人に');
@@ -127,6 +132,21 @@ ok((await p.locator('#wm').textContent()).includes('sato@'), '透かしが開い
 gas.env.user = 'stranger@edu.nishi.or.jp';
 ok(gas.call('apiListGrades').ok === false, '一覧に無い教員は読めない');
 gas.env.user = gas.env.owner;
+
+// 管理者への知らせと記録：データを共有すると、所有者のメニューに赤い帯。記録のタブに開いた履歴
+const DBID = gas.call('apiAdminStatus') && gas.props.CLASS_SPLIT_DB_ID;
+gas.drive.share(DBID, { editors: ['leak@edu.nishi.or.jp'] });
+await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.warnbox[role=alert]');
+ok((await p.locator('.warnbox[role=alert]').textContent()).includes('leak@'), '共有されると管理者のメニューに警告');
+gas.drive.share(DBID, { editors: [] });
+await p.click('[data-go="settings"]'); await p.click('[data-stab="log"]'); await p.waitForSelector('table.ro');
+ok((await p.locator('table.ro').textContent()).includes('開いた（学年）'), '記録のタブに開いた履歴');
+
+// 放置の覆い：タブが隠れると覆い、押すと戻る
+await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+ok(await p.locator('#idle:not([hidden])').count() === 1, 'ほかのタブに移ると画面を覆う');
+await p.click('#idle');
+ok(await p.locator('#idle[hidden]').count() === 1, '押すと戻る');
 
 ok(errs.length === 0, '画面のエラーなし ' + errs.join(' / '));
 await browser.close();
