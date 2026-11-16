@@ -97,3 +97,9 @@
 .irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
+
+/* 放置の覆い：中身が透けない不透明。押すと戻る */
+#idle { position: fixed; inset: 0; z-index: 2147483001; border: 0; background: var(--bg, #eef1f4); color: var(--sub, #616870); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: inherit; cursor: pointer; }
+#idle[hidden] { display: none; }
+#idle b { font-size: 22px; color: var(--ink, #1A1A1A); }
+@media print { #idle { display: none !important; } }

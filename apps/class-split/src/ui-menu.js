@@ -5,7 +5,9 @@
   App.screens.menu = {
     render: function () {
       var st = App.st;
-      App.$('main').innerHTML = '<div class="menu">' +
+      // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
+      var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
+      App.$('main').innerHTML = '<div class="menu">' + warn +
         '<section><h2>学年を選ぶ</h2><div class="grades">' + st.grades.map(function (x) {
           return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + x.grade + '年<small>' + x.count + '人・' + x.classes + '学級' + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +
@@ -14,7 +16,7 @@
         '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>' +
         (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
-        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・担任と学級・事案と報告書・年度替わり）</button>' +
+        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button>' +
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
     click: function (t) {

@@ -666,6 +666,27 @@
         if (!P.res || !P.res.rows.length) return;
         var rows = P.res.rows;
         App.closeDlg();
+        // 書く前に差分を見せる。別の学年・年度の表の疑いがある時は、語を打って確かめる
+        App.pf().importRoster(fy, grade, rows, { dry: true }).then(function (df) { importConfirm(fy, grade, rows, df); }, function (e) { App.toast(String(e && e.message || e)); });
+      }
+    });
+  }
+  function importConfirm(fy, grade, rows, df) {
+    var esc = App.esc, word = df.risky ? '上書きする' : '';
+    var list = function (title, a) { return a.length ? '<div><b>' + title + ' ' + a.length + '人</b><div class="note">' + esc(a.slice(0, 8).join('、')) + (a.length > 8 ? ' ほか' + (a.length - 8) + '人' : '') + '</div></div>' : ''; };
+    App.openDlg({
+      focus: word ? 'iword' : 'okbtn',
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="取り込む前の確認" style="max-width:640px"><h2>' + fy + '年度 ' + grade + '年 に取り込む前の確認</h2>' +
+          '<div>追加 <b>' + df.added + '人</b>・すでにいる児童 <b>' + df.existing + '人</b></div>' +
+          list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
+          (df.risky ? '<div class="warnbox">別の学年や年度の表を貼っていないか確かめてください（' + (df.other.length ? 'ほかの学年の児童がいます' : 'すでにいる児童の半分以上で名前が変わります') + '）。取り込む直前に、データの控えを自動で取ります。</div>' +
+            '<label>このまま取り込むなら「<b>' + word + '</b>」と入力<br><input type="text" id="iword" style="width:100%;margin-top:4px" autocomplete="off"></label>' : '<p class="note">取り込む直前に、データの控えを自動で取ります。</p>') +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">取り込む（' + rows.length + '人）</button></div></div></div>';
+      },
+      onOk: function () {
+        if (word && App.$('iword').value.trim() !== word) { App.toast('入力した語が違います'); return; }
+        App.closeDlg();
         App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
           return App.reload().then(function () {
             App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));

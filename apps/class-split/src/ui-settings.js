@@ -23,10 +23,14 @@
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '担任と学級'], ['types', '事案と報告書'], ['year', '年度替わり'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
-    var h = '<div class="rbar"><span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 4).map(tab).join('') + '<span class="bsep"></span><span class="sgrp">この端末だけ</span>' + tab(tabs[4]) +
-      '<span class="sp"></span>' + (T.tab !== 'year' && T.tab !== 'view' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">';
+    // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
+    var admin = !!(App.me && App.me.admin);
+    if (!admin) T.tab = 'view';
+    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 5).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[5]) +
+      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
+      (admin ? '' : '<p class="note">配慮項目・利用者と担任・事案と報告書・年度替わりの設定は、管理者だけが変えられます。変えたい時は管理者に頼んでください。</p>');
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
         C.ATTRS.map(function (at) {
@@ -42,11 +46,12 @@
             }).join('') + '</div></td></tr>';
         }).join('') + '</tbody></table><p class="note">説明文は、アイコンにカーソルを合わせると出ます。空にすると既定の文に戻ります。色と形は項目の位置ごとに決まっていて変えられません（見分けやすさを確かめた組み合わせのため）。保存した値は、次に画面を開いた時から使われます。</p>';
     } else if (T.tab === 'teachers') {
-      h += '<p class="note">担任と学級を登録すると、開いた時にその学年・学級を選んだ状態になります。</p><table class="r"><thead><tr><th style="text-align:left">教員のメール</th><th>学年</th><th>組</th><th></th></tr></thead><tbody>' +
+      h += '<p class="note"><b>この一覧に載っている教員だけが、このアプリを開けます</b>（メールのドメインは市内共通なので、一覧に無い人は他校の職員でも断ります）。所有者（' + esc(App.me.ownerEmail || 'スクリプトの所有者') + '）は一覧に無くても開けます。<br>「管理者」に印を付けた人は、設定の変更と、卒業・転出した児童の記録を消すことができます。学年と組を入れると、開いた時にその学年・学級を選んだ状態になります。</p><table class="r"><thead><tr><th style="text-align:left">教員のメール</th><th>学年</th><th>組</th><th>管理者</th><th></th></tr></thead><tbody>' +
         s.teachers.map(function (t, i) {
           return '<tr><td style="text-align:left"><input data-te="' + i + '" value="' + esc(t.email) + '" style="width:22em;padding:4px 6px;border:1px solid var(--line);border-radius:4px"></td>' +
             '<td><select data-tg="' + i + '">' + [0, 1, 2, 3, 4, 5, 6].map(function (gr) { return '<option value="' + gr + '"' + (+t.grade === gr ? ' selected' : '') + '>' + (gr ? gr + '年' : '—') + '</option>'; }).join('') + '</select></td>' +
             '<td><select data-tc="' + i + '">' + [0, 1, 2, 3, 4].map(function (k) { return '<option value="' + k + '"' + (+t.cls === k ? ' selected' : '') + '>' + (k ? k + '組' : '—') + '</option>'; }).join('') + '</select></td>' +
+            '<td><input type="checkbox" data-tadm="' + i + '"' + (t.admin ? ' checked' : '') + ' aria-label="管理者"></td>' +
             '<td><button class="btn" data-tdel="' + i + '">削除</button></td></tr>';
         }).join('') + '</tbody></table><div class="rbar" style="margin-top:8px"><button class="btn" id="tadd">＋ 追加</button>' +
         (App.me && !s.teachers.some(function (t) { return t.email === App.me.email; }) ? '<button class="btn" id="tme">＋ 自分（' + esc(App.me.email) + '）</button>' : '') + '</div>';
@@ -62,12 +67,29 @@
       h += '<h3 style="margin:0 0 6px">クラス分けの盤面のアイコンの大きさ</h3><div class="lvs">' + App.ICON_SCALES.map(function (x) {
         return '<button class="lv" data-isz="' + x.v + '" aria-pressed="' + (x.v === cur) + '">' + x.label + '</button>';
       }).join('') + '</div><p class="note">押すとすぐに変わり、この端末だけに覚えます（ほかの先生の画面は変わりません）。<br>「標準」は、＋のアイコンが隣に重ならない範囲でいちばん大きい大きさです。大きくすると、＋のアイコンや＋の印が隣に重なることがあります。</p>';
+    } else if (T.tab === 'log') {
+      h += logTab();
     } else {
       h += yearTab();
     }
     // 版：学校の GAS に貼った版がどれかを、この印で GitHub の dist と照らせる（git log -S で探せる）
     h += '<p class="note" style="margin-top:16px">版：' + esc(App.buildLabel()) + '</p>';
     App.$('main').innerHTML = h + '</div>';
+  }
+
+  // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
+  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', classNames: '組の番号を決めた' };
+  function logTab() {
+    var esc = App.esc;
+    if (!T.log) {
+      App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
+      return '<div class="empty">読み込んでいます…</div>';
+    }
+    return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
+      (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
+        var d = new Date(r.at), at = isNaN(d) ? r.at : d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        return '<tr><td>' + esc(at) + '</td><td style="text-align:left">' + esc(r.by) + '</td><td style="text-align:left">' + esc(LOG_NAMES[r.action] || r.action) + '</td><td>' + esc(r.n) + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<div class="empty">記録はありません</div>');
   }
 
   function yearTab() {
@@ -110,17 +132,17 @@
   function set(fn) { fn(); T.dirty = true; }
   App.screens.settings = {
     enter: function () {
-      T.tab = 'attrs'; T.cand = null; T.dirty = false;
+      T.tab = 'attrs'; T.cand = null; T.log = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
-      if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0 }); }); render(); return true; }
+      if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }
       if (t.closest('#tme')) { set(function () { s.teachers.push({ email: App.me.email, grade: App.st.grade, cls: 1 }); }); render(); return true; }
       if ((x = t.closest('[data-tdel]'))) { set(function () { s.teachers.splice(+x.dataset.tdel, 1); }); render(); return true; }
       if ((x = t.closest('[data-keep]'))) {
@@ -145,6 +167,7 @@
       else if (t.dataset.te != null) set(function () { s.teachers[+t.dataset.te].email = t.value.trim(); });
       else if (t.dataset.tg != null) set(function () { s.teachers[+t.dataset.tg].grade = +t.value; });
       else if (t.dataset.tc != null) set(function () { s.teachers[+t.dataset.tc].cls = +t.value; });
+      else if (t.dataset.tadm != null) set(function () { s.teachers[+t.dataset.tadm].admin = t.checked; });
       else if (t.id === 'types') set(function () { s.types = t.value.split('\n'); });
       else if (t.id === 'slots') set(function () { s.slots = t.value.split('\n'); });
       else if (t.id === 'school') set(function () { s.school = t.value; });
