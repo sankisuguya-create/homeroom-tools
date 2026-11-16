@@ -38,6 +38,11 @@
           else { var e = new Error(r.err); e.noRetry = !!r.user; e.device = !!r.device; rej(e); }
         })
         .withFailureHandler(function (e) { rej(e instanceof Error ? e : new Error(String(e))); });
+      // サーバーに関数が無い＝画面とサーバーの版が違う（貼り忘れ・保存忘れ・デプロイの更新忘れ）。何が無いかを出す
+      if (typeof run[name] !== 'function') {
+        var e = new Error('サーバーに「' + name + '」がありません（画面の版 ' + PAGE_BUILD + '）。Code.gs・Index.html・appsscript.json の3つを同じ版で貼り直して保存し、「デプロイを管理 → 編集 → 新バージョン」で更新してください。');
+        e.noRetry = true; rej(e); return;
+      }
       run[name].apply(run, args);
     });
   }

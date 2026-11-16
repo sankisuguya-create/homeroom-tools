@@ -2473,7 +2473,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_bd08ca190654';
+  var PAGE_BUILD = 'BUILD_42d2d5ce3a0d';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2507,6 +2507,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           else { var e = new Error(r.err); e.noRetry = !!r.user; e.device = !!r.device; rej(e); }
         })
         .withFailureHandler(function (e) { rej(e instanceof Error ? e : new Error(String(e))); });
+      // サーバーに関数が無い＝画面とサーバーの版が違う（貼り忘れ・保存忘れ・デプロイの更新忘れ）。何が無いかを出す
+      if (typeof run[name] !== 'function') {
+        var e = new Error('サーバーに「' + name + '」がありません（画面の版 ' + PAGE_BUILD + '）。Code.gs・Index.html・appsscript.json の3つを同じ版で貼り直して保存し、「デプロイを管理 → 編集 → 新バージョン」で更新してください。');
+        e.noRetry = true; rej(e); return;
+      }
       run[name].apply(run, args);
     });
   }
