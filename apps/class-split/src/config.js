@@ -172,5 +172,21 @@
     return FY > lastFy + (hasIncident ? Math.max(keep, CONFIG.INCIDENT_KEEP_YEARS) : keep);
   };
 
+  // 端末の判定（仮実装）：ブラウザが自己申告する値から、登録してよい種類かを決める。画面とサーバーで同じ規則
+  // 校務の端末（ChromeOS・Windows）だけ。携帯電話は「PC版サイトを表示」でも、iPhone/iPad は Mac のふり（タッチ点数で見分ける）、Android は Linux のふりになるので弾ける
+  // 画面の大きさは使わない（表示の拡大で校務の端末も小さく出る。tools/device-probe/README.md）
+  CONFIG.DEVICE_OS = ['ChromeOS', 'Windows'];
+  CONFIG.deviceInfo = function (nav, scr) {
+    var ua = String(nav.userAgent || ''), d = nav.userAgentData || null, tp = +nav.maxTouchPoints || 0;
+    var os = /CrOS/.test(ua) ? 'ChromeOS' : /Android/.test(ua) ? 'Android' : /iPhone|iPad|iPod/.test(ua) ? 'iOS' : /Windows/.test(ua) ? 'Windows' : /Macintosh|Mac OS X/.test(ua) ? (tp > 0 ? 'iPadOS' : 'macOS') : /Linux/.test(ua) ? 'Linux' : '不明';
+    return { os: os, mobile: d ? !!d.mobile : /Mobi/.test(ua), touch: tp, screen: scr ? scr.width + '×' + scr.height : '' };
+  };
+  CONFIG.deviceVerdict = function (info, allowOs) {
+    var why = [];
+    if (!info || (allowOs || CONFIG.DEVICE_OS).indexOf(String(info.os)) < 0) why.push('OS が ' + (info ? info.os : '不明'));
+    if (info && info.mobile) why.push('携帯向けのブラウザ');
+    return { ok: !why.length, why: why };
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

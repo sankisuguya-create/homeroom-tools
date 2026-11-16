@@ -294,6 +294,60 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const nb = lg.length; call('apiBoot', 4); call('apiBoot', 4);
     assert.ok(call('apiReadLog').v.length <= nb + 1, '開き直しで行が増え続けない');
 
+    // 端末の登録（仮実装）：登録が無い間は制限なし。受付を開くと、開いた端末と、10分の間にアクセスした校務の端末を登録する
+    const PC = (t, os = 'Windows', extra = {}) => ({ __dev: { t, os, mobile: false, touch: 10, screen: '1280×720', ...extra } });
+    const dcall = (fn, dev, ...a) => JSON.parse(ctx[fn](...a, dev));
+    assert.equal(dcall('apiListGrades', PC('')).ok, true, '登録が無い間はどの端末でも開ける');
+    assert.equal(dcall('apiOpenDeviceWindow', PC('', 'iOS', { mobile: true })).ok, false, '携帯電話からは受付を開けない');
+    const op = dcall('apiOpenDeviceWindow', PC(''));
+    assert.ok(op.ok && op.dev, '受付を開いた端末は登録され、合い言葉を受け取る');
+    const adminTok = op.dev;
+    env.user = 'sato@edu.nishi.or.jp';
+    const ph = dcall('apiListGrades', PC('', 'iOS', { mobile: true }));
+    assert.equal(ph.device, true, '受付の間でも携帯電話は登録しない'); assert.ok(ph.err.includes('登録できない'));
+    assert.equal(dcall('apiListGrades', PC('', 'Linux')).device, true, 'PC版の表示の Android（Linux）も弾く');
+    const r2 = dcall('apiListGrades', PC('', 'ChromeOS'));
+    assert.ok(r2.ok && r2.dev, '受付の間にアクセスした校務の端末は登録される');
+    const satoTok = r2.dev;
+    env.user = 'tanaka@edu.nishi.or.jp';
+    assert.ok(dcall('apiCloseDeviceWindow', PC(adminTok)).ok);
+    env.user = 'sato@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC('')).device, true, '受付を閉じた後、未登録の端末は開けない');
+    assert.equal(dcall('apiListGrades', PC('', 'Windows')).device, true);
+    assert.equal(call('apiListGrades').device, true, '端末の情報が無い呼び出しも断る');
+    assert.equal(dcall('apiListGrades', PC(satoTok, 'ChromeOS')).ok, true, '登録した端末は開ける');
+    assert.equal(dcall('apiListGrades', PC(satoTok, 'iOS', { mobile: true })).device, true, '合い言葉を写しても、種類が違えば断る');
+    env.user = 'tanaka@edu.nishi.or.jp';
+    const dl = dcall('apiDevices', PC(adminTok)).v;
+    assert.equal(dl.list.length, 2); assert.ok(dl.mine);
+    assert.ok(!JSON.stringify(dl).includes(satoTok), '合い言葉そのものはサーバーに残さない・返さない');
+    const satoId = dl.list.find(x => x.by === 'sato@edu.nishi.or.jp').id;
+    assert.ok(dcall('apiRevokeDevice', PC(adminTok), satoId).ok);
+    env.user = 'sato@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC(satoTok, 'ChromeOS')).device, true, '取り消した端末は開けない');
+    env.user = 'tanaka@edu.nishi.or.jp';
+    // 受付で利用者も登録する：一般の受付では一般、管理者の受付では管理者として一覧に載る。携帯電話では載らない
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC('', 'ChromeOS')).ok, false, '受付の外では一覧に無い教員は開けない');
+    env.user = 'tanaka@edu.nishi.or.jp'; assert.ok(dcall('apiOpenDeviceWindow', PC(adminTok), 'user').ok);
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC('', 'iOS', { mobile: true })).ok, false, '携帯電話では利用者にも載らない');
+    const nbr = dcall('apiListGrades', PC('', 'ChromeOS'));
+    assert.ok(nbr.ok && nbr.dev, '一般の受付で、利用者と端末が一度に登録される');
+    assert.equal(dcall('apiSettings', PC(nbr.dev, 'ChromeOS')).v.me.admin, false, '一般ユーザー');
+    env.user = 'tanaka@edu.nishi.or.jp'; assert.ok(dcall('apiOpenDeviceWindow', PC(adminTok), 'admin').ok);
+    env.user = 'boss@edu.nishi.or.jp';
+    const bs = dcall('apiSettings', PC('', 'Windows'));
+    assert.ok(bs.ok && bs.dev && bs.v.me.admin, '管理者の受付で、管理者として登録される');
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiSettings', PC(nbr.dev, 'ChromeOS')).v.me.admin, true, '管理者の受付の間に開いた既存の一般ユーザーも管理者になる');
+    env.user = 'tanaka@edu.nishi.or.jp'; dcall('apiCloseDeviceWindow', PC(adminTok));
+    env.user = 'stranger2@edu.nishi.or.jp';
+    assert.ok(ctx.doGet().h.includes('利用者に登録されていません'), '受付を閉じた後は、一覧に無い教員に画面も出さない');
+    env.user = 'tanaka@edu.nishi.or.jp';
+    ctx.resetDevices();
+    assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
+
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
     ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);
     // 事案に関わった児童は、残す年数を0にしても卒業・転出から5年度は候補に出ず、消せない

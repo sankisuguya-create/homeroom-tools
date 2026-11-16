@@ -1,6 +1,7 @@
 // GAS の各サービス（SpreadsheetApp・PropertiesService・LockService・Session・DriveApp・HtmlService）を
 // メモリ上で真似る部品。tests/gas.test.mjs と tests/gas-ui.test.mjs が使う。
 import vm from 'node:vm';
+import crypto from 'node:crypto';
 
 export function makeGas(src) {
   const files = { DOC1234567890abcdefghijXYZ: '10月2日 休み時間の件' };
@@ -80,7 +81,12 @@ export function makeGas(src) {
       newTrigger: h => { const b = { timeBased: () => b, everyWeeks: () => b, onWeekDay: () => b, atHour: () => b, create: () => { drive.triggers.push(h); return b; } }; return b; }
     },
     CacheService: { getScriptCache: () => ({ get: k => cache[k] || null, put: (k, v) => { cache[k] = v; } }) },
-    Utilities: { formatDate: d => d.toISOString().slice(0, 10) },
+    Utilities: {
+      formatDate: d => d.toISOString().slice(0, 10),
+      getUuid: () => crypto.randomUUID(),
+      DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
+      computeDigest: (alg, s) => Array.from(crypto.createHash('sha256').update(String(s), 'utf8').digest()).map(b => b > 127 ? b - 256 : b)
+    },
     HtmlService: { createHtmlOutput: h => ({ h, setTitle() { return this; } }), createHtmlOutputFromFile: f => ({ f, setTitle() { return this; }, addMetaTag() { return this; } }) },
     console
   };

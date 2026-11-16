@@ -8,7 +8,7 @@ var DB_PROP = 'CLASS_SPLIT_DB_ID';
 // ===== 画面 =====
 function doGet() {
   var who = currentTeacher_();
-  if (!who.ok || !accessOf_(who.email).user) {
+  if (!who.ok || (!accessOf_(who.email).user && !deviceWindowSafe_())) {
     var msg = !who.ok ? 'このページは教員のアカウントで開いてください' : 'このアプリの利用者に登録されていません';
     var sub = !who.ok ? ' では開けません。' : ' は登録されていません。使う場合は、このアプリの管理者に登録を頼んでください。';
     return HtmlService.createHtmlOutput('<!doctype html><html lang="ja"><meta charset="utf-8"><body style="font-family:sans-serif;padding:24px">' +
@@ -47,9 +47,114 @@ function accessOf_(email) {
 function requireTeacher_() {
   var who = currentTeacher_();
   if (!who.ok) throw userError_('教員のアカウントで開いてください');
-  if (!accessOf_(who.email).user) throw userError_('このアプリの利用者に登録されていません。管理者に登録を頼んでください');
+  var ac = accessOf_(who.email), win = deviceWindow_();
+  // 受付の間に開いた教員は、利用者の一覧に足す（一般の受付なら一般、管理者の受付なら管理者）。校務の端末からに限る
+  if (win && (!ac.user || (win.role === 'admin' && !ac.admin))) {
+    var vd = CONFIG.deviceVerdict(devInfo_(), getSetting_('app', {}).deviceOs);
+    if (!vd.ok) throw userError_('DEVICE:この端末は登録できない種類です（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
+    addUserByWindow_(who.email, win.role === 'admin');
+    ac = accessOf_(who.email);
+  }
+  if (!ac.user) throw userError_('このアプリの利用者に登録されていません。管理者に登録を頼んでください');
+  checkDevice_(who.email);
   return who.email;
 }
+function deviceWindowSafe_() { try { return deviceWindow_(); } catch (e) { return null; } }
+function addUserByWindow_(email, admin) {
+  withLock_(function () {
+    var s = getSetting_('app', {}), list = s.teachers || [], hit = null;
+    list.forEach(function (t) { if (String(t.email || '').toLowerCase() === email) hit = t; });
+    if (hit) hit.admin = hit.admin || admin;
+    else list.push({ email: email, grade: 0, cls: 0, admin: admin });
+    s.teachers = list; setSetting_('app', s);
+    log_(email, admin ? 'addAdminByWindow' : 'addUserByWindow', list.length);
+  });
+}
+
+// ===== 端末の登録（仮実装） =====
+// 登録済みの端末が1台も無い間は制限しない（試験中に締め出さない）。1台でも登録されたら、登録済みの端末だけが読み書きできる。
+// 管理者が受付を開くと、その間（10分）にアクセスした端末を自動で登録する。合い言葉は端末にだけ置き、サーバーはハッシュだけを持つ
+var DEVICE_WINDOW_MIN = 10, DEVICE_CHECKED_ = '';
+function hashHex_(s) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(s), Utilities.Charset.UTF_8)
+    .map(function (b) { return ((b + 256) % 256).toString(16); }).map(function (h) { return h.length < 2 ? '0' + h : h; }).join('');
+}
+function devices_() { return getSetting_('devices', []); }
+function deviceWindow_() { var w = getSetting_('devwin', {}); return w.until && new Date(w.until).getTime() > Date.now() ? w : null; }
+function devInfo_() {
+  var d = DEV_ || {};
+  return { os: String(d.os || '不明').slice(0, 20), mobile: !!d.mobile, touch: +d.touch || 0, screen: String(d.screen || '').slice(0, 20) };
+}
+function checkDevice_(email) {
+  if (DEVICE_CHECKED_ === email) return;
+  var list = devices_();
+  if (!list.length && !deviceWindow_()) { DEVICE_CHECKED_ = email; return; }
+  var t = DEV_ && DEV_.t ? String(DEV_.t) : '', h = t ? hashHex_(t) : '', hit = null, info = devInfo_();
+  list.forEach(function (x) { if (h && x.h === h && !x.revoked) hit = x; });
+  if (hit) {
+    // 合い言葉を写して別の種類の端末で使った時（例：携帯電話）は断る
+    if (hit.os !== info.os) throw userError_('DEVICE:この端末の種類（' + info.os + '）は、登録した時（' + hit.os + '）と違います');
+    if (!hit.last || Date.now() - new Date(hit.last).getTime() > 6 * 3600000) withLock_(function () {
+      var l = devices_(); l.forEach(function (x) { if (x.h === h) x.last = new Date().toISOString(); }); setSetting_('devices', l);
+    });
+    DEVICE_CHECKED_ = email; return;
+  }
+  var win = deviceWindow_();
+  if (win) {
+    var vd = CONFIG.deviceVerdict(info, getSetting_('app', {}).deviceOs);
+    if (!vd.ok) throw userError_('DEVICE:この端末は登録できない種類です（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
+    registerDevice_(email, info, win.role === 'admin' ? 'window-admin' : 'window');
+    DEVICE_CHECKED_ = email; return;
+  }
+  if (!list.length) { DEVICE_CHECKED_ = email; return; }
+  throw userError_('DEVICE:この端末は登録されていません');
+}
+function registerDevice_(email, info, how) {
+  var t = Utilities.getUuid() + Utilities.getUuid();
+  withLock_(function () {
+    var l = devices_();
+    l.push({ id: Utilities.getUuid().slice(0, 8), h: hashHex_(t), by: email, at: new Date().toISOString(), last: new Date().toISOString(), os: info.os, touch: info.touch, screen: info.screen, how: how });
+    setSetting_('devices', l);
+    log_(email, 'registerDevice', l.length);
+  });
+  DEV_NEW_ = t; // 画面がこれを端末に保存する（返すのはこの1回だけ）
+}
+var apiDevices = api_(function () {
+  requireAdmin_();
+  var w = deviceWindow_();
+  return { list: devices_().filter(function (x) { return !x.revoked; }).map(function (x) { return { id: x.id, by: x.by, at: x.at, last: x.last, os: x.os, touch: x.touch, screen: x.screen, how: x.how }; }),
+    window: w ? { until: w.until, by: w.by, role: w.role || 'user' } : null, mine: DEV_ && DEV_.t ? (devices_().filter(function (x) { return x.h === hashHex_(DEV_.t); })[0] || {}).id || '' : '' };
+});
+var apiOpenDeviceWindow = api_(function (role) {
+  var by = requireAdmin_();
+  role = role === 'admin' ? 'admin' : 'user';
+  var h0 = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
+  if (!devices_().some(function (x) { return h0 && x.h === h0 && !x.revoked; })) {
+    // 受付を開く端末も校務の端末に限る（管理者の携帯電話が登録されないように）
+    var vd = CONFIG.deviceVerdict(devInfo_(), getSetting_('app', {}).deviceOs);
+    if (!vd.ok) throw userError_('この端末からは受付を開けません（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
+  }
+  withLock_(function () { setSetting_('devwin', { until: new Date(Date.now() + DEVICE_WINDOW_MIN * 60000).toISOString(), by: by, role: role }); log_(by, role === 'admin' ? 'openAdminWindow' : 'openDeviceWindow', DEVICE_WINDOW_MIN); });
+  // 開いた管理者の端末がまだ未登録なら、ここで登録する（受付を開いた端末が締め出されないように）
+  var h = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
+  if (!devices_().some(function (x) { return h && x.h === h && !x.revoked; })) registerDevice_(by, devInfo_(), 'admin');
+  return { until: deviceWindow_().until };
+});
+var apiCloseDeviceWindow = api_(function () {
+  var by = requireAdmin_();
+  withLock_(function () { setSetting_('devwin', null); log_(by, 'closeDeviceWindow', 0); });
+  return { ok: true };
+});
+var apiRevokeDevice = api_(function (id) {
+  var by = requireAdmin_();
+  withLock_(function () {
+    var l = devices_().filter(function (x) { return x.id !== String(id); });
+    setSetting_('devices', l); log_(by, 'revokeDevice', l.length);
+  });
+  return { ok: true };
+});
+// 締め出された時の安全弁：スクリプトのエディタで所有者が実行すると、端末の登録をすべて消す（制限が外れ、登録し直しになる）
+function resetDevices() { forget_(); withLock_(function () { setSetting_('devices', null); setSetting_('devwin', null); log_(ownerEmail_(), 'resetDevices', 0); }); return 'reset'; }
 function requireAdmin_() {
   var email = requireTeacher_();
   if (!accessOf_(email).admin) throw userError_('この操作は管理者だけができます');
@@ -207,14 +312,18 @@ function decisionOf_(fy, grade) {
 }
 
 // ===== 画面から呼ぶ関数（platform-gas.js と同じ名前と形） =====
+// 画面は呼び出しの最後に端末の情報 { __dev: { t: 合い言葉, os, mobile, touch, screen } } を添える（端末の登録）。ここで外して DEV_ に置く
+var DEV_ = null, DEV_NEW_ = '';
 function api_(fn) {
   return function () {
-    var args = arguments;
+    var args = Array.prototype.slice.call(arguments);
+    var last = args[args.length - 1];
+    DEV_ = last && typeof last === 'object' && last.__dev ? args.pop().__dev : null; DEV_NEW_ = ''; DEVICE_CHECKED_ = '';
     forget_();
-    try { return JSON.stringify({ ok: true, build: SERVER_BUILD, v: fn.apply(null, args) }); }
+    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined }); }
     catch (e) {
-      var m = String(e && e.message || e);
-      return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, err: m.replace(/^USER:/, '') });
+      var m = String(e && e.message || e), dev = m.indexOf('USER:DEVICE:') === 0;
+      return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, device: dev, err: m.replace(/^USER:(DEVICE:)?/, ''), dev: DEV_NEW_ || undefined }); // 登録の後で失敗しても、合い言葉は端末に渡す
     }
   };
 }

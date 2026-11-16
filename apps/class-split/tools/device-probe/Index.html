@@ -24,7 +24,7 @@ function probe() {
   var why = [];
   if (!allow[os]) why.push('OS が ' + os);
   if (mobile) why.push('携帯向け');
-  if (long < 1024) why.push('画面が小さい（長い辺 ' + long + 'px）');
+  // 画面の大きさは弾く条件にしない（Windows・ChromeOS の表示の拡大で校務の端末も小さく出る）。参考に表示するだけ
   return { os: os, uaPlatform: d ? d.platform : '（無し）', mobile: mobile, screen: screen.width + '×' + screen.height, long: long, short: short, dpr: devicePixelRatio, touch: tp, ok: !why.length, why: why, ua: ua };
 }
 var KEY = 'probe.secret';

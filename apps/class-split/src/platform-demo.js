@@ -382,6 +382,10 @@
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
+    devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
+    openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
+    closeDeviceWindow: function () { return later({ ok: true }); },
+    revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
     importRoster: function (fy, grade, rows, opt) {
       gen();

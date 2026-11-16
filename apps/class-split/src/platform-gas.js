@@ -21,15 +21,21 @@
     document.body.insertBefore(d, document.body.firstChild);
   }
 
+  // 端末の登録：合い言葉はこの端末のブラウザにだけ置く。毎回の呼び出しに、合い言葉と端末の種類を添える
+  var DEV_KEY = 'classSplit.device';
+  function devToken() { try { return localStorage.getItem(DEV_KEY) || ''; } catch (e) { return ''; } }
+  function devInfo() { var i = C.deviceInfo(navigator, screen); i.t = devToken(); return { __dev: i }; }
   function call(name) {
     var args = Array.prototype.slice.call(arguments, 1);
+    args.push(devInfo());
     return new Promise(function (res, rej) {
       var run = g.google.script.run
         .withSuccessHandler(function (s) {
           var r = JSON.parse(s);
           warnBuild(r.build);
+          if (r.dev) { try { localStorage.setItem(DEV_KEY, r.dev); } catch (x) { /* 保存できないと次から締め出される */ } }
           if (r.ok) res(r.v);
-          else { var e = new Error(r.err); e.noRetry = !!r.user; rej(e); }
+          else { var e = new Error(r.err); e.noRetry = !!r.user; e.device = !!r.device; rej(e); }
         })
         .withFailureHandler(function (e) { rej(e instanceof Error ? e : new Error(String(e))); });
       run[name].apply(run, args);
@@ -84,6 +90,10 @@
     settings: function () { return call('apiSettings'); },
     saveSettings: function (s) { return call('apiSaveSettings', s); },
     leaveCandidates: function () { return call('apiLeaveCandidates'); },
-    purge: function (ids) { return call('apiPurge', ids); }
+    purge: function (ids) { return call('apiPurge', ids); },
+    devices: function () { return call('apiDevices'); },
+    openDeviceWindow: function (role) { return call('apiOpenDeviceWindow', role); },
+    closeDeviceWindow: function () { return call('apiCloseDeviceWindow'); },
+    revokeDevice: function (id) { return call('apiRevokeDevice', id); }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
