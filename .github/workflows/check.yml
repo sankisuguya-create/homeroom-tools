@@ -1,14 +1,33 @@
 # 生成物（dist）が正本（src）と一致するか、テストが通るかを、push と PR のたびに確かめる。
 # 失敗したら、手元で python3 scripts/build.py を実行して dist を作り直し、テストを直してから push する。
+#
+# 試験用のマシンは ubuntu-24.04 に固定している（2026-11：ubuntu-latest が 26.04 になり、Playwright 1.56.1 がブラウザを入れられないため）。
+# 最新のマシンで通るようになったかは、runner-watch.yml が毎月確かめて、通れば Issue で知らせる。
+# 固定を解除する時は、下の default を ubuntu-latest に変え、runner-watch.yml を消す。
 name: check
 on:
   push:
   pull_request:
+  workflow_call:
+    inputs:
+      os:
+        description: 試験用のマシン
+        type: string
+        default: ubuntu-24.04
+    outputs:
+      os_version:
+        description: 実際に動いたマシンの OS の版
+        value: ${{ jobs.check.outputs.os_version }}
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.os || 'ubuntu-24.04' }}
     timeout-minutes: 20
+    outputs:
+      os_version: ${{ steps.os.outputs.version }}
     steps:
+      - name: マシンの版
+        id: os
+        run: . /etc/os-release && echo "version=$VERSION_ID" >> "$GITHUB_OUTPUT" && echo "$PRETTY_NAME"
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:

@@ -1,0 +1,44 @@
+# 試験用のマシンの固定（check.yml の ubuntu-24.04）を解除できるかを、毎月確かめる。
+# 最新のマシン（ubuntu-latest）で check と同じ検査を走らせ、全部通れば Issue を立てて知らせる。通らなければ何もしない（固定のまま）。
+# ubuntu-latest がまだ固定と同じ版の時も何もしない。手で確かめる時は Actions の画面から「Run workflow」。
+# 注意：リポジトリに60日間動きが無いと、GitHub は定期実行を止める（Actions の画面で再開できる）。
+name: runner-watch
+on:
+  schedule:
+    - cron: '17 3 1 * *' # 毎月1日 12:17（日本時間）
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  latest:
+    uses: ./.github/workflows/check.yml
+    with:
+      os: ubuntu-latest
+  report:
+    needs: latest
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PINNED: '24.04'
+      LATEST: ${{ needs.latest.outputs.os_version }}
+      RESULT: ${{ needs.latest.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      TITLE: 試験用のマシンの固定（ubuntu-24.04）を解除できます
+    steps:
+      - name: 結果をまとめる
+        run: |
+          echo "最新のマシン: ubuntu ${LATEST:-不明} ／ 検査: $RESULT" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$RESULT" != "success" ]; then echo "最新のマシンではまだ通らないので、固定のままにします。" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ "$LATEST" = "$PINNED" ]; then echo "最新のマシンは固定と同じ版です。" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          if [ -n "$(gh issue list --state open --search "in:title $TITLE" --json number --jq '.[0].number')" ]; then echo "知らせる Issue は既にあります。" >> "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          gh issue create --title "$TITLE" --body "最新の試験用のマシン（ubuntu $LATEST）で、check と同じ検査がすべて通りました。
+
+          固定を解除する手順：
+          1. \`.github/workflows/check.yml\` の \`default: ubuntu-24.04\` と \`inputs.os || 'ubuntu-24.04'\` を \`ubuntu-latest\` に変える。
+          2. \`.github/workflows/runner-watch.yml\` を消す。
+
+          確かめた実行：$RUN_URL"
+          echo "Issue を立てました。" >> "$GITHUB_STEP_SUMMARY"
