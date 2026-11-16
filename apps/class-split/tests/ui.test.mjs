@@ -424,7 +424,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.bar #paste, #main > div #paste').count() >= 1, '名簿の上の帯に「名簿を貼る」');
   await p.click('#paste'); await p.waitForSelector('#ptxt');
   await p.fill('#ptxt', '組\t番号\t児童ID\t名前\tよみ\t性別\n1\t40\t99990001\t新入 ハナ\tしんにゅう はな\t女');
-  await p.click('#okbtn'); await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  await p.click('#okbtn'); await p.waitForSelector('[aria-label="取り込む前の確認"]');
+  ok((await p.locator('[aria-label="取り込む前の確認"]').textContent()).includes('追加 1人'), '取り込む前に差分を見せる');
+  await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
+  await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
   ok(/追加1人/.test(await p.textContent('#toast')), '貼った児童が名簿に登録される');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();

@@ -2081,14 +2081,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           .sort(function (p, q) { return S.kids[p.id].kana.localeCompare(S.kids[q.id].kana, 'ja'); })
           .forEach(function (r, no) { r.no = no + 1; });
       }
-      // 事案（1件に1〜3人）
+      // 事案（1件に1〜3人）。昨年度の卒業生（grade 7）は前半の児童だけを事案に関わらせる
+      // （全員が事案に関わると、年度替わりで消せる候補の見本が出ない。pick の回数は変えないので、ほかの見本は変わらない）
+      var incPool = grade === 7 ? ids.slice(0, Math.ceil(ids.length / 2)) : ids;
       for (var t = 0; t < ny * 14; t++) {
         var fyI = entry + Math.floor(R() * ny), mo = 1 + Math.floor(R() * 12), day = 1 + Math.floor(R() * 28);
         var yr = mo >= 4 ? fyI : fyI + 1, now = new Date();
-        if (yr * 100 + mo > now.getFullYear() * 100 + now.getMonth() + 1) continue;
-        var kids = [pick(ids)];
-        if (R() < .5) { var o = pick(ids); if (kids.indexOf(o) < 0) kids.push(o); }
-        if (R() < .12) { var o2 = pick(ids); if (kids.indexOf(o2) < 0) kids.push(o2); }
+        if (yr * 10000 + mo * 100 + day > now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()) continue; // 今日より先の日付は作らない（月だけで比べると、今月の先の日が一覧の先頭に来る）
+        var kids = [pick(incPool)];
+        if (R() < .5) { var o = pick(incPool); if (kids.indexOf(o) < 0) kids.push(o); }
+        if (R() < .12) { var o2 = pick(incPool); if (kids.indexOf(o2) < 0) kids.push(o2); }
         var date = yr + '-' + ('0' + mo).slice(-2) + '-' + ('0' + day).slice(-2), dateEnd = '';
         if (R() < .2) { var d2 = new Date(yr, mo - 1, day + 2 + Math.floor(R() * 10)); dateEnd = d2.getFullYear() + '-' + ('0' + (d2.getMonth() + 1)).slice(-2) + '-' + ('0' + d2.getDate()).slice(-2); }
         // 種別はときどき2つ（いじめ・物損 など）。いじめには報告書の項目と、発覚・経緯・指導の記録を付ける
