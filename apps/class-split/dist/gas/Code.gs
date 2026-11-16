@@ -1039,7 +1039,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_bd08ca190654';
+var SERVER_BUILD = 'BUILD_42d2d5ce3a0d';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1191,7 +1191,14 @@ var apiRevokeDevice = api_(function (id) {
   return { ok: true };
 });
 // 締め出された時の安全弁：スクリプトのエディタで所有者が実行すると、端末の登録をすべて消す（制限が外れ、登録し直しになる）
-function resetDevices() { forget_(); withLock_(function () { setSetting_('devices', null); setSetting_('devwin', null); log_(ownerEmail_(), 'resetDevices', 0); }); return 'reset'; }
+// エディタ（とトリガー）から所有者が実行する関数の門番。名前が _ で終わらない大域の関数は、画面の google.script.run から誰でも呼べるため
+// （principles/gas-javascript-notes.md）。エディタ・トリガーでは開いている人＝所有者か空、画面からは呼んだ教員になる
+function editorOnly_() {
+  var a = '';
+  try { a = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase(); } catch (e) { a = ''; }
+  if (a && a !== ownerEmail_()) throw new Error('この関数は、所有者がスクリプトのエディタで実行してください');
+}
+function resetDevices() { editorOnly_(); forget_(); withLock_(function () { setSetting_('devices', null); setSetting_('devwin', null); log_(ownerEmail_(), 'resetDevices', 0); }); return 'reset'; }
 function requireAdmin_() {
   var email = requireTeacher_();
   if (!accessOf_(email).admin) throw userError_('この操作は管理者だけができます');
@@ -1204,6 +1211,7 @@ function escHtml_(t) { return String(t).replace(/[&<>"]/g, function (c) { return
 // ===== データの置き場 =====
 // 専用のスプレッドシート。初回は setup() を所有者が実行して作る（教員には共有しない）
 function setup() {
+  editorOnly_();
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(DB_PROP);
   var ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.create('クラス替え（データ）');
@@ -1972,7 +1980,7 @@ function backup_(why) {
   return copy.getId();
 }
 // 毎週の控え（setup が時刻のきっかけを作る）
-function weeklyBackup() { backup_('毎週'); }
+function weeklyBackup() { editorOnly_(); backup_('毎週'); }
 function ensureWeeklyTrigger_() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'weeklyBackup'; });
   if (!has) ScriptApp.newTrigger('weeklyBackup').timeBased().everyWeeks(1).onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
@@ -2139,6 +2147,7 @@ var apiPurge = api_(function (ids) {
 // 名簿を入れる（PR③で画面を作るまでの間、所有者がスクリプトエディタから呼ぶ）
 // rows: [[id8, name, kana, 性別, 学年, 組, 番号], ...]
 function importRoster(fy, rows) {
+  editorOnly_();
   sheet_(db_(), 'roster_' + fy, ROSTER_HEAD);
   sheet_(db_(), 'attrs_' + fy, attrsHead_());
   append_('roster_' + fy, ROSTER_HEAD, rows.map(function (r) {

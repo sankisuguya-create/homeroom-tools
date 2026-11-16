@@ -345,6 +345,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'stranger2@edu.nishi.or.jp';
     assert.ok(ctx.doGet().h.includes('利用者に登録されていません'), '受付を閉じた後は、一覧に無い教員に画面も出さない');
     env.user = 'tanaka@edu.nishi.or.jp';
+    // エディタ用の関数は、画面から所有者以外が呼んでも断る（google.script.run から誰でも呼べるため）
+    env.user = 'sato@edu.nishi.or.jp';
+    for (const f of ['resetDevices', 'setup', 'weeklyBackup']) assert.throws(() => ctx[f](), /所有者/, f + ' は所有者以外が呼べない');
+    assert.throws(() => ctx.importRoster(FY, [['49999999', 'x', 'x', '男', 4, 1, 1]]), /所有者/);
+    env.user = 'tanaka@edu.nishi.or.jp';
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 
