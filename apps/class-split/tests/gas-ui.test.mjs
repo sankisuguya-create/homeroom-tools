@@ -140,6 +140,28 @@ gas.drive.share(DBID, { editors: [] });
 await p.click('[data-go="settings"]'); await p.click('[data-stab="log"]'); await p.waitForSelector('table.ro');
 ok((await p.locator('table.ro').textContent()).includes('開いた（学年）'), '記録のタブに開いた履歴');
 
+// 端末の登録（仮実装）：Windows の端末で受付を開くと、その端末が登録される。Linux（この試験の環境＝Android のPC版表示と同じ扱い）は締め出される
+const winCtx = await browser.newContext({ viewport: { width: 1280, height: 720 }, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36' });
+const pw = await winCtx.newPage();
+await pw.exposeFunction('gasCall', (name, args) => gas.ctx[name](...args));
+await pw.addInitScript(() => {
+  const make = (ok, ng) => new Proxy({}, { get: (_, k) => k === 'withSuccessHandler' ? f => make(f, ng) : k === 'withFailureHandler' ? f => make(ok, f) : (...a) => window.gasCall(k, a).then(ok, ng) });
+  window.google = { script: { run: make(() => {}, () => {}) } };
+});
+await pw.goto('file://' + path.join(DIST, 'Index.html')); await pw.waitForSelector('.gbtn');
+await pw.click('[data-go="settings"]'); await pw.click('[data-stab="devices"]'); await pw.waitForSelector('#dopen');
+await pw.click('#dopen'); await pw.waitForSelector('#dleft');
+ok((await pw.locator('table.ro').textContent()).includes('この端末'), '受付を開いた Windows の端末が登録される');
+ok(await pw.evaluate(() => !!localStorage.getItem('classSplit.device')), '合い言葉が端末に保存される');
+await pw.click('#dclose'); await pw.waitForSelector('#dopen');
+await p.goto('file://' + path.join(DIST, 'Index.html'));
+await p.waitForSelector('#reloadBtn');
+ok((await p.locator('#main').textContent()).includes('この端末では開けません'), '未登録の端末は締め出される');
+await pw.goto('file://' + path.join(DIST, 'Index.html')); await pw.waitForSelector('.gbtn');
+ok(true, '登録した端末は開き直しても開ける');
+gas.ctx.resetDevices();
+await winCtx.close();
+
 // 放置の覆い：タブが隠れると覆い、押すと戻る
 await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
 ok(await p.locator('#idle:not([hidden])').count() === 1, 'ほかのタブに移ると画面を覆う');

@@ -39,6 +39,11 @@
   };
   // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
   function loadFailed(e) {
+    if (e && e.device) {
+      App.$('main').innerHTML = '<div class="menu"><section><h2>この端末では開けません</h2><p>' + App.esc(e.message) + '</p>' +
+        '<p class="note">校務用のパソコンを登録するには、管理者に設定の「端末」で「10分間 登録を受け付ける」を押してもらい、その間にこのページを開き直してください。</p><button class="btn primary" id="reloadBtn">開き直す</button></section></div>';
+      return;
+    }
     App.$('main').innerHTML = '<div class="menu"><section><h2>読み込めませんでした</h2><p>' + App.esc((e && e.message) || '通信の誤り') + '</p>' +
       '<p class="note">通信が不安定な時に起こります。少し待ってから押してください。</p><button class="btn primary" id="reloadBtn">もう一度読み込む</button> <button class="btn" data-go="menu">メニューへ</button></section></div>';
   }
