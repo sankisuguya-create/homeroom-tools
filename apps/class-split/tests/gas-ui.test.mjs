@@ -149,11 +149,11 @@ await pw.addInitScript(() => {
   window.google = { script: { run: make(() => {}, () => {}) } };
 });
 await pw.goto('file://' + path.join(DIST, 'Index.html')); await pw.waitForSelector('.gbtn');
-await pw.click('[data-go="settings"]'); await pw.click('[data-stab="devices"]'); await pw.waitForSelector('#dopen');
-await pw.click('#dopen'); await pw.waitForSelector('#dleft');
+await pw.click('[data-go="settings"]'); await pw.click('[data-stab="devices"]'); await pw.waitForSelector('[data-dopen="user"]');
+await pw.click('[data-dopen="user"]'); await pw.waitForSelector('#dleft');
 ok((await pw.locator('table.ro').textContent()).includes('この端末'), '受付を開いた Windows の端末が登録される');
 ok(await pw.evaluate(() => !!localStorage.getItem('classSplit.device')), '合い言葉が端末に保存される');
-await pw.click('#dclose'); await pw.waitForSelector('#dopen');
+await pw.click('#dclose'); await pw.waitForSelector('[data-dopen]');
 await p.goto('file://' + path.join(DIST, 'Index.html'));
 await p.waitForSelector('#reloadBtn');
 ok((await p.locator('#main').textContent()).includes('この端末では開けません'), '未登録の端末は締め出される');

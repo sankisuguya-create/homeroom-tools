@@ -1039,13 +1039,13 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_5ca1774a8d93';
+var SERVER_BUILD = 'BUILD_bd08ca190654';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
 function doGet() {
   var who = currentTeacher_();
-  if (!who.ok || !accessOf_(who.email).user) {
+  if (!who.ok || (!accessOf_(who.email).user && !deviceWindowSafe_())) {
     var msg = !who.ok ? 'このページは教員のアカウントで開いてください' : 'このアプリの利用者に登録されていません';
     var sub = !who.ok ? ' では開けません。' : ' は登録されていません。使う場合は、このアプリの管理者に登録を頼んでください。';
     return HtmlService.createHtmlOutput('<!doctype html><html lang="ja"><meta charset="utf-8"><body style="font-family:sans-serif;padding:24px">' +
@@ -1084,9 +1084,28 @@ function accessOf_(email) {
 function requireTeacher_() {
   var who = currentTeacher_();
   if (!who.ok) throw userError_('教員のアカウントで開いてください');
-  if (!accessOf_(who.email).user) throw userError_('このアプリの利用者に登録されていません。管理者に登録を頼んでください');
+  var ac = accessOf_(who.email), win = deviceWindow_();
+  // 受付の間に開いた教員は、利用者の一覧に足す（一般の受付なら一般、管理者の受付なら管理者）。校務の端末からに限る
+  if (win && (!ac.user || (win.role === 'admin' && !ac.admin))) {
+    var vd = CONFIG.deviceVerdict(devInfo_(), getSetting_('app', {}).deviceOs);
+    if (!vd.ok) throw userError_('DEVICE:この端末は登録できない種類です（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
+    addUserByWindow_(who.email, win.role === 'admin');
+    ac = accessOf_(who.email);
+  }
+  if (!ac.user) throw userError_('このアプリの利用者に登録されていません。管理者に登録を頼んでください');
   checkDevice_(who.email);
   return who.email;
+}
+function deviceWindowSafe_() { try { return deviceWindow_(); } catch (e) { return null; } }
+function addUserByWindow_(email, admin) {
+  withLock_(function () {
+    var s = getSetting_('app', {}), list = s.teachers || [], hit = null;
+    list.forEach(function (t) { if (String(t.email || '').toLowerCase() === email) hit = t; });
+    if (hit) hit.admin = hit.admin || admin;
+    else list.push({ email: email, grade: 0, cls: 0, admin: admin });
+    s.teachers = list; setSetting_('app', s);
+    log_(email, admin ? 'addAdminByWindow' : 'addUserByWindow', list.length);
+  });
 }
 
 // ===== 端末の登録（仮実装） =====
@@ -1121,7 +1140,7 @@ function checkDevice_(email) {
   if (win) {
     var vd = CONFIG.deviceVerdict(info, getSetting_('app', {}).deviceOs);
     if (!vd.ok) throw userError_('DEVICE:この端末は登録できない種類です（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
-    registerDevice_(email, info, 'window');
+    registerDevice_(email, info, win.role === 'admin' ? 'window-admin' : 'window');
     DEVICE_CHECKED_ = email; return;
   }
   if (!list.length) { DEVICE_CHECKED_ = email; return; }
@@ -1141,17 +1160,18 @@ var apiDevices = api_(function () {
   requireAdmin_();
   var w = deviceWindow_();
   return { list: devices_().filter(function (x) { return !x.revoked; }).map(function (x) { return { id: x.id, by: x.by, at: x.at, last: x.last, os: x.os, touch: x.touch, screen: x.screen, how: x.how }; }),
-    window: w ? { until: w.until, by: w.by } : null, mine: DEV_ && DEV_.t ? (devices_().filter(function (x) { return x.h === hashHex_(DEV_.t); })[0] || {}).id || '' : '' };
+    window: w ? { until: w.until, by: w.by, role: w.role || 'user' } : null, mine: DEV_ && DEV_.t ? (devices_().filter(function (x) { return x.h === hashHex_(DEV_.t); })[0] || {}).id || '' : '' };
 });
-var apiOpenDeviceWindow = api_(function () {
+var apiOpenDeviceWindow = api_(function (role) {
   var by = requireAdmin_();
+  role = role === 'admin' ? 'admin' : 'user';
   var h0 = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
   if (!devices_().some(function (x) { return h0 && x.h === h0 && !x.revoked; })) {
     // 受付を開く端末も校務の端末に限る（管理者の携帯電話が登録されないように）
     var vd = CONFIG.deviceVerdict(devInfo_(), getSetting_('app', {}).deviceOs);
     if (!vd.ok) throw userError_('この端末からは受付を開けません（' + vd.why.join('、') + '）。校務用のパソコンで開いてください');
   }
-  withLock_(function () { setSetting_('devwin', { until: new Date(Date.now() + DEVICE_WINDOW_MIN * 60000).toISOString(), by: by }); log_(by, 'openDeviceWindow', DEVICE_WINDOW_MIN); });
+  withLock_(function () { setSetting_('devwin', { until: new Date(Date.now() + DEVICE_WINDOW_MIN * 60000).toISOString(), by: by, role: role }); log_(by, role === 'admin' ? 'openAdminWindow' : 'openDeviceWindow', DEVICE_WINDOW_MIN); });
   // 開いた管理者の端末がまだ未登録なら、ここで登録する（受付を開いた端末が締め出されないように）
   var h = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
   if (!devices_().some(function (x) { return h && x.h === h && !x.revoked; })) registerDevice_(by, devInfo_(), 'admin');

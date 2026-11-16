@@ -326,6 +326,25 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'sato@edu.nishi.or.jp';
     assert.equal(dcall('apiListGrades', PC(satoTok, 'ChromeOS')).device, true, '取り消した端末は開けない');
     env.user = 'tanaka@edu.nishi.or.jp';
+    // 受付で利用者も登録する：一般の受付では一般、管理者の受付では管理者として一覧に載る。携帯電話では載らない
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC('', 'ChromeOS')).ok, false, '受付の外では一覧に無い教員は開けない');
+    env.user = 'tanaka@edu.nishi.or.jp'; assert.ok(dcall('apiOpenDeviceWindow', PC(adminTok), 'user').ok);
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiListGrades', PC('', 'iOS', { mobile: true })).ok, false, '携帯電話では利用者にも載らない');
+    const nbr = dcall('apiListGrades', PC('', 'ChromeOS'));
+    assert.ok(nbr.ok && nbr.dev, '一般の受付で、利用者と端末が一度に登録される');
+    assert.equal(dcall('apiSettings', PC(nbr.dev, 'ChromeOS')).v.me.admin, false, '一般ユーザー');
+    env.user = 'tanaka@edu.nishi.or.jp'; assert.ok(dcall('apiOpenDeviceWindow', PC(adminTok), 'admin').ok);
+    env.user = 'boss@edu.nishi.or.jp';
+    const bs = dcall('apiSettings', PC('', 'Windows'));
+    assert.ok(bs.ok && bs.dev && bs.v.me.admin, '管理者の受付で、管理者として登録される');
+    env.user = 'newbie@edu.nishi.or.jp';
+    assert.equal(dcall('apiSettings', PC(nbr.dev, 'ChromeOS')).v.me.admin, true, '管理者の受付の間に開いた既存の一般ユーザーも管理者になる');
+    env.user = 'tanaka@edu.nishi.or.jp'; dcall('apiCloseDeviceWindow', PC(adminTok));
+    env.user = 'stranger2@edu.nishi.or.jp';
+    assert.ok(ctx.doGet().h.includes('利用者に登録されていません'), '受付を閉じた後は、一覧に無い教員に画面も出さない');
+    env.user = 'tanaka@edu.nishi.or.jp';
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 

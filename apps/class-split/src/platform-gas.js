@@ -92,7 +92,7 @@
     leaveCandidates: function () { return call('apiLeaveCandidates'); },
     purge: function (ids) { return call('apiPurge', ids); },
     devices: function () { return call('apiDevices'); },
-    openDeviceWindow: function () { return call('apiOpenDeviceWindow'); },
+    openDeviceWindow: function (role) { return call('apiOpenDeviceWindow', role); },
     closeDeviceWindow: function () { return call('apiCloseDeviceWindow'); },
     revokeDevice: function (id) { return call('apiRevokeDevice', id); }
   };

@@ -80,7 +80,7 @@
   }
 
   // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
-  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
+  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', addUserByWindow: '受付で一般ユーザーに登録された', addAdminByWindow: '受付で管理者に登録された', openAdminWindow: '管理者の受付を開いた（分）', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
   function logTab() {
     var esc = App.esc;
     if (!T.log) {
@@ -103,12 +103,13 @@
     }
     var left = D.window ? Math.max(0, Math.round((new Date(D.window.until) - Date.now()) / 1000)) : 0;
     var fmt = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
-    return '<p class="note"><b>仮実装</b>：登録された端末が1台も無い間は、どの端末でも開けます。1台でも登録されると、登録した端末だけが開けます。<br>「10分間 登録を受け付ける」を押すと、押した端末と、その間にこのアプリを開いた校務用の端末（ChromeOS・Windows）が登録されます。携帯電話は登録されません。<br>締め出された時は、所有者がスクリプトのエディタで <code>resetDevices</code> を実行すると、登録がすべて消えます。</p>' +
+    return '<p class="note"><b>仮実装</b>：登録された端末が1台も無い間は、どの端末でも開けます。1台でも登録されると、登録した端末だけが開けます。<br>受付のボタンを押すと、押した端末と、その間にこのアプリを開いた校務用の端末（ChromeOS・Windows）が登録されます。携帯電話は登録されません。<br>締め出された時は、所有者がスクリプトのエディタで <code>resetDevices</code> を実行すると、登録がすべて消えます。</p>' +
       (D.demo ? '<p class="note">見本・試行では端末の登録は動きません。</p>' : '') +
-      '<div class="rbar">' + (D.window ? '<span class="lab" id="dleft" data-until="' + esc(D.window.until) + '">受付中：残り ' + Math.floor(left / 60) + '分' + ('0' + left % 60).slice(-2) + '秒（' + esc(D.window.by) + '）</span><button class="btn" id="dclose">受付を閉じる</button><button class="btn" id="dreload">一覧を更新</button>'
-        : '<button class="btn primary" id="dopen">10分間 登録を受け付ける</button>') + '</div>' +
+      '<div class="rbar">' + (D.window ? '<span class="lab" id="dleft" data-until="' + esc(D.window.until) + '">' + (D.window.role === 'admin' ? '<b style="color:var(--warn,#C0330A)">管理者</b>を' : '一般の利用者を') + '受付中：残り ' + Math.floor(left / 60) + '分' + ('0' + left % 60).slice(-2) + '秒（' + esc(D.window.by) + '）</span><button class="btn" id="dclose">受付を閉じる</button><button class="btn" id="dreload">一覧を更新</button>'
+        : '<button class="btn primary" data-dopen="user">10分間 一般ユーザーを受け付ける</button><button class="btn warnbtn" data-dopen="admin">10分間 管理者を受け付ける</button>') + '</div>' +
+      '<p class="note">受付の間にこのアプリを開いた教員（<code>@' + esc(C.TEACHER_DOMAIN) + '</code>）は、利用者の一覧に<b>一般ユーザー</b>か<b>管理者</b>として載り、開いた校務用の端末も登録されます。管理者の受付は、開いた人全員が管理者になるので、人を絞った場で短く使ってください。</p>' +
       (D.list.length ? '<table class="r ro"><thead><tr><th>OS</th><th>画面</th><th style="text-align:left">登録した人</th><th>登録</th><th>最後に使った</th><th>経路</th><th></th></tr></thead><tbody>' + D.list.map(function (x) {
-        return '<tr><td>' + esc(x.os) + (x.id === D.mine ? '<br><b>この端末</b>' : '') + '</td><td>' + esc(x.screen) + '</td><td style="text-align:left">' + esc(x.by) + '</td><td>' + fmt(x.at) + '</td><td>' + fmt(x.last) + '</td><td>' + (x.how === 'admin' ? '受付を開いた端末' : '受付の間') + '</td>' +
+        return '<tr><td>' + esc(x.os) + (x.id === D.mine ? '<br><b>この端末</b>' : '') + '</td><td>' + esc(x.screen) + '</td><td style="text-align:left">' + esc(x.by) + '</td><td>' + fmt(x.at) + '</td><td>' + fmt(x.last) + '</td><td>' + (x.how === 'admin' ? '受付を開いた端末' : x.how === 'window-admin' ? '受付の間（管理者）' : '受付の間') + '</td>' +
           '<td><button class="btn" data-drev="' + esc(x.id) + '">取り消す</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">登録された端末はありません（制限なし）</div>');
   }
@@ -164,6 +165,8 @@
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },
+    // 受付で利用者の一覧が増えるので、設定を読み直す（タブはそのまま）
+    reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
       var x, s = T.s;
       if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; render(); return true; }
@@ -178,9 +181,9 @@
         return true;
       }
       if (t.closest('#purge')) { purgeDialog(); return true; }
-      if (t.closest('#dopen')) { App.save(function () { return App.pf().openDeviceWindow(); }).then(function () { T.dev = null; render(); App.toast('10分間、登録を受け付けます'); }); return true; }
+      if ((x = t.closest('[data-dopen]'))) { var role = x.dataset.dopen; if (role === 'admin' && !confirm('10分間、開いた教員を全員「管理者」として登録します。よろしいですか？')) return true; App.save(function () { return App.pf().openDeviceWindow(role); }).then(function () { T.dev = null; App.screens.settings.reloadSettings(); App.toast('10分間、' + (role === 'admin' ? '管理者' : '一般ユーザー') + 'の登録を受け付けます'); }); return true; }
       if (t.closest('#dclose')) { App.save(function () { return App.pf().closeDeviceWindow(); }).then(function () { T.dev = null; render(); }); return true; }
-      if (t.closest('#dreload')) { T.dev = null; render(); return true; }
+      if (t.closest('#dreload')) { T.dev = null; App.screens.settings.reloadSettings(); return true; }
       if ((x = t.closest('[data-drev]'))) {
         var mine = T.dev && x.dataset.drev === T.dev.mine;
         if (!confirm(mine ? 'この端末の登録を取り消すと、この端末では開けなくなります（ほかの登録済みの端末がある時）。取り消しますか？' : 'この端末の登録を取り消しますか？')) return true;
