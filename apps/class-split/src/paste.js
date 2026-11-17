@@ -56,7 +56,9 @@
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no}], errors: [文], counts: {男,女} }
   // cls は 0始まり。組の列が無い時は defaultCls を使う
-  function parseRoster(text, defaultCls) {
+  // opt.tempId：新1年。児童IDの列が無い・空の行を許す（サーバーが仮のIDを振る）
+  function parseRoster(text, defaultCls, opt) {
+    opt = opt || {};
     var all = splitRows(text);
     if (!all.length) return { roles: [], header: false, rows: [], errors: [], counts: { m: 0, f: 0 } };
     var headRoles = all[0].map(roleOfHeader), header = headRoles.filter(Boolean).length >= 2;
@@ -64,20 +66,21 @@
     var col = {};
     roles.forEach(function (r, c) { if (r && col[r] == null) col[r] = c; });
     var errors = [], rows = [], seen = {}, m = 0, f = 0;
-    ['id', 'name'].forEach(function (r) { if (col[r] == null) errors.push(LABEL[r] + 'の列が見つかりません'); });
+    (opt.tempId ? ['name'] : ['id', 'name']).forEach(function (r) { if (col[r] == null) errors.push(LABEL[r] + 'の列が見つかりません'); });
     if (errors.length) return { roles: roles, header: header, rows: [], errors: errors, counts: { m: 0, f: 0 } };
     body.forEach(function (r, i) {
       var line = (header ? i + 2 : i + 1) + '行目：';
-      var id = idOf(r[col.id] || ''), name = String(r[col.name] || '').trim();
+      var rawId = col.id != null ? String(r[col.id] || '').trim() : '';
+      var id = idOf(rawId) || (opt.tempId && /^N\d{7}$/.test(rawId) ? rawId : ''), name = String(r[col.name] || '').trim();
       var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
       var cls = col.cls != null ? clsOf(r[col.cls] || '') - 1 : defaultCls;
       var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
-      if (!id) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
-      if (seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
+      if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
       if (!name) { errors.push(line + '名前が空です'); return; }
       if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
       if (!(cls >= 0)) { errors.push(line + '組が読めません'); return; }
-      seen[id] = 1;
+      if (id) seen[id] = 1;
       if (sex === '男') m++; else if (sex === '女') f++;
       rows.push({ id: id, name: name, kana: col.kana != null ? String(r[col.kana] || '').trim() : '', male: sex === '男', sex: sex, cls: cls, no: no || 0 });
     });

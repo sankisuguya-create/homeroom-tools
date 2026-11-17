@@ -234,7 +234,7 @@
   // その学年（今年度の学年）の児童が、各年度に何年何組だったか
   function cohortYears(grade) {
     var out = [], entry = FY - grade + 1;
-    for (var fy = entry; fy <= FY + 1; fy++) {
+    for (var fy = Math.min(entry, FY); fy <= FY + 1; fy++) { // 新1年は今年度の0学年から
       var gy = fy - entry + 1, rows = S.years[fy] && S.years[fy][gy];
       if (rows && rows.length) out.push({ fy: fy, grade: gy, rows: rows });
     }
@@ -254,7 +254,7 @@
     fiscalYear: FY,
     listGrades: function () { gen();
       var out = [];
-      for (var grade = 1; grade <= 6; grade++) {
+      for (var grade = 0; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める）
         var rows = yearRows(FY, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
         out.push({ grade: grade, count: rows.length, classes: nc, decided: !!S.decisions[grade] });
@@ -391,6 +391,8 @@
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
+      // 新1年：児童IDが無ければ仮の番号（本番の server.gs と同じ形 N＋年度＋3桁）
+      if (grade === 0 && !(opt && opt.dry)) { var seq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) seq = Math.max(seq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (seq++)).slice(-3); }); }
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
       if (opt && opt.dry) {
         var ren = [], add = 0; cur.forEach(function (r) { byId[r.id] = r; });

@@ -38,3 +38,11 @@ test('番号の列が無ければ貼った順に振る。名前の列が無け�
   assert.deepEqual(r.rows.map(x => [x.cls, x.no]), [[2, 1], [2, 2]]);
   assert.match(parseRoster('児童ID\t性別\n20250001\t男', 0).errors[0], /名前の列/);
 });
+
+test('新1年（tempId）：児童IDの列が無くても・空でも読める。8桁でない番号は誤り', () => {
+  const r = parseRoster('名前\tよみ\t性別\n入学 ハナ\tにゅうがく はな\t女\n入学 タロウ\tにゅうがく たろう\t男', 0, { tempId: true });
+  assert.deepEqual(r.errors, []); assert.equal(r.rows.length, 2); assert.equal(r.rows[0].id, '');
+  assert.ok(parseRoster('名前\tよみ\t性別\n入学 ハナ\tにゅうがく はな\t女', 0).errors.length > 0, '新1年以外は児童IDの列が要る');
+  const m = parseRoster('児童ID\t名前\t性別\n\t入学 ハナ\t女\n30000001\t入学 タロウ\t男\n123\t入学 ジロウ\t男', 0, { tempId: true });
+  assert.equal(m.rows.length, 2); assert.equal(m.errors.length, 1, '空は許し、8桁でない番号だけ誤り');
+});

@@ -57,7 +57,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 /* ===== メニュー ===== */
 .menu{max-width:760px;width:100%;margin:24px auto;display:flex;flex-direction:column;gap:20px}
 .menu h2{font-size:1rem;margin:0 0 8px;color:var(--sub);font-weight:400}
-.grades{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.grades{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .gbtn{border:1px solid var(--line);background:var(--panel);border-radius:8px;padding:14px 0;font-size:1.3rem;font-weight:700;cursor:pointer}
 .gbtn[aria-pressed="true"]{border:3px solid var(--link);background:var(--fill);padding:12px 0}
 .gbtn small{display:block;font-size:.7rem;font-weight:400;color:var(--sub)}
@@ -66,7 +66,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .big b{font-size:1.4rem}
 .big span{color:var(--sub);font-size:.9rem}
 .big:hover{border-color:var(--link)}
-@media (max-width:560px){.grades{grid-template-columns:repeat(3,1fr)}.bigs{grid-template-columns:1fr}}
+@media (max-width:560px){.grades{grid-template-columns:repeat(4,1fr)}.bigs{grid-template-columns:1fr}}
 /* ▲ css/01-base.css ここまで ▲ */
 /* ▼ css/02-marks.css から ▼ */
 /* 配慮項目の印（アイコンの形） */
@@ -1031,6 +1031,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return { ok: !why.length, why: why };
   };
 
+  // 学年の呼び名。0 は新1年（来年度に入学する児童。今年度の0学年として持ち、決定で来年度の1年になる）
+  CONFIG.GRADES = [0, 1, 2, 3, 4, 5, 6];
+  CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
+  // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
+  CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
+  CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/config.js ここまで ▲ */
@@ -1932,7 +1939,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no}], errors: [文], counts: {男,女} }
   // cls は 0始まり。組の列が無い時は defaultCls を使う
-  function parseRoster(text, defaultCls) {
+  // opt.tempId：新1年。児童IDの列が無い・空の行を許す（サーバーが仮のIDを振る）
+  function parseRoster(text, defaultCls, opt) {
+    opt = opt || {};
     var all = splitRows(text);
     if (!all.length) return { roles: [], header: false, rows: [], errors: [], counts: { m: 0, f: 0 } };
     var headRoles = all[0].map(roleOfHeader), header = headRoles.filter(Boolean).length >= 2;
@@ -1940,20 +1949,21 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var col = {};
     roles.forEach(function (r, c) { if (r && col[r] == null) col[r] = c; });
     var errors = [], rows = [], seen = {}, m = 0, f = 0;
-    ['id', 'name'].forEach(function (r) { if (col[r] == null) errors.push(LABEL[r] + 'の列が見つかりません'); });
+    (opt.tempId ? ['name'] : ['id', 'name']).forEach(function (r) { if (col[r] == null) errors.push(LABEL[r] + 'の列が見つかりません'); });
     if (errors.length) return { roles: roles, header: header, rows: [], errors: errors, counts: { m: 0, f: 0 } };
     body.forEach(function (r, i) {
       var line = (header ? i + 2 : i + 1) + '行目：';
-      var id = idOf(r[col.id] || ''), name = String(r[col.name] || '').trim();
+      var rawId = col.id != null ? String(r[col.id] || '').trim() : '';
+      var id = idOf(rawId) || (opt.tempId && /^N\d{7}$/.test(rawId) ? rawId : ''), name = String(r[col.name] || '').trim();
       var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
       var cls = col.cls != null ? clsOf(r[col.cls] || '') - 1 : defaultCls;
       var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
-      if (!id) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
-      if (seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
+      if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
       if (!name) { errors.push(line + '名前が空です'); return; }
       if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
       if (!(cls >= 0)) { errors.push(line + '組が読めません'); return; }
-      seen[id] = 1;
+      if (id) seen[id] = 1;
       if (sex === '男') m++; else if (sex === '女') f++;
       rows.push({ id: id, name: name, kana: col.kana != null ? String(r[col.kana] || '').trim() : '', male: sex === '男', sex: sex, cls: cls, no: no || 0 });
     });
@@ -2249,7 +2259,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // その学年（今年度の学年）の児童が、各年度に何年何組だったか
   function cohortYears(grade) {
     var out = [], entry = FY - grade + 1;
-    for (var fy = entry; fy <= FY + 1; fy++) {
+    for (var fy = Math.min(entry, FY); fy <= FY + 1; fy++) { // 新1年は今年度の0学年から
       var gy = fy - entry + 1, rows = S.years[fy] && S.years[fy][gy];
       if (rows && rows.length) out.push({ fy: fy, grade: gy, rows: rows });
     }
@@ -2269,7 +2279,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     fiscalYear: FY,
     listGrades: function () { gen();
       var out = [];
-      for (var grade = 1; grade <= 6; grade++) {
+      for (var grade = 0; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める）
         var rows = yearRows(FY, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
         out.push({ grade: grade, count: rows.length, classes: nc, decided: !!S.decisions[grade] });
@@ -2406,6 +2416,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
+      // 新1年：児童IDが無ければ仮の番号（本番の server.gs と同じ形 N＋年度＋3桁）
+      if (grade === 0 && !(opt && opt.dry)) { var seq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) seq = Math.max(seq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (seq++)).slice(-3); }); }
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
       if (opt && opt.dry) {
         var ren = [], add = 0; cur.forEach(function (r) { byId[r.id] = r; });
@@ -2475,7 +2487,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_bdb466a2359b';
+  var PAGE_BUILD = 'BUILD_432dc82ec06a';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2962,17 +2974,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var App = g.App;
   App.screens.menu = {
     render: function () {
-      var st = App.st;
+      var st = App.st, cur = (st.grades || []).filter(function (x) { return x.grade === st.grade; })[0];
       // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
       var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
       App.$('main').innerHTML = '<div class="menu">' + warn +
         '<section><h2>学年を選ぶ</h2><div class="grades">' + st.grades.map(function (x) {
-          return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + x.grade + '年<small>' + x.count + '人・' + x.classes + '学級' + (x.decided ? '・決定済み' : '') + '</small></button>';
+          return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + g.CONFIG.gradeLabel(x.grade) + '<small>' + (x.count ? x.count + '人' + (x.grade === 0 ? '' : '・' + x.classes + '学級') : '名簿なし') + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +
-        '<section><h2>' + st.grade + '年で何をしますか</h2><div class="bigs">' +
-        '<button class="big" data-go="roster"><b>名簿を見る</b><span>今年度と過去の年度の学級名簿。配慮項目の入力、児童ごとの経年の記録。</span></button>' +
-        '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>' +
-        (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>来年度の学級の案を作り、入れ替え・比較して決める。</span></button>') + // 6年は卒業するのでクラス分けは無い
+        '<section><h2>' + g.CONFIG.gradeLabel(st.grade) + 'で何をしますか</h2><div class="bigs">' +
+        // 名簿が0人の学年は、名簿を貼る入口を先頭に大きく出す（名簿の画面を開くと、すぐ貼る窓が開く）
+        (cur && !cur.count ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b><span>' + (st.grade === 0 ? '来年度に入学する児童の名簿を、Excel やスプレッドシートからコピーして貼る。児童IDは無くてよい（仮の番号を振る）。' : 'まだ名簿がありません。Excel やスプレッドシートの名簿をコピーして貼る。') + '</span></button>'
+          : '<button class="big" data-go="roster"><b>名簿を見る</b><span>' + (st.grade === 0 ? '来年度に入学する児童の名簿。配慮項目の入力。' : '今年度と過去の年度の学級名簿。配慮項目の入力、児童ごとの経年の記録。') + '</span></button>') +
+        (st.grade === 0 ? '' : '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>') + // 新1年は入学前なので事案は無い
+        (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>' + (st.grade === 0 ? '入学する児童を1年の学級に分ける案を作り、入れ替え・比較して決める。' : '来年度の学級の案を作り、入れ替え・比較して決める。') + '</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
         '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button>' +
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p></section></div>'; // 貼った版を GitHub の dist と照らす
@@ -3111,7 +3125,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 学力の窓の上の部分（点数・順位で共通）：切り替えのタブ、「賢い」の決め方（点数か順位か）、手動で付けた「賢い」の児童
   function acadHead(Y, kind, F) {
     var d = D(), esc = App.esc, man = Y.rows.filter(function (r) { return r.a.k7m; });
-    return '<h2>学力（' + R.fy + '年度 ' + Y.grade + '年）</h2>' +
+    return '<h2>学力（' + R.fy + '年度 ' + C.gradeLabel(Y.grade) + '）</h2>' +
       '<div class="rbar acadtabs"><button type="button" class="tab" data-acadtab="score" aria-selected="' + (kind === 'score') + '">点数</button><button type="button" class="tab" data-acadtab="rank" aria-selected="' + (kind === 'rank') + '">順位</button>' +
       '<span class="acaduse">「賢い」の決め方 <label class="chk"><input type="radio" name="acaduse" data-acaduse="score"' + (F.use === 'score' ? ' checked' : '') + '> 点数で</label><label class="chk"><input type="radio" name="acaduse" data-acaduse="rank"' + (F.use === 'rank' ? ' checked' : '') + '> 順位で</label></span></div>' +
       '<p class="note">学力は組の中の男女ごとに比べます。' + (man.length ? '</p><details class="acadman"><summary>手動で「賢い」を付けた児童 ' + man.length + '人（点数・順位に関わらず「賢い」）</summary><div class="note">' + man.map(function (r) { return esc(d.kids[r.id].name); }).join('、') + '</div></details>' : '手動で「賢い」を付けた児童はいません。</p>');
@@ -3355,9 +3369,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     if (years.indexOf(R.fy) < 0) R.fy = editableFy();
     var Y = yearOf(R.fy), edit = R.fy === editableFy();
     if (!Y) { // まだ名簿が無い学年
-      App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の名簿がまだありません</h2>' +
-        '<p>既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。</p>' +
+      App.$('main').innerHTML = '<div class="menu"><section><h2>' + C.gradeLabel(d.grade) + 'の名簿がまだありません</h2>' +
+        '<p>' + (d.grade === 0 ? '入学する児童の名簿の範囲（見出しの行ごと）をコピーして貼り付けます。名前・よみ・性別があれば足ります。児童IDは無くてよく、仮の番号を振ります（入学後に8桁の番号の名簿を貼ると、名前で照らして付け替えます）。' : '既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。') + '</p>' +
         '<button class="btn primary" id="paste">名簿を貼る…</button></section></div>';
+      if (App.st.openPaste) { App.st.openPaste = false; pasteDialog(); }
       return;
     }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
@@ -3369,7 +3384,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     h += '<button class="tab" data-scope="grade" aria-selected="' + (R.scope === 'grade') + '">学年（' + Y.rows.length + '人）</button>';
     if (R.scope === 'school') h += '<span class="state">全校の事案を表示中<button class="btn" data-scope="cls">戻る</button></span>';
     else {
-      if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + Y.grade + '年）を表示中・' +
+      if (R.fy !== editableFy()) h += '<span class="state">' + R.fy + '年度（' + C.gradeLabel(Y.grade) + '）を表示中・' +
         (R.fy === d.fy && d.decision ? '決定したので凍結' : '見るだけ') + '<button class="btn" data-fy="' + editableFy() + '">戻る</button></span>';
       if (SORT.length) h += '<span class="state">並び順：' + SORT.map(function (x) { return App.esc(sortLabel(x.k)) + (x.dir > 0 ? '↑' : '↓'); }).join('→') + '<button class="btn" id="unorder">解除</button></span>';
     }
@@ -3624,14 +3639,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var d = D(), fy = editableFy(), grade = fy === d.fy ? d.grade : d.grade + 1, esc = App.esc;
     var P = { text: '', cls: R.scope === 'cls' ? R.cls : 0, res: null };
     var summary = function () {
-      var r = P.res = g.Paste.parseRoster(P.text, P.cls);
+      var r = P.res = g.Paste.parseRoster(P.text, P.cls, { tempId: grade === 0 });
       if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます</div>';
       var hasCls = r.roles.indexOf('cls') >= 0;
       var h = '<div class="rbar"><span class="lab">読み取った列</span>' + r.roles.map(function (x) { return '<span class="tab" style="cursor:default">' + (x ? g.Paste.LABEL[x] : '（使わない）') + '</span>'; }).join('') + '</div>';
       if (!hasCls) h += '<div class="rbar"><span class="lab">組の列が無いので、この組に入れる</span>' + [0, 1, 2, 3].map(function (k) {
         return '<button class="tab" data-pcls="' + k + '" aria-selected="' + (P.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>';
       }).join('') + '</div>';
-      h += '<div><b>' + r.rows.length + '人</b>（男' + r.counts.m + '・女' + r.counts.f + '）を ' + fy + '年度 ' + grade + '年 に取り込みます。同じ児童IDの児童は上書きし、入力済みの配慮項目は消しません。</div>';
+      h += '<div><b>' + r.rows.length + '人</b>（男' + r.counts.m + '・女' + r.counts.f + '）を ' + fy + '年度 ' + C.gradeLabel(grade) + ' に取り込みます。' + (grade === 0 ? '児童IDの無い児童には仮の番号を振ります。' : '') + '同じ児童IDの児童は上書きし、入力済みの配慮項目は消しません。</div>';
       if (r.errors.length) h += '<div class="warnbox">✕ ' + r.errors.length + '件 取り込めない行があります<ul style="margin:4px 0 0;font-weight:400;color:var(--ink)">' +
         r.errors.slice(0, 6).map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + (r.errors.length > 6 ? '<li>ほか' + (r.errors.length - 6) + '件</li>' : '') + '</ul></div>';
       if (r.rows.length) h += '<div class="tw" style="max-height:180px"><table class="r ro"><thead><tr><th>組</th><th>番号</th><th>児童ID</th><th style="text-align:left">名前</th><th>よみ</th><th>性別</th></tr></thead><tbody>' +
@@ -3665,9 +3680,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     App.openDlg({
       focus: word ? 'iword' : 'okbtn',
       html: function () {
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="取り込む前の確認" style="max-width:640px"><h2>' + fy + '年度 ' + grade + '年 に取り込む前の確認</h2>' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="取り込む前の確認" style="max-width:640px"><h2>' + fy + '年度 ' + C.gradeLabel(grade) + ' に取り込む前の確認</h2>' +
           '<div>追加 <b>' + df.added + '人</b>・すでにいる児童 <b>' + df.existing + '人</b></div>' +
-          list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
+          list('仮の番号から8桁の番号に付け替える', df.relink || []) + list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
           (df.risky ? '<div class="warnbox">別の学年や年度の表を貼っていないか確かめてください（' + (df.other.length ? 'ほかの学年の児童がいます' : 'すでにいる児童の半分以上で名前が変わります') + '）。取り込む直前に、データの控えを自動で取ります。</div>' +
             '<label>このまま取り込むなら「<b>' + word + '</b>」と入力<br><input type="text" id="iword" style="width:100%;margin-top:4px" autocomplete="off"></label>' : '<p class="note">取り込む直前に、データの控えを自動で取ります。</p>') +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">取り込む（' + rows.length + '人）</button></div></div></div>';
@@ -3677,7 +3692,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         App.closeDlg();
         App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
           return App.reload().then(function () {
-            App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
+            App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.relinked ? '・付け替え' + r.relinked + '人' : '') + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
           });
         });
       }
@@ -4862,7 +4877,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   function renderBar() {
-    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
+    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + g.CONFIG.gradeLabel(App.st.grade) + '</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
       // タブは「案A」だけ。名前・違反と偏りの数・近道はカーソルで出す（違反がある案は字を赤く）
@@ -4893,7 +4908,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   // 案がまだ無い時の画面：設定の窓を開くボタンだけ
   function renderSetup() {
-    App.$('main').innerHTML = '<div class="menu"><section><h2>' + App.st.grade + '年のクラス分け</h2><p>偏りの重み付けと、組の中の並び順を決めてから、案を作ります。</p>' +
+    App.$('main').innerHTML = '<div class="menu"><section><h2>' + g.CONFIG.gradeLabel(App.st.grade) + 'のクラス分け</h2><p>偏りの重み付けと、組の中の並び順を決めてから、案を作ります。</p>' +
       '<button class="btn primary big" id="gen">重み付けと並び順を決めて、案を作る…</button> <button class="btn" data-go="menu">メニューに戻る</button></section></div>';
   }
   function render() {
@@ -5195,7 +5210,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       for (var pg = 0; pg < np; pg++) {
         var part = ids.slice(pg * PRINT_PER_PAGE, (pg + 1) * PRINT_PER_PAGE);
         total += part.length;
-        pages.push('<div class="pp"><div class="pp-h">' + App.st.grade + '年 ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
+        pages.push('<div class="pp"><div class="pp-h">' + g.CONFIG.gradeLabel(App.st.grade) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
           '<div class="pp-f"><span class="pp-ruler"></span>この線が10cmなら実寸（倍率100%・余白なしで印刷）</div></div>');
       }
     }
@@ -5265,7 +5280,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var body = '<p>' + App.esc(planName(p)) + ' で決定します。次のことを行います。</p><ul><li>' + (grade + 1) + '年の名簿を作ります（新しい番号は組ごとの男女混合の五十音順）</li>' +
       '<li>組の番号は仮で A組＝1組・B組＝2組… にします。番号は後で「組の番号を決める」で決めます</li><li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
-    confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
+    confirmDialog('クラス替えを決定', body, g.CONFIG.gradeLabel(grade) + 'のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
       App.save(function () { return App.pf().savePlans(grade, serialize()).then(function () { return App.pf().decide(grade, { name: planName(p), assign: assign }); }); })
         .then(function () { return App.reload(); }).then(function () { App.toast('決定しました'); });
@@ -5636,7 +5651,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var rows = excelRows();
     if (!rows) { App.toast('来年度の名簿がまだありません（クラス替えを決定すると作られます）'); return; }
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(excelBlob(rows)); a.download = '次年度組編成_' + App.st.grade + '年から' + (App.st.grade + 1) + '年.xlsx';
+    a.href = URL.createObjectURL(excelBlob(rows)); a.download = '次年度組編成_' + g.CONFIG.gradeLabel(App.st.grade) + 'から' + (App.st.grade + 1) + '年.xlsx';
     document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000); // すぐ外すとファイル名が付かないことがある
     App.toast('Excel を作りました（' + rows.length + '人）。ダウンロードを確かめてください');
   }
@@ -5647,7 +5662,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
       if (d.grade >= 6) { App.$('main').innerHTML = '<div class="menu"><section><h2>6年は卒業するので、クラス分けはありません</h2><button class="btn" data-go="menu">メニューに戻る</button></section></div>'; return; }
       if (!cur || !cur.rows.length) { // 名簿が無いと組めない
-        App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
+        App.$('main').innerHTML = '<div class="menu"><section><h2>' + C.gradeLabel(d.grade) + 'の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
           '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
         return;
       }
@@ -5952,7 +5967,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
@@ -6009,7 +6024,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return;
     }
     var go = t.closest('[data-go]');
-    if (go) { App.go(go.dataset.go); return; }
+    if (go) { if (go.dataset.paste) App.st.openPaste = true; App.go(go.dataset.go); return; } // data-paste：名簿の画面で貼る窓をすぐ開く
     if (scr && scr.click) scr.click(t, e);
   });
   document.addEventListener('dblclick', function (e) { var scr = App.screens[App.st.screen]; if (!App.dlg && scr && scr.dblclick) scr.dblclick(e.target); });

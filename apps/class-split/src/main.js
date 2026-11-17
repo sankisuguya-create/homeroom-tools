@@ -8,7 +8,7 @@
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : st.grade + '年 ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
@@ -65,7 +65,7 @@
       return;
     }
     var go = t.closest('[data-go]');
-    if (go) { App.go(go.dataset.go); return; }
+    if (go) { if (go.dataset.paste) App.st.openPaste = true; App.go(go.dataset.go); return; } // data-paste：名簿の画面で貼る窓をすぐ開く
     if (scr && scr.click) scr.click(t, e);
   });
   document.addEventListener('dblclick', function (e) { var scr = App.screens[App.st.screen]; if (!App.dlg && scr && scr.dblclick) scr.dblclick(e.target); });

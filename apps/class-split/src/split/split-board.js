@@ -26,7 +26,7 @@
   }
 
   function renderBar() {
-    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + App.st.grade + '年</button><div class="tabs" role="tablist">';
+    var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + g.CONFIG.gradeLabel(App.st.grade) + '</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
       var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
       // タブは「案A」だけ。名前・違反と偏りの数・近道はカーソルで出す（違反がある案は字を赤く）
@@ -57,7 +57,7 @@
   // 盤面の描画。重い処理（寸法の計測）はカードを入れる前に1回だけ行う
   // 案がまだ無い時の画面：設定の窓を開くボタンだけ
   function renderSetup() {
-    App.$('main').innerHTML = '<div class="menu"><section><h2>' + App.st.grade + '年のクラス分け</h2><p>偏りの重み付けと、組の中の並び順を決めてから、案を作ります。</p>' +
+    App.$('main').innerHTML = '<div class="menu"><section><h2>' + g.CONFIG.gradeLabel(App.st.grade) + 'のクラス分け</h2><p>偏りの重み付けと、組の中の並び順を決めてから、案を作ります。</p>' +
       '<button class="btn primary big" id="gen">重み付けと並び順を決めて、案を作る…</button> <button class="btn" data-go="menu">メニューに戻る</button></section></div>';
   }
   function render() {

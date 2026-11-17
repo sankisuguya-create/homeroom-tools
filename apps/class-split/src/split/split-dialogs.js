@@ -168,7 +168,7 @@
       for (var pg = 0; pg < np; pg++) {
         var part = ids.slice(pg * PRINT_PER_PAGE, (pg + 1) * PRINT_PER_PAGE);
         total += part.length;
-        pages.push('<div class="pp"><div class="pp-h">' + App.st.grade + '年 ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
+        pages.push('<div class="pp"><div class="pp-h">' + g.CONFIG.gradeLabel(App.st.grade) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
           '<div class="pp-f"><span class="pp-ruler"></span>この線が10cmなら実寸（倍率100%・余白なしで印刷）</div></div>');
       }
     }
@@ -238,7 +238,7 @@
     var body = '<p>' + App.esc(planName(p)) + ' で決定します。次のことを行います。</p><ul><li>' + (grade + 1) + '年の名簿を作ります（新しい番号は組ごとの男女混合の五十音順）</li>' +
       '<li>組の番号は仮で A組＝1組・B組＝2組… にします。番号は後で「組の番号を決める」で決めます</li><li>今年度の配慮項目の値を、来年度に写します。今年度の値はこの時点で凍結されます</li><li>つける・離すを、来年度の候補として持ち越します</li></ul>' +
       (a.bad.length ? '<div class="warnbox">✕ この案には違反が' + a.bad.length + '件あります</div>' : '') + '<p class="note">4/1までは取り消せます。</p>';
-    confirmDialog('クラス替えを決定', body, grade + '年のクラス替えを決定', '決定する', function () {
+    confirmDialog('クラス替えを決定', body, g.CONFIG.gradeLabel(grade) + 'のクラス替えを決定', '決定する', function () {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
       App.save(function () { return App.pf().savePlans(grade, serialize()).then(function () { return App.pf().decide(grade, { name: planName(p), assign: assign }); }); })
         .then(function () { return App.reload(); }).then(function () { App.toast('決定しました'); });

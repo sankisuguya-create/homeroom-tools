@@ -32,7 +32,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST);
   await p.waitForSelector('.gbtn');
-  ok(await p.locator('.gbtn').count() === 6, `${w}x${h} メニューに6学年`);
+  ok(await p.locator('.gbtn').count() === 7, `${w}x${h} メニューに新1年と6学年`);
   await p.click('[data-g="6"]');
   ok(await p.locator('[data-go="split"]').count() === 0, `${w}x${h} 6年を選ぶと「クラス分けをする」が出ない`);
   await p.click('[data-g="4"]');
@@ -497,6 +497,33 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const hgt = await p.evaluate(() => document.getElementById('rklist').getBoundingClientRect().height);
   ok(hgt >= 250, `低い画面でも順位の一覧が見える（高さ ${Math.round(hgt)}px）`);
   ok(await p.locator('.rkdlg [data-act="ok"]').isVisible(), '保存のボタンが画面の中に残る');
+  await p.close();
+}
+// 新1年：メニューに出る。名簿が0人なら「名簿を貼る」で貼る窓がすぐ開く。児童IDなしで貼れて、クラス分けができる
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  ok((await p.locator('.gbtn').first().textContent()).includes('新1年'), 'メニューの学年の先頭に新1年');
+  await p.click('[data-g="0"]');
+  ok(await p.locator('[data-go="incidents"]').count() === 0, '新1年には事案管理を出さない');
+  await p.click('[data-paste]'); await p.waitForSelector('#ptxt');
+  ok(true, '名簿が0人の時は「名簿を貼る」で貼る窓がすぐ開く');
+  const rows = ['名前\tよみ\t性別'];
+  for (let i = 0; i < 40; i++) rows.push('入学 ' + i + '\tにゅうがく ' + i + '\t' + (i % 2 ? '男' : '女'));
+  await p.fill('#ptxt', rows.join('\n'));
+  await p.waitForSelector('#okbtn:not([disabled])');
+  ok((await p.locator('#psum').textContent()).includes('新1年'), '取り込み先は新1年');
+  await p.click('#okbtn'); await p.waitForSelector('[aria-label="取り込む前の確認"]');
+  await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
+  await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  ok(await p.locator('table.r tbody tr').count() === 40, '児童IDなしで40人が名簿に入る');
+  await p.click('[data-go="menu"]:visible');
+  ok((await p.locator('[data-g="0"]').textContent()).includes('40人'), 'メニューに人数が出る');
+  await p.click('[data-go="split"]'); await intoSplit(p);
+  ok(await p.locator('.board .chip').count() === 40, '新1年のクラス分けの盤面に40人');
+  ok((await p.locator('[data-go="menu"]:visible').first().textContent()).includes('新1年'), '盤面の戻るボタンに「新1年」');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
 await browser.close();

@@ -46,7 +46,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'tanaka@edu.nishi.or.jp';
 
     const g = call('apiListGrades').v;
-    assert.equal(g[3].count, 8); assert.equal(g[3].classes, 2);
+    assert.deepEqual(g.map(x => x.grade), [0, 1, 2, 3, 4, 5, 6], '新1年（0）から6年まで');
+    const g4 = g.find(x => x.grade === 4);
+    assert.equal(g4.count, 8); assert.equal(g4.classes, 2);
 
     let b = call('apiBoot', 4);
     assert.ok(b.ok, b.err); assert.match(b.build, /^BUILD_/);
@@ -177,7 +179,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const frozen = call('apiSetAttr', FY, 4, '40000011', 'k3', 1);
     assert.equal(frozen.ok, false); assert.match(frozen.err, /凍結|直せません/);
     assert.ok(call('apiSetAttr', FY + 1, 5, '40000011', 'k3', 1).ok);
-    assert.equal(call('apiListGrades').v[3].decided, true);
+    assert.equal(call('apiListGrades').v.find(x => x.grade === 4).decided, true);
 
     // 組の番号：決定の直後は仮（A組＝1組）。決めると来年度の名簿の組が付け替わり、出席番号は変わらない
     assert.deepEqual(b.decision.names, [1, 2]); assert.equal(b.decision.named, false);
@@ -361,6 +363,36 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'tanaka@edu.nishi.or.jp';
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
+
+    // 新1年（grade 0）：児童IDなしで取り込むと仮の番号（N＋年度＋3桁）。決定で来年度の1年になり、8桁の番号を貼ると名前で照らして付け替える
+    const nk = [['入学 ハナ', 'にゅうがく はな', false], ['入学 タロウ', 'にゅうがく たろう', true], ['入学 ジロウ', 'にゅうがく じろう', true], ['入学 サクラ', 'にゅうがく さくら', false]]
+      .map((k, i) => ({ id: '', name: k[0], kana: k[1], male: k[2], cls: 0, no: i + 1 }));
+    assert.equal(call('apiImportRoster', FY, 1, nk).ok, false, '新1年以外は児童IDが要る');
+    const nd = call('apiImportRoster', FY, 0, nk, { dry: true });
+    assert.equal(nd.v.added, 4, '差分の確認：4人追加');
+    const ni = call('apiImportRoster', FY, 0, nk);
+    assert.ok(ni.ok, ni.err); assert.equal(ni.v.added, 4);
+    const b0 = call('apiBoot', 0).v;
+    const r0 = b0.years.find(y => y.fy === FY);
+    assert.ok(r0 && r0.rows.length === 4 && r0.rows.every(r => /^N\d{7}$/.test(r.id)), '仮の番号で今年度の0学年に入る');
+    assert.equal(call('apiListGrades').v.find(x => x.grade === 0).count, 4);
+    assert.ok(call('apiImportRoster', FY, 0, [{ id: '', name: '入学 モモ', kana: 'にゅうがく もも', male: false, cls: 0, no: 5 }]).ok);
+    const ids0 = call('apiBoot', 0).v.years.find(y => y.fy === FY).rows.map(r => r.id);
+    assert.equal(new Set(ids0).size, 5, '追加で貼っても仮の番号は重ならない');
+    const asg0 = {}; ids0.forEach((id, i) => { asg0[id] = i % 2; });
+    const dc0 = call('apiDecide', 0, { name: '案A', assign: asg0 });
+    assert.ok(dc0.ok, dc0.err);
+    const g1n = call('apiBoot', 0).v.years.find(y => y.fy === FY + 1 && y.grade === 1);
+    assert.ok(g1n && g1n.rows.length === 5, '決定すると来年度の1年の名簿になる');
+    // 入学後：8桁の番号の名簿を来年度の1年に貼ると、名前（空白の違いは無視）で照らして付け替える
+    const real = [{ id: '30000001', name: '入学　ハナ', kana: 'にゅうがく はな', male: false, cls: 0, no: 1 }, { id: '30000002', name: '入学 タロウ', kana: '', male: true, cls: 1, no: 1 }];
+    const rd = call('apiImportRoster', FY + 1, 1, real, { dry: true });
+    assert.equal(rd.v.relink.length, 2, '差分の確認で付け替えを見せる'); assert.equal(rd.v.added, 0);
+    const rr = call('apiImportRoster', FY + 1, 1, real);
+    assert.ok(rr.ok, rr.err); assert.equal(rr.v.relinked, 2); assert.equal(rr.v.added, 0, '付け替えた児童は二重に足さない');
+    const ids1 = db().getSheetByName('roster_' + (FY + 1)).data.map(r => String(r[0]));
+    assert.ok(ids1.includes('30000001') && ids1.includes('30000002') && ids1.filter(x => /^N/.test(x)).length === 3, '名簿の仮の番号が8桁に変わる');
+    assert.ok(db().getSheetByName('attrs_' + (FY + 1)).data.some(r => String(r[0]) === '30000001'), '配慮項目の行も付け替わる');
 
     // 年度替わり：前年度に卒業した児童が候補に出て、消すと名簿・事案の結び付き・案から消える
     ctx.importRoster(FY - 1, [['60000001', '卒業生', 'そつぎょう', '男', 6, 1, 1], ['40000011', '児童11', 'じどう11', '男', 3, 1, 1]]);

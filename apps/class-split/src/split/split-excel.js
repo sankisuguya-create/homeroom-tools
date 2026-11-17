@@ -44,7 +44,7 @@
     var rows = excelRows();
     if (!rows) { App.toast('来年度の名簿がまだありません（クラス替えを決定すると作られます）'); return; }
     var a = document.createElement('a');
-    a.href = URL.createObjectURL(excelBlob(rows)); a.download = '次年度組編成_' + App.st.grade + '年から' + (App.st.grade + 1) + '年.xlsx';
+    a.href = URL.createObjectURL(excelBlob(rows)); a.download = '次年度組編成_' + g.CONFIG.gradeLabel(App.st.grade) + 'から' + (App.st.grade + 1) + '年.xlsx';
     document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000); // すぐ外すとファイル名が付かないことがある
     App.toast('Excel を作りました（' + rows.length + '人）。ダウンロードを確かめてください');
   }
