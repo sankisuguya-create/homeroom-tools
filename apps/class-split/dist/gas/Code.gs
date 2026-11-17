@@ -1066,7 +1066,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_f557915e3e5a';
+var SERVER_BUILD = 'BUILD_e0994b6a498f';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1906,7 +1906,7 @@ var apiSchoolIncidents_ = api_(function () {
 
 // 決定：来年度の名簿（新しい組・番号）と配慮項目の写しを作り、つける・離すを持ち越しの候補にする
 var apiDecide_ = api_(function (grade, plan) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   if (grade >= 6) throw userError_('6年は決定しません');
   var FY = CONFIG.fiscalYear();
@@ -1947,7 +1947,7 @@ var apiDecide_ = api_(function (grade, plan) {
 
 // 取り消し：4/1まで（年度が変わったら決定は確定）。来年度の名簿と写した値・持ち越しの候補を消す
 var apiUndoDecide_ = api_(function (grade) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
   return withLock_(function () {
@@ -1976,7 +1976,7 @@ function namesOf_(dec, FY, grade) {
 }
 // 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
 var apiSetClassNames_ = api_(function (grade, names) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
   return withLock_(function () {

@@ -262,6 +262,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const sx = call('apiSaveSettings', call('apiSettings').v.settings);
     assert.equal(sx.ok, false, '管理者でない教員は設定を保存できない'); assert.ok(sx.err.includes('管理者'));
     assert.equal(call('apiLeaveCandidates').ok, false); assert.equal(call('apiPurge', ['60000001']).ok, false, '管理者でない教員は記録を消せない');
+    for (const [fn, ...a] of [['apiDecide', 4, { name: 'x', assign: {} }], ['apiUndoDecide', 4], ['apiSetClassNames', 4, [1, 2]]]) {
+      const r = call(fn, ...a); assert.equal(r.ok, false, fn + ' は管理者だけ'); assert.ok(r.err.includes('管理者'), fn);
+    }
     env.user = 'kyoto@edu.nishi.or.jp';
     assert.equal(call('apiSettings').v.me.admin, true, '印を付けた人は管理者');
     assert.ok(call('apiSaveSettings', call('apiSettings').v.settings).ok);
