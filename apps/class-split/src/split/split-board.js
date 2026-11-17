@@ -62,7 +62,7 @@
   }
   function render() {
     if (!S.plans.length) { renderSetup(); return; }
-    App.$('main').innerHTML = renderBar() + '<div id="board" class="board"></div><div class="legend" id="legend"></div>';
+    App.$('main').innerHTML = renderBar() + '<div id="spstrip"></div><div id="board" class="board"></div><div class="legend" id="legend"></div>';
     App.saveState(); App.paintTrial();
     if (S.view === 'cmp') { renderCmp(); return; }
     var p = S.plans[S.active], a = E.analyze(S.ctx, p.asg), nc = S.P.nc;
@@ -72,11 +72,13 @@
     var rows = 1, per = [], k, i;
     for (k = 0; k < nc; k++) {
       var ids = [];
-      for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k) ids.push(i);
+      for (i = 0; i < S.ctx.N; i++) if (p.asg[i] === k && !S.ctx.SP[i]) ids.push(i); // 特別支援学級の児童は下の別の欄（交流級）に出す
       ids.sort(byOrder);
       var half = Math.ceil(ids.length / 2);
       per.push([ids.slice(0, half), ids.slice(half)]); rows = Math.max(rows, half);
     }
+    var spIn = new Array(nc).fill(0), spList = [];
+    for (i = 0; i < S.ctx.N; i++) if (S.ctx.SP[i]) { spIn[p.asg[i]]++; spList.push(i); }
     var M = S.ctx.M, h = '<div class="cols" style="--nc:' + nc + '">';
     var HM = S.ctx.MET.findIndex(function (m) { return m.k === 'heavy'; });
     for (k = 0; k < nc; k++) {
@@ -85,10 +87,17 @@
       h += '<section class="col nc' + (k % 2) + '"><div class="head" data-k="' + k + '" role="button" tabindex="0">' +
         '<div class="h1"><b class="ncl">' + C.newClass(k) + '</b><span class="' + (fl[M] ? 'w' : '') + '">' + c[M] + '人</span><span class="' + (fl[0] ? 'w' : '') + '">男' + c[0] + (fl[0] ? '△' : '') + '</span><span>女' + (c[M] - c[0]) + '</span>' +
         '<span class="' + (fl[HM] ? 'w' : '') + '" title="学・欠・問・保のどれかが＋の児童">＋' + c[HM] + '人</span>' +
-        '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span></div>' +
+        '<span class="jis" title="同じ事案は1件と数える">事案数 ' + a.inc[k] + '</span>' + (spIn[k] ? '<span class="spn" title="特別支援学級の児童の交流（人数に含めない）">交流' + spIn[k] + '</span>' : '') + '</div>' +
         '<div class="st">' + C.ATTRS.map(function (at, ai) { return cnt(ai + 1, App.mark(at, 1), at.k); }).join('') + '</div>' +
         '</div><div class="sub2"><div class="gcol"></div><div class="gcol"></div></div></section>';
     }
+    // 特別支援学級の児童：盤面の組とは別に並べ、交流級を選ぶ（人数・偏りの計算と自動の案づくりには入れない）
+    var sph = !spList.length ? '' : '<b>特別支援学級（交流級）</b>' + spList.map(function (i) {
+      var s = S.P.kids[i];
+      return '<span class="spk" data-i="' + i + '"><span class="spname">' + App.esc(s.name) + (s.a.spn ? '<small>' + App.esc(s.a.spn) + '</small>' : '') + '</span>' +
+        Array.from({ length: nc }, function (_, k2) { return '<button class="lv" data-spx="' + i + ':' + k2 + '" aria-pressed="' + (p.asg[i] === k2) + '"' + (S.decision ? ' disabled' : '') + '>' + C.newClass(k2) + '</button>'; }).join('') + '</span>';
+    }).join('');
+    var spEl = App.$('spstrip'); spEl.className = sph ? 'spstrip' : ''; spEl.innerHTML = sph; // 盤面の高さを測る前に入れる
     App.$('board').innerHTML = h + '</div>';
     // 凡例は計測の前に入れる（後から折り返すと盤面が縮み、最後の児童がはみ出す）
     App.$('legend').innerHTML = C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +

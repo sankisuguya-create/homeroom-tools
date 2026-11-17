@@ -261,7 +261,9 @@
     });
     MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
-    var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
+    // 特別支援学級の児童（a.sp）：交流級を手で選ぶ。人数・偏りの計算に入れず（値を0）、自動の案づくりでも動かさない。つける・離すの相手にはなる
+    var SP = P.kids.map(function (s) { return !!(s.a && s.a.sp); }), nSp = SP.filter(Boolean).length;
+    var VAL = P.kids.map(function (s, i) { return MET.map(function (m) { return SP[i] ? 0 : m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });
     var relOf = P.kids.map(function () { return []; });
     P.pairs.forEach(function (p, pi) {
@@ -275,7 +277,7 @@
     MET.forEach(function (m, mi) { if (m.grp !== 'heavy' && (gen.w[m.grp || m.k] | 0) === C.MUST) MU.push(mi); });
     var HV = [];
     MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV, MU: MU,
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: (N - nSp) / nc, HV: HV, MU: MU, SP: SP,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -284,7 +286,7 @@
     for (k = 0; k < ctx.nc; k++) c.push(new Float64Array(ctx.M + 1));
     for (i = 0; i < ctx.N; i++) {
       var r = c[asg[i]], v = ctx.VAL[i];
-      r[ctx.M]++;
+      if (!ctx.SP || !ctx.SP[i]) r[ctx.M]++; // 特別支援学級の児童は組の人数に数えない
       for (m = 0; m < ctx.M; m++) r[m] += v[m];
     }
     return c;
@@ -345,7 +347,12 @@
     var lock = new Map(locked || []);
     if (ctx.gen.hard.fix) ctx.P.pairs.forEach(function (p) { if (p.t === 'fix' && p.k < nc) lock.set(p.i, p.k); });
     var asg = new Int8Array(N), free = [], sz = new Array(nc).fill(0), i, j, k;
-    for (i = 0; i < N; i++) { if (lock.has(i)) { asg[i] = lock.get(i); sz[asg[i]]++; } else free.push(i); }
+    var spRR = 0;
+    for (i = 0; i < N; i++) {
+      if (lock.has(i)) { asg[i] = lock.get(i); if (!ctx.SP[i]) sz[asg[i]]++; }
+      else if (ctx.SP[i]) { var hm = ctx.P.kids[i].home; asg[i] = hm >= 0 && hm < nc ? hm : spRR++ % nc; } // 特別支援学級の児童は今の交流級のまま（無ければ組を順に）
+      else free.push(i);
+    }
     for (i = free.length - 1; i > 0; i--) { j = Math.floor(r() * (i + 1)); var tmp = free[i]; free[i] = free[j]; free[j] = tmp; }
     free.forEach(function (i) { var b = 0; for (var k = 1; k < nc; k++) if (sz[k] < sz[b]) b = k; asg[i] = b; sz[b]++; });
     if (free.length < 2) return asg;
@@ -1046,7 +1053,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_432dc82ec06a';
+var SERVER_BUILD = 'BUILD_2bc93de1c1b7';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1246,7 +1253,8 @@ var TABLES_ = [
 function attrsHead_() {
   var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
   CONFIG.ATTRS.forEach(function (at) { if (at.side || at.ctx) h.push(at.k + '_t'); if (at.ctx) h.push(at.k + '_i'); }); // _t＝内容・経緯の文、_i＝紐付けた事案の番号
-  h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
+  h.push('sp'); // 特別支援学級の児童（1＝在籍）。クラス分けでは人数の計算と自動の案づくりから外し、交流級を手で選ぶ
+  h.push('spn'); // 特別支援学級の名前（校務システムの名簿の「組」の文字。例：ひまわり）
   h.push('memo'); // 備考（自由記述）。決定で来年度に写す
   h.push('sib'); // 兄弟（JSON の並び。CONFIG.normSibs の形）。決定で来年度に写す時は学年を1つ上げる
   return h;
@@ -1351,6 +1359,7 @@ function attrsMap_(fy) {
       if (at.ctx && r[at.k + '_i']) a[at.k + '_i'] = String(r[at.k + '_i']).split(',').filter(Boolean).map(Number);
     });
     if (+r.sp) a.sp = 1;
+    if (r.spn) a.spn = String(r.spn);
     if (r.memo) a.memo = String(r.memo);
     if (r.sib) { var sb = CONFIG.normSibs(String(r.sib)); if (sb.length) a.sib = sb; }
     m[String(r.id8)] = a;
@@ -1537,6 +1546,19 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
+    // 特別支援学級の児童：配慮項目の表に「特別支援学級」の印と学級の名前を書く（組は交流級）
+    var sps = rows.filter(function (x) { return x.sp; });
+    if (sps.length) {
+      var at = read_('attrs_' + fy), arow = {};
+      at.rows.forEach(function (r) { arow[String(r.id8)] = r; });
+      var newA = [];
+      sps.forEach(function (x) {
+        var id = String(x.id), spn = plainText_(String(x.sp).slice(0, 20), 20), r = arow[id];
+        if (r) { if (+r.sp !== 1) writeCell_(at, r, 'sp', 1); if (String(r.spn || '') !== spn) writeCell_(at, r, 'spn', spn); }
+        else newA.push({ id8: id, sp: 1, spn: spn });
+      });
+      append_('attrs_' + fy, attrsHead_(), newA);
+    }
     var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
     log_(by, 'importRoster', rows.length);
     return { added: added.length, updated: updated, missing: missing, relinked: relinked };

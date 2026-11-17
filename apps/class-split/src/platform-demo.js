@@ -404,8 +404,8 @@
       rows.forEach(function (x) {
         classes[x.cls] = 1;
         S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
-        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; updated++; }
-        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
       var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
       var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });

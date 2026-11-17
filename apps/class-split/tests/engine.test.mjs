@@ -328,3 +328,18 @@ test('兄弟：形をそろえ、決定で来年度に写す時は学年を1つ�
   assert.deepEqual(rows[0].a.sib.map(x => x.g), [7, 0, 10]);
   assert.deepEqual(C.familyWords('母子家庭。忘れ物が多い。祖父母が養育'), ['母子家庭', '祖父母が養育']);
 });
+
+test('特別支援学級の児童：人数・偏りに数えず、自動の案づくりでは今の交流級から動かさない', () => {
+  const P = problem({ pairs: [], inc: [] });
+  const spIdx = [3, 7, 11, 15, 19, 23, 27, 31]; // 8人（多めにして、動かせば人数に表れるようにする）
+  spIdx.forEach((i, n) => { P.kids[i].a = Object.assign({}, P.kids[i].a, { sp: 1 }); P.kids[i].home = n % 2 ? 3 : 0; });
+  const ctx = E.prepare(P, E.defaultGen());
+  assert.equal(ctx.SIZE_MEAN, (144 - 8) / 4, '平均の人数に特別支援学級の児童を入れない');
+  const asg = E.optimize(ctx, new Map(), 11);
+  spIdx.forEach((i, n) => assert.equal(asg[i], n % 2 ? 3 : 0, '交流級（home）のまま'));
+  const c = E.counts(ctx, asg);
+  const sizes = c.map(r => r[ctx.M]);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 136, '組の人数の合計に入らない');
+  assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, '通常の児童だけで人数がそろう：' + sizes.join(','));
+  assert.ok(spIdx.every(i => ctx.VAL[i].every(v => v === 0)), '偏りの値も0');
+});

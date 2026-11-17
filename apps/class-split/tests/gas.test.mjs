@@ -364,6 +364,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 
+    // 特別支援学級の児童：取り込むと交流級の組に入り、配慮項目の表に印（sp=1）と学級の名前（spn）が付く
+    const sp1 = call('apiImportRoster', FY, 4, [{ id: '40000099', name: '特支 ハナ', kana: 'とくし はな', male: false, cls: 1, no: 9, sp: 'ひまわり' }]);
+    assert.ok(sp1.ok, sp1.err);
+    const spRow = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === '40000099');
+    assert.ok(spRow && spRow.cls === 1 && spRow.a.sp === 1 && spRow.a.spn === 'ひまわり', '交流級の組に、特別支援学級の印と名前つきで入る');
+
     // 新1年（grade 0）：児童IDなしで取り込むと仮の番号（N＋年度＋3桁）。決定で来年度の1年になり、8桁の番号を貼ると名前で照らして付け替える
     const nk = [['入学 ハナ', 'にゅうがく はな', false], ['入学 タロウ', 'にゅうがく たろう', true], ['入学 ジロウ', 'にゅうがく じろう', true], ['入学 サクラ', 'にゅうがく さくら', false]]
       .map((k, i) => ({ id: '', name: k[0], kana: k[1], male: k[2], cls: 0, no: i + 1 }));

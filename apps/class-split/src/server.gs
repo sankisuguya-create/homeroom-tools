@@ -202,7 +202,8 @@ var TABLES_ = [
 function attrsHead_() {
   var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
   CONFIG.ATTRS.forEach(function (at) { if (at.side || at.ctx) h.push(at.k + '_t'); if (at.ctx) h.push(at.k + '_i'); }); // _t＝内容・経緯の文、_i＝紐付けた事案の番号
-  h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
+  h.push('sp'); // 特別支援学級の児童（1＝在籍）。クラス分けでは人数の計算と自動の案づくりから外し、交流級を手で選ぶ
+  h.push('spn'); // 特別支援学級の名前（校務システムの名簿の「組」の文字。例：ひまわり）
   h.push('memo'); // 備考（自由記述）。決定で来年度に写す
   h.push('sib'); // 兄弟（JSON の並び。CONFIG.normSibs の形）。決定で来年度に写す時は学年を1つ上げる
   return h;
@@ -307,6 +308,7 @@ function attrsMap_(fy) {
       if (at.ctx && r[at.k + '_i']) a[at.k + '_i'] = String(r[at.k + '_i']).split(',').filter(Boolean).map(Number);
     });
     if (+r.sp) a.sp = 1;
+    if (r.spn) a.spn = String(r.spn);
     if (r.memo) a.memo = String(r.memo);
     if (r.sib) { var sb = CONFIG.normSibs(String(r.sib)); if (sb.length) a.sib = sb; }
     m[String(r.id8)] = a;
@@ -493,6 +495,19 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
+    // 特別支援学級の児童：配慮項目の表に「特別支援学級」の印と学級の名前を書く（組は交流級）
+    var sps = rows.filter(function (x) { return x.sp; });
+    if (sps.length) {
+      var at = read_('attrs_' + fy), arow = {};
+      at.rows.forEach(function (r) { arow[String(r.id8)] = r; });
+      var newA = [];
+      sps.forEach(function (x) {
+        var id = String(x.id), spn = plainText_(String(x.sp).slice(0, 20), 20), r = arow[id];
+        if (r) { if (+r.sp !== 1) writeCell_(at, r, 'sp', 1); if (String(r.spn || '') !== spn) writeCell_(at, r, 'spn', spn); }
+        else newA.push({ id8: id, sp: 1, spn: spn });
+      });
+      append_('attrs_' + fy, attrsHead_(), newA);
+    }
     var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
     log_(by, 'importRoster', rows.length);
     return { added: added.length, updated: updated, missing: missing, relinked: relinked };

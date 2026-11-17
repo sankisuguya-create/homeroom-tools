@@ -635,20 +635,42 @@
   // 既存の名簿の範囲をコピーして貼る。見出しで列を読み、読めた結果と誤りをその場で見せてから取り込む
   function pasteDialog() {
     var d = D(), fy = editableFy(), grade = fy === d.fy ? d.grade : d.grade + 1, esc = App.esc;
-    var P = { text: '', cls: R.scope === 'cls' ? R.cls : 0, res: null };
+    var P = { text: '', cls: R.scope === 'cls' ? R.cls : 0, res: null, sa: {} }; // sa：特別支援学級の児童の交流級（児童ID か名前 → 組）
+    var spKey = function (x) { return x.id || x.name; };
+    // 特別支援学級の児童に交流級を当てる：選んだ組、まだなら組を順に回して仮に当てる（画面で直せる）
+    var applySp = function (r) {
+      var nc = 1; r.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
+      P.nc = Math.max(nc, 1);
+      var rr = 0;
+      r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= 0 && P.sa[k] < 9)) P.sa[k] = rr++ % P.nc; });
+    };
     var summary = function () {
-      var r = P.res = g.Paste.parseRoster(P.text, P.cls, { tempId: grade === 0 });
-      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます</div>';
-      var hasCls = r.roles.indexOf('cls') >= 0;
-      var h = '<div class="rbar"><span class="lab">読み取った列</span>' + r.roles.map(function (x) { return '<span class="tab" style="cursor:default">' + (x ? g.Paste.LABEL[x] : '（使わない）') + '</span>'; }).join('') + '</div>';
+      var r = P.res = g.Paste.parseRoster(P.text, P.cls, { tempId: grade === 0, grade: grade });
+      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます。校務システムの名簿は、全校分・全部の列のままで貼れます（この学年の行と、名前・よみ・性別・組・番号などだけを読み、住所・電話・兄弟などは読みません）。</div>';
+      applySp(r);
+      var hasCls = r.roles.indexOf('cls') >= 0, used = r.roles.filter(Boolean), unused = r.roles.length - used.length;
+      // 名前・よみの部品（姓・名・正式名前など）は「名前」「よみ」にまとめて見せる
+      var GROUP = { sei: 'name', mei: 'name', fname: 'name', fsei: 'name', fmei: 'name', seiK: 'kana', meiK: 'kana', fkana: 'kana', fseiK: 'kana', fmeiK: 'kana' }, shown = [];
+      ['id', 'grade', 'cls', 'no', 'name', 'kana', 'sex'].forEach(function (k) { if (used.some(function (x) { return (GROUP[x] || x) === k; })) shown.push(g.Paste.LABEL[k]); });
+      var h = '<div class="rbar"><span class="lab">読み取った列</span>' + shown.map(function (x) { return '<span class="tab" style="cursor:default">' + x + '</span>'; }).join('') + (unused ? '<span class="note">ほかの' + unused + '列は読みません</span>' : '') + '</div>';
+      if (r.skipped.grade || r.skipped.blank) h += '<div class="note">読み飛ばした行：' + [r.skipped.grade ? 'ほかの学年 ' + r.skipped.grade + '行' : '', r.skipped.blank ? '名前の無い行 ' + r.skipped.blank + '行' : ''].filter(Boolean).join('・') + '</div>';
       if (!hasCls) h += '<div class="rbar"><span class="lab">組の列が無いので、この組に入れる</span>' + [0, 1, 2, 3].map(function (k) {
         return '<button class="tab" data-pcls="' + k + '" aria-selected="' + (P.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>';
       }).join('') + '</div>';
       h += '<div><b>' + r.rows.length + '人</b>（男' + r.counts.m + '・女' + r.counts.f + '）を ' + fy + '年度 ' + C.gradeLabel(grade) + ' に取り込みます。' + (grade === 0 ? '児童IDの無い児童には仮の番号を振ります。' : '') + '同じ児童IDの児童は上書きし、入力済みの配慮項目は消しません。</div>';
       if (r.errors.length) h += '<div class="warnbox">✕ ' + r.errors.length + '件 取り込めない行があります<ul style="margin:4px 0 0;font-weight:400;color:var(--ink)">' +
         r.errors.slice(0, 6).map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + (r.errors.length > 6 ? '<li>ほか' + (r.errors.length - 6) + '件</li>' : '') + '</ul></div>';
+      // 特別支援学級の児童：通常の学級とは別に並べ、交流級を選ぶ（取り込むと、その組の名簿に「特別支援学級」の印つきで入る）
+      var sps = r.rows.filter(function (x) { return x.sp; });
+      if (sps.length) h += '<div class="spbox"><b>特別支援学級の児童 ' + sps.length + '人</b>：交流級を選んでください（仮に組を順に当てています）<table class="r ro"><tbody>' +
+        sps.map(function (x) {
+          var k = spKey(x);
+          return '<tr><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.sp) + '</td><td style="text-align:left"><div class="lvs">' + Array.from({ length: Math.max(P.nc, 1) }, function (_, c) {
+            return '<button class="lv" data-spa="' + esc(k) + ':' + c + '" aria-pressed="' + (P.sa[k] === c) + '">' + (c + 1) + '組</button>';
+          }).join('') + '</div></td></tr>';
+        }).join('') + '</tbody></table></div>';
       if (r.rows.length) h += '<div class="tw" style="max-height:180px"><table class="r ro"><thead><tr><th>組</th><th>番号</th><th>児童ID</th><th style="text-align:left">名前</th><th>よみ</th><th>性別</th></tr></thead><tbody>' +
-        r.rows.slice(0, 5).map(function (x) { return '<tr><td>' + (x.cls + 1) + '</td><td>' + x.no + '</td><td>' + x.id + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.kana) + '</td><td>' + (x.sex || '—') + '</td></tr>'; }).join('') +
+        r.rows.slice(0, 5).map(function (x) { return '<tr><td>' + (x.sp ? esc(x.sp) : x.cls + 1) + '</td><td>' + x.no + '</td><td>' + x.id + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.kana) + '</td><td>' + (x.sex || '—') + '</td></tr>'; }).join('') +
         (r.rows.length > 5 ? '<tr><td colspan="6" class="note">ほか' + (r.rows.length - 5) + '人</td></tr>' : '') + '</tbody></table></div>';
       return h;
     };
@@ -662,10 +684,14 @@
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn"' + (P.res && P.res.rows.length ? '' : ' disabled') + '>取り込む（' + (P.res ? P.res.rows.length : 0) + '人）<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
       input: function (t) { if (t.id === 'ptxt') { P.text = t.value; refresh(); } },
-      click: function (t) { var x = t.closest('[data-pcls]'); if (x) { P.cls = +x.dataset.pcls; refresh(); return true; } return false; },
+      click: function (t) {
+        var x = t.closest('[data-pcls]'); if (x) { P.cls = +x.dataset.pcls; refresh(); return true; }
+        x = t.closest('[data-spa]'); if (x) { var q = x.dataset.spa, i = q.lastIndexOf(':'); P.sa[q.slice(0, i)] = +q.slice(i + 1); refresh(); return true; }
+        return false;
+      },
       onOk: function () {
         if (!P.res || !P.res.rows.length) return;
-        var rows = P.res.rows;
+        var rows = P.res.rows.map(function (x) { if (!x.sp) return x; var y = Object.assign({}, x); y.cls = P.sa[spKey(x)] || 0; return y; }); // 特別支援学級の児童は交流級の組に入れる
         App.closeDlg();
         // 書く前に差分を見せる。別の学年・年度の表の疑いがある時は、語を打って確かめる
         App.pf().importRoster(fy, grade, rows, { dry: true }).then(function (df) { importConfirm(fy, grade, rows, df); }, function (e) { App.toast(String(e && e.message || e)); });
