@@ -188,5 +188,25 @@
     return { ok: !why.length, why: why };
   };
 
+  // 学年の呼び名。0 は新1年（来年度に入学する児童。今年度の0学年として持ち、決定で来年度の1年になる）
+  CONFIG.GRADES = [0, 1, 2, 3, 4, 5, 6];
+  CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
+  // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
+  CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
+  CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+
+  // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
+  // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
+  CONFIG.piiHits = function (text, names) {
+    var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
+    var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
+    (names || []).forEach(function (n) {
+      var parts = String(n || '').trim().split(/[\s　]+/).filter(Boolean), full = parts.join('');
+      [full].concat(parts.length > 1 ? parts : []).forEach(function (w) { if (w && ok(w) && flat.indexOf(w) >= 0) hits[w] = 1; });
+    });
+    return Object.keys(hits);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

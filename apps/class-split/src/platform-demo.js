@@ -234,7 +234,7 @@
   // その学年（今年度の学年）の児童が、各年度に何年何組だったか
   function cohortYears(grade) {
     var out = [], entry = FY - grade + 1;
-    for (var fy = entry; fy <= FY + 1; fy++) {
+    for (var fy = Math.min(entry, FY); fy <= FY + 1; fy++) { // 新1年は今年度の0学年から
       var gy = fy - entry + 1, rows = S.years[fy] && S.years[fy][gy];
       if (rows && rows.length) out.push({ fy: fy, grade: gy, rows: rows });
     }
@@ -254,7 +254,7 @@
     fiscalYear: FY,
     listGrades: function () { gen();
       var out = [];
-      for (var grade = 1; grade <= 6; grade++) {
+      for (var grade = 0; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める）
         var rows = yearRows(FY, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
         out.push({ grade: grade, count: rows.length, classes: nc, decided: !!S.decisions[grade] });
@@ -384,6 +384,8 @@
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
+    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; })); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
+    suggestions: function () { return later(S.sugg || []); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
     closeDeviceWindow: function () { return later({ ok: true }); },
@@ -391,6 +393,8 @@
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
+      // 新1年：児童IDが無ければ仮の番号（本番の server.gs と同じ形 N＋年度＋3桁）
+      if (grade === 0 && !(opt && opt.dry)) { var seq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) seq = Math.max(seq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (seq++)).slice(-3); }); }
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};
       if (opt && opt.dry) {
         var ren = [], add = 0; cur.forEach(function (r) { byId[r.id] = r; });
@@ -402,8 +406,8 @@
       rows.forEach(function (x) {
         classes[x.cls] = 1;
         S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
-        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; updated++; }
-        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
       var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
       var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });

@@ -328,3 +328,28 @@ test('兄弟：形をそろえ、決定で来年度に写す時は学年を1つ�
   assert.deepEqual(rows[0].a.sib.map(x => x.g), [7, 0, 10]);
   assert.deepEqual(C.familyWords('母子家庭。忘れ物が多い。祖父母が養育'), ['母子家庭', '祖父母が養育']);
 });
+
+test('特別支援学級の児童：人数・偏りに数えず、自動の案づくりでは今の交流級から動かさない', () => {
+  const P = problem({ pairs: [], inc: [] });
+  const spIdx = [3, 7, 11, 15, 19, 23, 27, 31]; // 8人（多めにして、動かせば人数に表れるようにする）
+  spIdx.forEach((i, n) => { P.kids[i].a = Object.assign({}, P.kids[i].a, { sp: 1 }); P.kids[i].home = n % 2 ? 3 : 0; });
+  const ctx = E.prepare(P, E.defaultGen());
+  assert.equal(ctx.SIZE_MEAN, (144 - 8) / 4, '平均の人数に特別支援学級の児童を入れない');
+  const asg = E.optimize(ctx, new Map(), 11);
+  spIdx.forEach((i, n) => assert.equal(asg[i], n % 2 ? 3 : 0, '交流級（home）のまま'));
+  const c = E.counts(ctx, asg);
+  const sizes = c.map(r => r[ctx.M]);
+  assert.equal(sizes.reduce((a, b) => a + b, 0), 136, '組の人数の合計に入らない');
+  assert.ok(Math.max(...sizes) - Math.min(...sizes) <= 1, '通常の児童だけで人数がそろう：' + sizes.join(','));
+  assert.ok(spIdx.every(i => ctx.VAL[i].every(v => v === 0)), '偏りの値も0');
+});
+
+test('目安箱の判定：名簿の名前（姓名・姓・名）、8桁の番号、仮の番号、メールを見つける。短い語やかなの短い語は拾わない', () => {
+  const names = ['山田 太郎', '森 ハナ', '佐藤 さくら'];
+  assert.deepEqual(C.piiHits('名簿の画面が見づらい', names), []);
+  assert.deepEqual(C.piiHits('山田太郎さんの配慮項目が', names).sort(), ['太郎', '山田', '山田太郎'].sort());
+  assert.deepEqual(C.piiHits('森の中で', names), [], '1文字の姓は拾わない');
+  assert.deepEqual(C.piiHits('ハナが', names), [], 'かな2文字の名は拾わない');
+  assert.deepEqual(C.piiHits('さくらさんが', names), ['さくら']);
+  assert.deepEqual(C.piiHits('20250001 と N2026001 と a.b@edu.nishi.or.jp', []).sort(), ['20250001', 'N2026001', 'a.b@edu.nishi.or.jp'].sort());
+});

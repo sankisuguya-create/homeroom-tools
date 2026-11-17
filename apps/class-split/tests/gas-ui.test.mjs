@@ -127,6 +127,8 @@ gas.env.user = 'sato@edu.nishi.or.jp';
 await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.gbtn');
 await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="view"]');
 ok(await p.locator('[data-stab="attrs"], [data-stab="year"], #ssave').count() === 0, '管理者でない教員には学校の設定と年度替わりを出さない');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+ok(await p.locator('#decide[disabled]').count() === 1, '管理者でない教員には「決定」を押させない');
 gas.env.user = 'stranger@edu.nishi.or.jp';
 ok(gas.call('apiListGrades').ok === false, '一覧に無い教員は読めない');
 gas.env.user = gas.env.owner;

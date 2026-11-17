@@ -56,7 +56,9 @@
     });
     MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
-    var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
+    // 特別支援学級の児童（a.sp）：交流級を手で選ぶ。人数・偏りの計算に入れず（値を0）、自動の案づくりでも動かさない。つける・離すの相手にはなる
+    var SP = P.kids.map(function (s) { return !!(s.a && s.a.sp); }), nSp = SP.filter(Boolean).length;
+    var VAL = P.kids.map(function (s, i) { return MET.map(function (m) { return SP[i] ? 0 : m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });
     var relOf = P.kids.map(function () { return []; });
     P.pairs.forEach(function (p, pi) {
@@ -70,7 +72,7 @@
     MET.forEach(function (m, mi) { if (m.grp !== 'heavy' && (gen.w[m.grp || m.k] | 0) === C.MUST) MU.push(mi); });
     var HV = [];
     MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV, MU: MU,
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: (N - nSp) / nc, HV: HV, MU: MU, SP: SP,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -79,7 +81,7 @@
     for (k = 0; k < ctx.nc; k++) c.push(new Float64Array(ctx.M + 1));
     for (i = 0; i < ctx.N; i++) {
       var r = c[asg[i]], v = ctx.VAL[i];
-      r[ctx.M]++;
+      if (!ctx.SP || !ctx.SP[i]) r[ctx.M]++; // 特別支援学級の児童は組の人数に数えない
       for (m = 0; m < ctx.M; m++) r[m] += v[m];
     }
     return c;
@@ -140,7 +142,12 @@
     var lock = new Map(locked || []);
     if (ctx.gen.hard.fix) ctx.P.pairs.forEach(function (p) { if (p.t === 'fix' && p.k < nc) lock.set(p.i, p.k); });
     var asg = new Int8Array(N), free = [], sz = new Array(nc).fill(0), i, j, k;
-    for (i = 0; i < N; i++) { if (lock.has(i)) { asg[i] = lock.get(i); sz[asg[i]]++; } else free.push(i); }
+    var spRR = 0;
+    for (i = 0; i < N; i++) {
+      if (lock.has(i)) { asg[i] = lock.get(i); if (!ctx.SP[i]) sz[asg[i]]++; }
+      else if (ctx.SP[i]) { var hm = ctx.P.kids[i].home; asg[i] = hm >= 0 && hm < nc ? hm : spRR++ % nc; } // 特別支援学級の児童は今の交流級のまま（無ければ組を順に）
+      else free.push(i);
+    }
     for (i = free.length - 1; i > 0; i--) { j = Math.floor(r() * (i + 1)); var tmp = free[i]; free[i] = free[j]; free[j] = tmp; }
     free.forEach(function (i) { var b = 0; for (var k = 1; k < nc; k++) if (sz[k] < sz[b]) b = k; asg[i] = b; sz[b]++; });
     if (free.length < 2) return asg;

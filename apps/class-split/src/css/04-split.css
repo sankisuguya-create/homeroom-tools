@@ -93,3 +93,9 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .btn.warnbtn{border:2px solid #B00020;color:#B00020;font-weight:700}
 /* 帯の操作のボタンは1つのまとまりとして右に寄せる（折り返す時もまとまりごと次の行へ） */
 .bar .bacts{display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:nowrap}
+/* 特別支援学級の児童の交流級：盤面の組の下に1行で並べる */
+.spstrip{margin:0 0 4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;padding:4px 6px;background:#FFE0BF;color:#1A1A1A;border-radius:6px;font-size:.8rem}
+.spstrip .spk{display:inline-flex;align-items:center;gap:3px}
+.spstrip .spname{margin-right:2px}.spstrip .spname small{margin-left:3px;color:#5a4a3a}
+.spstrip .lv{padding:1px 6px;font-size:.75rem}
+.head .spn{background:#FFE0BF;color:#1A1A1A;border-radius:3px;padding:0 3px}

@@ -32,7 +32,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST);
   await p.waitForSelector('.gbtn');
-  ok(await p.locator('.gbtn').count() === 6, `${w}x${h} メニューに6学年`);
+  ok(await p.locator('.gbtn').count() === 7, `${w}x${h} メニューに新1年と6学年`);
   await p.click('[data-g="6"]');
   ok(await p.locator('[data-go="split"]').count() === 0, `${w}x${h} 6年を選ぶと「クラス分けをする」が出ない`);
   await p.click('[data-g="4"]');
@@ -185,7 +185,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
-  const r = await p.evaluate(() => { const ch = [...document.querySelectorAll('.board .chip')]; return [ch.length, ch.filter(c => c.getBoundingClientRect().bottom <= innerHeight + .5).length]; });
+  // 特別支援学級の児童は盤面の上の別の欄（.spstrip）に並ぶ。両方を合わせて144人
+  const r = await p.evaluate(() => { const ch = [...document.querySelectorAll('.board .chip, .spstrip .spk')]; return [ch.length, ch.filter(c => c.getBoundingClientRect().bottom <= innerHeight + .5).length]; });
   ok(r[0] === 144 && r[1] === 144, `144人がすべて1画面に収まる（${r[1]}/${r[0]}）`);
   if (process.env.SHOT_DIR) await p.screenshot({ path: process.env.SHOT_DIR + '/split144.png' });
   await p.close();
@@ -497,6 +498,78 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const hgt = await p.evaluate(() => document.getElementById('rklist').getBoundingClientRect().height);
   ok(hgt >= 250, `低い画面でも順位の一覧が見える（高さ ${Math.round(hgt)}px）`);
   ok(await p.locator('.rkdlg [data-act="ok"]').isVisible(), '保存のボタンが画面の中に残る');
+  await p.close();
+}
+// 新1年：メニューに出る。名簿が0人なら「名簿を貼る」で貼る窓がすぐ開く。児童IDなしで貼れて、クラス分けができる
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  ok((await p.locator('.gbtn').first().textContent()).includes('新1年'), 'メニューの学年の先頭に新1年');
+  await p.click('[data-g="0"]');
+  ok(await p.locator('[data-go="incidents"]').count() === 0, '新1年には事案管理を出さない');
+  await p.click('[data-paste]'); await p.waitForSelector('#ptxt');
+  ok(true, '名簿が0人の時は「名簿を貼る」で貼る窓がすぐ開く');
+  const rows = ['名前\tよみ\t性別'];
+  for (let i = 0; i < 40; i++) rows.push('入学 ' + i + '\tにゅうがく ' + i + '\t' + (i % 2 ? '男' : '女'));
+  await p.fill('#ptxt', rows.join('\n'));
+  await p.waitForSelector('#okbtn:not([disabled])');
+  ok((await p.locator('#psum').textContent()).includes('新1年'), '取り込み先は新1年');
+  await p.click('#okbtn'); await p.waitForSelector('[aria-label="取り込む前の確認"]');
+  await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
+  await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  ok(await p.locator('table.r tbody tr').count() === 40, '児童IDなしで40人が名簿に入る');
+  await p.click('[data-go="menu"]:visible');
+  ok((await p.locator('[data-g="0"]').textContent()).includes('40人'), 'メニューに人数が出る');
+  await p.click('[data-go="split"]'); await intoSplit(p);
+  ok(await p.locator('.board .chip').count() === 40, '新1年のクラス分けの盤面に40人');
+  ok((await p.locator('[data-go="menu"]:visible').first().textContent()).includes('新1年'), '盤面の戻るボタンに「新1年」');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 特別支援学級：校務システムの名簿の「組」が文字の児童は、取り込む前に交流級を選ぶ。盤面では別の欄に並び、交流級を押して変えられる
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="0"]'); await p.click('[data-paste]'); await p.waitForSelector('#ptxt');
+  const rows = ['学年\t組\t番号\t姓\t名\t姓ふりがな\t名ふりがな\t名前\t性別\t住所'];
+  for (let i = 0; i < 30; i++) rows.push('1\t' + (i % 2 + 1) + '\t' + (i + 1) + '\t入学\t' + i + '\tにゅうがく\t' + i + '\t\t' + (i % 2 ? '男' : '女') + '\t市内' + i);
+  rows.push('1\tひまわり\t1\t特支\tハナ\tとくし\tはな\t\t女\t市内');
+  await p.fill('#ptxt', rows.join('\n'));
+  await p.waitForSelector('.spbox');
+  ok((await p.locator('.spbox').textContent()).includes('特支 ハナ'), '取り込む前に、特別支援学級の児童を別に並べる');
+  await p.click('[data-spa$=":1"]');
+  ok(await p.locator('[data-spa$=":1"][aria-pressed="true"]').count() === 1, '交流級（2組）を選べる');
+  await p.click('#okbtn'); await p.waitForSelector('[aria-label="取り込む前の確認"]');
+  await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
+  await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
+  ok(await p.locator('.spstrip .spk').count() === 1 && await p.locator('.board .chip').count() === 30, '盤面の組には通常の30人、特別支援学級の児童は別の欄');
+  const before = await p.locator('.spstrip [aria-pressed="true"]').textContent();
+  await p.click('.spstrip .lv[aria-pressed="false"]');
+  ok((await p.locator('.spstrip [aria-pressed="true"]').textContent()) !== before, '交流級を押して変えられる');
+  ok((await p.locator('.head .spn').count()) === 1, '組の見出しに交流の人数');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 目安箱：メニューの下から開き、名前が入っていると送らない。送ると管理者が設定で読める
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="suggest"]'); await p.waitForSelector('#sgtext');
+  ok((await p.locator('#main').textContent()).includes('名前、児童の番号'), '個人情報を書かない注意書き');
+  const nm = await p.evaluate(async () => { const g5 = await Platforms.demo.boot(5); return g5.kids[g5.years[0].rows[0].id].name; });
+  await p.fill('#sgtext', nm.replace(/\s/g, '') + 'の画面が見づらい'); await p.click('#sgsend');
+  await p.waitForSelector('#main .warnbox:has-text("送っていません")');
+  ok(true, '名簿の名前が入っていると送らない');
+  await p.fill('#sgtext', '盤面の文字を大きくしたい'); await p.click('#sgsend');
+  await p.waitForSelector('.gbtn');
+  ok(/送りました/.test(await p.textContent('#toast')), '送るとメニューに戻る');
+  await p.click('[data-go="settings"]'); await p.click('[data-stab="sugg"]'); await p.waitForSelector('#sgcopy');
+  ok((await p.locator('table.ro').textContent()).includes('盤面の文字を大きくしたい'), '管理者は設定の目安箱で読める');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
 await browser.close();

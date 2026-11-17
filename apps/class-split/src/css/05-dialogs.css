@@ -61,3 +61,5 @@
 .hlp label{display:flex;align-items:center;gap:4px;flex:1 1 14em;min-width:0}
 .hlp label>span{flex:none;color:var(--sub);font-size:.9em;min-width:2.6em}
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+.spbox{background:var(--fill-b);border-radius:6px;padding:8px 10px;margin:6px 0;font-size:.9rem}
+.spbox table{margin-top:4px}

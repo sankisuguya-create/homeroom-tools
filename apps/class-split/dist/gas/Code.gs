@@ -192,6 +192,26 @@
     return { ok: !why.length, why: why };
   };
 
+  // 学年の呼び名。0 は新1年（来年度に入学する児童。今年度の0学年として持ち、決定で来年度の1年になる）
+  CONFIG.GRADES = [0, 1, 2, 3, 4, 5, 6];
+  CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
+  // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
+  CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
+  CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+
+  // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
+  // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
+  CONFIG.piiHits = function (text, names) {
+    var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
+    var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
+    (names || []).forEach(function (n) {
+      var parts = String(n || '').trim().split(/[\s　]+/).filter(Boolean), full = parts.join('');
+      [full].concat(parts.length > 1 ? parts : []).forEach(function (w) { if (w && ok(w) && flat.indexOf(w) >= 0) hits[w] = 1; });
+    });
+    return Object.keys(hits);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -254,7 +274,9 @@
     });
     MET.push({ k: 'heavy', grp: 'heavy', label: '＋の児童', w: C.LEVEL_W[3], tol: 1, v: function (s) { return heavyAt.some(function (at) { return (s.a[at.k] | 0) >= 2; }) ? 1 : 0; } });
     var M = MET.length;
-    var VAL = P.kids.map(function (s) { return MET.map(function (m) { return m.v(s); }); });
+    // 特別支援学級の児童（a.sp）：交流級を手で選ぶ。人数・偏りの計算に入れず（値を0）、自動の案づくりでも動かさない。つける・離すの相手にはなる
+    var SP = P.kids.map(function (s) { return !!(s.a && s.a.sp); }), nSp = SP.filter(Boolean).length;
+    var VAL = P.kids.map(function (s, i) { return MET.map(function (m) { return SP[i] ? 0 : m.v(s); }); });
     var MEAN = MET.map(function (m, mi) { var t = 0; for (var i = 0; i < N; i++) t += VAL[i][mi]; return t / nc; });
     var relOf = P.kids.map(function () { return []; });
     P.pairs.forEach(function (p, pi) {
@@ -268,7 +290,7 @@
     MET.forEach(function (m, mi) { if (m.grp !== 'heavy' && (gen.w[m.grp || m.k] | 0) === C.MUST) MU.push(mi); });
     var HV = [];
     MET.forEach(function (m, mi) { if (m.grp === 'heavy') HV.push({ m: mi, max: Math.ceil(MEAN[mi] - 1e-9) }); });
-    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: N / nc, HV: HV, MU: MU,
+    return { P: P, N: N, nc: nc, cap: P.cap || C.CAP, M: M, MET: MET, VAL: VAL, MEAN: MEAN, SIZE_MEAN: (N - nSp) / nc, HV: HV, MU: MU, SP: SP,
       relOf: relOf, incOfKid: incOfKid, gen: gen, wInc: C.LEVEL_W[gen.w.inc | 0] };
   }
 
@@ -277,7 +299,7 @@
     for (k = 0; k < ctx.nc; k++) c.push(new Float64Array(ctx.M + 1));
     for (i = 0; i < ctx.N; i++) {
       var r = c[asg[i]], v = ctx.VAL[i];
-      r[ctx.M]++;
+      if (!ctx.SP || !ctx.SP[i]) r[ctx.M]++; // 特別支援学級の児童は組の人数に数えない
       for (m = 0; m < ctx.M; m++) r[m] += v[m];
     }
     return c;
@@ -338,7 +360,12 @@
     var lock = new Map(locked || []);
     if (ctx.gen.hard.fix) ctx.P.pairs.forEach(function (p) { if (p.t === 'fix' && p.k < nc) lock.set(p.i, p.k); });
     var asg = new Int8Array(N), free = [], sz = new Array(nc).fill(0), i, j, k;
-    for (i = 0; i < N; i++) { if (lock.has(i)) { asg[i] = lock.get(i); sz[asg[i]]++; } else free.push(i); }
+    var spRR = 0;
+    for (i = 0; i < N; i++) {
+      if (lock.has(i)) { asg[i] = lock.get(i); if (!ctx.SP[i]) sz[asg[i]]++; }
+      else if (ctx.SP[i]) { var hm = ctx.P.kids[i].home; asg[i] = hm >= 0 && hm < nc ? hm : spRR++ % nc; } // 特別支援学級の児童は今の交流級のまま（無ければ組を順に）
+      else free.push(i);
+    }
     for (i = free.length - 1; i > 0; i--) { j = Math.floor(r() * (i + 1)); var tmp = free[i]; free[i] = free[j]; free[j] = tmp; }
     free.forEach(function (i) { var b = 0; for (var k = 1; k < nc; k++) if (sz[k] < sz[b]) b = k; asg[i] = b; sz[b]++; });
     if (free.length < 2) return asg;
@@ -1039,7 +1066,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_bdb466a2359b';
+var SERVER_BUILD = 'BUILD_e0994b6a498f';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1233,13 +1260,16 @@ var TABLES_ = [
   { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] },
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
-  { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] }
+  { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] },
+  // 目安箱：アプリへの意見。送った人は残さない（at・開いていた画面・本文だけ）
+  { name: 'suggestions', head: ['at', 'screen', 'text'] }
 ];
 // side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
 function attrsHead_() {
   var h = ['id8'].concat(CONFIG.ATTRS.map(function (at) { return at.k; }));
   CONFIG.ATTRS.forEach(function (at) { if (at.side || at.ctx) h.push(at.k + '_t'); if (at.ctx) h.push(at.k + '_i'); }); // _t＝内容・経緯の文、_i＝紐付けた事案の番号
-  h.push('sp'); // 特別支援学級の児童（1＝在籍）。配慮項目ではなく、カードの地の色を変えるだけ
+  h.push('sp'); // 特別支援学級の児童（1＝在籍）。クラス分けでは人数の計算と自動の案づくりから外し、交流級を手で選ぶ
+  h.push('spn'); // 特別支援学級の名前（校務システムの名簿の「組」の文字。例：ひまわり）
   h.push('memo'); // 備考（自由記述）。決定で来年度に写す
   h.push('sib'); // 兄弟（JSON の並び。CONFIG.normSibs の形）。決定で来年度に写す時は学年を1つ上げる
   return h;
@@ -1344,6 +1374,7 @@ function attrsMap_(fy) {
       if (at.ctx && r[at.k + '_i']) a[at.k + '_i'] = String(r[at.k + '_i']).split(',').filter(Boolean).map(Number);
     });
     if (+r.sp) a.sp = 1;
+    if (r.spn) a.spn = String(r.spn);
     if (r.memo) a.memo = String(r.memo);
     if (r.sib) { var sb = CONFIG.normSibs(String(r.sib)); if (sb.length) a.sib = sb; }
     m[String(r.id8)] = a;
@@ -1382,7 +1413,7 @@ var apiListGrades_ = api_(function () {
   });
   Object.keys(by).forEach(function (g) { by[g].decided = !!decisionOf_(fy, +g); });
   var out = [];
-  for (var g = 1; g <= 6; g++) out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false });
+  CONFIG.GRADES.forEach(function (g) { out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
 });
 
@@ -1391,7 +1422,7 @@ var apiBoot_ = api_(function (grade) {
   requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear(), entry = FY - grade + 1, years = [], kids = {}, idset = {};
-  for (var fy = entry; fy <= FY + 1; fy++) {
+  for (var fy = Math.min(entry, FY); fy <= FY + 1; fy++) { // 新1年（grade 0）は今年度の0学年から
     var gy = fy - entry + 1, am = attrsMap_(fy);
     var rows = rosterRows_(fy).filter(function (r) { return r.grade === gy; });
     if (!rows.length) continue;
@@ -1506,6 +1537,7 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
   var FY = CONFIG.fiscalYear();
   if (fy !== FY && fy !== FY + 1) throw userError_('今年度か来年度の名簿だけ入れられます');
   if (!rows || !rows.length) throw userError_('児童がいません');
+  if (grade < 0 || grade > 6) throw userError_('学年が違います');
   if (opt.dry) return importDiff_(fy, grade, rows);
   backup_('名簿の取り込みの前');
   return withLock_(function () {
@@ -1514,9 +1546,14 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
     ensureCols_('attrs_' + fy, attrsHead_());
     var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
     t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
+    // 新1年は児童IDが無くてよい（仮のIDを振る）。8桁の番号で貼り直した時は、仮のIDの児童と名前で照らして付け替える
+    var relinked = relinkTempIds_(fy, grade, rows, t);
+    if (relinked) { t = read_(name); byId = {}; t.rows.forEach(function (r) { byId[String(r.id8)] = r; }); }
+    var nextTemp = tempIdSeq_(fy);
     rows.forEach(function (x) {
+      if (!String(x.id || '') && grade === 0) x.id = 'N' + fy + ('00' + (nextTemp++)).slice(-3);
       var id = String(x.id);
-      if (!/^\d{8}$/.test(id)) throw userError_('児童IDが8桁でない行があります');
+      if (!CONFIG.isKidId(id)) throw userError_(grade === 0 ? '児童IDは数字8桁か、空のままにしてください' : '児童IDが8桁でない行があります');
       classes[+x.cls] = 1; ids[id] = 1;
       var o = { id8: id, name: plainText_(x.name, 40), kana: plainText_(x.kana || '', 60), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
       var r = byId[id];
@@ -1524,27 +1561,77 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
+    // 特別支援学級の児童：配慮項目の表に「特別支援学級」の印と学級の名前を書く（組は交流級）
+    var sps = rows.filter(function (x) { return x.sp; });
+    if (sps.length) {
+      var at = read_('attrs_' + fy), arow = {};
+      at.rows.forEach(function (r) { arow[String(r.id8)] = r; });
+      var newA = [];
+      sps.forEach(function (x) {
+        var id = String(x.id), spn = plainText_(String(x.sp).slice(0, 20), 20), r = arow[id];
+        if (r) { if (+r.sp !== 1) writeCell_(at, r, 'sp', 1); if (String(r.spn || '') !== spn) writeCell_(at, r, 'spn', spn); }
+        else newA.push({ id8: id, sp: 1, spn: spn });
+      });
+      append_('attrs_' + fy, attrsHead_(), newA);
+    }
     var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
     log_(by, 'importRoster', rows.length);
-    return { added: added.length, updated: updated, missing: missing };
+    return { added: added.length, updated: updated, missing: missing, relinked: relinked };
   });
 });
+
+// 仮のIDの次の番号（その年度の名簿にある N＋年度 の最大＋1）
+function tempIdSeq_(fy) {
+  var max = 0, pre = 'N' + fy;
+  read_('roster_' + fy).rows.forEach(function (r) { var id = String(r.id8); if (id.indexOf(pre) === 0) max = Math.max(max, +id.slice(pre.length) || 0); });
+  return max + 1;
+}
+function normName_(s) { return String(s || '').replace(/[\s　]/g, ''); }
+// 8桁の番号の児童を、同じ学年の仮のIDの児童と名前（とよみ）で照らし、一意に合えば仮のIDを8桁に付け替える。付け替えた人数を返す
+function relinkTempIds_(fy, grade, rows, t) {
+  var temps = t.rows.filter(function (r) { return +r.grade === grade && CONFIG.isTempId(r.id8); });
+  if (!temps.length) return 0;
+  var have = {}; t.rows.forEach(function (r) { have[String(r.id8)] = 1; });
+  var map = {};
+  rows.forEach(function (x) {
+    var id = String(x.id || '');
+    if (!/^\d{8}$/.test(id) || have[id]) return;
+    var hit = temps.filter(function (r) { return normName_(r.name) === normName_(x.name) && (!x.kana || !r.kana || normName_(r.kana) === normName_(x.kana)); });
+    if (hit.length === 1 && !map[String(hit[0].id8)]) map[String(hit[0].id8)] = id;
+  });
+  var n = Object.keys(map).length;
+  if (n) replaceIds_(fy, map);
+  return n;
+}
+// 児童IDを付け替える：その年度の名簿・配慮項目、持ち越し、事案との結び付き、転入生
+function replaceIds_(fy, map) {
+  var sw = function (name, cols) {
+    var t = read_(name); if (!t.sh) return;
+    t.rows.forEach(function (r) { cols.forEach(function (c) { var v = String(r[c]); if (map[v]) writeCell_(t, r, c, map[v]); }); });
+  };
+  sw('roster_' + fy, ['id8']); sw('attrs_' + fy, ['id8']); sw('pairs_carry', ['a', 'b']); sw('incident_kids', ['id8']);
+}
 
 // 取り込む前の差分：追加・名前が変わる・ほかの学年にいる児童・貼った中にいない児童。
 // 別の学年や年度の表を貼って上書きする誤りを、書く前に見せて止める（名前の5割以上が変わる、またはほかの学年の児童がいる時は確かめを要る）
 function importDiff_(fy, grade, rows) {
-  var t = read_('roster_' + fy), byId = {}, ids = {}, classes = {}, added = 0, renamed = [], other = [];
+  var t = read_('roster_' + fy), byId = {}, ids = {}, classes = {}, added = 0, renamed = [], other = [], relink = [];
   t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
+  var temps = t.rows.filter(function (r) { return +r.grade === grade && CONFIG.isTempId(r.id8); });
   rows.forEach(function (x) {
-    var id = String(x.id), r = byId[id]; ids[id] = 1; classes[+x.cls] = 1;
-    if (!r) { added++; return; }
+    var id = String(x.id || ''), r = byId[id]; if (id) ids[id] = 1; classes[+x.cls] = 1;
+    if (!r) {
+      var hit = /^\d{8}$/.test(id) ? temps.filter(function (q) { return normName_(q.name) === normName_(x.name) && (!x.kana || !q.kana || normName_(q.kana) === normName_(x.kana)); }) : [];
+      if (hit.length === 1) { relink.push(String(hit[0].name)); ids[String(hit[0].id8)] = 1; } else added++;
+      return;
+    }
     if (+r.grade !== grade) other.push(String(r.name) + '（' + r.grade + '年）');
     else if (String(r.name).replace(/[\s　]/g, '') !== String(x.name).replace(/[\s　]/g, '')) renamed.push(String(r.name) + '→' + String(x.name).slice(0, 40));
   });
   var same = t.rows.filter(function (r) { return +r.grade === grade; });
   var missing = same.filter(function (r) { return classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
-  var existing = rows.length - added - other.length;
-  return { added: added, renamed: renamed, other: other, missing: missing, existing: existing,
+  var existing = rows.length - added - other.length - relink.length;
+  return { added: added, renamed: renamed, other: other, missing: missing, existing: existing, relink: relink,
     risky: other.length > 0 || (existing > 0 && renamed.length * 2 >= existing) };
 }
 
@@ -1819,7 +1906,7 @@ var apiSchoolIncidents_ = api_(function () {
 
 // 決定：来年度の名簿（新しい組・番号）と配慮項目の写しを作り、つける・離すを持ち越しの候補にする
 var apiDecide_ = api_(function (grade, plan) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   if (grade >= 6) throw userError_('6年は決定しません');
   var FY = CONFIG.fiscalYear();
@@ -1860,7 +1947,7 @@ var apiDecide_ = api_(function (grade, plan) {
 
 // 取り消し：4/1まで（年度が変わったら決定は確定）。来年度の名簿と写した値・持ち越しの候補を消す
 var apiUndoDecide_ = api_(function (grade) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
   return withLock_(function () {
@@ -1889,7 +1976,7 @@ function namesOf_(dec, FY, grade) {
 }
 // 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
 var apiSetClassNames_ = api_(function (grade, names) {
-  var by = requireTeacher_();
+  var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
   return withLock_(function () {
@@ -1934,6 +2021,32 @@ function removeRows_(name, pred) {
   t.sh.deleteRows(2 + keep.length, n);
   return n;
 }
+
+// ===== 目安箱 =====
+// 送った人は記録しない（書きやすさと、改善に送り主は要らないため）。名簿の名前・番号・メールが入っていれば断り、語を示して書き直してもらう
+function allRosterNames_() {
+  var out = [];
+  rosterSheets_().forEach(function (fy) { rosterRows_(fy).forEach(function (r) { out.push(r.name); }); });
+  read_('transfers').rows.forEach(function (r) { if (r.name) out.push(String(r.name)); });
+  return out;
+}
+var apiSuggest_ = api_(function (text, screen) {
+  requireTeacher_();
+  text = String(text == null ? '' : text).trim();
+  if (!text) throw userError_('意見を書いてください');
+  if (text.length > 2000) throw userError_('2000字までにしてください');
+  var hits = CONFIG.piiHits(text, allRosterNames_());
+  if (hits.length) return { blocked: hits.slice(0, 10) };
+  withLock_(function () {
+    sheet_(db_(), 'suggestions', TABLES_[7].head);
+    append_('suggestions', TABLES_[7].head, [{ at: new Date().toISOString(), screen: plainText_(String(screen || ''), 20), text: plainText_(text, 2000) }]);
+  });
+  return { ok: true };
+});
+var apiSuggestions_ = api_(function () {
+  requireAdmin_();
+  return read_('suggestions').rows.map(function (r) { return { at: String(r.at), screen: String(r.screen), text: String(r.text).replace(/^'/, '') }; });
+});
 
 // ===== 読み出しの記録 =====
 // 機微な読み出しも log に残す（誰が何を見たかを後から確かめられるように）。教員の確認を兼ねる。
@@ -2070,7 +2183,7 @@ function leaveCandidates_() {
   var cnt = {};
   incidents_().forEach(function (x) { x.ids.forEach(function (id) { cnt[id] = (cnt[id] || 0) + 1; }); });
   return Object.keys(last).filter(function (id) { return !now[id] && CONFIG.purgeable(last[id].fy, FY, keep, !!cnt[id]); }).map(function (id) {
-    var x = last[id]; x.reason = x.grade === 6 ? '卒業' : '転出'; x.incidents = cnt[id] || 0; return x;
+    var x = last[id]; x.reason = x.grade === 6 ? '卒業' : x.grade === 0 ? '入学せず' : '転出'; x.incidents = cnt[id] || 0; return x;
   }).sort(function (a, b) { return a.fy - b.fy || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
 }
 // 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
@@ -2190,3 +2303,5 @@ function apiSettings() { return apiSettings_.apply(null, arguments); }
 function apiSaveSettings() { return apiSaveSettings_.apply(null, arguments); }
 function apiLeaveCandidates() { return apiLeaveCandidates_.apply(null, arguments); }
 function apiPurge() { return apiPurge_.apply(null, arguments); }
+function apiSuggest() { return apiSuggest_.apply(null, arguments); }
+function apiSuggestions() { return apiSuggestions_.apply(null, arguments); }

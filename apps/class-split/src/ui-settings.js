@@ -23,13 +23,13 @@
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['devices', '端末'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
     // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
     var admin = !!(App.me && App.me.admin);
     if (!admin) T.tab = 'view';
-    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 6).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[6]) +
-      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' && T.tab !== 'devices' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
+    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 7).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[7]) +
+      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' && T.tab !== 'devices' && T.tab !== 'sugg' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
       (admin ? '' : '<p class="note">配慮項目・利用者と担任・事案と報告書・年度替わりの設定は、管理者だけが変えられます。変えたい時は管理者に頼んでください。</p>');
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
@@ -67,6 +67,8 @@
       h += '<h3 style="margin:0 0 6px">クラス分けの盤面のアイコンの大きさ</h3><div class="lvs">' + App.ICON_SCALES.map(function (x) {
         return '<button class="lv" data-isz="' + x.v + '" aria-pressed="' + (x.v === cur) + '">' + x.label + '</button>';
       }).join('') + '</div><p class="note">押すとすぐに変わり、この端末だけに覚えます（ほかの先生の画面は変わりません）。<br>「標準」は、＋のアイコンが隣に重ならない範囲でいちばん大きい大きさです。大きくすると、＋のアイコンや＋の印が隣に重なることがあります。</p>';
+    } else if (T.tab === 'sugg') {
+      h += suggTab();
     } else if (T.tab === 'devices') {
       h += devTab();
     } else if (T.tab === 'log') {
@@ -112,6 +114,19 @@
         return '<tr><td>' + esc(x.os) + (x.id === D.mine ? '<br><b>この端末</b>' : '') + '</td><td>' + esc(x.screen) + '</td><td style="text-align:left">' + esc(x.by) + '</td><td>' + fmt(x.at) + '</td><td>' + fmt(x.last) + '</td><td>' + (x.how === 'admin' ? '受付を開いた端末' : x.how === 'window-admin' ? '受付の間（管理者）' : '受付の間') + '</td>' +
           '<td><button class="btn" data-drev="' + esc(x.id) + '">取り消す</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">登録された端末はありません（制限なし）</div>');
+  }
+
+  // 目安箱：集まった意見。年度末に「まとめてコピー」して AI に渡し、改善の材料にする（送った人は記録していない）
+  function suggTab() {
+    var esc = App.esc;
+    if (!T.sugg) {
+      App.pf().suggestions().then(function (l) { T.sugg = l; if (App.st.screen === 'settings' && T.tab === 'sugg') render(); }, function (e) { App.toast(String(e && e.message || e)); });
+      return '<div class="empty">読み込んでいます…</div>';
+    }
+    return '<p class="note">メニューの下の「目安箱」から届いた意見です（' + T.sugg.length + '件）。送った人は記録していません。年度末に「まとめてコピー」して、改善を頼む時に渡してください。</p>' +
+      (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
+        T.sugg.slice().reverse().map(function (x) { return '<tr><td>' + esc(String(x.at).slice(0, 10)) + '</td><td style="text-align:left;white-space:pre-wrap">' + esc(x.text) + '</td></tr>'; }).join('') + '</tbody></table>'
+        : '<div class="empty">まだ意見はありません</div>');
   }
 
   function yearTab() {
@@ -160,7 +175,7 @@
   function set(fn) { fn(); T.dirty = true; }
   App.screens.settings = {
     enter: function () {
-      T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.dirty = false;
+      T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
@@ -169,7 +184,7 @@
     reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }
@@ -181,6 +196,11 @@
         return true;
       }
       if (t.closest('#purge')) { purgeDialog(); return true; }
+      if (t.closest('#sgcopy')) {
+        var txt = '# クラス替えアプリ 目安箱（' + T.sugg.length + '件）\n\n' + T.sugg.map(function (x) { return '- ' + String(x.at).slice(0, 10) + '：' + String(x.text).replace(/\n/g, ' '); }).join('\n');
+        (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { App.toast('コピーしました（' + T.sugg.length + '件）'); }, function () { App.toast('コピーできませんでした。表を選んでコピーしてください'); });
+        return true;
+      }
       if ((x = t.closest('[data-dopen]'))) { var role = x.dataset.dopen; if (role === 'admin' && !confirm('10分間、開いた教員を全員「管理者」として登録します。よろしいですか？')) return true; App.save(function () { return App.pf().openDeviceWindow(role); }).then(function () { T.dev = null; App.screens.settings.reloadSettings(); App.toast('10分間、' + (role === 'admin' ? '管理者' : '一般ユーザー') + 'の登録を受け付けます'); }); return true; }
       if (t.closest('#dclose')) { App.save(function () { return App.pf().closeDeviceWindow(); }).then(function () { T.dev = null; render(); }); return true; }
       if (t.closest('#dreload')) { T.dev = null; App.screens.settings.reloadSettings(); return true; }

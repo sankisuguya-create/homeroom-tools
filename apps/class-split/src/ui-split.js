@@ -13,7 +13,7 @@
     var idx = {};
     var kids = rows.map(function (r, i) {
       var s = d.kids[r.id]; idx[r.id] = i;
-      return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area };
+      return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area, home: r.a && r.a.sp ? r.cls : -1 }; // home：特別支援学級の児童の、初めの交流級（今の組と同じ番号）
     });
     // 新年度の転入生：旧学級は無し（-1）。名簿の児童の後ろに並べる
     (d.transfers || []).forEach(function (t) {
@@ -74,6 +74,7 @@
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
+    var cur = S.plans[S.active]; if (cur) S.P.kids.forEach(function (s, i) { if (ctx.SP[i]) s.home = cur.asg[i]; }); // 新しい案でも、特別支援学級の児童の交流級は今の案のまま
     var asg = E.optimize(ctx, locked, (Date.now() & 0xffff) * 7919 + S.letIdx);
     var p = { letter: LET[S.letIdx++ % 26], name: '', auto: E.autoName(gen, locked.size), gen: JSON.parse(JSON.stringify(gen)), asg: asg,
       locks: new Set(locked.keys()), hist: [], fut: [], edits: 0, from: from };
@@ -127,7 +128,7 @@
       var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
       if (d.grade >= 6) { App.$('main').innerHTML = '<div class="menu"><section><h2>6年は卒業するので、クラス分けはありません</h2><button class="btn" data-go="menu">メニューに戻る</button></section></div>'; return; }
       if (!cur || !cur.rows.length) { // 名簿が無いと組めない
-        App.$('main').innerHTML = '<div class="menu"><section><h2>' + d.grade + '年の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
+        App.$('main').innerHTML = '<div class="menu"><section><h2>' + C.gradeLabel(d.grade) + 'の今年度の名簿がありません</h2><p>先に名簿を入れてください。</p>' +
           '<button class="btn primary" data-go="roster">名簿へ</button></section></div>';
         return;
       }
@@ -142,6 +143,12 @@
       var x;
       if (t.closest('#zreset')) { zoomReset(); return true; }
       if (t.closest('#xlsOut')) { exportExcel(); return true; }
+      if ((x = t.closest('[data-spx]'))) { // 特別支援学級の児童の交流級を選ぶ
+        if (S.decision) return true;
+        var q = x.dataset.spx.split(':'), i0 = +q[0], k0 = +q[1];
+        if (S.plans[S.active].asg[i0] !== k0) doMove([[i0, k0]], S.P.kids[i0].name + 'の交流級を' + C.newClass(k0) + 'に');
+        return true;
+      }
       if ((x = t.closest('[data-del]'))) {
         e.stopPropagation(); delDialog(+x.dataset.del); return true;
       }
