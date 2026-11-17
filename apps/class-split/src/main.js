@@ -8,7 +8,7 @@
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' || st.screen === 'suggest' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : st.screen === 'suggest' ? '目安箱' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
@@ -34,6 +34,7 @@
       }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
+    if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
     return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };

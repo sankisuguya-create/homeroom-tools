@@ -553,6 +553,25 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 目安箱：メニューの下から開き、名前が入っていると送らない。送ると管理者が設定で読める
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="suggest"]'); await p.waitForSelector('#sgtext');
+  ok((await p.locator('#main').textContent()).includes('名前、児童の番号'), '個人情報を書かない注意書き');
+  const nm = await p.evaluate(async () => { const g5 = await Platforms.demo.boot(5); return g5.kids[g5.years[0].rows[0].id].name; });
+  await p.fill('#sgtext', nm.replace(/\s/g, '') + 'の画面が見づらい'); await p.click('#sgsend');
+  await p.waitForSelector('#main .warnbox:has-text("送っていません")');
+  ok(true, '名簿の名前が入っていると送らない');
+  await p.fill('#sgtext', '盤面の文字を大きくしたい'); await p.click('#sgsend');
+  await p.waitForSelector('.gbtn');
+  ok(/送りました/.test(await p.textContent('#toast')), '送るとメニューに戻る');
+  await p.click('[data-go="settings"]'); await p.click('[data-stab="sugg"]'); await p.waitForSelector('#sgcopy');
+  ok((await p.locator('table.ro').textContent()).includes('盤面の文字を大きくしたい'), '管理者は設定の目安箱で読める');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

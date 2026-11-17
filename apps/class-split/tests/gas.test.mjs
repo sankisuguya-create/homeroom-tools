@@ -364,6 +364,17 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 
+    // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
+    const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
+    assert.ok(sb.ok && sb.v.blocked && sb.v.blocked.includes('児童11'), '名簿の名前が入っていれば送らない');
+    assert.ok(call('apiSuggest', '番号 40000011 の画面で', 'menu').v.blocked, '8桁の番号も');
+    assert.equal(call('apiSuggest', '   ', 'menu').ok, false, '空は送れない');
+    assert.ok(call('apiSuggest', '盤面の文字を大きくしたい', 'menu').v.ok);
+    const sh = db().getSheetByName('suggestions').data;
+    assert.deepEqual(sh[0], ['at', 'screen', 'text'], '送った人の列は無い');
+    assert.ok(sh.length === 2 && !JSON.stringify(sh).includes('tanaka'), '送った人は残さない');
+    assert.equal(call('apiSuggestions').v[0].text, '盤面の文字を大きくしたい');
+
     // 特別支援学級の児童：取り込むと交流級の組に入り、配慮項目の表に印（sp=1）と学級の名前（spn）が付く
     const sp1 = call('apiImportRoster', FY, 4, [{ id: '40000099', name: '特支 ハナ', kana: 'とくし はな', male: false, cls: 1, no: 9, sp: 'ひまわり' }]);
     assert.ok(sp1.ok, sp1.err);

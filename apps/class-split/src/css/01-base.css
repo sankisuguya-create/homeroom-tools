@@ -56,3 +56,4 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .big span{color:var(--sub);font-size:.9rem}
 .big:hover{border-color:var(--link)}
 @media (max-width:560px){.grades{grid-template-columns:repeat(4,1fr)}.bigs{grid-template-columns:1fr}}
+.linkbtn{background:none;border:0;padding:0;color:var(--link);text-decoration:underline;font:inherit;font-size:.85rem;cursor:pointer}

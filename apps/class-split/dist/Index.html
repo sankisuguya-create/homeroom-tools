@@ -67,6 +67,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .big span{color:var(--sub);font-size:.9rem}
 .big:hover{border-color:var(--link)}
 @media (max-width:560px){.grades{grid-template-columns:repeat(4,1fr)}.bigs{grid-template-columns:1fr}}
+.linkbtn{background:none;border:0;padding:0;color:var(--link);text-decoration:underline;font:inherit;font-size:.85rem;cursor:pointer}
 /* ▲ css/01-base.css ここまで ▲ */
 /* ▼ css/02-marks.css から ▼ */
 /* 配慮項目の印（アイコンの形） */
@@ -1045,6 +1046,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
   CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
   CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+
+  // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
+  // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
+  CONFIG.piiHits = function (text, names) {
+    var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
+    var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
+    (names || []).forEach(function (n) {
+      var parts = String(n || '').trim().split(/[\s　]+/).filter(Boolean), full = parts.join('');
+      [full].concat(parts.length > 1 ? parts : []).forEach(function (w) { if (w && ok(w) && flat.indexOf(w) >= 0) hits[w] = 1; });
+    });
+    return Object.keys(hits);
+  };
 
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -2465,6 +2479,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
+    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; })); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
+    suggestions: function () { return later(S.sugg || []); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
     closeDeviceWindow: function () { return later({ ok: true }); },
@@ -2939,13 +2955,41 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>' + (st.grade === 0 ? '入学する児童を1年の学級に分ける案を作り、入れ替え・比較して決める。' : '来年度の学級の案を作り、入れ替え・比較して決める。') + '</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
         '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button>' +
-        '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p></section></div>'; // 貼った版を GitHub の dist と照らす
+        '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p>' +
+        '<p class="note"><button class="linkbtn" data-go="suggest">目安箱（このアプリへの意見）</button></p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
     click: function (t) {
       var gb = t.closest('[data-g]');
       if (gb) { App.st.grade = +gb.dataset.g; App.st.gradeChosen = true; App.screens.menu.render(); return true; }
       return false;
     }
+  };
+
+  // 目安箱：アプリへの意見を集め、年度末に読んで改善する。送った人は残さない。名前・番号が入っていれば送らずに知らせる
+  var SG = { text: '' };
+  App.screens.suggest = {
+    enter: function () { this.render(); },
+    render: function (msg) {
+      var esc = App.esc;
+      App.$('main').innerHTML = '<div class="menu"><section><h2>目安箱（このアプリへの意見）</h2>' +
+        '<p>使いにくい所、欲しい機能、分かりにくい言葉などを書いてください。年度末にまとめて読み、アプリを直します。<b>誰が送ったかは記録しません。</b></p>' +
+        '<div class="warnbox" style="font-weight:400">児童・保護者・職員の<b>名前、児童の番号、事案の中身</b>は書かないでください（「〇年の名簿の画面で」「ある児童の配慮項目を入れる時」のように書いてください）。名簿の名前や番号が入っていると、送らずにお知らせします。</div>' +
+        (msg || '') +
+        '<textarea id="sgtext" rows="7" maxlength="2000" style="width:100%;box-sizing:border-box;font:inherit;padding:8px;margin-top:8px" placeholder="例：クラス分けの盤面で、名前が小さくて読みにくい">' + esc(SG.text) + '</textarea>' +
+        '<div class="acts" style="justify-content:flex-start;margin-top:8px"><button class="btn primary" id="sgsend">送る</button><button class="btn" data-go="menu">メニューに戻る</button></div></section></div>';
+    },
+    click: function (t) {
+      if (!t.closest('#sgsend')) return false;
+      var text = App.$('sgtext').value.trim(), self = this;
+      SG.text = text;
+      if (!text) { App.toast('意見を書いてください'); return true; }
+      App.save(function () { return App.pf().suggest(text, 'menu'); }).then(function (r) {
+        if (r && r.blocked) { self.render('<div class="warnbox">名前や番号のような語が入っているので、送っていません：' + App.esc(r.blocked.join('、')) + '。言い換えてから、もう一度送ってください。</div>'); return; }
+        SG.text = ''; App.toast('送りました。ありがとうございます'); App.go('menu');
+      });
+      return true;
+    },
+    input: function (t) { if (t.id === 'sgtext') SG.text = t.value; }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-menu.js ここまで ▲ */
@@ -5753,13 +5797,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['devices', '端末'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
     // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
     var admin = !!(App.me && App.me.admin);
     if (!admin) T.tab = 'view';
-    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 6).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[6]) +
-      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' && T.tab !== 'devices' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
+    var h = '<div class="rbar">' + (admin ? '<span class="sgrp">学校の設定（全員に効く）</span>' + tabs.slice(0, 7).map(tab).join('') + '<span class="bsep"></span>' : '') + '<span class="sgrp">この端末だけ</span>' + tab(tabs[7]) +
+      '<span class="sp"></span>' + (admin && T.tab !== 'year' && T.tab !== 'view' && T.tab !== 'log' && T.tab !== 'devices' && T.tab !== 'sugg' ? '<button class="btn primary" id="ssave"' + (T.dirty ? '' : ' disabled') + '>保存する</button>' : '') + '</div><div class="tw" style="padding:12px;max-width:900px">' +
       (admin ? '' : '<p class="note">配慮項目・利用者と担任・事案と報告書・年度替わりの設定は、管理者だけが変えられます。変えたい時は管理者に頼んでください。</p>');
     if (T.tab === 'attrs') {
       h += '<table class="r"><thead><tr><th>印</th><th style="text-align:left">名前</th><th>頭文字</th><th style="text-align:left">既定の重み（案を作る時の初めの値）</th></tr></thead><tbody>' +
@@ -5797,6 +5841,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       h += '<h3 style="margin:0 0 6px">クラス分けの盤面のアイコンの大きさ</h3><div class="lvs">' + App.ICON_SCALES.map(function (x) {
         return '<button class="lv" data-isz="' + x.v + '" aria-pressed="' + (x.v === cur) + '">' + x.label + '</button>';
       }).join('') + '</div><p class="note">押すとすぐに変わり、この端末だけに覚えます（ほかの先生の画面は変わりません）。<br>「標準」は、＋のアイコンが隣に重ならない範囲でいちばん大きい大きさです。大きくすると、＋のアイコンや＋の印が隣に重なることがあります。</p>';
+    } else if (T.tab === 'sugg') {
+      h += suggTab();
     } else if (T.tab === 'devices') {
       h += devTab();
     } else if (T.tab === 'log') {
@@ -5842,6 +5888,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return '<tr><td>' + esc(x.os) + (x.id === D.mine ? '<br><b>この端末</b>' : '') + '</td><td>' + esc(x.screen) + '</td><td style="text-align:left">' + esc(x.by) + '</td><td>' + fmt(x.at) + '</td><td>' + fmt(x.last) + '</td><td>' + (x.how === 'admin' ? '受付を開いた端末' : x.how === 'window-admin' ? '受付の間（管理者）' : '受付の間') + '</td>' +
           '<td><button class="btn" data-drev="' + esc(x.id) + '">取り消す</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">登録された端末はありません（制限なし）</div>');
+  }
+
+  // 目安箱：集まった意見。年度末に「まとめてコピー」して AI に渡し、改善の材料にする（送った人は記録していない）
+  function suggTab() {
+    var esc = App.esc;
+    if (!T.sugg) {
+      App.pf().suggestions().then(function (l) { T.sugg = l; if (App.st.screen === 'settings' && T.tab === 'sugg') render(); }, function (e) { App.toast(String(e && e.message || e)); });
+      return '<div class="empty">読み込んでいます…</div>';
+    }
+    return '<p class="note">メニューの下の「目安箱」から届いた意見です（' + T.sugg.length + '件）。送った人は記録していません。年度末に「まとめてコピー」して、改善を頼む時に渡してください。</p>' +
+      (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
+        T.sugg.slice().reverse().map(function (x) { return '<tr><td>' + esc(String(x.at).slice(0, 10)) + '</td><td style="text-align:left;white-space:pre-wrap">' + esc(x.text) + '</td></tr>'; }).join('') + '</tbody></table>'
+        : '<div class="empty">まだ意見はありません</div>');
   }
 
   function yearTab() {
@@ -5890,7 +5949,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function set(fn) { fn(); T.dirty = true; }
   App.screens.settings = {
     enter: function () {
-      T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.dirty = false;
+      T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
@@ -5899,7 +5958,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }
@@ -5911,6 +5970,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return true;
       }
       if (t.closest('#purge')) { purgeDialog(); return true; }
+      if (t.closest('#sgcopy')) {
+        var txt = '# クラス替えアプリ 目安箱（' + T.sugg.length + '件）\n\n' + T.sugg.map(function (x) { return '- ' + String(x.at).slice(0, 10) + '：' + String(x.text).replace(/\n/g, ' '); }).join('\n');
+        (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { App.toast('コピーしました（' + T.sugg.length + '件）'); }, function () { App.toast('コピーできませんでした。表を選んでコピーしてください'); });
+        return true;
+      }
       if ((x = t.closest('[data-dopen]'))) { var role = x.dataset.dopen; if (role === 'admin' && !confirm('10分間、開いた教員を全員「管理者」として登録します。よろしいですか？')) return true; App.save(function () { return App.pf().openDeviceWindow(role); }).then(function () { T.dev = null; App.screens.settings.reloadSettings(); App.toast('10分間、' + (role === 'admin' ? '管理者' : '一般ユーザー') + 'の登録を受け付けます'); }); return true; }
       if (t.closest('#dclose')) { App.save(function () { return App.pf().closeDeviceWindow(); }).then(function () { T.dev = null; render(); }); return true; }
       if (t.closest('#dreload')) { T.dev = null; App.screens.settings.reloadSettings(); return true; }
@@ -5959,7 +6023,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function crumb() {
     var st = App.st;
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' || st.screen === 'suggest' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : st.screen === 'suggest' ? '目安箱' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
@@ -5985,6 +6049,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }, loadFailed);
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
+    if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
     return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };

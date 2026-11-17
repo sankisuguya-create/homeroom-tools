@@ -199,6 +199,19 @@
   CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
   CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
 
+  // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
+  // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
+  CONFIG.piiHits = function (text, names) {
+    var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
+    var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
+    (names || []).forEach(function (n) {
+      var parts = String(n || '').trim().split(/[\s　]+/).filter(Boolean), full = parts.join('');
+      [full].concat(parts.length > 1 ? parts : []).forEach(function (w) { if (w && ok(w) && flat.indexOf(w) >= 0) hits[w] = 1; });
+    });
+    return Object.keys(hits);
+  };
+
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
@@ -1053,7 +1066,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_2bc93de1c1b7';
+var SERVER_BUILD = 'BUILD_f557915e3e5a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1247,7 +1260,9 @@ var TABLES_ = [
   { name: 'incident_kids', head: ['inc_id', 'id8', 'role'] },
   { name: 'log', head: ['at', 'by', 'action', 'n'] },
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
-  { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] }
+  { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] },
+  // 目安箱：アプリへの意見。送った人は残さない（at・開いていた画面・本文だけ）
+  { name: 'suggestions', head: ['at', 'screen', 'text'] }
 ];
 // side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
 function attrsHead_() {
@@ -2007,6 +2022,32 @@ function removeRows_(name, pred) {
   return n;
 }
 
+// ===== 目安箱 =====
+// 送った人は記録しない（書きやすさと、改善に送り主は要らないため）。名簿の名前・番号・メールが入っていれば断り、語を示して書き直してもらう
+function allRosterNames_() {
+  var out = [];
+  rosterSheets_().forEach(function (fy) { rosterRows_(fy).forEach(function (r) { out.push(r.name); }); });
+  read_('transfers').rows.forEach(function (r) { if (r.name) out.push(String(r.name)); });
+  return out;
+}
+var apiSuggest_ = api_(function (text, screen) {
+  requireTeacher_();
+  text = String(text == null ? '' : text).trim();
+  if (!text) throw userError_('意見を書いてください');
+  if (text.length > 2000) throw userError_('2000字までにしてください');
+  var hits = CONFIG.piiHits(text, allRosterNames_());
+  if (hits.length) return { blocked: hits.slice(0, 10) };
+  withLock_(function () {
+    sheet_(db_(), 'suggestions', TABLES_[7].head);
+    append_('suggestions', TABLES_[7].head, [{ at: new Date().toISOString(), screen: plainText_(String(screen || ''), 20), text: plainText_(text, 2000) }]);
+  });
+  return { ok: true };
+});
+var apiSuggestions_ = api_(function () {
+  requireAdmin_();
+  return read_('suggestions').rows.map(function (r) { return { at: String(r.at), screen: String(r.screen), text: String(r.text).replace(/^'/, '') }; });
+});
+
 // ===== 読み出しの記録 =====
 // 機微な読み出しも log に残す（誰が何を見たかを後から確かめられるように）。教員の確認を兼ねる。
 // 同じ人の同じ読み出しは10分に1回だけ書く（開き直すたびに行が増えないように）
@@ -2262,3 +2303,5 @@ function apiSettings() { return apiSettings_.apply(null, arguments); }
 function apiSaveSettings() { return apiSaveSettings_.apply(null, arguments); }
 function apiLeaveCandidates() { return apiLeaveCandidates_.apply(null, arguments); }
 function apiPurge() { return apiPurge_.apply(null, arguments); }
+function apiSuggest() { return apiSuggest_.apply(null, arguments); }
+function apiSuggestions() { return apiSuggestions_.apply(null, arguments); }
