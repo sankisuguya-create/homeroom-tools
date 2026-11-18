@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body{font-family:sans-serif;margin:0;background:#f4f4f4;color:#222}
+.bar{position:sticky;top:0;background:#fff;padding:12px 16px;box-shadow:0 1px 4px #0002;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+input[type=text]{flex:1;min-width:240px;font-size:16px;padding:10px;border:1px solid #999;border-radius:6px}
+button{font-size:16px;padding:10px 18px;border:0;border-radius:6px;background:#1a73e8;color:#fff;cursor:pointer}
+button:disabled{background:#aaa}
+label{font-size:15px}
+#msg{width:100%;font-size:15px}
+#pages{padding:16px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.pg{background:#fff;box-shadow:0 1px 4px #0003;padding:8px;width:min(100%,700px)}
+.pg img{width:100%;display:block}
+.pg .nm{font-size:13px;margin-bottom:4px}
+.pg.err{color:#c00}
+@page land{size:A4 landscape;margin:8mm}
+@page port{size:A4 portrait;margin:8mm}
+@media print{
+  .bar,.pg.err{display:none}
+  body{background:#fff}
+  #pages{padding:0;display:block}
+  .pg{box-shadow:none;padding:0;width:auto;height:100vh;display:flex;flex-direction:column;break-after:page}
+  .pg.l{page:land}.pg.p{page:port}
+  .pg img{flex:1;min-height:0;width:100%;object-fit:contain}
+  body:not(.shownm) .nm{display:none}
+}
+</style></head><body class="shownm">
+<div class="bar">
+  <input id="url" type="text" placeholder="課題フォルダのURLを貼る">
+  <button id="go">読み込む</button>
+  <button id="pr" disabled>印刷</button>
+  <label><input id="nm" type="checkbox" checked> 名前を印刷</label>
+  <div id="msg">Driveの「Classroom」→ 授業 → 課題 のフォルダを開き、そのURLを貼ってください。</div>
+</div>
+<div id="pages"></div>
+<script>
+var $=function(id){return document.getElementById(id)};
+function run(fn,arg){return new Promise(function(ok,ng){google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[fn](arg)})}
+$('nm').onchange=function(){document.body.classList.toggle('shownm',this.checked)};
+$('pr').onclick=function(){window.print()};
+$('go').onclick=async function(){
+  $('go').disabled=$('pr').disabled=true;$('pages').innerHTML='';
+  try{
+    var r=await run('apiListFiles',$('url').value);
+    if(!r.files.length) throw new Error('スライドが見つかりません');
+    var ng=0,loads=[];
+    for(var i=0;i<r.files.length;i++){
+      var f=r.files[i];
+      $('msg').textContent=r.folder+'：'+(i+1)+' / '+r.files.length+' 件目を読み込み中…';
+      var d=document.createElement('div');d.className='pg';
+      d.innerHTML='<div class="nm"></div>';d.firstChild.textContent=f.label;
+      $('pages').appendChild(d);
+      try{
+        var t=await run('apiThumb',f.id);
+        d.classList.add(t.w>=t.h?'l':'p');
+        var img=new Image();img.src=t.url;d.appendChild(img);
+        loads.push(new Promise(function(ok){img.onload=img.onerror=ok}));
+      }catch(e){ng++;d.classList.add('err');d.appendChild(document.createTextNode('読み込めませんでした（'+e.message+'）'));}
+    }
+    await Promise.all(loads);
+    $('msg').textContent=r.folder+'：'+(r.files.length-ng)+'件 準備完了'+(ng?'（'+ng+'件失敗・印刷されません）':'')+'。「印刷」を押してください。';
+    $('pr').disabled=false;
+  }catch(e){$('msg').textContent='エラー：'+e.message}
+  $('go').disabled=false;
+};
+</script></body></html>
