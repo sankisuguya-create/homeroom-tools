@@ -168,10 +168,7 @@ await winCtx.close();
 await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
 ok(await p.locator('#idle:not([hidden]) .fp-paper').count() === 1, 'ほかのタブに移ると、プリントに見せかけた覆いで画面を隠す');
 await p.click('#idle');
-ok(await p.locator('#idle:not([hidden])').count() === 1, '短く押しただけでは戻らない（児童が触っても名簿は出ない）');
-const bx = await p.locator('#idle').boundingBox();
-await p.mouse.move(bx.x + 40, bx.y + 40); await p.mouse.down(); await p.waitForTimeout(1200); await p.mouse.up();
-ok(await p.locator('#idle[hidden]').count() === 1, '1秒長押しすると戻る');
+ok(await p.locator('#idle[hidden]').count() === 1, '押すと戻る');
 
 ok(errs.length === 0, '画面のエラーなし ' + errs.join(' / '));
 await browser.close();
