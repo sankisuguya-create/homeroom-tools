@@ -1071,7 +1071,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_12f4125f44ac';
+var SERVER_BUILD = 'BUILD_688ff1342078';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -2102,11 +2102,34 @@ function backup_(why) {
   return copy.getId();
 }
 // 毎週の控え（setup が時刻のきっかけを作る）
-function weeklyBackup() { editorOnly_(); backup_('毎週'); }
+function weeklyBackup() { editorOnly_(); backup_('毎週'); try { pruneLog_(); } catch (e) { /* 控えは取れたので止めない */ } }
 function ensureWeeklyTrigger_() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'weeklyBackup'; });
   if (!has) ScriptApp.newTrigger('weeklyBackup').timeBased().everyWeeks(1).onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
 }
+
+// 今年度の名簿があるのに、クラス替えを決定していない学年（新1年〜5年）
+function undecidedGrades_() {
+  var FY = CONFIG.fiscalYear(), has = {};
+  rosterRows_(FY).forEach(function (r) { has[r.grade] = 1; });
+  return CONFIG.GRADES.filter(function (g) { return g <= 5 && has[g] && !decisionOf_(FY, g); });
+}
+
+// ===== 年度末の後片付け =====
+// 記録（log）は1年より古い行を消す（毎週の控えのついでと、年度替わりのボタンから）。読み出しも残すので、放っておくと増え続ける
+var LOG_KEEP_DAYS = 365;
+function pruneLog_() {
+  var limit = Date.now() - LOG_KEEP_DAYS * 86400000;
+  return withLock_(function () { return removeRows_('log', function (r) { var t = new Date(r.at).getTime(); return t && t < limit; }); });
+}
+var apiPruneLog_ = api_(function () { var by = requireAdmin_(); var n = pruneLog_(); log_(by, 'pruneLog', n); return { n: n }; });
+// 目安箱の意見を消す（読んでコピーした後に、管理者が消す）
+var apiClearSuggestions_ = api_(function () {
+  var by = requireAdmin_();
+  var n = withLock_(function () { return removeRows_('suggestions', function () { return true; }); });
+  log_(by, 'clearSuggestions', n);
+  return { n: n };
+});
 
 // ===== 管理者への知らせ =====
 // データ・スクリプト・控えのフォルダが所有者以外に共有されていないか。4〜5月は年度替わりの消し忘れも
@@ -2119,6 +2142,10 @@ var apiAdminStatus_ = api_(function () {
   try { chk('このアプリのスクリプト', DriveApp.getFileById(ScriptApp.getScriptId())); } catch (e) { /* スクリプトの所在によっては読めない */ }
   try { var it = DriveApp.getFoldersByName(BACKUP_FOLDER); if (it.hasNext()) chk('控えのフォルダ', it.next()); } catch (e) { }
   var m = +Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M');
+  if (m === 3) {
+    var und = undecidedGrades_();
+    if (und.length) w.push({ kind: 'decide', text: '3月31日までにクラス替えを決定していない学年があります：' + und.map(CONFIG.gradeLabel).join('・') + '。4月1日を過ぎると、その学年は来年度の名簿が無いまま年度が替わります' });
+  }
   if (m === 4 || m === 5) {
     var n = leaveCandidates_().length;
     if (n) w.push({ kind: 'purge', text: '卒業・転出して残す年数を過ぎた児童が' + n + '人います。設定の「年度替わり」で記録を消してください' });
@@ -2314,3 +2341,5 @@ function apiLeaveCandidates() { return apiLeaveCandidates_.apply(null, arguments
 function apiPurge() { return apiPurge_.apply(null, arguments); }
 function apiSuggest() { return apiSuggest_.apply(null, arguments); }
 function apiSuggestions() { return apiSuggestions_.apply(null, arguments); }
+function apiPruneLog() { return apiPruneLog_.apply(null, arguments); }
+function apiClearSuggestions() { return apiClearSuggestions_.apply(null, arguments); }

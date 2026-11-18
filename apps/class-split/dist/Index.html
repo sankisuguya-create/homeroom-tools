@@ -840,6 +840,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 #idle[hidden] { display: none; }
 #idle b { font-size: 22px; color: var(--ink, #1A1A1A); }
 @media print { #idle { display: none !important; } }
+.ylist{margin:0 0 8px;padding-left:1.4em;line-height:1.6}.ylist li{margin:2px 0}.ylist li.done{color:var(--sub)}.ylist .warn{color:var(--alert);font-weight:700}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -2496,6 +2497,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     adminStatus: function () { return later({ warnings: [] }); },
     suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
+    clearSuggestions: function () { var n = (S.sugg || []).length; S.sugg = []; return later({ n: n }); },
+    pruneLog: function () { return later({ n: 0 }); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
     closeDeviceWindow: function () { return later({ ok: true }); },
@@ -5872,7 +5875,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
-  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', addUserByWindow: '受付で一般ユーザーに登録された', addAdminByWindow: '受付で管理者に登録された', openAdminWindow: '管理者の受付を開いた（分）', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
+  var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', pruneLog: '古い記録を消した（件数）', clearSuggestions: '目安箱の意見を消した（件数）', addUserByWindow: '受付で一般ユーザーに登録された', addAdminByWindow: '受付で管理者に登録された', openAdminWindow: '管理者の受付を開いた（分）', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
   function logTab() {
     var esc = App.esc;
     if (!T.log) {
@@ -5914,7 +5917,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return '<div class="empty">読み込んでいます…</div>';
     }
     return '<p class="note">メニューの下の「目安箱」から届いた意見です（' + T.sugg.length + '件）。送った人は記録していません。年度末に「まとめてコピー」して、改善を頼む時に渡してください。</p>' +
-      (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
+      (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button><button class="btn danger" id="sgclear">読んだ意見を消す…</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
         T.sugg.slice().reverse().map(function (x) { return '<tr><td>' + esc(String(x.at).slice(0, 10)) + '</td><td style="text-align:left;white-space:pre-wrap">' + esc(x.text) + '</td></tr>'; }).join('') + '</tbody></table>'
         : '<div class="empty">まだ意見はありません</div>');
   }
@@ -5926,7 +5929,19 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       return '<div class="empty">読み込んでいます…</div>';
     }
     var n = T.cand.filter(function (x) { return T.pick[x.id]; }).length;
-    return '<h3 style="margin:0 0 6px">卒業・転出した児童の記録を消す</h3>' +
+    // 年度末の手順：3月の決定から4〜5月の後片付けまでを、上から順に並べる（決定の状態はメニューの学年の一覧から）
+    var gs = App.st.grades || [], und = gs.filter(function (x) { return x.grade <= 5 && x.count && !x.decided; }).map(function (x) { return C.gradeLabel(x.grade); });
+    var step = function (done, html) { return '<li' + (done ? ' class="done"' : '') + '>' + (done ? '✓ ' : '') + html + '</li>'; };
+    var list = '<h3 style="margin:0 0 6px">年度末の手順</h3><ol class="ylist">' +
+      step(!und.length, '<b>3月31日まで</b>：新1年〜5年のクラス替えを決定し、「組の番号を決める」で組の番号を当てる（決定は管理者だけ。4月1日を過ぎると取り消せない）' + (und.length ? '<br><span class="warn">まだ決定していない学年：' + esc(und.join('・')) + '</span>' : '')) +
+      step(false, '<b>4月1日</b>：年度は自動で切り替わる（決定で作った来年度の名簿が、今年度の名簿になる）') +
+      step(false, '<b>4月</b>：入学した1年の、本来の児童IDの入った名簿を1年に貼る（仮の番号の児童と名前で照らして付け替わる）') +
+      step(false, '<b>4月</b>：設定の「利用者と担任」で、異動した教員を消し、来た教員を足し、担任の学年と組を直す（来た教員は「端末」の「一般ユーザーを受け付ける」で、本人と端末を一度に登録できる）。異動した教員の端末は「端末」で取り消す') +
+      step(false, '<b>4〜5月</b>：下の「卒業・転出した児童の記録を消す」') +
+      step(false, '<b>年度末</b>：「目安箱」で意見をまとめてコピーして改善を頼み、読んだ意見を消す') +
+      step(false, '記録（「記録」タブ）は、1年より古い行を毎週自動で消す。<button class="btn" id="plog">今すぐ消す</button>') +
+      '</ol>';
+    return list + '<h3 style="margin:14px 0 6px">卒業・転出した児童の記録を消す</h3>' +
       '<p class="note">今年度の名簿にいない児童です。消すと、名簿・配慮項目・つける離す・事案との結び付きから、その児童の行が消えます。結び付く児童がいなくなった事案は、名前とURLを消します。<b>元に戻せません。</b>スプレッドシートの版の履歴と、ドライブの事案の文書そのものは残ります。</p>' +
       '<div class="rbar"><span class="lab">卒業・転出した後も残す年数</span>' + [0, 1, 2, 3, 4, 5, 6].map(function (y) {
         return '<button class="lv" data-keep="' + y + '" aria-pressed="' + (+s.keepYears === y) + '">' + (y ? y + '年度' : '残さない') + (y === C.KEEP_YEARS_DEFAULT ? '（既定）' : '') + '</button>';
@@ -5986,6 +6001,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return true;
       }
       if (t.closest('#purge')) { purgeDialog(); return true; }
+      if (t.closest('#sgclear')) {
+        if (!confirm('目安箱の意見 ' + T.sugg.length + '件をすべて消します。先に「まとめてコピー」で写しましたか？')) return true;
+        App.save(function () { return App.pf().clearSuggestions(); }).then(function (r) { T.sugg = null; render(); App.toast('意見を' + r.n + '件消しました'); });
+        return true;
+      }
+      if (t.closest('#plog')) { App.save(function () { return App.pf().pruneLog(); }).then(function (r) { App.toast('1年より古い記録を' + r.n + '件消しました'); }); return true; }
       if (t.closest('#sgcopy')) {
         var txt = '# クラス替えアプリ 目安箱（' + T.sugg.length + '件）\n\n' + T.sugg.map(function (x) { return '- ' + String(x.at).slice(0, 10) + '：' + String(x.text).replace(/\n/g, ' '); }).join('\n');
         (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(function () { App.toast('コピーしました（' + T.sugg.length + '件）'); }, function () { App.toast('コピーできませんでした。表を選んでコピーしてください'); });

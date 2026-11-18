@@ -98,6 +98,8 @@
     purge: function (ids) { return call('apiPurge', ids); },
     suggest: function (text, screen) { return call('apiSuggest', text, screen); },
     suggestions: function () { return call('apiSuggestions'); },
+    clearSuggestions: function () { return call('apiClearSuggestions'); },
+    pruneLog: function () { return call('apiPruneLog'); },
     devices: function () { return call('apiDevices'); },
     openDeviceWindow: function (role) { return call('apiOpenDeviceWindow', role); },
     closeDeviceWindow: function () { return call('apiCloseDeviceWindow'); },

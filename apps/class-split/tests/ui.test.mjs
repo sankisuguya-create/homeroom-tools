@@ -569,6 +569,11 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(/送りました/.test(await p.textContent('#toast')), '送るとメニューに戻る');
   await p.click('[data-go="settings"]'); await p.click('[data-stab="sugg"]'); await p.waitForSelector('#sgcopy');
   ok((await p.locator('table.ro').textContent()).includes('盤面の文字を大きくしたい'), '管理者は設定の目安箱で読める');
+  p.once('dialog', d => d.accept());
+  await p.click('#sgclear'); await p.waitForSelector('.empty:has-text("まだ意見はありません")');
+  ok(true, '読んだ意見を消せる');
+  await p.click('[data-stab="year"]'); await p.waitForSelector('.ylist');
+  ok((await p.locator('.ylist').textContent()).includes('まだ決定していない学年'), '年度替わりのタブに年度末の手順と、決定していない学年');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
