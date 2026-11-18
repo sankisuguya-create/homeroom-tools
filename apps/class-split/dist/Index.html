@@ -835,10 +835,28 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
 
-/* 放置の覆い：中身が透けない不透明。押すと戻る */
-#idle { position: fixed; inset: 0; z-index: 2147483001; border: 0; background: var(--bg, #eef1f4); color: var(--sub, #616870); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font: inherit; cursor: pointer; }
+/* 放置の覆い：ありきたりのプリントに見せる（fakeprint.js）。中身が透けない不透明。1秒の長押しで戻る */
+#idle { position: fixed; inset: 0; z-index: 2147483001; background: #d9dcdf; overflow: auto; padding: 24px 16px; box-sizing: border-box; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
 #idle[hidden] { display: none; }
-#idle b { font-size: 22px; color: var(--ink, #1A1A1A); }
+.fp-paper { background: #fff; color: #111; max-width: 760px; margin: 0 auto; padding: 28px 36px 40px; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-family: "UD デジタル 教科書体 N-R", "BIZ UDPGothic", "Hiragino Maru Gothic ProN", sans-serif; line-height: 1.7; }
+.fp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.fp-title { font-size: 24px; font-weight: 700; }
+.fp-sub, .fp-name { font-size: 14px; }
+.fp-lead { margin: 10px 0 6px; font-weight: 700; }
+.fp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 18px; margin: 0; padding-left: 1.6em; font-size: 18px; }
+.fp-grid2 { grid-template-columns: repeat(2, 1fr); }
+.fp-box { display: inline-block; width: 2.6em; height: 1.4em; border: 1px solid #111; vertical-align: middle; }
+.fp-kanji { margin: 0; padding-left: 1.6em; font-size: 18px; }
+.fp-kanji li { margin: 10px 0; display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.fp-ul { border-bottom: 1px solid #111; padding: 0 2px; }
+.fp-masu { margin-left: auto; display: inline-flex; }
+.fp-masu i { width: 34px; height: 34px; border: 1px solid #111; margin-left: -1px; background: linear-gradient(#bbb, #bbb) center/1px 100% no-repeat, linear-gradient(#bbb, #bbb) center/100% 1px no-repeat; }
+.fp-word { margin: 0; padding-left: 1.6em; font-size: 17px; }
+.fp-word li { margin: 0 0 18px; }
+.fp-word p { margin: 0 0 8px; }
+.fp-ans { display: flex; align-items: center; gap: 8px; }
+.fp-line { flex: 1; border-bottom: 1px solid #111; height: 1.6em; }
+.fp-line.s { flex: .5; }
 @media print { #idle { display: none !important; } }
 .ylist{margin:0 0 8px;padding-left:1.4em;line-height:1.6}.ylist li{margin:2px 0}.ylist li.done{color:var(--sub)}.ylist .warn{color:var(--alert);font-weight:700}
 /* ▲ css/11-later.css ここまで ▲ */
@@ -847,7 +865,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
-<button id="idle" hidden aria-label="画面を表示する"><b>画面を隠しています</b><span>押すと戻ります</span></button>
+<div id="idle" hidden aria-label="画面を隠しています（1秒長押しで戻る）"></div>
 <div class="toast" id="toast" hidden></div>
 <script>
 /* ▼ src/config.js から。直すのは src のほう ▼ */
@@ -6049,6 +6067,51 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-settings.js ここまで ▲ */
+/* ▼ src/fakeprint.js から。直すのは src のほう ▼ */
+// 画面を隠す時の見せかけのプリント（算数・国語）。席を離れた間に児童がのぞいても、ありきたりのプリントに見えるようにする。
+// 中身はすべて作りもの（児童の名前は入れない。名前の欄は空のまま）。隠すたびに3種類から順に替える。
+(function (g) {
+  'use strict';
+  var App = g.App;
+  var head = function (title, sub) {
+    return '<div class="fp-head"><div><div class="fp-title">' + title + '</div><div class="fp-sub">' + sub + '</div></div>' +
+      '<div class="fp-name">　　年　　組　名前（　　　　　　　　　）</div></div>';
+  };
+  var box = '<span class="fp-box"></span>';
+  var PRINTS = [
+    // 1. 算数：わり算の練習（3年）
+    function () {
+      var q = [[24, 6], [35, 7], [48, 8], [27, 3], [42, 6], [63, 9], [32, 4], [56, 7], [45, 5], [72, 8], [18, 2], [54, 9], [36, 4], [49, 7], [40, 5], [81, 9]];
+      return head('わり算の練習 ⑤', '3年　算数　〔あまりのないわり算〕') +
+        '<p class="fp-lead">つぎの計算をしましょう。</p><ol class="fp-grid">' +
+        q.map(function (x) { return '<li>' + x[0] + ' ÷ ' + x[1] + ' ＝ ' + box + '</li>'; }).join('') + '</ol>' +
+        '<p class="fp-lead">□にあてはまる数をかきましょう。</p><ol class="fp-grid fp-grid2" start="17">' +
+        ['□ × 6 ＝ 42', '8 × □ ＝ 64', '□ ÷ 3 ＝ 9', '28 ÷ □ ＝ 4'].map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>';
+    },
+    // 2. 国語：漢字の書き取り（4年）
+    function () {
+      var q = [['たいせつ', 'な', 'ほうほう', 'を考える。'], ['しゅくだい', 'を', 'わす', 'れる。'], ['ろうか', 'を', 'しず', 'かに歩く。'], ['きゅうしょく', 'の', 'じゅんび', 'をする。'],
+        ['かんさつ', 'カードを', 'か', 'く。'], ['きせつ', 'の', 'へんか', 'を調べる。'], ['にっき', 'を', 'つづ', 'ける。'], ['とうばん', 'を', 'き', 'める。']];
+      return head('漢字の書き取り ⑫', '4年　国語　〔新しく習った漢字〕') +
+        '<p class="fp-lead">――の言葉を、漢字で書きましょう。</p><ol class="fp-kanji">' +
+        q.map(function (x) { return '<li><span class="fp-ul">' + x[0] + '</span>' + x[1] + '<span class="fp-ul">' + x[2] + '</span>' + x[3] + '<span class="fp-masu"><i></i><i></i><i></i><i></i></span></li>'; }).join('') + '</ol>';
+    },
+    // 3. 算数：文章題（2年）
+    function () {
+      var q = ['はるきさんは、シールを 38まい もっています。お姉さんから 15まい もらいました。シールは ぜんぶで なんまいに なりましたか。',
+        'こうえんで 子どもが 52人 あそんでいます。そのうち 27人が かえりました。のこりは なん人ですか。',
+        'えんぴつが 1はこに 6本ずつ 入っています。4はこでは、えんぴつは なん本ですか。',
+        'あさがおの つるが きのうより 9cm のびて、46cm に なりました。きのうは なんcm でしたか。'];
+      return head('文しょうもんだい ⑦', '2年　さんすう　〔しきと こたえを かこう〕') +
+        '<ol class="fp-word">' + q.map(function (t) { return '<li><p>' + t + '</p><div class="fp-ans"><span>しき</span><span class="fp-line"></span><span>こたえ</span><span class="fp-line s"></span></div></li>'; }).join('') + '</ol>';
+    }
+  ];
+  var next = Math.floor(Math.random() * PRINTS.length);
+  // 覆いに次のプリントを入れる（隠すたびに替える）
+  App.fakePrint = function () { var h = PRINTS[next](); next = (next + 1) % PRINTS.length; return '<div class="fp-paper">' + h + '</div>'; };
+  App.FAKE_PRINTS = PRINTS.length;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/fakeprint.js ここまで ▲ */
 /* ▼ src/main.js から。直すのは src のほう ▼ */
 // 入口：画面の切り替えと、クリック・キー・入力の振り分け。
 (function (g) {
@@ -6193,12 +6256,16 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var IDLE_MIN = 3, idleAt = Date.now();
   var touch = function () { idleAt = Date.now(); };
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
-  setInterval(function () {
-    var cv = App.$('idle');
-    if (cv && cv.hidden && Date.now() - idleAt > IDLE_MIN * 60000) { cv.hidden = false; tip.hidden = true; }
-  }, 10000);
-  document.addEventListener('visibilitychange', function () { if (document.hidden) { var cv = App.$('idle'); if (cv) cv.hidden = false; } });
-  App.$('idle').addEventListener('click', function (e) { e.stopPropagation(); App.$('idle').hidden = true; touch(); });
+  // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。戻すのは1秒の長押し（児童が触っただけでは戻らない）
+  var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
+  setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
+  document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
+  var holdT = 0, cvEl = App.$('idle');
+  var holdEnd = function () { clearTimeout(holdT); holdT = 0; };
+  cvEl.addEventListener('pointerdown', function (e) { e.stopPropagation(); holdEnd(); holdT = setTimeout(function () { cvEl.hidden = true; cvEl.innerHTML = ''; touch(); }, 1000); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cvEl.addEventListener(ev, holdEnd); });
+  cvEl.addEventListener('click', function (e) { e.stopPropagation(); });
+  cvEl.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // 長押しでメニューが出ないように
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);
