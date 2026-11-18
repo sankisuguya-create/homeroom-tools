@@ -716,7 +716,7 @@
         App.closeDlg();
         App.save(function () { return App.pf().importRoster(fy, grade, rows); }).then(function (r) {
           return App.reload().then(function () {
-            App.toast('取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.relinked ? '・付け替え' + r.relinked + '人' : '') + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
+            App.toast((r.backupError ? '⚠ ' + r.backupError + '。' : '') + '取り込みました：追加' + r.added + '人・更新' + r.updated + '人' + (r.relinked ? '・付け替え' + r.relinked + '人' : '') + (r.missing.length ? '。貼った中にいない児童（名簿には残っています）：' + r.missing.slice(0, 5).join('、') + (r.missing.length > 5 ? ' ほか' + (r.missing.length - 5) + '人' : '') : ''));
           });
         });
       }

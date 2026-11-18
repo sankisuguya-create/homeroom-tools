@@ -376,6 +376,19 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiBoot', 4).v.kids.A123.addr, '大阪府西市中央三丁目5-2', '住所の無い表を貼り直しても消えない');
     assert.equal(call('apiImportRoster', FY, 4, [{ id: 'A 1', name: 'x', cls: 0, no: 1 }]).ok, false, '空白を含む児童IDは断る');
 
+    // 控えが取れない時（ドライブの権限が無い）も、名簿の取り込みは止めない。管理者のメニューで知らせ、selfTest で直る
+    const cf = env.DriveApp.createFolder, gf = env.DriveApp.getFoldersByName;
+    env.DriveApp.getFoldersByName = () => ({ hasNext: () => false });
+    env.DriveApp.createFolder = () => { throw new Error('DriveApp.createFolder を呼び出す権限がありません'); };
+    const nbk = call('apiImportRoster', FY, 4, [{ id: '40000011', name: '児童11', kana: 'じどう11', male: true, cls: 0, no: 1 }]);
+    assert.ok(nbk.ok && /控えを取れません/.test(nbk.v.backupError), '控えが取れなくても取り込み、理由を返す');
+    assert.ok(call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup' && w.text.includes('selfTest')), '管理者のメニューで selfTest を案内する');
+    assert.match(ctx.selfTest(), /✕ 控え/, 'selfTest は失敗を示す');
+    env.DriveApp.createFolder = cf; env.DriveApp.getFoldersByName = gf;
+    const stt = ctx.selfTest();
+    assert.match(stt, /○ 控え/); assert.match(stt, /○ 毎週の控えのきっかけ/);
+    assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
+
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
     assert.ok(sb.ok && sb.v.blocked && sb.v.blocked.includes('児童11'), '名簿の名前が入っていれば送らない');
