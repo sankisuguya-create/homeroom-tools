@@ -186,7 +186,7 @@ function setup() {
   ensureWeeklyTrigger_();
   return ss.getUrl();
 }
-var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no'];
+var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no', 'addr', 'area']; // addr：住所の全文、area：町名（地区の偏りに使う）
 var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
@@ -297,7 +297,7 @@ function setSetting_(key, value) {
 function rosterRows_(fy) {
   return read_('roster_' + fy).rows.filter(function (r) { return String(r.id8); }).map(function (r) {
     return { id: String(r.id8), name: String(r.name), kana: String(r.kana || ''), male: String(r.sex) === '男',
-      grade: +r.grade, cls: (+r['class']) - 1, no: +r.no };
+      grade: +r.grade, cls: (+r['class']) - 1, no: +r.no, addr: String(r.addr || ''), area: String(r.area || '') };
   });
 }
 function attrsMap_(fy) {
@@ -363,7 +363,7 @@ var apiBoot_ = api_(function (grade) {
     var rows = rosterRows_(fy).filter(function (r) { return r.grade === gy; });
     if (!rows.length) continue;
     years.push({ fy: fy, grade: gy, rows: rows.map(function (r) {
-      kids[r.id] = { id: r.id, name: r.name, kana: r.kana, male: r.male, area: '' };
+      kids[r.id] = { id: r.id, name: r.name, kana: r.kana, male: r.male, area: r.area, addr: r.addr };
       idset[r.id] = 1;
       return { id: r.id, cls: r.cls, no: r.no, a: am[r.id] || emptyAttrs_() };
     }) });
@@ -393,7 +393,7 @@ var apiAddTransfer_ = api_(function (grade, x) {
   var FY = CONFIG.fiscalYear();
   var name = String(x && x.name || '').trim(), kana = String(x && x.kana || '').trim(), id = String(x && x.id || '').trim();
   if (!name) throw userError_('名前を入れてください');
-  if (id && !/^\d{8}$/.test(id)) throw userError_('児童IDは数字8桁です（分からなければ空のまま）');
+  if (id && !CONFIG.isKidId(id)) throw userError_('児童IDは英数字20文字までです（分からなければ空のまま）');
   return withLock_(function () {
     if (decisionOf_(FY, grade)) throw userError_('決定済みです。決定を取り消してから足してください');
     var used = {};
@@ -478,7 +478,7 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
   backup_('名簿の取り込みの前');
   return withLock_(function () {
     var name = 'roster_' + fy;
-    sheet_(db_(), name, ROSTER_HEAD);
+    ensureCols_(name, ROSTER_HEAD); // 住所の列が無い古い名簿にも足す
     ensureCols_('attrs_' + fy, attrsHead_());
     var t = read_(name), byId = {}, added = [], updated = 0, classes = {}, ids = {};
     t.rows.forEach(function (r) { byId[String(r.id8)] = r; });
@@ -489,11 +489,13 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
     rows.forEach(function (x) {
       if (!String(x.id || '') && grade === 0) x.id = 'N' + fy + ('00' + (nextTemp++)).slice(-3);
       var id = String(x.id);
-      if (!CONFIG.isKidId(id)) throw userError_(grade === 0 ? '児童IDは数字8桁か、空のままにしてください' : '児童IDが8桁でない行があります');
+      if (!CONFIG.isKidId(id)) throw userError_(grade === 0 ? '児童IDは英数字20文字までか、空のままにしてください' : '児童IDが読めない行があります（英数字20文字まで）');
       classes[+x.cls] = 1; ids[id] = 1;
-      var o = { id8: id, name: plainText_(x.name, 40), kana: plainText_(x.kana || '', 60), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no };
+      var o = { id8: id, name: plainText_(x.name, 40), kana: plainText_(x.kana || '', 60), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no,
+        addr: plainText_(String(x.addr || ''), 200), area: plainText_(String(x.area || ''), 40) };
       var r = byId[id];
-      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
+      // 住所は、貼った表に住所があった時だけ書き換える（住所の無い名簿を貼り直しても消さない）
+      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].concat(x.addr ? ['addr', 'area'] : []).forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
@@ -531,7 +533,7 @@ function relinkTempIds_(fy, grade, rows, t) {
   var map = {};
   rows.forEach(function (x) {
     var id = String(x.id || '');
-    if (!/^\d{8}$/.test(id) || have[id]) return;
+    if (!CONFIG.isKidId(id) || CONFIG.isTempId(id) || have[id]) return;
     var hit = temps.filter(function (r) { return normName_(r.name) === normName_(x.name) && (!x.kana || !r.kana || normName_(r.kana) === normName_(x.kana)); });
     if (hit.length === 1 && !map[String(hit[0].id8)]) map[String(hit[0].id8)] = id;
   });
@@ -557,7 +559,7 @@ function importDiff_(fy, grade, rows) {
   rows.forEach(function (x) {
     var id = String(x.id || ''), r = byId[id]; if (id) ids[id] = 1; classes[+x.cls] = 1;
     if (!r) {
-      var hit = /^\d{8}$/.test(id) ? temps.filter(function (q) { return normName_(q.name) === normName_(x.name) && (!x.kana || !q.kana || normName_(q.kana) === normName_(x.kana)); }) : [];
+      var hit = id && CONFIG.isKidId(id) && !CONFIG.isTempId(id) ? temps.filter(function (q) { return normName_(q.name) === normName_(x.name) && (!x.kana || !q.kana || normName_(q.kana) === normName_(x.kana)); }) : [];
       if (hit.length === 1) { relink.push(String(hit[0].name)); ids[String(hit[0].id8)] = 1; } else added++;
       return;
     }
@@ -866,9 +868,10 @@ var apiDecide_ = api_(function (grade, plan) {
     removeRows_('roster_' + nfy, function (r) { return mine[String(r.id8)]; });
     removeRows_('attrs_' + nfy, function (r) { return mine[String(r.id8)]; });
     removeRows_('pairs_carry', function (r) { return +r.fy === FY && (mine[String(r.a)] || mine[String(r.b)]); });
+    ensureCols_('roster_' + nfy, ROSTER_HEAD);
     append_('roster_' + nfy, ROSTER_HEAD, rows.map(function (r) {
       var s = info[r.id];
-      return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no };
+      return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no, addr: s.addr || '', area: s.area || '' };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); if (r.a.sib && r.a.sib.length) o.sib = JSON.stringify(r.a.sib); return o; }));
@@ -966,12 +969,13 @@ function allRosterNames_() {
   read_('transfers').rows.forEach(function (r) { if (r.name) out.push(String(r.name)); });
   return out;
 }
+function allRosterIds_() { var out = []; rosterSheets_().forEach(function (fy) { rosterRows_(fy).forEach(function (r) { out.push(r.id); }); }); return out; }
 var apiSuggest_ = api_(function (text, screen) {
   requireTeacher_();
   text = String(text == null ? '' : text).trim();
   if (!text) throw userError_('意見を書いてください');
   if (text.length > 2000) throw userError_('2000字までにしてください');
-  var hits = CONFIG.piiHits(text, allRosterNames_());
+  var hits = CONFIG.piiHits(text, allRosterNames_(), allRosterIds_());
   if (hits.length) return { blocked: hits.slice(0, 10) };
   withLock_(function () {
     sheet_(db_(), 'suggestions', TABLES_[7].head);

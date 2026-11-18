@@ -26,10 +26,10 @@ test('見出しが無ければ値の形から推定する（メールの形の�
 });
 
 test('誤りを行ごとに示す（IDの桁・重複・性別）。名前の無い行は読み飛ばして数える', () => {
-  const r = parseRoster('児童ID\t名前\t性別\n2025001\tA\t男\n20250001\tB\t男\n20250001\tC\t女\n20250002\t\t女\n20250003\tD\t?', 0);
+  const r = parseRoster('児童ID\t名前\t性別\n2025#001\tA\t男\n20250001\tB\t男\n20250001\tC\t女\n20250002\t\t女\n20250003\tD\t?', 0);
   assert.equal(r.rows.length, 2);
   assert.equal(r.errors.length, 3); assert.equal(r.skipped.blank, 1);
-  assert.match(r.errors[0], /2行目.*8桁/);
+  assert.match(r.errors[0], /2行目.*児童ID/);
   assert.match(r.errors[1], /4行目.*重複/);
 });
 
@@ -43,8 +43,8 @@ test('新1年（tempId）：児童IDの列が無くても・空でも読める�
   const r = parseRoster('名前\tよみ\t性別\n入学 ハナ\tにゅうがく はな\t女\n入学 タロウ\tにゅうがく たろう\t男', 0, { tempId: true });
   assert.deepEqual(r.errors, []); assert.equal(r.rows.length, 2); assert.equal(r.rows[0].id, '');
   assert.ok(parseRoster('名前\tよみ\t性別\n入学 ハナ\tにゅうがく はな\t女', 0).errors.length > 0, '新1年以外は児童IDの列が要る');
-  const m = parseRoster('児童ID\t名前\t性別\n\t入学 ハナ\t女\n30000001\t入学 タロウ\t男\n123\t入学 ジロウ\t男', 0, { tempId: true });
-  assert.equal(m.rows.length, 2); assert.equal(m.errors.length, 1, '空は許し、8桁でない番号だけ誤り');
+  const m = parseRoster('児童ID\t名前\t性別\n\t入学 ハナ\t女\n30000001\t入学 タロウ\t男\n12#3\t入学 ジロウ\t男', 0, { tempId: true });
+  assert.equal(m.rows.length, 2); assert.equal(m.errors.length, 1, '空は許し、読めない番号だけ誤り');
 });
 
 // 校務システムの書き出し（添付の生徒情報.xls の見出し35列。値は架空）
@@ -62,8 +62,9 @@ test('校務システムの書き出し：見出しで読み、名前は空な�
   assert.deepEqual(r.rows.map(x => [x.id, x.name, x.kana, x.cls, x.no]), [['30000001', '山田 太郎', 'やまだ たろう', 0, 1], ['30000002', '佐藤 花', 'さとう はな', 1, 1], ['30000003', '鈴木 次郎', '', 0, 2]]);
   assert.equal(r.skipped.grade, 1, 'ほかの学年の行は読み飛ばす'); assert.equal(r.skipped.blank, 1, '名前の無い行も読み飛ばす');
   const used = r.roles.filter(Boolean);
-  assert.ok(!used.some(x => /住所|電話|兄弟/.test(x)) && used.includes('grade') && used.includes('sei'), '住所・電話・兄弟の列は役割を持たない');
-  assert.ok(!JSON.stringify(r.rows).includes('祖母宅') && !JSON.stringify(r.rows).includes('000-000'), '読み取った児童に不要な情報が入らない');
+  assert.ok(used.includes('grade') && used.includes('sei') && used.includes('town'), '学年・姓・住所の列を読む');
+  assert.equal(r.rows[0].addr, '県市1-1', '住所は都道府県＋市区町村＋町番地');
+  assert.ok(!JSON.stringify(r.rows).includes('祖母宅') && !JSON.stringify(r.rows).includes('000-000') && !JSON.stringify(r.rows).includes('2018/04/02'), '電話・緊急下校先・生年月日は入らない');
 });
 test('セルの中の改行（Excel の "…"）で行が割れない', () => {
   const r = parseRoster('児童ID\t名前\t備考\n30000001\t"山田\n太郎"\t"a""b"\n30000002\t佐藤 花\tx', 0);
@@ -73,4 +74,17 @@ test('組の列が数字でない児童は特別支援学級（交流級は未�
   const r = parseRoster('児童ID\t名前\t組\t番号\n30000001\tA\t1\t1\n30000002\tB\tひまわり\t1\n30000003\tC\t２組\t2', 0);
   assert.deepEqual(r.errors, []); assert.equal(r.sp, 1);
   assert.deepEqual(r.rows.map(x => [x.cls, x.sp || '']), [[0, ''], [-1, 'ひまわり'], [1, '']]);
+});
+
+test('児童IDは8桁に限らない（英数字20文字まで。メールなら @ の前）', () => {
+  const r = parseRoster('児童ID\t名前\n1234\tA\nAB-12345\tB\nst0099@kyoiku.edu.nishi.or.jp\tC\nＸ１２\tD\n12 34\tE', 0);
+  assert.deepEqual(r.rows.map(x => x.id), ['1234', 'AB-12345', 'st0099', 'X12']);
+  assert.equal(r.errors.length, 1, '空白を含む番号は読めない');
+});
+
+test('住所：「住所」1列でも、4列（都道府県・市区町村・町番地・建物名）でも読む。町名は町番地から', () => {
+  const a = parseRoster('児童ID\t名前\t都道府県\t市区町村\t町番地\tアパート/マンション名\n1001\tA\t大阪府\t西市\t中央三丁目5-2\tメゾン101\n1002\tB\t大阪府\t西市\t北町12\t\n1003\tC\t\t\t\t', 0);
+  assert.deepEqual(a.rows.map(x => [x.addr || '', x.area || '']), [['大阪府西市中央三丁目5-2 メゾン101', '中央'], ['大阪府西市北町12', '北町'], ['', '']]);
+  const b = parseRoster('児童ID\t名前\t住所\n1001\tA\t西市中央1-2', 0);
+  assert.equal(b.rows[0].addr, '西市中央1-2');
 });

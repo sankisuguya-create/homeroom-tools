@@ -1045,12 +1045,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
   // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
   CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
-  CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+  // 児童ID：英数字（と - _）20文字まで。学校のメールの番号（8桁）が多いが、桁数は決めない（利用者の判断 2026-11）
+  CONFIG.isKidId = function (id) { return /^[A-Za-z0-9_-]{1,20}$/.test(String(id)); };
 
   // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
   // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
-  CONFIG.piiHits = function (text, names) {
+  CONFIG.piiHits = function (text, names, ids) {
     var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (ids || []).forEach(function (id) { id = String(id); if (id.length >= 4 && t.indexOf(id) >= 0) hits[id] = 1; }); // 名簿の児童ID（8桁でないものも）
     (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
     var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
     (names || []).forEach(function (n) {
@@ -1107,7 +1109,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
     })(o);
-    C.AREAS.forEach(function (ar) {
+    // 地区：名簿の町名（住所から取り込む）。多い順に12まで。町名の無い名簿では地区の項目は無い
+    var arN = {}; P.kids.forEach(function (s) { if (s.area) arN[s.area] = (arN[s.area] || 0) + 1; });
+    var areas = Object.keys(arN).sort(function (a, b) { return arN[b] - arN[a]; }).slice(0, 12);
+    areas.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
     // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える
@@ -1925,9 +1930,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     grade: ['学年'],
     // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
     sei: ['姓'], mei: ['名'], seiK: ['姓ふりがな'], meiK: ['名ふりがな'],
+    // 住所：校務システムは4列（都道府県・市区町村・町番地・アパート/マンション名）。ほかの名簿は「住所」1列
+    addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
     fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
   };
-  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年',
+  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
     sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
   // 名前・よみとして使える列（どれか1つでもあればよい）
   var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
@@ -1938,7 +1945,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return null;
   }
   function toHalf(s) { return String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); }
-  function idOf(v) { var m = toHalf(v).match(/^(\d{8})(@|$)/); return m ? m[1] : ''; }
+  // 児童ID：英数字（と - _）20文字まで。メールアドレスなら @ の前を使う
+  function idOf(v) { var s = toHalf(v).replace(/[Ａ-Ｚａ-ｚ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).split('@')[0]; return /^[A-Za-z0-9_-]{1,20}$/.test(s) ? s : ''; }
   function sexOf(v) { var s = String(v).trim(); return /^(男|男子|M|m)$/.test(s) ? '男' : /^(女|女子|F|f)$/.test(s) ? '女' : ''; }
   function isKana(v) { return /^[ぁ-んァ-ヶー\s　・]+$/.test(String(v).trim()) && String(v).trim() !== ''; }
   function isSmallInt(v) { var s = toHalf(v); return /^\d{1,2}$/.test(s) && +s >= 1 && +s <= 45; }
@@ -1970,7 +1978,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var score = function (c, f) { var n = 0; rows.forEach(function (r) { if (f(r[c] || '')) n++; }); return n / rows.length; };
     for (var c = 0; c < w; c++) {
       var r = null;
-      if (!used.id && score(c, function (v) { return !!idOf(v); }) > .8) r = 'id';
+      if (!used.id && score(c, function (v) { var x = idOf(v); return x.length >= 5 && /\d/.test(x); }) > .8) r = 'id'; // 見出しが無い時は、5文字以上で数字を含む列だけを児童IDとみなす（出席番号と取り違えない）
       else if (!used.sex && score(c, function (v) { return !!sexOf(v); }) > .8) r = 'sex';
       else if (!used.kana && score(c, isKana) > .8) r = 'kana';
       else if (score(c, isSmallInt) > .8) r = !used.no ? 'no' : null;
@@ -1988,6 +1996,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     return roles;
   }
 
+  // 町名：町番地の先頭から、数字・丁目・番地の手前まで（例「中央三丁目5-2」→「中央」）。地区の偏りをそろえるのに使う
+  function areaOf(town) {
+    return toHalf(town).replace(/[\s　]/g, '').replace(/[0-9０-９].*$/, '').replace(/[一二三四五六七八九十〇]+丁目.*$/, '').replace(/[-－ー‐丁目番地号の]+$/, '').slice(0, 20);
+  }
   function gradeOf(v) { var s = toHalf(v).replace(/年(生)?$/, ''); return /^[1-6]$/.test(s) ? +s : null; }
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no,sp}], errors: [文], counts: {男,女},
@@ -2019,7 +2031,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (filterGrade) { var gr = gradeOf(cell(r, 'grade')); if (gr !== +opt.grade) { skipped.grade++; return; } }
       if (!name) { skipped.blank++; return; } // 名前の無い行（空欄の行・集計の行など）は読み飛ばす
       var rawId = cell(r, 'id');
-      var id = idOf(rawId) || (opt.tempId && /^N\d{7}$/.test(rawId) ? rawId : '');
+      var id = idOf(rawId);
       var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
       var rawCls = cell(r, 'cls'), sp = '', cls;
       if (!rawCls) cls = defaultCls;
@@ -2027,7 +2039,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       else if (/^\d+$/.test(toHalf(rawCls))) { errors.push(line + '組が読めません（1〜9）'); return; }
       else { sp = rawCls.slice(0, 20); cls = -1; } // 数字でない組＝特別支援学級
       var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
-      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが読めません（英数字20文字まで）'); return; }
       if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
       if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
       if (id) seen[id] = 1;
@@ -2035,6 +2047,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (sp) nsp++;
       var o = { id: id, name: name, kana: kana, male: sex === '男', sex: sex, cls: cls, no: no || 0 };
       if (sp) o.sp = sp;
+      // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から
+      var town = cell(r, 'town'), addr = cell(r, 'addr') || (cell(r, 'pref') + cell(r, 'city') + town + (cell(r, 'apt') ? ' ' + cell(r, 'apt') : '')).trim();
+      if (addr) { o.addr = addr.slice(0, 200); o.area = areaOf(town); }
       rows.push(o);
     });
     // 番号が無ければ貼った順に振る
@@ -2377,7 +2392,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
       var name = String(x.name || '').trim(), id = String(x.id || '').trim();
       if (!name) return Promise.reject(new Error('名前を入れてください'));
-      if (id && !/^\d{8}$/.test(id)) return Promise.reject(new Error('児童IDは数字8桁です（分からなければ空のまま）'));
+      if (id && !C.isKidId(id)) return Promise.reject(new Error('児童IDは英数字20文字までです（分からなければ空のまま）'));
       if (id && S.kids[id]) return Promise.reject(new Error('その児童IDはもう使われています'));
       if (!id) { var n = 1; while (S.kids['T' + FY + ('00' + n).slice(-3)]) n++; id = 'T' + FY + ('00' + n).slice(-3); }
       var t = { id: id, name: name, kana: String(x.kana || '').trim(), male: !!x.male };
@@ -2479,7 +2494,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
-    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; })); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
+    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
@@ -2500,7 +2515,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;
-        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '' };
         if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
         else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
@@ -3290,7 +3305,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       focus: 'mtx',
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="備考" style="max-width:700px">' +
-          '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' +
+          '<h2>' + App.esc(s.name) + 'の備考（' + fy + '年度）</h2>' + (s.addr ? '<p class="note">住所：' + App.esc(s.addr) + '</p>' : '') +
           '<textarea id="mtx" rows="5" maxlength="400" style="width:100%;box-sizing:border-box;font:inherit;padding:6px" placeholder="引き継ぎたいこと（400字まで）">' + App.esc(memoNow) + '</textarea>' +
           // 定型の言葉：選ぶと、入力欄のカーソルの位置に「、」で区切って入る
           '<div class="mpicks">' + C.MEMO_PICKS.map(function (g, i) { return '<select data-mpick="' + i + '"><option value="">' + App.esc(g.label) + ' ▾</option>' + g.items.map(function (w) { return '<option>' + App.esc(w) + '</option>'; }).join('') + '</select>'; }).join('') + '</div>' +
@@ -3364,7 +3379,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var Y = yearOf(R.fy), edit = R.fy === editableFy();
     if (!Y) { // まだ名簿が無い学年
       App.$('main').innerHTML = '<div class="menu"><section><h2>' + C.gradeLabel(d.grade) + 'の名簿がまだありません</h2>' +
-        '<p>' + (d.grade === 0 ? '入学する児童の名簿の範囲（見出しの行ごと）をコピーして貼り付けます。名前・よみ・性別があれば足ります。児童IDは無くてよく、仮の番号を振ります（入学後に8桁の番号の名簿を貼ると、名前で照らして付け替えます）。' : '既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。') + '</p>' +
+        '<p>' + (d.grade === 0 ? '入学する児童の名簿の範囲（見出しの行ごと）をコピーして貼り付けます。名前・よみ・性別があれば足ります。児童IDは無くてよく、仮の番号を振ります（入学後に本来の児童IDの入った名簿を貼ると、名前で照らして付け替えます）。' : '既存の名簿の範囲をコピーして貼り付けます（児童ID・名前・よみ・性別・組・番号）。') + '</p>' +
         '<button class="btn primary" id="paste">名簿を貼る…</button></section></div>';
       if (App.st.openPaste) { App.st.openPaste = false; pasteDialog(); }
       return;
@@ -3642,12 +3657,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     };
     var summary = function () {
       var r = P.res = g.Paste.parseRoster(P.text, P.cls, { tempId: grade === 0, grade: grade });
-      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます。校務システムの名簿は、全校分・全部の列のままで貼れます（この学年の行と、名前・よみ・性別・組・番号などだけを読み、住所・電話・兄弟などは読みません）。</div>';
+      if (!P.text.trim()) return '<div class="note">貼ると、読み取った結果がここに出ます。校務システムの名簿は、全校分・全部の列のままで貼れます（この学年の行と、名前・よみ・性別・組・番号・住所などを読み、電話・生年月日などは読みません）。</div>';
       applySp(r);
       var hasCls = r.roles.indexOf('cls') >= 0, used = r.roles.filter(Boolean), unused = r.roles.length - used.length;
       // 名前・よみの部品（姓・名・正式名前など）は「名前」「よみ」にまとめて見せる
-      var GROUP = { sei: 'name', mei: 'name', fname: 'name', fsei: 'name', fmei: 'name', seiK: 'kana', meiK: 'kana', fkana: 'kana', fseiK: 'kana', fmeiK: 'kana' }, shown = [];
-      ['id', 'grade', 'cls', 'no', 'name', 'kana', 'sex'].forEach(function (k) { if (used.some(function (x) { return (GROUP[x] || x) === k; })) shown.push(g.Paste.LABEL[k]); });
+      var GROUP = { pref: 'addr', city: 'addr', town: 'addr', apt: 'addr', sei: 'name', mei: 'name', fname: 'name', fsei: 'name', fmei: 'name', seiK: 'kana', meiK: 'kana', fkana: 'kana', fseiK: 'kana', fmeiK: 'kana' }, shown = [];
+      ['id', 'grade', 'cls', 'no', 'name', 'kana', 'sex', 'addr'].forEach(function (k) { if (used.some(function (x) { return (GROUP[x] || x) === k; })) shown.push(g.Paste.LABEL[k]); });
       var h = '<div class="rbar"><span class="lab">読み取った列</span>' + shown.map(function (x) { return '<span class="tab" style="cursor:default">' + x + '</span>'; }).join('') + (unused ? '<span class="note">ほかの' + unused + '列は読みません</span>' : '') + '</div>';
       if (r.skipped.grade || r.skipped.blank) h += '<div class="note">読み飛ばした行：' + [r.skipped.grade ? 'ほかの学年 ' + r.skipped.grade + '行' : '', r.skipped.blank ? '名前の無い行 ' + r.skipped.blank + '行' : ''].filter(Boolean).join('・') + '</div>';
       if (!hasCls) h += '<div class="rbar"><span class="lab">組の列が無いので、この組に入れる</span>' + [0, 1, 2, 3].map(function (k) {
@@ -3702,7 +3717,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="取り込む前の確認" style="max-width:640px"><h2>' + fy + '年度 ' + C.gradeLabel(grade) + ' に取り込む前の確認</h2>' +
           '<div>追加 <b>' + df.added + '人</b>・すでにいる児童 <b>' + df.existing + '人</b></div>' +
-          list('仮の番号から8桁の番号に付け替える', df.relink || []) + list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
+          list('仮の番号から本来の児童IDに付け替える', df.relink || []) + list('名前が変わる', df.renamed) + list('ほかの学年にいる', df.other) + list('貼った中にいない（名簿には残る）', df.missing) +
           (df.risky ? '<div class="warnbox">別の学年や年度の表を貼っていないか確かめてください（' + (df.other.length ? 'ほかの学年の児童がいます' : 'すでにいる児童の半分以上で名前が変わります') + '）。取り込む直前に、データの控えを自動で取ります。</div>' +
             '<label>このまま取り込むなら「<b>' + word + '</b>」と入力<br><input type="text" id="iword" style="width:100%;margin-top:4px" autocomplete="off"></label>' : '<p class="note">取り込む直前に、データの控えを自動で取ります。</p>') +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn">取り込む（' + rows.length + '人）</button></div></div></div>';

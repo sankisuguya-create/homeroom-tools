@@ -367,6 +367,15 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     ctx.resetDevices();
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 
+    // 児童IDは8桁に限らない。住所（全文と町名）が名簿に入り、住所の無い表を貼り直しても消えない
+    const ad = call('apiImportRoster', FY, 4, [{ id: 'A123', name: '住所 タロウ', kana: 'じゅうしょ たろう', male: true, cls: 0, no: 10, addr: '大阪府西市中央三丁目5-2', area: '中央' }]);
+    assert.ok(ad.ok, ad.err);
+    const kA = call('apiBoot', 4).v.kids.A123;
+    assert.ok(kA && kA.addr === '大阪府西市中央三丁目5-2' && kA.area === '中央', '住所と町名が名簿に入る（8桁でない児童IDでも）');
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'A123', name: '住所 タロウ', kana: 'じゅうしょ たろう', male: true, cls: 0, no: 10 }]).ok);
+    assert.equal(call('apiBoot', 4).v.kids.A123.addr, '大阪府西市中央三丁目5-2', '住所の無い表を貼り直しても消えない');
+    assert.equal(call('apiImportRoster', FY, 4, [{ id: 'A 1', name: 'x', cls: 0, no: 1 }]).ok, false, '空白を含む児童IDは断る');
+
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
     assert.ok(sb.ok && sb.v.blocked && sb.v.blocked.includes('児童11'), '名簿の名前が入っていれば送らない');

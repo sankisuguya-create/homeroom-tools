@@ -13,9 +13,11 @@
     grade: ['学年'],
     // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
     sei: ['姓'], mei: ['名'], seiK: ['姓ふりがな'], meiK: ['名ふりがな'],
+    // 住所：校務システムは4列（都道府県・市区町村・町番地・アパート/マンション名）。ほかの名簿は「住所」1列
+    addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
     fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
   };
-  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年',
+  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
     sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
   // 名前・よみとして使える列（どれか1つでもあればよい）
   var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
@@ -26,7 +28,8 @@
     return null;
   }
   function toHalf(s) { return String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); }
-  function idOf(v) { var m = toHalf(v).match(/^(\d{8})(@|$)/); return m ? m[1] : ''; }
+  // 児童ID：英数字（と - _）20文字まで。メールアドレスなら @ の前を使う
+  function idOf(v) { var s = toHalf(v).replace(/[Ａ-Ｚａ-ｚ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).split('@')[0]; return /^[A-Za-z0-9_-]{1,20}$/.test(s) ? s : ''; }
   function sexOf(v) { var s = String(v).trim(); return /^(男|男子|M|m)$/.test(s) ? '男' : /^(女|女子|F|f)$/.test(s) ? '女' : ''; }
   function isKana(v) { return /^[ぁ-んァ-ヶー\s　・]+$/.test(String(v).trim()) && String(v).trim() !== ''; }
   function isSmallInt(v) { var s = toHalf(v); return /^\d{1,2}$/.test(s) && +s >= 1 && +s <= 45; }
@@ -58,7 +61,7 @@
     var score = function (c, f) { var n = 0; rows.forEach(function (r) { if (f(r[c] || '')) n++; }); return n / rows.length; };
     for (var c = 0; c < w; c++) {
       var r = null;
-      if (!used.id && score(c, function (v) { return !!idOf(v); }) > .8) r = 'id';
+      if (!used.id && score(c, function (v) { var x = idOf(v); return x.length >= 5 && /\d/.test(x); }) > .8) r = 'id'; // 見出しが無い時は、5文字以上で数字を含む列だけを児童IDとみなす（出席番号と取り違えない）
       else if (!used.sex && score(c, function (v) { return !!sexOf(v); }) > .8) r = 'sex';
       else if (!used.kana && score(c, isKana) > .8) r = 'kana';
       else if (score(c, isSmallInt) > .8) r = !used.no ? 'no' : null;
@@ -76,6 +79,10 @@
     return roles;
   }
 
+  // 町名：町番地の先頭から、数字・丁目・番地の手前まで（例「中央三丁目5-2」→「中央」）。地区の偏りをそろえるのに使う
+  function areaOf(town) {
+    return toHalf(town).replace(/[\s　]/g, '').replace(/[0-9０-９].*$/, '').replace(/[一二三四五六七八九十〇]+丁目.*$/, '').replace(/[-－ー‐丁目番地号の]+$/, '').slice(0, 20);
+  }
   function gradeOf(v) { var s = toHalf(v).replace(/年(生)?$/, ''); return /^[1-6]$/.test(s) ? +s : null; }
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no,sp}], errors: [文], counts: {男,女},
@@ -107,7 +114,7 @@
       if (filterGrade) { var gr = gradeOf(cell(r, 'grade')); if (gr !== +opt.grade) { skipped.grade++; return; } }
       if (!name) { skipped.blank++; return; } // 名前の無い行（空欄の行・集計の行など）は読み飛ばす
       var rawId = cell(r, 'id');
-      var id = idOf(rawId) || (opt.tempId && /^N\d{7}$/.test(rawId) ? rawId : '');
+      var id = idOf(rawId);
       var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
       var rawCls = cell(r, 'cls'), sp = '', cls;
       if (!rawCls) cls = defaultCls;
@@ -115,7 +122,7 @@
       else if (/^\d+$/.test(toHalf(rawCls))) { errors.push(line + '組が読めません（1〜9）'); return; }
       else { sp = rawCls.slice(0, 20); cls = -1; } // 数字でない組＝特別支援学級
       var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
-      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが8桁の数字ではありません'); return; }
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが読めません（英数字20文字まで）'); return; }
       if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
       if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
       if (id) seen[id] = 1;
@@ -123,6 +130,9 @@
       if (sp) nsp++;
       var o = { id: id, name: name, kana: kana, male: sex === '男', sex: sex, cls: cls, no: no || 0 };
       if (sp) o.sp = sp;
+      // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から
+      var town = cell(r, 'town'), addr = cell(r, 'addr') || (cell(r, 'pref') + cell(r, 'city') + town + (cell(r, 'apt') ? ' ' + cell(r, 'apt') : '')).trim();
+      if (addr) { o.addr = addr.slice(0, 200); o.area = areaOf(town); }
       rows.push(o);
     });
     // 番号が無ければ貼った順に振る

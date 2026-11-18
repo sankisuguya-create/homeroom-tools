@@ -41,7 +41,10 @@
     for (var o = 0; o < oldN; o++) (function (o) {
       MET.push({ k: 'old' + o, grp: 'old', label: '旧' + (o + 1), w: C.LEVEL_W[gen.w.old | 0], tol: 2, v: function (s) { return s.old === o ? 1 : 0; } });
     })(o);
-    C.AREAS.forEach(function (ar) {
+    // 地区：名簿の町名（住所から取り込む）。多い順に12まで。町名の無い名簿では地区の項目は無い
+    var arN = {}; P.kids.forEach(function (s) { if (s.area) arN[s.area] = (arN[s.area] || 0) + 1; });
+    var areas = Object.keys(arN).sort(function (a, b) { return arN[b] - arN[a]; }).slice(0, 12);
+    areas.forEach(function (ar) {
       MET.push({ k: 'area' + ar, grp: 'area', label: ar, w: C.LEVEL_W[gen.w.area | 0], tol: 2, v: function (s) { return s.area === ar ? 1 : 0; } });
     });
     // 学力の段（2段から下）：段ごとの人数を組でそろえる。1段は「賢い」として上で数える

@@ -193,12 +193,14 @@
   CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
   // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
   CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
-  CONFIG.isKidId = function (id) { return /^\d{8}$/.test(String(id)) || CONFIG.isTempId(id); };
+  // 児童ID：英数字（と - _）20文字まで。学校のメールの番号（8桁）が多いが、桁数は決めない（利用者の判断 2026-11）
+  CONFIG.isKidId = function (id) { return /^[A-Za-z0-9_-]{1,20}$/.test(String(id)); };
 
   // 目安箱：送る前に、個人を指す語が入っていないかを調べる（名簿の名前、8桁の番号、仮の番号、メール）。見つかった語を返す
   // 名前は「姓名」「姓」「名」で照らす。短い語の取り違えを減らすため、漢字を含む語は2文字以上、かなだけの語は3文字以上
-  CONFIG.piiHits = function (text, names) {
+  CONFIG.piiHits = function (text, names, ids) {
     var t = String(text || ''), flat = t.replace(/[\s　]/g, ''), hits = {};
+    (ids || []).forEach(function (id) { id = String(id); if (id.length >= 4 && t.indexOf(id) >= 0) hits[id] = 1; }); // 名簿の児童ID（8桁でないものも）
     (t.match(/\d{8}|N\d{7}|[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).forEach(function (w) { hits[w] = 1; });
     var ok = function (w) { return /[一-龥々]/.test(w) ? w.length >= 2 : w.length >= 3; };
     (names || []).forEach(function (n) {
