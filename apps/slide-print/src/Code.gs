@@ -10,20 +10,27 @@ function apiListFiles(input) {
   if (!m) throw new Error('フォルダのURLを貼ってください');
   var folder = DriveApp.getFolderById(m[1]);
   var it = folder.getFilesByType(MimeType.GOOGLE_SLIDES);
+  var me = Session.getActiveUser().getEmail();
   var list = [];
   while (it.hasNext()) {
     var f = it.next();
     var owner = '';
     try { owner = f.getOwner().getEmail(); } catch (e) {}
     var name = f.getName();
-    list.push({ id: f.getId(), name: name, label: name.split(' - ')[0], key: owner || name });
+    var dash = name.indexOf(' - ');
+    // 提出すると所有者が教師に移る（返却で児童に戻る）。所有者では並べない。
+    // 「氏名 - 元ファイル名」でない名前は、教師の元ファイル（雛形）とみなす。
+    list.push({ id: f.getId(), name: name, label: dash > 0 ? name.slice(0, dash) : name,
+      template: dash <= 0, mine: !!me && owner === me });
   }
-  list.sort(function (a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
+  list.sort(function (a, b) {
+    return (a.template - b.template) || a.label.localeCompare(b.label, 'ja', { numeric: true });
+  });
   return { folder: folder.getName(), files: list };
 }
 
 // which: 1始まりの番号、または 'all'
-function apiThumbs(fileId, which) {
+function apiThumbs(fileId, which, size) {
   var pres = retry_(function () {
     return Slides.Presentations.get(fileId, { fields: 'slides.objectId' });
   });
@@ -34,7 +41,7 @@ function apiThumbs(fileId, which) {
   return { total: slides.length, items: idx.map(function (i) {
     var t = retry_(function () {
       return Slides.Presentations.Pages.getThumbnail(fileId, slides[i].objectId,
-        { 'thumbnailProperties.thumbnailSize': 'LARGE' });
+        { 'thumbnailProperties.thumbnailSize': size === 'MEDIUM' ? 'MEDIUM' : 'LARGE' });
     });
     return { no: i + 1, url: t.contentUrl, w: t.width, h: t.height };
   }) };
