@@ -9,6 +9,7 @@
   apps/collection-check/src/
   apps/class-split/src/
   apps/classroom-clock/src/
+  apps/group-maker/src/       （名簿の読み取りは class-split/src/paste.js を共有）
 
 生成物:
   apps/note-assessment/gas/generated/
@@ -17,6 +18,7 @@
   apps/collection-check/dist/
   apps/class-split/dist/
   apps/classroom-clock/dist/
+  apps/group-maker/dist/
   apps/class-split/dist/gas/   （GAS に貼る3つ：Code.gs・Index.html・appsscript.json）
 
   python3 scripts/build.py
@@ -43,6 +45,9 @@ CLASS = ROOT / "apps" / "class-split"
 CLASS_SRC = CLASS / "src"
 CLASS_DIST = CLASS / "dist"
 CLASS_GAS_DIST = CLASS / "dist" / "gas"
+GROUP = ROOT / "apps" / "group-maker"
+GROUP_SRC = GROUP / "src"
+GROUP_DIST = GROUP / "dist"
 SHARED_UI = ROOT / "shared" / "ui"
 
 # PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
@@ -55,6 +60,7 @@ PAGES = [
     (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
     (CLOCK_SRC / "Index.html", CLOCK_DIST / "Index.html", [CLOCK_SRC], True),
     (CLOCK_SRC / "sounds.html", CLOCK_DIST / "sounds.html", [CLOCK_SRC], True),
+    (GROUP_SRC / "Index.html", GROUP_DIST / "Index.html", [GROUP_SRC, CLASS_SRC], True),
 ]
 
 # 「外部通信なし」ページの禁止パターン。発信・読み込みどちらの形も拾う。

@@ -1,0 +1,361 @@
+<title>グループ分け</title>
+<style>
+/* @include view.css */
+
+/* ---- 操作画面（教師の手元のPCだけに出す） ----
+   部品は design/ui-patterns の型：選んだ側は白い面＋✓、2値はスイッチ（入／切の文字つき）、
+   まれな設定は「設定 ▼」の中。強い塗りは授業中にくり返す主操作「組み直す」だけ。 */
+:root{
+  --paper:#EEEBE4;--surf:#FFFFFF;--track:#DED9CF;--ink:#1D2126;--sub:#535A63;--rule:#CFC9BD;
+  --accent:#2C5C9E;--on:#FFFFFF;--alert:#A63B25;--focus:#2D4A6B;--off:#E6E2DA;
+  --s1:4px;--s2:8px;--s3:16px;--s4:24px;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:var(--s4);height:100%;padding:var(--s4)}
+.stage{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:var(--s2);min-height:0}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;min-height:24px}
+.stage-head .dot{width:8px;height:8px;border-radius:50%;background:var(--rule)}
+.stage-head.live{color:var(--ink)} .stage-head.live .dot{background:var(--alert)}
+.stage-head .kbd{margin-left:auto}
+.preview{min-height:0;display:grid;place-items:center}
+.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.warn{color:var(--alert);font-size:13px;min-height:20px}
+.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding:var(--s1)}
+.card{display:flex;flex-direction:column;gap:var(--s2)}
+.card+.card,.card+details{border-top:1px solid var(--rule);padding-top:var(--s3)}
+.lbl{font-size:13px;color:var(--sub);display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2)}
+.lbl b{color:var(--ink);font-weight:700}
+.btn{height:48px;padding:0 var(--s3);border:0;border-radius:12px;background:var(--surf);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--rule)}
+.btn:hover{background:var(--off)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.main{height:64px;font-size:20px;background:var(--accent);color:var(--on);box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.btn.main:hover{filter:brightness(1.12);background:var(--accent)}
+.btn.icon{width:48px;padding:0;font-size:22px;flex:none}
+.btn.small{height:48px;padding:0 var(--s2);font-weight:400}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+/* 人数：− 今の値 ＋ と、よく使う人数の近道 */
+.step{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
+.step output{text-align:center;font-size:28px;font-weight:700;line-height:48px}
+.step output small{font-size:16px;margin-left:2px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
+.seg button{height:48px;min-width:0;padding:0 2px;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;font-weight:700}
+.seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.seg button[aria-checked=true]::before{content:"✓ "}
+.sizes-note{font-size:13px;color:var(--sub);min-height:20px}
+/* スイッチ（入／切の文字つき） */
+.sw{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-height:48px;cursor:pointer;border:0;background:none;padding:0;width:100%;text-align:left}
+.sw .track{flex:none;width:72px;height:36px;border-radius:18px;background:var(--track);position:relative;font-size:12px;font-weight:700;color:var(--sub)}
+.sw .track::after{content:"";position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:50%;background:var(--surf);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.sw .track::before{content:"切";position:absolute;right:12px;top:8px}
+.sw[aria-checked=true] .track{background:var(--accent);color:var(--on)}
+.sw[aria-checked=true] .track::after{left:39px}
+.sw[aria-checked=true] .track::before{content:"入";left:12px;right:auto}
+details{border-top:1px solid var(--rule);padding-top:var(--s3)}
+summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:space-between;font-weight:700;border-radius:12px;padding:0 var(--s2)}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"▼";font-size:12px;color:var(--sub)}
+details[open]>summary::after{content:"▲"}
+summary:hover{background:var(--off)}
+summary .cnt{margin-left:auto;margin-right:var(--s2);font-weight:400;color:var(--sub)}
+.body{display:flex;flex-direction:column;gap:var(--s2);padding-top:var(--s2)}
+/* 欠席：名前を押すと欠席（取り消し線＋「欠」） */
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
+.chips button{height:48px;min-width:0;padding:0 6px;border:0;border-radius:10px;background:var(--surf);box-shadow:inset 0 0 0 1px var(--rule);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;text-align:left}
+.chips button[aria-pressed=true]{background:var(--off);color:var(--alert);text-decoration:line-through;box-shadow:inset 0 0 0 2px var(--alert)}
+.chips button[aria-pressed=true]::before{content:"欠 ";text-decoration:none;display:inline-block;font-weight:700}
+textarea{width:100%;height:120px;border:1px solid var(--rule);border-radius:10px;padding:var(--s2);background:var(--surf);font-size:13px;resize:vertical}
+select{height:48px;border:1px solid var(--rule);border-radius:10px;background:var(--surf);padding:0 var(--s2);min-width:0;width:100%}
+.note{font-size:13px;color:var(--sub)}
+.note.bad{color:var(--alert)}
+table.peek{border-collapse:collapse;font-size:12px;width:100%}
+table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
+.pairs{display:flex;flex-direction:column;gap:var(--s1)}
+.pairs div{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding-left:var(--s2);background:var(--surf);border-radius:10px}
+.pairs div span{flex:1}
+.pairs .btn{box-shadow:none;background:transparent;color:var(--alert)}
+</style>
+
+<div class="app">
+  <section class="stage">
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターに出していません）</span><span class="kbd">スペースキーでも組み直せます</span></div>
+    <div class="preview"><div class="pv-box" id="pv"></div></div>
+    <div class="warn" id="warn" role="status"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <div class="lbl">1組の人数<b id="headcount"></b></div>
+      <div class="step">
+        <button class="btn icon" id="sizeDown" aria-label="1人へらす">−</button>
+        <output id="sizeOut"></output>
+        <button class="btn icon" id="sizeUp" aria-label="1人ふやす">＋</button>
+      </div>
+      <div class="seg" id="segSize" role="radiogroup" aria-label="よく使う人数">
+        <button data-v="2" role="radio">2</button><button data-v="3" role="radio">3</button><button data-v="4" role="radio">4</button><button data-v="5" role="radio">5</button><button data-v="6" role="radio">6</button>
+      </div>
+      <div class="sizes-note" id="sizesNote"></div>
+    </div>
+
+    <div class="card">
+      <button class="btn main" id="shuffle" data-flow="1" data-tier="main">組み直す</button>
+      <button class="btn" id="back" data-tier="std" disabled>◀ 前の案に戻す</button>
+    </div>
+
+    <div class="card">
+      <div class="lbl">名前の出し方</div>
+      <div class="seg" id="segMode" role="radiogroup" aria-label="名前の出し方">
+        <button data-v="no" role="radio">出席番号</button><button data-v="sei" role="radio">名字だけ</button><button data-v="full" role="radio">フルネーム</button>
+      </div>
+      <button class="sw" id="swHead" role="switch"><span>班の名前（1班・2班…）を出す</span><span class="track"></span></button>
+    </div>
+
+    <details id="dAbsent">
+      <summary>今日の欠席<span class="cnt" id="absentCnt"></span></summary>
+      <div class="body">
+        <div class="note">押すと今日だけ外します。明日になると自動で戻ります。</div>
+        <div class="chips" id="absentList"></div>
+      </div>
+    </details>
+
+    <div class="card">
+      <button class="btn" id="goMonitor">モニターに出す</button>
+      <div class="note" id="monNote" hidden></div>
+    </div>
+
+    <details id="dSet">
+      <summary>設定</summary>
+      <div class="body">
+        <div class="lbl"><b>名簿を貼る</b><span id="rosterCnt"></span></div>
+        <div class="note">スプレッドシートの名簿の範囲（見出しの行ごと）をコピーして、下に貼ってください。番号と氏名があれば読めます。姓と名の間に空白があると「名字だけ」で出せます。</div>
+        <textarea id="pasteBox" placeholder="ここに貼る（Ctrl＋V）"></textarea>
+        <div id="pasteResult"></div>
+        <button class="btn" id="pasteOk" hidden>この名簿にする</button>
+
+        <div class="lbl" style="margin-top:var(--s3)"><b>離す組合せ</b></div>
+        <div class="note">同じ組にしない2人。組み直すたびに避けます。</div>
+        <div class="row"><select id="apartA" aria-label="1人目"></select><select id="apartB" aria-label="2人目"></select></div>
+        <button class="btn" id="apartAdd">この2人を離す</button>
+        <div class="pairs" id="apartList"></div>
+
+        <button class="sw" id="swPrev" role="switch" style="margin-top:var(--s3)"><span>前回と同じ相手をなるべく避ける</span><span class="track"></span></button>
+        <div class="note" id="prevNote"></div>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<script>
+/* @include paste.js */
+/* @include core.js */
+/* @include view.js */
+(function () {
+  'use strict';
+  document.documentElement.lang = 'ja';
+  var C = GroupCore, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'group-maker-v1';
+  var USED_MS = 3 * 60 * 1000; // この時間より長く映した案を「使った（前回の）案」とみなす
+
+  function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  var S = { roster: [], size: 4, mode: 'sei', head: true, prev: true, apart: [], absent: { day: today(), keys: [] }, hist: [], used: null };
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) Object.keys(S).forEach(function (k) { if (saved[k] !== undefined) S[k] = saved[k]; }); } catch (e) {}
+  if (S.absent.day !== today()) S.absent = { day: today(), keys: [] }; // 欠席は今日だけ
+  var shownAt = Date.now(); // 今の案を映し始めた時刻
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  function byKey() { var m = {}; S.roster.forEach(function (s) { m[s.key] = s; }); return m; }
+  function present() { var a = S.absent.keys; return S.roster.filter(function (s) { return a.indexOf(s.key) < 0; }); }
+  function cur() { return S.hist[S.hist.length - 1] || null; }
+
+  /* ---- 前回の案：3分より長く映した案を「使った」とみなす ---- */
+  function markUsed() { var c = cur(); if (c && Date.now() - shownAt >= USED_MS && (!S.used || S.used.at !== c.at)) { S.used = { at: c.at, size: c.size, groups: c.groups }; save(); renderPrevNote(); } }
+  setInterval(markUsed, 10000);
+
+  function shuffle() {
+    markUsed();
+    var ids = present().map(function (s) { return s.key; });
+    if (!ids.length) { render(); return; }
+    var r = C.make(ids, S.size, { apart: S.apart, prev: S.prev && S.used ? C.pairsOf(S.used.groups) : [] });
+    S.hist.push({ at: Date.now(), size: S.size, groups: r.groups, apartMiss: r.apart, prevHit: r.prev });
+    if (S.hist.length > 20) S.hist.shift();
+    shownAt = Date.now();
+    save(); render();
+  }
+  function back() { if (S.hist.length > 1) { S.hist.pop(); shownAt = Date.now(); save(); render(); } }
+
+  /* ---- 描く ---- */
+  var views = [GroupView.create(document, $('pv'))], mon = null;
+  function plan() {
+    var c = cur(), lab = C.labels(S.roster.map(function (s) { return { key: s.key, no: s.disp, name: s.name }; }), S.mode);
+    if (!c) return null;
+    // 名簿が変わって今いない児童は落とす（貼り直した直後など）
+    var groups = c.groups.map(function (gr) { return gr.filter(function (k) { return lab[k] != null; }).map(function (k) { return lab[k]; }); });
+    return { groups: groups, names: groups.map(function (_, i) { return C.groupName(i); }) };
+  }
+  function render() {
+    var p = plan(), opt = { showHead: S.head, empty: S.roster.length ? '「組み直す」を押してください' : '名簿がありません。右下の「設定」から名簿を貼ってください' };
+    views.forEach(function (v) { v.update(p, opt); });
+    if (mon && !mon.win.closed) mon.view.update(p, opt);
+    syncUi();
+  }
+  function syncUi() {
+    $('sizeOut').innerHTML = S.size + '<small>人組</small>';
+    $('sizeDown').disabled = S.size <= C.MIN; $('sizeUp').disabled = S.size >= C.MAX;
+    $('segSize').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(+b.dataset.v === S.size)); });
+    $('segMode').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.v === S.mode)); });
+    $('swHead').setAttribute('aria-checked', String(S.head));
+    $('swPrev').setAttribute('aria-checked', String(S.prev));
+    var n = present().length, sz = C.sizes(n, S.size);
+    $('headcount').textContent = n ? n + '人' + (S.absent.keys.length ? '（欠席' + S.absent.keys.length + '人を除く）' : '') : '';
+    $('sizesNote').textContent = n ? sizeText(sz) : '';
+    $('back').disabled = S.hist.length < 2;
+    $('absentCnt').textContent = S.absent.keys.length + '人';
+    $('rosterCnt').textContent = S.roster.length ? '今の名簿 ' + S.roster.length + '人' : '';
+    var c = cur(), w = [];
+    if (S.mode === 'sei' && C.noSpaceCount(S.roster)) w.push('姓と名の間に空白がない児童が' + C.noSpaceCount(S.roster) + '人います。その児童はフルネームで出します');
+    if (c && c.apartMiss) w.push('人数の都合で、離す組合せのうち' + c.apartMiss + '組を同じ組にしました');
+    if (c && c.size !== S.size) w.push('人数を変えました。「組み直す」で新しい組になります');
+    $('warn').textContent = w.join('。');
+    var live = mon && !mon.win.closed;
+    $('stageHead').classList.toggle('live', !!live);
+    $('stageText').textContent = live ? 'モニターに出しています（見本と同じもの）' : '見本（モニターに出していません）';
+    $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
+  }
+  function sizeText(sz) {
+    var cnt = {}; sz.forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; });
+    return Object.keys(cnt).sort(function (a, b) { return b - a; }).map(function (k) { return k + '人×' + cnt[k] + '組'; }).join('・');
+  }
+  function renderAbsent() {
+    var box = $('absentList'); box.textContent = '';
+    S.roster.forEach(function (s) {
+      var b = document.createElement('button'); b.dataset.k = s.key;
+      b.textContent = s.disp + ' ' + s.name; b.title = b.textContent;
+      b.setAttribute('aria-pressed', String(S.absent.keys.indexOf(s.key) >= 0));
+      box.appendChild(b);
+    });
+  }
+  function renderApart() {
+    var m = byKey(), opts = '<option value="">選ぶ</option>' + S.roster.map(function (s) { return '<option value="' + esc(s.key) + '">' + esc(s.disp + ' ' + s.name) + '</option>'; }).join('');
+    $('apartA').innerHTML = opts; $('apartB').innerHTML = opts;
+    var box = $('apartList'); box.textContent = '';
+    S.apart.forEach(function (p, i) {
+      if (!m[p[0]] || !m[p[1]]) return;
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + esc(m[p[0]].disp + ' ' + m[p[0]].name) + ' と ' + esc(m[p[1]].disp + ' ' + m[p[1]].name) + '</span><button class="btn small" data-i="' + i + '">外す</button>';
+      box.appendChild(d);
+    });
+  }
+  function renderPrevNote() {
+    var u = S.used;
+    $('prevNote').textContent = u ? '前回：' + new Date(u.at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' の ' + u.size + '人組（3分より長く映した案）' : '前回：まだありません（3分より長く映した案を前回とみなします）';
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---- 操作 ---- */
+  function setSize(v) { v = Math.max(C.MIN, Math.min(C.MAX, v)); if (v === S.size) return; S.size = v; save(); shuffle(); }
+  $('sizeDown').onclick = function () { setSize(S.size - 1); };
+  $('sizeUp').onclick = function () { setSize(S.size + 1); };
+  $('segSize').onclick = function (e) { var b = e.target.closest('button'); if (b) setSize(+b.dataset.v); };
+  $('segMode').onclick = function (e) { var b = e.target.closest('button'); if (b) { S.mode = b.dataset.v; save(); render(); } };
+  $('swHead').onclick = function () { S.head = !S.head; save(); render(); };
+  $('swPrev').onclick = function () { S.prev = !S.prev; save(); syncUi(); };
+  $('shuffle').onclick = shuffle;
+  $('back').onclick = back;
+  // スペースキーはどこにフォーカスがあっても「組み直す」（直前に押したボタンを押し直させない）。文字を書く欄だけ除く
+  function isTyping(t) { return /INPUT|TEXTAREA|SELECT/.test(t.tagName); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' || isTyping(e.target)) return;
+    e.preventDefault(); if (!e.repeat) shuffle();
+  }, true);
+  document.addEventListener('keyup', function (e) { if (e.key === ' ' && !isTyping(e.target)) e.preventDefault(); }, true);
+  $('absentList').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var a = S.absent.keys, i = a.indexOf(b.dataset.k);
+    if (i >= 0) a.splice(i, 1); else a.push(b.dataset.k);
+    b.setAttribute('aria-pressed', String(i < 0));
+    save(); shuffle();
+  };
+  $('apartAdd').onclick = function () {
+    var a = $('apartA').value, b = $('apartB').value;
+    if (!a || !b || a === b) { $('apartA').focus(); return; }
+    if (!S.apart.some(function (p) { return C.key(p[0], p[1]) === C.key(a, b); })) S.apart.push([a, b]);
+    save(); renderApart(); $('apartA').value = ''; $('apartB').value = '';
+  };
+  $('apartList').onclick = function (e) { var b = e.target.closest('button'); if (b) { S.apart.splice(+b.dataset.i, 1); save(); renderApart(); } };
+
+  /* ---- 名簿を貼る ---- */
+  var parsed = null;
+  $('pasteBox').addEventListener('input', function () {
+    var t = this.value, out = $('pasteResult');
+    parsed = null; $('pasteOk').hidden = true; out.textContent = '';
+    if (!t.trim()) return;
+    var r = Paste.parseRoster(t, 0, { tempId: true });
+    var rows = r.rows.filter(function (x) { return x.name; });
+    if (r.errors.length && !rows.length) { out.innerHTML = '<div class="note bad">' + esc(r.errors.slice(0, 3).join('／')) + '</div>'; return; }
+    var clsSet = {}; rows.forEach(function (x) { clsSet[x.sp || x.cls] = 1; });
+    var multi = Object.keys(clsSet).length > 1;
+    parsed = rows.map(function (x) {
+      var s = { key: C.studentKey(x), no: x.no, name: x.name, disp: multi ? (x.sp || (x.cls + 1)) + '-' + x.no : String(x.no) };
+      if (x.sp) s.key = x.sp + '-' + x.no;
+      return s;
+    });
+    out.innerHTML = '<div class="note">' + rows.length + '人を読みました' + (multi ? '（' + Object.keys(clsSet).length + 'つの組。番号は「組-番号」で出します）' : '') + '。先頭の5人：</div>'
+      + '<table class="peek">' + parsed.slice(0, 5).map(function (s) { return '<tr><td>' + esc(s.disp) + '</td><td>' + esc(s.name) + '</td></tr>'; }).join('') + '</table>'
+      + (r.errors.length ? '<div class="note bad">読めなかった行：' + esc(r.errors.slice(0, 3).join('／')) + '</div>' : '');
+    $('pasteOk').hidden = !rows.length;
+  });
+  $('pasteOk').onclick = function () {
+    if (!parsed) return;
+    S.roster = parsed;
+    var m = byKey();
+    S.absent.keys = S.absent.keys.filter(function (k) { return m[k]; }); // 欠席・離す組合せは同じ鍵（組＋番号）の児童に引き継ぐ
+    S.hist = []; S.used = null;
+    $('pasteBox').value = ''; $('pasteResult').textContent = ''; $('pasteOk').hidden = true; parsed = null;
+    save(); renderAbsent(); renderApart(); shuffle();
+  };
+
+  /* ---- モニターに出す（教室の時計と同じ方式：拡張でつなぎ、映す面だけの窓をモニター側に開く） ---- */
+  async function openMonitor() {
+    if (mon && !mon.win.closed) { mon.win.focus(); return; }
+    var feat = 'popup,width=960,height=540', target = null;
+    try {
+      if (window.getScreenDetails) {
+        var sd = await window.getScreenDetails();
+        target = sd.screens.filter(function (s) { return s !== sd.currentScreen; })[0] || null;
+        if (target) feat = 'popup,left=' + target.availLeft + ',top=' + target.availTop + ',width=' + target.availWidth + ',height=' + target.availHeight;
+      }
+    } catch (e) {}
+    var w = window.open('', 'group-maker-monitor', feat);
+    if (!w) { $('monNote').hidden = false; $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
+    $('monNote').hidden = true;
+    var d = w.document;
+    d.open();
+    d.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>グループ分け（モニター）</title><style>html,body{margin:0;height:100%;overflow:hidden}'
+      + document.querySelector('style').textContent.split('/* ---- 操作画面')[0] + '</style></head><body><div id="m" style="width:100vw;height:100vh"></div></body></html>');
+    d.close();
+    mon = { win: w, view: GroupView.create(d, d.getElementById('m')) };
+    d.addEventListener('click', function () { // 全画面はモニター側の窓を1回押してから（ブラウザの決まり）
+      if (d.fullscreenElement) return;
+      var el = d.documentElement; try { target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen(); } catch (e) {}
+    });
+    d.addEventListener('keydown', function (e) { if (e.key === ' ') { e.preventDefault(); shuffle(); } });
+    w.addEventListener('beforeunload', function () { setTimeout(syncUi, 50); });
+    render();
+  }
+  $('goMonitor').onclick = openMonitor;
+  setInterval(function () { if (mon && mon.win.closed) { mon = null; syncUi(); } }, 1000);
+
+  /* ---- はじめ ---- */
+  renderAbsent(); renderApart(); renderPrevNote();
+  if (!S.roster.length) $('dSet').open = true;
+  if (S.roster.length && !cur()) shuffle(); else render();
+  window.__gm = { S: S, shuffle: shuffle }; // テスト用
+})();
+</script>
