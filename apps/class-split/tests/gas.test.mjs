@@ -262,7 +262,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const sx = call('apiSaveSettings', call('apiSettings').v.settings);
     assert.equal(sx.ok, false, '管理者でない教員は設定を保存できない'); assert.ok(sx.err.includes('管理者'));
     assert.equal(call('apiLeaveCandidates').ok, false); assert.equal(call('apiPurge', ['60000001']).ok, false, '管理者でない教員は記録を消せない');
-    for (const [fn, ...a] of [['apiDecide', 4, { name: 'x', assign: {} }], ['apiUndoDecide', 4], ['apiSetClassNames', 4, [1, 2]]]) {
+    for (const [fn, ...a] of [['apiDecide', 4, { name: 'x', assign: {} }], ['apiUndoDecide', 4], ['apiSetClassNames', 4, [1, 2]], ['apiClearSuggestions'], ['apiPruneLog']]) {
       const r = call(fn, ...a); assert.equal(r.ok, false, fn + ' は管理者だけ'); assert.ok(r.err.includes('管理者'), fn);
     }
     env.user = 'kyoto@edu.nishi.or.jp';
@@ -386,6 +386,17 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.deepEqual(sh[0], ['at', 'screen', 'text'], '送った人の列は無い');
     assert.ok(sh.length === 2 && !JSON.stringify(sh).includes('tanaka'), '送った人は残さない');
     assert.equal(call('apiSuggestions').v[0].text, '盤面の文字を大きくしたい');
+
+    // 年度末：読んだ意見を消す（管理者だけ）、1年より古い記録を消す、決定していない学年
+
+    const sc = call('apiClearSuggestions');
+    assert.ok(sc.ok && sc.v.n === 1 && call('apiSuggestions').v.length === 0, '目安箱の意見を消せる');
+    const lgS = db().getSheetByName('log');
+    lgS.data.push([new Date(Date.now() - 400 * 86400000).toISOString(), 'old@edu.nishi.or.jp', 'boot', 4]);
+    const pl = call('apiPruneLog');
+    assert.ok(pl.ok && pl.v.n >= 1 && !lgS.data.some(r => r[1] === 'old@edu.nishi.or.jp'), '1年より古い記録を消す');
+    assert.ok(lgS.data.some(r => r[2] === 'pruneLog'), '新しい記録は残る');
+    assert.ok(ctx.undecidedGrades_().includes(4) === !call('apiListGrades').v.find(x => x.grade === 4).decided, '決定していない学年を数える');
 
     // 特別支援学級の児童：取り込むと交流級の組に入り、配慮項目の表に印（sp=1）と学級の名前（spn）が付く
     const sp1 = call('apiImportRoster', FY, 4, [{ id: '40000099', name: '特支 ハナ', kana: 'とくし はな', male: false, cls: 1, no: 9, sp: 'ひまわり' }]);

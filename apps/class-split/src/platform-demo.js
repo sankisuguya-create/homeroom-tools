@@ -386,6 +386,8 @@
     adminStatus: function () { return later({ warnings: [] }); },
     suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
+    clearSuggestions: function () { var n = (S.sugg || []).length; S.sugg = []; return later({ n: n }); },
+    pruneLog: function () { return later({ n: 0 }); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
     closeDeviceWindow: function () { return later({ ok: true }); },
