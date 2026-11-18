@@ -141,16 +141,12 @@
   var IDLE_MIN = 3, idleAt = Date.now();
   var touch = function () { idleAt = Date.now(); };
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
-  // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。戻すのは1秒の長押し（児童が触っただけでは戻らない）
+  // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。1回押すと戻る（利用者の判断）
   var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
   setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
   document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
-  var holdT = 0, cvEl = App.$('idle');
-  var holdEnd = function () { clearTimeout(holdT); holdT = 0; };
-  cvEl.addEventListener('pointerdown', function (e) { e.stopPropagation(); holdEnd(); holdT = setTimeout(function () { cvEl.hidden = true; cvEl.innerHTML = ''; touch(); }, 1000); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cvEl.addEventListener(ev, holdEnd); });
-  cvEl.addEventListener('click', function (e) { e.stopPropagation(); });
-  cvEl.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // 長押しでメニューが出ないように
+  var cvEl = App.$('idle');
+  cvEl.addEventListener('click', function (e) { e.stopPropagation(); cvEl.hidden = true; cvEl.innerHTML = ''; touch(); });
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -1071,7 +1071,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_4ba82efb3588';
+var SERVER_BUILD = 'BUILD_a2916e547ed5';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1544,7 +1544,7 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
   if (!rows || !rows.length) throw userError_('児童がいません');
   if (grade < 0 || grade > 6) throw userError_('学年が違います');
   if (opt.dry) return importDiff_(fy, grade, rows);
-  backup_('名簿の取り込みの前');
+  var bkErr = tryBackup_('名簿の取り込みの前');
   return withLock_(function () {
     var name = 'roster_' + fy;
     ensureCols_(name, ROSTER_HEAD); // 住所の列が無い古い名簿にも足す
@@ -1583,7 +1583,7 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
     }
     var missing = t.rows.filter(function (r) { return +r.grade === grade && classes[(+r['class']) - 1] && !ids[String(r.id8)]; }).map(function (r) { return String(r.name); });
     log_(by, 'importRoster', rows.length);
-    return { added: added.length, updated: updated, missing: missing, relinked: relinked };
+    return { added: added.length, updated: updated, missing: missing, relinked: relinked, backupError: bkErr };
   });
 });
 
@@ -2101,8 +2101,27 @@ function backup_(why) {
   list.slice(BACKUP_KEEP).forEach(function (f) { f.setTrashed(true); });
   return copy.getId();
 }
+// 控えを取る。失敗しても呼んだ処理（名簿の取り込み・記録の削除）は止めない。失敗はプロパティに残し、管理者のメニューで知らせる
+// （ドライブの権限が承認されていない・市教委の設定で許されていない時に、名簿を一切入れられなくなるのを避ける）
+function tryBackup_(why) {
+  var props = PropertiesService.getScriptProperties();
+  try { backup_(why); props.setProperty('BACKUP_ERR', ''); return ''; }
+  catch (e) { var m = String(e && e.message || e).slice(0, 300); props.setProperty('BACKUP_ERR', new Date().toISOString() + ' ' + m); return '控えを取れませんでした（' + m.slice(0, 80) + '）'; }
+}
+// 動作確認：所有者がエディタで実行する。ドライブ・トリガーの権限の承認を求められ、控え・毎週のきっかけ・共有の読み取りが実機で動くかを返す
+function selfTest() {
+  editorOnly_();
+  var out = [], t = function (label, fn) { try { var v = fn(); out.push('○ ' + label + (v ? '：' + v : '')); } catch (e) { out.push('✕ ' + label + '：' + String(e && e.message || e)); } };
+  t('データのスプレッドシート', function () { return db_().getName(); });
+  t('控え（ドライブにフォルダを作り、複製する）', function () { backup_('動作確認'); PropertiesService.getScriptProperties().setProperty('BACKUP_ERR', ''); return BACKUP_FOLDER; });
+  t('毎週の控えのきっかけ', function () { ensureWeeklyTrigger_(); return ''; });
+  t('共有の状態の読み取り', function () { var s = sharedWith_(DriveApp.getFileById(PropertiesService.getScriptProperties().getProperty(DB_PROP))); return s.length ? '所有者以外にも見えます：' + s.join('、') : '所有者だけ'; });
+  var msg = out.join('\n');
+  console.log(msg);
+  return msg;
+}
 // 毎週の控え（setup が時刻のきっかけを作る）
-function weeklyBackup() { editorOnly_(); backup_('毎週'); try { pruneLog_(); } catch (e) { /* 控えは取れたので止めない */ } }
+function weeklyBackup() { editorOnly_(); tryBackup_('毎週'); try { pruneLog_(); } catch (e) { /* 控えは取れたので止めない */ } }
 function ensureWeeklyTrigger_() {
   var has = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === 'weeklyBackup'; });
   if (!has) ScriptApp.newTrigger('weeklyBackup').timeBased().everyWeeks(1).onWeekDay(ScriptApp.WeekDay.SUNDAY).atHour(3).create();
@@ -2141,6 +2160,8 @@ var apiAdminStatus_ = api_(function () {
   try { if (id) chk('データのスプレッドシート', DriveApp.getFileById(id)); } catch (e) { w.push({ kind: 'share', text: 'データのスプレッドシートの共有の状態を確かめられませんでした' }); }
   try { chk('このアプリのスクリプト', DriveApp.getFileById(ScriptApp.getScriptId())); } catch (e) { /* スクリプトの所在によっては読めない */ }
   try { var it = DriveApp.getFoldersByName(BACKUP_FOLDER); if (it.hasNext()) chk('控えのフォルダ', it.next()); } catch (e) { }
+  var be = PropertiesService.getScriptProperties().getProperty('BACKUP_ERR');
+  if (be) w.push({ kind: 'backup', text: 'データの控えが取れていません。所有者がスクリプトのエディタで selfTest を実行し、権限を承認してください（' + be.slice(0, 120) + '）' });
   var m = +Utilities.formatDate(new Date(), 'Asia/Tokyo', 'M');
   if (m === 3) {
     var und = undecidedGrades_();
@@ -2227,7 +2248,7 @@ function leaveCandidates_() {
 var apiPurge_ = api_(function (ids) {
   var by = requireAdmin_();
   if (!ids || !ids.length) throw userError_('消す児童を選んでください');
-  backup_('記録を消す前');
+  var bkErr = tryBackup_('記録を消す前');
   var FY = CONFIG.fiscalYear(), set = {}, now = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
   ids.forEach(function (id) { if (now[id]) throw userError_('今年度の名簿にいる児童は消せません'); set[String(id)] = 1; });
