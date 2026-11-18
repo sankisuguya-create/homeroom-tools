@@ -1,0 +1,11 @@
+/* ---- モニターに映す面（view.js）。手元の見本とモニターの窓が同じ規則で描く ----
+   枠は色で分けない（枠線と余白で分ける）。組の数が多くても色が尽きず、色覚の型に依らない。
+   投影で淡い線は飛ぶので、枠線は濃いめ（#8C8577、地に対して 3.4:1）にする。 */
+.gv{--gv-bg:#F4F1EA;--gv-box:#FFFFFF;--gv-line:#8C8577;--gv-ink:#1D2126;--gv-head:#2C5C9E;
+  position:relative;width:100%;height:100%;overflow:hidden;background:var(--gv-bg);color:var(--gv-ink);
+  font-family:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif}
+.gv-grid{position:absolute;inset:0;display:grid}
+.gv-box{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--gv-box);border:3px solid var(--gv-line);border-radius:12px}
+.gv-head{font-weight:700;color:var(--gv-head);line-height:1.25;white-space:nowrap}
+.gv-names{flex:1;display:grid;align-content:center;justify-content:center;line-height:1.25;font-weight:700;white-space:nowrap}
+.gv-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:24px;color:#5A6470;padding:24px;text-align:center}

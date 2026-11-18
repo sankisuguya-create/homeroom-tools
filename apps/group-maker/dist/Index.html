@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>グループ分け</title>
+<style>
+/* ▼ src/view.css から。直すのは src のほう ▼ */
+/* ---- モニターに映す面（view.js）。手元の見本とモニターの窓が同じ規則で描く ----
+   枠は色で分けない（枠線と余白で分ける）。組の数が多くても色が尽きず、色覚の型に依らない。
+   投影で淡い線は飛ぶので、枠線は濃いめ（#8C8577、地に対して 3.4:1）にする。 */
+.gv{--gv-bg:#F4F1EA;--gv-box:#FFFFFF;--gv-line:#8C8577;--gv-ink:#1D2126;--gv-head:#2C5C9E;
+  position:relative;width:100%;height:100%;overflow:hidden;background:var(--gv-bg);color:var(--gv-ink);
+  font-family:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif}
+.gv-grid{position:absolute;inset:0;display:grid}
+.gv-box{display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden;background:var(--gv-box);border:3px solid var(--gv-line);border-radius:12px}
+.gv-head{font-weight:700;color:var(--gv-head);line-height:1.25;white-space:nowrap}
+.gv-names{flex:1;display:grid;align-content:center;justify-content:center;line-height:1.25;font-weight:700;white-space:nowrap}
+.gv-empty{position:absolute;inset:0;display:grid;place-items:center;font-size:24px;color:#5A6470;padding:24px;text-align:center}
+/* ▲ src/view.css ここまで ▲ */
+
+/* ---- 操作画面（教師の手元のPCだけに出す） ----
+   部品は design/ui-patterns の型：選んだ側は白い面＋✓、2値はスイッチ（入／切の文字つき）、
+   まれな設定は「設定 ▼」の中。強い塗りは授業中にくり返す主操作「組み直す」だけ。 */
+:root{
+  --paper:#EEEBE4;--surf:#FFFFFF;--track:#DED9CF;--ink:#1D2126;--sub:#535A63;--rule:#CFC9BD;
+  --accent:#2C5C9E;--on:#FFFFFF;--alert:#A63B25;--focus:#2D4A6B;--off:#E6E2DA;
+  --s1:4px;--s2:8px;--s3:16px;--s4:24px;
+  --font:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45}
+button,select,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 352px;gap:var(--s4);height:100%;padding:var(--s4)}
+.stage{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:var(--s2);min-height:0}
+.stage-head{display:flex;align-items:center;gap:var(--s2);color:var(--sub);font-size:13px;min-height:24px}
+.stage-head .dot{width:8px;height:8px;border-radius:50%;background:var(--rule)}
+.stage-head.live{color:var(--ink)} .stage-head.live .dot{background:var(--alert)}
+.stage-head .kbd{margin-left:auto}
+.preview{min-height:0;display:grid;place-items:center}
+.pv-box{width:100%;max-height:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.warn{color:var(--alert);font-size:13px;min-height:20px}
+.panel{display:flex;flex-direction:column;gap:var(--s3);overflow:auto;min-height:0;padding:var(--s1)}
+.card{display:flex;flex-direction:column;gap:var(--s2)}
+.card+.card,.card+details{border-top:1px solid var(--rule);padding-top:var(--s3)}
+.lbl{font-size:13px;color:var(--sub);display:flex;justify-content:space-between;align-items:baseline;gap:var(--s2)}
+.lbl b{color:var(--ink);font-weight:700}
+.btn{height:48px;padding:0 var(--s3);border:0;border-radius:12px;background:var(--surf);font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;box-shadow:inset 0 0 0 1px var(--rule)}
+.btn:hover{background:var(--off)}
+.btn:disabled{opacity:.45;cursor:default}
+.btn.main{height:64px;font-size:20px;background:var(--accent);color:var(--on);box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.btn.main:hover{filter:brightness(1.12);background:var(--accent)}
+.btn.icon{width:48px;padding:0;font-size:22px;flex:none}
+.btn.small{height:48px;padding:0 var(--s2);font-weight:400}
+.row{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:var(--s2)}
+/* 人数：− 今の値 ＋ と、よく使う人数の近道 */
+.step{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;gap:var(--s2);align-items:center}
+.step output{text-align:center;font-size:28px;font-weight:700;line-height:48px}
+.step output small{font-size:16px;margin-left:2px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:2px;padding:3px;border-radius:14px;background:var(--track)}
+.seg button{height:48px;min-width:0;padding:0 2px;border:0;border-radius:11px;background:transparent;color:var(--sub);cursor:pointer;font-weight:700}
+.seg button[aria-checked=true]{background:var(--surf);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.14)}
+.seg button[aria-checked=true]::before{content:"✓ "}
+.sizes-note{font-size:13px;color:var(--sub);min-height:20px}
+/* スイッチ（入／切の文字つき） */
+.sw{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);min-height:48px;cursor:pointer;border:0;background:none;padding:0;width:100%;text-align:left}
+.sw .track{flex:none;width:72px;height:36px;border-radius:18px;background:var(--track);position:relative;font-size:12px;font-weight:700;color:var(--sub)}
+.sw .track::after{content:"";position:absolute;top:3px;left:3px;width:30px;height:30px;border-radius:50%;background:var(--surf);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.sw .track::before{content:"切";position:absolute;right:12px;top:8px}
+.sw[aria-checked=true] .track{background:var(--accent);color:var(--on)}
+.sw[aria-checked=true] .track::after{left:39px}
+.sw[aria-checked=true] .track::before{content:"入";left:12px;right:auto}
+details{border-top:1px solid var(--rule);padding-top:var(--s3)}
+summary{list-style:none;cursor:pointer;min-height:48px;display:flex;align-items:center;justify-content:space-between;font-weight:700;border-radius:12px;padding:0 var(--s2)}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"▼";font-size:12px;color:var(--sub)}
+details[open]>summary::after{content:"▲"}
+summary:hover{background:var(--off)}
+summary .cnt{margin-left:auto;margin-right:var(--s2);font-weight:400;color:var(--sub)}
+.body{display:flex;flex-direction:column;gap:var(--s2);padding-top:var(--s2)}
+/* 欠席：名前を押すと欠席（取り消し線＋「欠」） */
+.chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
+.chips button{height:48px;min-width:0;padding:0 6px;border:0;border-radius:10px;background:var(--surf);box-shadow:inset 0 0 0 1px var(--rule);cursor:pointer;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;text-align:left}
+.chips button[aria-pressed=true]{background:var(--off);color:var(--alert);text-decoration:line-through;box-shadow:inset 0 0 0 2px var(--alert)}
+.chips button[aria-pressed=true]::before{content:"欠 ";text-decoration:none;display:inline-block;font-weight:700}
+textarea{width:100%;height:120px;border:1px solid var(--rule);border-radius:10px;padding:var(--s2);background:var(--surf);font-size:13px;resize:vertical}
+select{height:48px;border:1px solid var(--rule);border-radius:10px;background:var(--surf);padding:0 var(--s2);min-width:0;width:100%}
+.note{font-size:13px;color:var(--sub)}
+.note.bad{color:var(--alert)}
+table.peek{border-collapse:collapse;font-size:12px;width:100%}
+table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
+.pairs{display:flex;flex-direction:column;gap:var(--s1)}
+.pairs div{display:flex;align-items:center;gap:var(--s2);min-height:48px;padding-left:var(--s2);background:var(--surf);border-radius:10px}
+.pairs div span{flex:1}
+.pairs .btn{box-shadow:none;background:transparent;color:var(--alert)}
+</style>
+
+<div class="app">
+  <section class="stage">
+    <div class="stage-head" id="stageHead"><span class="dot"></span><span id="stageText">見本（モニターに出していません）</span><span class="kbd">スペースキーでも組み直せます</span></div>
+    <div class="preview"><div class="pv-box" id="pv"></div></div>
+    <div class="warn" id="warn" role="status"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="card">
+      <div class="lbl">1組の人数<b id="headcount"></b></div>
+      <div class="step">
+        <button class="btn icon" id="sizeDown" aria-label="1人へらす">−</button>
+        <output id="sizeOut"></output>
+        <button class="btn icon" id="sizeUp" aria-label="1人ふやす">＋</button>
+      </div>
+      <div class="seg" id="segSize" role="radiogroup" aria-label="よく使う人数">
+        <button data-v="2" role="radio">2</button><button data-v="3" role="radio">3</button><button data-v="4" role="radio">4</button><button data-v="5" role="radio">5</button><button data-v="6" role="radio">6</button>
+      </div>
+      <div class="sizes-note" id="sizesNote"></div>
+    </div>
+
+    <div class="card">
+      <button class="btn main" id="shuffle" data-flow="1" data-tier="main">組み直す</button>
+      <button class="btn" id="back" data-tier="std" disabled>◀ 前の案に戻す</button>
+    </div>
+
+    <div class="card">
+      <div class="lbl">名前の出し方</div>
+      <div class="seg" id="segMode" role="radiogroup" aria-label="名前の出し方">
+        <button data-v="no" role="radio">出席番号</button><button data-v="sei" role="radio">名字だけ</button><button data-v="full" role="radio">フルネーム</button>
+      </div>
+      <button class="sw" id="swHead" role="switch"><span>班の名前（1班・2班…）を出す</span><span class="track"></span></button>
+    </div>
+
+    <details id="dAbsent">
+      <summary>今日の欠席<span class="cnt" id="absentCnt"></span></summary>
+      <div class="body">
+        <div class="note">押すと今日だけ外します。明日になると自動で戻ります。</div>
+        <div class="chips" id="absentList"></div>
+      </div>
+    </details>
+
+    <div class="card">
+      <button class="btn" id="goMonitor">モニターに出す</button>
+      <div class="note" id="monNote" hidden></div>
+    </div>
+
+    <details id="dSet">
+      <summary>設定</summary>
+      <div class="body">
+        <div class="lbl"><b>名簿を貼る</b><span id="rosterCnt"></span></div>
+        <div class="note">スプレッドシートの名簿の範囲（見出しの行ごと）をコピーして、下に貼ってください。番号と氏名があれば読めます。姓と名の間に空白があると「名字だけ」で出せます。</div>
+        <textarea id="pasteBox" placeholder="ここに貼る（Ctrl＋V）"></textarea>
+        <div id="pasteResult"></div>
+        <button class="btn" id="pasteOk" hidden>この名簿にする</button>
+
+        <div class="lbl" style="margin-top:var(--s3)"><b>離す組合せ</b></div>
+        <div class="note">同じ組にしない2人。組み直すたびに避けます。</div>
+        <div class="row"><select id="apartA" aria-label="1人目"></select><select id="apartB" aria-label="2人目"></select></div>
+        <button class="btn" id="apartAdd">この2人を離す</button>
+        <div class="pairs" id="apartList"></div>
+
+        <button class="sw" id="swPrev" role="switch" style="margin-top:var(--s3)"><span>前回と同じ相手をなるべく避ける</span><span class="track"></span></button>
+        <div class="note" id="prevNote"></div>
+      </div>
+    </details>
+  </aside>
+</div>
+
+<script>
+/* ▼ src/paste.js から。直すのは src のほう ▼ */
+// 名簿の貼り付けを読む（画面に依存しない。tests/paste.test.mjs が直接読む）。
+// スプレッドシートからのコピーはタブ区切り。見出しの行があれば名前で列を決め、無ければ値の形から推定する。
+(function (g) {
+  'use strict';
+  // 見出しの言い換え（小文字・空白なしで比べる）
+  var NAMES = {
+    id: ['児童id', 'id', '児童番号', '学籍番号', 'アカウント', 'メール', 'メールアドレス', 'email', '生徒コード'],
+    name: ['名前', '氏名', '児童名', 'なまえ'],
+    kana: ['よみ', '読み', 'ふりがな', 'フリガナ', 'かな', 'カナ', 'よみがな', 'ヨミ'],
+    sex: ['性別', '男女'],
+    cls: ['組', 'クラス', '学級'],
+    no: ['出席番号', '番号', '番', 'no'],
+    grade: ['学年'],
+    // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
+    sei: ['姓'], mei: ['名'], seiK: ['姓ふりがな'], meiK: ['名ふりがな'],
+    // 住所：校務システムは4列（都道府県・市区町村・町番地・アパート/マンション名）。ほかの名簿は「住所」1列
+    addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
+    fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
+  };
+  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
+    sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
+  // 名前・よみとして使える列（どれか1つでもあればよい）
+  var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
+  function norm(h) { return String(h).replace(/[\s　]/g, '').toLowerCase(); }
+  function roleOfHeader(h) {
+    var n = norm(h);
+    for (var r in NAMES) if (NAMES[r].some(function (x) { return norm(x) === n; })) return r;
+    return null;
+  }
+  function toHalf(s) { return String(s).replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).trim(); }
+  // 児童ID：英数字（と - _）20文字まで。メールアドレスなら @ の前を使う
+  function idOf(v) { var s = toHalf(v).replace(/[Ａ-Ｚａ-ｚ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }).split('@')[0]; return /^[A-Za-z0-9_-]{1,20}$/.test(s) ? s : ''; }
+  function sexOf(v) { var s = String(v).trim(); return /^(男|男子|M|m)$/.test(s) ? '男' : /^(女|女子|F|f)$/.test(s) ? '女' : ''; }
+  function isKana(v) { return /^[ぁ-んァ-ヶー\s　・]+$/.test(String(v).trim()) && String(v).trim() !== ''; }
+  function isSmallInt(v) { var s = toHalf(v); return /^\d{1,2}$/.test(s) && +s >= 1 && +s <= 45; }
+  function clsOf(v) { var s = toHalf(v).replace(/組$/, ''); return /^[1-9]$/.test(s) ? +s : 0; }
+
+  // タブ区切りを読む。Excel はセルの中に改行・タブ・" があると "…" で囲み、" を "" にして書き出すので、それを戻す
+  function splitRows(text) {
+    var t = String(text).replace(/\r\n?/g, '\n'), rows = [], row = [], cell = '', i = 0, q = false, start = true;
+    for (; i < t.length; i++) {
+      var ch = t[i];
+      if (q) {
+        if (ch === '"') { if (t[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+        else cell += ch;
+        continue;
+      }
+      if (ch === '"' && start) { q = true; start = false; continue; }
+      if (ch === '\t') { row.push(cell); cell = ''; start = true; continue; }
+      if (ch === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; start = true; continue; }
+      cell += ch; start = false;
+    }
+    row.push(cell); rows.push(row);
+    return rows.map(function (r) { return r.map(function (c) { return c.replace(/\n/g, ' '); }); }) // セル内の改行は空白に
+      .filter(function (r) { return r.some(function (c) { return String(c).trim() !== ''; }); });
+  }
+
+  // 値の形から列の役割を推定する（見出しが無い時）
+  function guess(rows) {
+    var w = Math.max.apply(null, rows.map(function (r) { return r.length; })), roles = [], used = {};
+    var score = function (c, f) { var n = 0; rows.forEach(function (r) { if (f(r[c] || '')) n++; }); return n / rows.length; };
+    for (var c = 0; c < w; c++) {
+      var r = null;
+      if (!used.id && score(c, function (v) { var x = idOf(v); return x.length >= 5 && /\d/.test(x); }) > .8) r = 'id'; // 見出しが無い時は、5文字以上で数字を含む列だけを児童IDとみなす（出席番号と取り違えない）
+      else if (!used.sex && score(c, function (v) { return !!sexOf(v); }) > .8) r = 'sex';
+      else if (!used.kana && score(c, isKana) > .8) r = 'kana';
+      else if (score(c, isSmallInt) > .8) r = !used.no ? 'no' : null;
+      else if (!used.name && score(c, function (v) { return String(v).trim() !== ''; }) > .8) r = 'name';
+      if (r) used[r] = 1;
+      roles.push(r);
+    }
+    // 小さな数の列が2つあれば、1〜9だけの列を組、残りを番号とする
+    var small = [];
+    for (c = 0; c < w; c++) if (score(c, isSmallInt) > .8) small.push(c);
+    if (small.length >= 2) {
+      var ci = small.filter(function (c) { return score(c, function (v) { return clsOf(v) > 0; }) === 1; })[0];
+      if (ci != null) { roles[ci] = 'cls'; roles[small.filter(function (c) { return c !== ci; })[0]] = 'no'; }
+    }
+    return roles;
+  }
+
+  // 町名：町番地の先頭から、数字・丁目・番地の手前まで（例「中央三丁目5-2」→「中央」）。地区の偏りをそろえるのに使う
+  function areaOf(town) {
+    return toHalf(town).replace(/[\s　]/g, '').replace(/[0-9０-９].*$/, '').replace(/[一二三四五六七八九十〇]+丁目.*$/, '').replace(/[-－ー‐丁目番地号の]+$/, '').slice(0, 20);
+  }
+  function gradeOf(v) { var s = toHalf(v).replace(/年(生)?$/, ''); return /^[1-6]$/.test(s) ? +s : null; }
+
+  // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no,sp}], errors: [文], counts: {男,女},
+  //          skipped: { grade: ほかの学年で読み飛ばした行, blank: 名前が空で読み飛ばした行 }, sp: 特別支援学級の児童の数 }
+  // cls は 0始まり。組の列が無い・空の時は defaultCls を使う。組の列が数字でない文字の児童は特別支援学級（sp に学級名、cls は -1＝交流級は未定）
+  // opt.tempId：新1年。児童IDの列が無い・空の行を許す（サーバーが仮のIDを振る）
+  // opt.grade：学年の列がある時、この学年の行だけを読む（校務システムの全校の書き出しをそのまま貼れる）。新1年（0）は絞らない
+  function parseRoster(text, defaultCls, opt) {
+    opt = opt || {};
+    var empty = { roles: [], header: false, rows: [], errors: [], counts: { m: 0, f: 0 }, skipped: { grade: 0, blank: 0 }, sp: 0 };
+    var all = splitRows(text);
+    if (!all.length) return empty;
+    var headRoles = all[0].map(roleOfHeader), header = headRoles.filter(Boolean).length >= 2;
+    var body = header ? all.slice(1) : all, roles = header ? headRoles : guess(body);
+    var col = {};
+    roles.forEach(function (r, c) { if (r && col[r] == null) col[r] = c; });
+    var errors = [], rows = [], seen = {}, m = 0, f = 0, skipped = { grade: 0, blank: 0 }, nsp = 0;
+    if (!opt.tempId && col.id == null) errors.push(LABEL.id + 'の列が見つかりません');
+    if (!NAME_ROLES.some(function (r) { return col[r] != null; })) errors.push(LABEL.name + 'の列が見つかりません');
+    if (errors.length) { empty.roles = roles; empty.header = header; empty.errors = errors; return empty; }
+    var cell = function (r, k) { return col[k] != null ? String(r[col[k]] || '').trim() : ''; };
+    var join = function (a, b) { return (a + ' ' + b).trim(); };
+    var filterGrade = col.grade != null && opt.grade != null && +opt.grade > 0;
+    body.forEach(function (r, i) {
+      var line = (header ? i + 2 : i + 1) + '行目：';
+      // 名前：名前 → 姓＋名 → 正式名前 → 正式姓＋正式名（空欄の多い表でも、埋まっている列を使う）
+      var name = cell(r, 'name') || join(cell(r, 'sei'), cell(r, 'mei')) || cell(r, 'fname') || join(cell(r, 'fsei'), cell(r, 'fmei'));
+      var kana = cell(r, 'kana') || join(cell(r, 'seiK'), cell(r, 'meiK')) || cell(r, 'fkana') || join(cell(r, 'fseiK'), cell(r, 'fmeiK'));
+      if (filterGrade) { var gr = gradeOf(cell(r, 'grade')); if (gr !== +opt.grade) { skipped.grade++; return; } }
+      if (!name) { skipped.blank++; return; } // 名前の無い行（空欄の行・集計の行など）は読み飛ばす
+      var rawId = cell(r, 'id');
+      var id = idOf(rawId);
+      var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
+      var rawCls = cell(r, 'cls'), sp = '', cls;
+      if (!rawCls) cls = defaultCls;
+      else if (clsOf(rawCls) > 0) cls = clsOf(rawCls) - 1;
+      else if (/^\d+$/.test(toHalf(rawCls))) { errors.push(line + '組が読めません（1〜9）'); return; }
+      else { sp = rawCls.slice(0, 20); cls = -1; } // 数字でない組＝特別支援学級
+      var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが読めません（英数字20文字まで）'); return; }
+      if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
+      if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
+      if (id) seen[id] = 1;
+      if (sex === '男') m++; else if (sex === '女') f++;
+      if (sp) nsp++;
+      var o = { id: id, name: name, kana: kana, male: sex === '男', sex: sex, cls: cls, no: no || 0 };
+      if (sp) o.sp = sp;
+      // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から
+      var town = cell(r, 'town'), addr = cell(r, 'addr') || (cell(r, 'pref') + cell(r, 'city') + town + (cell(r, 'apt') ? ' ' + cell(r, 'apt') : '')).trim();
+      if (addr) { o.addr = addr.slice(0, 200); o.area = areaOf(town); }
+      rows.push(o);
+    });
+    // 番号が無ければ貼った順に振る
+    if (col.no == null) { var byCls = {}; rows.forEach(function (x) { x.no = (byCls[x.cls] = (byCls[x.cls] || 0) + 1); }); }
+    return { roles: roles, header: header, rows: rows, errors: errors, counts: { m: m, f: f }, skipped: skipped, sp: nsp };
+  }
+
+  g.Paste = { parseRoster: parseRoster, LABEL: LABEL };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/paste.js ここまで ▲ */
+/* ▼ src/core.js から。直すのは src のほう ▼ */
+// グループ分けの計算（画面に依存しない。tests/core.test.mjs が直接読む）。
+(function (g) {
+  'use strict';
+  var MIN = 2, MAX = 30;
+
+  // 組ごとの人数。指定人数の組を作り、割り切れない分は「多い組」に回す（利用者の判断：指定より少ない組は作らない）。
+  // 31人を4人組 → 5,5,5,4,4,4,4。指定人数より人が少なければ全員で1組。
+  // 不変条件：合計＝n、どの組も size 以上（n < size の時の1組を除く）
+  function sizes(n, size) {
+    if (n <= 0) return [];
+    var k = Math.max(1, Math.floor(n / size)), base = Math.floor(n / k), extra = n % k, out = [];
+    for (var i = 0; i < k; i++) out.push(base + (i < extra ? 1 : 0));
+    return out;
+  }
+
+  function key(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+  function pairSet(list) { var s = {}; (list || []).forEach(function (p) { s[key(p[0], p[1])] = 1; }); return s; }
+  // 組の案から「同じ組だった2人」の一覧を作る（前回を避けるために使う）
+  function pairsOf(groups) {
+    var out = [];
+    groups.forEach(function (gr) { for (var i = 0; i < gr.length; i++) for (var j = i + 1; j < gr.length; j++) out.push([gr[i], gr[j]]); });
+    return out;
+  }
+
+  var W_APART = 1000, W_PREV = 1; // 離す組合せは必ず守る側、前回の相手は「なるべく」
+
+  function cost(groups, apart, prev) {
+    var c = 0, a = 0, p = 0;
+    groups.forEach(function (gr) {
+      for (var i = 0; i < gr.length; i++) for (var j = i + 1; j < gr.length; j++) {
+        var k = key(gr[i], gr[j]);
+        if (apart[k]) a++;
+        if (prev[k]) p++;
+      }
+    });
+    c = a * W_APART + p * W_PREV;
+    return { cost: c, apart: a, prev: p };
+  }
+
+  // ids をランダムに組へ分け、離す組合せ・前回の相手が同じ組にならないよう入れ替えで直す。
+  // opt: { apart:[[id,id]], prev:[[id,id]], rand: ()=>[0,1) }
+  // 返り値: { groups:[[id]], apart: 守れなかった離す組合せの数, prev: 前回と同じ相手の組の数 }
+  function make(ids, size, opt) {
+    opt = opt || {};
+    var rand = opt.rand || Math.random, apart = pairSet(opt.apart), prev = pairSet(opt.prev);
+    var a = ids.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(rand() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    var sz = sizes(a.length, size), groups = [], at = 0;
+    // 人数の多い組の位置もランダムにする（いつも1組目が多い、を避ける）
+    for (i = sz.length - 1; i > 0; i--) { j = Math.floor(rand() * (i + 1)); t = sz[i]; sz[i] = sz[j]; sz[j] = t; }
+    sz.forEach(function (s) { groups.push(a.slice(at, at + s)); at += s; });
+    var cur = cost(groups, apart, prev);
+    if (groups.length > 1 && cur.cost > 0) {
+      // 入れ替えの山登り。悪くならない入れ替えは採る（同点でも動かして偏りを残さない）
+      for (var it = 0; it < 4000 && cur.cost > 0; it++) {
+        var g1 = Math.floor(rand() * groups.length), g2 = Math.floor(rand() * groups.length);
+        if (g1 === g2) continue;
+        var i1 = Math.floor(rand() * groups[g1].length), i2 = Math.floor(rand() * groups[g2].length);
+        t = groups[g1][i1]; groups[g1][i1] = groups[g2][i2]; groups[g2][i2] = t;
+        var nx = cost(groups, apart, prev);
+        if (nx.cost <= cur.cost) cur = nx;
+        else { groups[g2][i2] = groups[g1][i1]; groups[g1][i1] = t; }
+      }
+    }
+    return { groups: groups, apart: cur.apart, prev: cur.prev };
+  }
+
+  // 名前の表示。mode: 'no'（出席番号）／'sei'（名字）／'full'（フルネーム）
+  // 名字は姓と名の間の空白で切る。空白が無い名前は名字にできないので、フルネームのまま出す。
+  // 名簿の中で名字が同じ児童は、名の1字目を添えて見分ける（例：佐藤 健・佐藤 美）。
+  function splitName(name) { var m = String(name).trim().split(/[\s　]+/); return m.length >= 2 ? { sei: m[0], mei: m.slice(1).join('') } : null; }
+  function labels(roster, mode) {
+    var out = {}, count = {};
+    if (mode === 'sei') roster.forEach(function (s) { var p = splitName(s.name); if (p) count[p.sei] = (count[p.sei] || 0) + 1; });
+    roster.forEach(function (s) {
+      if (mode === 'no') { out[s.key] = String(s.no); return; }
+      var p = splitName(s.name);
+      if (mode === 'full' || !p) { out[s.key] = p ? p.sei + ' ' + p.mei : String(s.name).trim(); return; }
+      out[s.key] = count[p.sei] > 1 ? p.sei + ' ' + p.mei.charAt(0) : p.sei;
+    });
+    return out;
+  }
+  function noSpaceCount(roster) { return roster.filter(function (s) { return !splitName(s.name); }).length; }
+
+  // 組の名前（グループ名をつける時）
+  function groupName(i) { return (i + 1) + '班'; }
+
+  // 名簿の児童の鍵：組＋番号（貼り直しても同じ児童を同じ鍵で指す。欠席・離す組合せを引き継ぐ）
+  function studentKey(s) { return (s.cls >= 0 ? s.cls + 1 : 0) + '-' + s.no; }
+
+  var api = { MIN: MIN, MAX: MAX, sizes: sizes, make: make, pairsOf: pairsOf, labels: labels, splitName: splitName,
+    noSpaceCount: noSpaceCount, groupName: groupName, studentKey: studentKey, key: key };
+  g.GroupCore = api;
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/core.js ここまで ▲ */
+/* ▼ src/view.js から。直すのは src のほう ▼ */
+// モニターに映す面（手元の見本とモニターの窓の両方をこれ1つで描く）。
+// 画面を格子に区切り、同じ組を1つの枠に入れる。文字の大きさは全部の枠で同じにし、
+// 一番長い名前が枠に収まる最大の大きさを、列の数を変えながら探して決める。
+(function (g) {
+  'use strict';
+  // 字の幅（em）の目安：全角1、半角0.6。最後に実寸で確かめて縮める
+  function textW(s) { var w = 0; for (var i = 0; i < s.length; i++) w += s.charCodeAt(i) < 0x2000 ? 0.6 : 1; return w; }
+
+  // W×H の面に、groups（名前の配列の配列）を並べる最大の文字の大きさと、外の列数・中の列数を求める
+  var GAP = 0.012, PAD = 0.22, LH = 1.25, HEAD = 0.8; // GAP は面の短辺に対する比、PAD・HEAD は文字の大きさに対する比
+  function fit(W, H, groups, showHead) {
+    var G = groups.length, maxN = 0, maxW = 0.6;
+    groups.forEach(function (gr) { maxN = Math.max(maxN, gr.length); gr.forEach(function (s) { maxW = Math.max(maxW, textW(s)); }); });
+    if (!G || !maxN) return null;
+    var gap = Math.min(W, H) * GAP, best = null;
+    for (var c = 1; c <= G; c++) {
+      var r = Math.ceil(G / c), cw = (W - gap * (c + 1)) / c, ch = (H - gap * (r + 1)) / r;
+      for (var ic = 1; ic <= maxN; ic++) {
+        var ir = Math.ceil(maxN / ic);
+        // 枠の中：幅 = ic×(名前幅+間) + 余白、高さ = 見出し + ir×行の高さ + 余白
+        var fW = cw / (ic * (maxW + 0.8) + 2 * PAD);
+        var fH = ch / (ir * LH + 2 * PAD + (showHead ? HEAD * LH : 0));
+        var f = Math.min(fW, fH);
+        if (!best || f > best.f + 0.01) best = { f: f, c: c, r: r, ic: ic, gap: gap };
+      }
+    }
+    return best;
+  }
+
+  function create(doc, root) {
+    root.classList.add('gv');
+    var last = null;
+    function update(plan, opt) {
+      last = { plan: plan, opt: opt };
+      var W = root.clientWidth, H = root.clientHeight;
+      root.textContent = '';
+      if (!plan || !plan.groups.length) {
+        var e = doc.createElement('div'); e.className = 'gv-empty'; e.textContent = opt && opt.empty || '';
+        root.appendChild(e); return;
+      }
+      var lay = fit(W, H, plan.groups, opt.showHead);
+      if (!lay) return;
+      var f = Math.floor(Math.min(lay.f, H / 3));
+      var grid = doc.createElement('div'); grid.className = 'gv-grid';
+      grid.style.cssText = 'gap:' + lay.gap + 'px;padding:' + lay.gap + 'px;grid-template-columns:repeat(' + lay.c + ',minmax(0,1fr));grid-template-rows:repeat(' + lay.r + ',minmax(0,1fr))';
+      plan.groups.forEach(function (gr, i) {
+        var box = doc.createElement('div'); box.className = 'gv-box'; box.style.padding = (f * PAD) + 'px';
+        if (opt.showHead) {
+          var h = doc.createElement('div'); h.className = 'gv-head'; h.textContent = plan.names[i];
+          h.style.fontSize = (f * HEAD) + 'px'; box.appendChild(h);
+        }
+        var ul = doc.createElement('div'); ul.className = 'gv-names';
+        ul.style.cssText = 'font-size:' + f + 'px;grid-template-columns:repeat(' + lay.ic + ',auto);column-gap:' + (f * 0.8) + 'px';
+        gr.forEach(function (s) { var n = doc.createElement('span'); n.textContent = s; ul.appendChild(n); });
+        box.appendChild(ul); grid.appendChild(box);
+      });
+      root.appendChild(grid);
+      // 目安の字幅で決めたので、実寸ではみ出す枠があれば全体を少しずつ縮める（全部の枠で同じ大きさを保つ）
+      for (var k = 0; k < 12 && overflow(grid); k++) {
+        f = Math.floor(f * 0.93);
+        grid.querySelectorAll('.gv-names').forEach(function (u) { u.style.fontSize = f + 'px'; u.style.columnGap = (f * 0.8) + 'px'; });
+        grid.querySelectorAll('.gv-head').forEach(function (u) { u.style.fontSize = (f * HEAD) + 'px'; });
+        grid.querySelectorAll('.gv-box').forEach(function (u) { u.style.padding = (f * PAD) + 'px'; });
+      }
+    }
+    function overflow(grid) {
+      var bad = false;
+      grid.querySelectorAll('.gv-box').forEach(function (b) { if (b.scrollWidth > b.clientWidth + 1 || b.scrollHeight > b.clientHeight + 1) bad = true; });
+      return bad;
+    }
+    var ro = new (doc.defaultView.ResizeObserver)(function () { if (last) update(last.plan, last.opt); });
+    ro.observe(root);
+    return { update: update };
+  }
+
+  g.GroupView = { create: create, fit: fit, textW: textW };
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+/* ▲ src/view.js ここまで ▲ */
+(function () {
+  'use strict';
+  document.documentElement.lang = 'ja';
+  var C = GroupCore, $ = function (id) { return document.getElementById(id); };
+  var KEY = 'group-maker-v1';
+  var USED_MS = 3 * 60 * 1000; // この時間より長く映した案を「使った（前回の）案」とみなす
+
+  function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  var S = { roster: [], size: 4, mode: 'sei', head: true, prev: true, apart: [], absent: { day: today(), keys: [] }, hist: [], used: null };
+  try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (saved) Object.keys(S).forEach(function (k) { if (saved[k] !== undefined) S[k] = saved[k]; }); } catch (e) {}
+  if (S.absent.day !== today()) S.absent = { day: today(), keys: [] }; // 欠席は今日だけ
+  var shownAt = Date.now(); // 今の案を映し始めた時刻
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+  function byKey() { var m = {}; S.roster.forEach(function (s) { m[s.key] = s; }); return m; }
+  function present() { var a = S.absent.keys; return S.roster.filter(function (s) { return a.indexOf(s.key) < 0; }); }
+  function cur() { return S.hist[S.hist.length - 1] || null; }
+
+  /* ---- 前回の案：3分より長く映した案を「使った」とみなす ---- */
+  function markUsed() { var c = cur(); if (c && Date.now() - shownAt >= USED_MS && (!S.used || S.used.at !== c.at)) { S.used = { at: c.at, size: c.size, groups: c.groups }; save(); renderPrevNote(); } }
+  setInterval(markUsed, 10000);
+
+  function shuffle() {
+    markUsed();
+    var ids = present().map(function (s) { return s.key; });
+    if (!ids.length) { render(); return; }
+    var r = C.make(ids, S.size, { apart: S.apart, prev: S.prev && S.used ? C.pairsOf(S.used.groups) : [] });
+    S.hist.push({ at: Date.now(), size: S.size, groups: r.groups, apartMiss: r.apart, prevHit: r.prev });
+    if (S.hist.length > 20) S.hist.shift();
+    shownAt = Date.now();
+    save(); render();
+  }
+  function back() { if (S.hist.length > 1) { S.hist.pop(); shownAt = Date.now(); save(); render(); } }
+
+  /* ---- 描く ---- */
+  var views = [GroupView.create(document, $('pv'))], mon = null;
+  function plan() {
+    var c = cur(), lab = C.labels(S.roster.map(function (s) { return { key: s.key, no: s.disp, name: s.name }; }), S.mode);
+    if (!c) return null;
+    // 名簿が変わって今いない児童は落とす（貼り直した直後など）
+    var groups = c.groups.map(function (gr) { return gr.filter(function (k) { return lab[k] != null; }).map(function (k) { return lab[k]; }); });
+    return { groups: groups, names: groups.map(function (_, i) { return C.groupName(i); }) };
+  }
+  function render() {
+    var p = plan(), opt = { showHead: S.head, empty: S.roster.length ? '「組み直す」を押してください' : '名簿がありません。右下の「設定」から名簿を貼ってください' };
+    views.forEach(function (v) { v.update(p, opt); });
+    if (mon && !mon.win.closed) mon.view.update(p, opt);
+    syncUi();
+  }
+  function syncUi() {
+    $('sizeOut').innerHTML = S.size + '<small>人組</small>';
+    $('sizeDown').disabled = S.size <= C.MIN; $('sizeUp').disabled = S.size >= C.MAX;
+    $('segSize').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(+b.dataset.v === S.size)); });
+    $('segMode').querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-checked', String(b.dataset.v === S.mode)); });
+    $('swHead').setAttribute('aria-checked', String(S.head));
+    $('swPrev').setAttribute('aria-checked', String(S.prev));
+    var n = present().length, sz = C.sizes(n, S.size);
+    $('headcount').textContent = n ? n + '人' + (S.absent.keys.length ? '（欠席' + S.absent.keys.length + '人を除く）' : '') : '';
+    $('sizesNote').textContent = n ? sizeText(sz) : '';
+    $('back').disabled = S.hist.length < 2;
+    $('absentCnt').textContent = S.absent.keys.length + '人';
+    $('rosterCnt').textContent = S.roster.length ? '今の名簿 ' + S.roster.length + '人' : '';
+    var c = cur(), w = [];
+    if (S.mode === 'sei' && C.noSpaceCount(S.roster)) w.push('姓と名の間に空白がない児童が' + C.noSpaceCount(S.roster) + '人います。その児童はフルネームで出します');
+    if (c && c.apartMiss) w.push('人数の都合で、離す組合せのうち' + c.apartMiss + '組を同じ組にしました');
+    if (c && c.size !== S.size) w.push('人数を変えました。「組み直す」で新しい組になります');
+    $('warn').textContent = w.join('。');
+    var live = mon && !mon.win.closed;
+    $('stageHead').classList.toggle('live', !!live);
+    $('stageText').textContent = live ? 'モニターに出しています（見本と同じもの）' : '見本（モニターに出していません）';
+    $('goMonitor').textContent = live ? 'モニターの窓を前に出す' : 'モニターに出す';
+  }
+  function sizeText(sz) {
+    var cnt = {}; sz.forEach(function (x) { cnt[x] = (cnt[x] || 0) + 1; });
+    return Object.keys(cnt).sort(function (a, b) { return b - a; }).map(function (k) { return k + '人×' + cnt[k] + '組'; }).join('・');
+  }
+  function renderAbsent() {
+    var box = $('absentList'); box.textContent = '';
+    S.roster.forEach(function (s) {
+      var b = document.createElement('button'); b.dataset.k = s.key;
+      b.textContent = s.disp + ' ' + s.name; b.title = b.textContent;
+      b.setAttribute('aria-pressed', String(S.absent.keys.indexOf(s.key) >= 0));
+      box.appendChild(b);
+    });
+  }
+  function renderApart() {
+    var m = byKey(), opts = '<option value="">選ぶ</option>' + S.roster.map(function (s) { return '<option value="' + esc(s.key) + '">' + esc(s.disp + ' ' + s.name) + '</option>'; }).join('');
+    $('apartA').innerHTML = opts; $('apartB').innerHTML = opts;
+    var box = $('apartList'); box.textContent = '';
+    S.apart.forEach(function (p, i) {
+      if (!m[p[0]] || !m[p[1]]) return;
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + esc(m[p[0]].disp + ' ' + m[p[0]].name) + ' と ' + esc(m[p[1]].disp + ' ' + m[p[1]].name) + '</span><button class="btn small" data-i="' + i + '">外す</button>';
+      box.appendChild(d);
+    });
+  }
+  function renderPrevNote() {
+    var u = S.used;
+    $('prevNote').textContent = u ? '前回：' + new Date(u.at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) + ' の ' + u.size + '人組（3分より長く映した案）' : '前回：まだありません（3分より長く映した案を前回とみなします）';
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---- 操作 ---- */
+  function setSize(v) { v = Math.max(C.MIN, Math.min(C.MAX, v)); if (v === S.size) return; S.size = v; save(); shuffle(); }
+  $('sizeDown').onclick = function () { setSize(S.size - 1); };
+  $('sizeUp').onclick = function () { setSize(S.size + 1); };
+  $('segSize').onclick = function (e) { var b = e.target.closest('button'); if (b) setSize(+b.dataset.v); };
+  $('segMode').onclick = function (e) { var b = e.target.closest('button'); if (b) { S.mode = b.dataset.v; save(); render(); } };
+  $('swHead').onclick = function () { S.head = !S.head; save(); render(); };
+  $('swPrev').onclick = function () { S.prev = !S.prev; save(); syncUi(); };
+  $('shuffle').onclick = shuffle;
+  $('back').onclick = back;
+  // スペースキーはどこにフォーカスがあっても「組み直す」（直前に押したボタンを押し直させない）。文字を書く欄だけ除く
+  function isTyping(t) { return /INPUT|TEXTAREA|SELECT/.test(t.tagName); }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== ' ' || isTyping(e.target)) return;
+    e.preventDefault(); if (!e.repeat) shuffle();
+  }, true);
+  document.addEventListener('keyup', function (e) { if (e.key === ' ' && !isTyping(e.target)) e.preventDefault(); }, true);
+  $('absentList').onclick = function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    var a = S.absent.keys, i = a.indexOf(b.dataset.k);
+    if (i >= 0) a.splice(i, 1); else a.push(b.dataset.k);
+    b.setAttribute('aria-pressed', String(i < 0));
+    save(); shuffle();
+  };
+  $('apartAdd').onclick = function () {
+    var a = $('apartA').value, b = $('apartB').value;
+    if (!a || !b || a === b) { $('apartA').focus(); return; }
+    if (!S.apart.some(function (p) { return C.key(p[0], p[1]) === C.key(a, b); })) S.apart.push([a, b]);
+    save(); renderApart(); $('apartA').value = ''; $('apartB').value = '';
+  };
+  $('apartList').onclick = function (e) { var b = e.target.closest('button'); if (b) { S.apart.splice(+b.dataset.i, 1); save(); renderApart(); } };
+
+  /* ---- 名簿を貼る ---- */
+  var parsed = null;
+  $('pasteBox').addEventListener('input', function () {
+    var t = this.value, out = $('pasteResult');
+    parsed = null; $('pasteOk').hidden = true; out.textContent = '';
+    if (!t.trim()) return;
+    var r = Paste.parseRoster(t, 0, { tempId: true });
+    var rows = r.rows.filter(function (x) { return x.name; });
+    if (r.errors.length && !rows.length) { out.innerHTML = '<div class="note bad">' + esc(r.errors.slice(0, 3).join('／')) + '</div>'; return; }
+    var clsSet = {}; rows.forEach(function (x) { clsSet[x.sp || x.cls] = 1; });
+    var multi = Object.keys(clsSet).length > 1;
+    parsed = rows.map(function (x) {
+      var s = { key: C.studentKey(x), no: x.no, name: x.name, disp: multi ? (x.sp || (x.cls + 1)) + '-' + x.no : String(x.no) };
+      if (x.sp) s.key = x.sp + '-' + x.no;
+      return s;
+    });
+    out.innerHTML = '<div class="note">' + rows.length + '人を読みました' + (multi ? '（' + Object.keys(clsSet).length + 'つの組。番号は「組-番号」で出します）' : '') + '。先頭の5人：</div>'
+      + '<table class="peek">' + parsed.slice(0, 5).map(function (s) { return '<tr><td>' + esc(s.disp) + '</td><td>' + esc(s.name) + '</td></tr>'; }).join('') + '</table>'
+      + (r.errors.length ? '<div class="note bad">読めなかった行：' + esc(r.errors.slice(0, 3).join('／')) + '</div>' : '');
+    $('pasteOk').hidden = !rows.length;
+  });
+  $('pasteOk').onclick = function () {
+    if (!parsed) return;
+    S.roster = parsed;
+    var m = byKey();
+    S.absent.keys = S.absent.keys.filter(function (k) { return m[k]; }); // 欠席・離す組合せは同じ鍵（組＋番号）の児童に引き継ぐ
+    S.hist = []; S.used = null;
+    $('pasteBox').value = ''; $('pasteResult').textContent = ''; $('pasteOk').hidden = true; parsed = null;
+    save(); renderAbsent(); renderApart(); shuffle();
+  };
+
+  /* ---- モニターに出す（教室の時計と同じ方式：拡張でつなぎ、映す面だけの窓をモニター側に開く） ---- */
+  async function openMonitor() {
+    if (mon && !mon.win.closed) { mon.win.focus(); return; }
+    var feat = 'popup,width=960,height=540', target = null;
+    try {
+      if (window.getScreenDetails) {
+        var sd = await window.getScreenDetails();
+        target = sd.screens.filter(function (s) { return s !== sd.currentScreen; })[0] || null;
+        if (target) feat = 'popup,left=' + target.availLeft + ',top=' + target.availTop + ',width=' + target.availWidth + ',height=' + target.availHeight;
+      }
+    } catch (e) {}
+    var w = window.open('', 'group-maker-monitor', feat);
+    if (!w) { $('monNote').hidden = false; $('monNote').textContent = 'ポップアップが止められました。アドレスバー右の印から「常に許可」を選んで、もう一度押してください。'; return; }
+    $('monNote').hidden = true;
+    var d = w.document;
+    d.open();
+    d.write('<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>グループ分け（モニター）</title><style>html,body{margin:0;height:100%;overflow:hidden}'
+      + document.querySelector('style').textContent.split('/* ---- 操作画面')[0] + '</style></head><body><div id="m" style="width:100vw;height:100vh"></div></body></html>');
+    d.close();
+    mon = { win: w, view: GroupView.create(d, d.getElementById('m')) };
+    d.addEventListener('click', function () { // 全画面はモニター側の窓を1回押してから（ブラウザの決まり）
+      if (d.fullscreenElement) return;
+      var el = d.documentElement; try { target ? el.requestFullscreen({ screen: target }) : el.requestFullscreen(); } catch (e) {}
+    });
+    d.addEventListener('keydown', function (e) { if (e.key === ' ') { e.preventDefault(); shuffle(); } });
+    w.addEventListener('beforeunload', function () { setTimeout(syncUi, 50); });
+    render();
+  }
+  $('goMonitor').onclick = openMonitor;
+  setInterval(function () { if (mon && mon.win.closed) { mon = null; syncUi(); } }, 1000);
+
+  /* ---- はじめ ---- */
+  renderAbsent(); renderApart(); renderPrevNote();
+  if (!S.roster.length) $('dSet').open = true;
+  if (S.roster.length && !cur()) shuffle(); else render();
+  window.__gm = { S: S, shuffle: shuffle }; // テスト用
+})();
+</script>
+</body>
+</html>
