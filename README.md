@@ -12,6 +12,7 @@
 | [回収チェック表](apps/collection-check/) | 同意書・集金などの回収を名簿×品目の表で追う | [概要](apps/collection-check/README.md) |
 | [教室の時計](apps/classroom-clock/) | 教室のモニターに時計・タイマー・ストップウォッチを映す。操作は手元のPCだけ | [概要](apps/classroom-clock/README.md) |
 | [クラス替え](apps/class-split/) | 学年の名簿（配慮項目・事案・経年の記録）とクラス替えの案づくり・入れ替え・決定（見本） | [概要](apps/class-split/README.md) |
+| [スライド1枚目まとめ印刷](apps/slide-print/) | Classroomで提出されたGoogleスライドの1枚目を一括で画像化して印刷する（GAS） | [概要](apps/slide-print/README.md) |
 
 机の配置図は、場所（体育館・プールなど）と体育館の用具の立体を足して、別リポジトリ flow-line-guide の `apps/haichi/`（配置図）へ移しました。
 
