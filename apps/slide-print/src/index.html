@@ -39,18 +39,20 @@ input[type=text]:focus{outline:none;border-color:var(--accent)}
 .pg img{width:100%;display:block;border-radius:4px}
 .pg .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px}
 .pg.err{color:var(--err);border-color:var(--err)}
-@page land{size:A4 landscape;margin:8mm}
-@page port{size:A4 portrait;margin:8mm}
+#sheets{display:none}
+.opt{display:grid;grid-template-columns:96px 1fr;align-items:center;gap:8px;margin-bottom:8px}
+.opt .seg{margin-top:0}
+.opt span{font-size:15px}
 @media print{
   body{background:#fff}
-  main{max-width:none;padding:0}
-  h1,.lead,#s1,#s2 .ttl,#s2 .sw,#s2 .btn,.cnt,.pg.err,.pg.skip{display:none}
-  .step{padding:0;margin:0;border-radius:0}
-  #pages{display:block;margin:0}
-  .pg{opacity:1;border:0;border-radius:0;padding:0;height:100vh;display:flex;flex-direction:column;break-after:page;font-size:12pt}
-  .pg.l{page:land}.pg.p{page:port}
-  .pg img{flex:1;min-height:0;object-fit:contain;border-radius:0}
-  body:not(.shownm) .nm{display:none}
+  main{display:none}
+  #sheets{display:block}
+  .sheet{display:grid;gap:4mm;break-after:page;overflow:hidden}
+  .sheet:last-child{break-after:auto}
+  .cell{display:flex;flex-direction:column;min-width:0;min-height:0}
+  .cell .nm{font-size:10pt;line-height:1.3}
+  .cell img{flex:1;min-height:0;width:100%;object-fit:contain}
+  body:not(.shownm) .cell .nm{display:none}
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16181c;--card:#22252b;--ink:#e8eaed;--sub:#a0a6ae;--line:#3a3f47}}
 </style></head><body class="shownm">
@@ -76,18 +78,57 @@ input[type=text]:focus{outline:none;border-color:var(--accent)}
 
   <section class="step off" id="s2">
     <div class="ttl"><span class="no">2</span>印刷する</div>
+    <div class="opt"><span>用紙</span><div class="seg" id="paper" data-k="paper">
+      <button data-v="A4">A4</button><button data-v="B5">B5</button><button data-v="A3">A3</button><button data-v="B4">B4</button></div></div>
+    <div class="opt"><span>1ページに</span><div class="seg" id="per" data-k="per">
+      <button data-v="1">1枚</button><button data-v="2">2枚</button><button data-v="4">4枚</button><button data-v="6">6枚</button></div></div>
+    <div class="opt"><span>余白</span><div class="seg" id="mar" data-k="mar" style="grid-template-columns:repeat(3,1fr)">
+      <button data-v="5">せまい</button><button data-v="12">ふつう</button><button data-v="30">広い</button></div></div>
     <label class="sw" for="nm">名前も印刷する<button id="nm" role="switch" aria-checked="true"></button></label>
     <button class="btn big" id="pr" data-flow="3">印刷</button>
     <p class="cnt" id="cnt"></p>
     <div id="pages"></div>
   </section>
 </main>
+<div id="sheets"></div>
+<style id="pagecss"></style>
 <script>
 var $=function(id){return document.getElementById(id)};
 function run(fn){var a=[].slice.call(arguments,1);return new Promise(function(ok,ng){var r=google.script.run;if(typeof r[fn]!=='function')return ng(new Error('サーバーに「'+fn+'」がありません。Code.gs を貼り直してください'));var h=r.withSuccessHandler(ok).withFailureHandler(ng);h[fn].apply(h,a)})}
 function msg(t,err){$('msg').textContent=t;$('msg').className=err?'err':''}
 $('nm').onclick=function(e){e.preventDefault();var on=this.getAttribute('aria-checked')!=='true';this.setAttribute('aria-checked',on);document.body.classList.toggle('shownm',on)};
-$('pr').onclick=function(){window.print()};
+var opt={paper:'A4',per:'1',mar:'12'};
+try{Object.assign(opt,JSON.parse(localStorage.getItem('slidePrintOpt')||'{}'))}catch(e){}
+['paper','per','mar'].forEach(function(k){
+  var g=$(k);
+  function show(){[].forEach.call(g.children,function(b){b.setAttribute('aria-pressed',b.dataset.v===opt[k])})}
+  [].forEach.call(g.children,function(b){b.onclick=function(){opt[k]=b.dataset.v;show();try{localStorage.setItem('slidePrintOpt',JSON.stringify(opt))}catch(e){}}});
+  show();
+});
+var PAPER={A4:[210,297],B5:[182,257],A3:[297,420],B4:[257,364]};
+// 縦長スライド(p)と横長(l)で、用紙の向きと並べ方を決める。[用紙を横にするか, 列, 行]
+var GRID={p:{1:[0,1,1],2:[1,2,1],4:[0,2,2],6:[1,3,2]},l:{1:[1,1,1],2:[0,1,2],4:[1,2,2],6:[0,2,3]}};
+function buildSheets(){
+  var per=+opt.per,m=+opt.mar,pp=PAPER[opt.paper],box=$('sheets');box.innerHTML='';
+  var items=[].filter.call($('pages').querySelectorAll('.pg'),function(d){return !d.classList.contains('skip')&&!d.classList.contains('err')});
+  var sheet=null,ori=null,cnt=0;
+  items.forEach(function(d){
+    var o=d.classList.contains('l')?'l':'p';
+    if(!sheet||o!==ori||cnt===per){
+      ori=o;cnt=0;var g=GRID[o][per],land=g[0];
+      var w=(land?pp[1]:pp[0])-2*m,h=(land?pp[0]:pp[1])-2*m-1;
+      sheet=document.createElement('div');sheet.className='sheet';
+      sheet.style.cssText='page:'+(land?'L':'P')+';width:'+w+'mm;height:'+h+'mm;grid-template-columns:repeat('+g[1]+',1fr);grid-template-rows:repeat('+g[2]+',1fr)';
+      box.appendChild(sheet);
+    }
+    var c=document.createElement('div');c.className='cell';
+    c.innerHTML='<div class="nm"></div>';c.firstChild.textContent=d.querySelector('.nm').textContent;
+    c.appendChild(d.querySelector('img').cloneNode());sheet.appendChild(c);cnt++;
+  });
+  $('pagecss').textContent='@page L{size:'+pp[1]+'mm '+pp[0]+'mm;margin:'+m+'mm}@page P{size:'+pp[0]+'mm '+pp[1]+'mm;margin:'+m+'mm}';
+}
+$('pr').onclick=function(){buildSheets();setTimeout(function(){window.print()},50)};
+window.addEventListener('beforeprint',buildSheets);
 $('url').addEventListener('paste',function(){setTimeout(load,0)});
 $('url').addEventListener('keydown',function(e){if(e.key==='Enter')load()});
 $('go').onclick=load;
