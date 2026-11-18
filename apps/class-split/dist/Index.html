@@ -835,8 +835,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
 .dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}
 
-/* 放置の覆い：ありきたりのプリントに見せる（fakeprint.js）。中身が透けない不透明。1秒の長押しで戻る */
-#idle { position: fixed; inset: 0; z-index: 2147483001; background: #d9dcdf; overflow: auto; padding: 24px 16px; box-sizing: border-box; -webkit-user-select: none; user-select: none; touch-action: manipulation; }
+/* 放置の覆い：ありきたりのプリントに見せる（fakeprint.js）。中身が透けない不透明。押すと戻る */
+#idle { position: fixed; inset: 0; z-index: 2147483001; background: #d9dcdf; overflow: auto; padding: 24px 16px; box-sizing: border-box; cursor: pointer; }
 #idle[hidden] { display: none; }
 .fp-paper { background: #fff; color: #111; max-width: 760px; margin: 0 auto; padding: 28px 36px 40px; box-shadow: 0 1px 4px rgba(0,0,0,.25); font-family: "UD デジタル 教科書体 N-R", "BIZ UDPGothic", "Hiragino Maru Gothic ProN", sans-serif; line-height: 1.7; }
 .fp-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; border-bottom: 2px solid #111; padding-bottom: 6px; margin-bottom: 14px; flex-wrap: wrap; }
@@ -865,7 +865,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
-<div id="idle" hidden aria-label="画面を隠しています（1秒長押しで戻る）"></div>
+<div id="idle" hidden aria-label="画面を隠しています（押すと戻る）"></div>
 <div class="toast" id="toast" hidden></div>
 <script>
 /* ▼ src/config.js から。直すのは src のほう ▼ */
@@ -6256,16 +6256,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var IDLE_MIN = 3, idleAt = Date.now();
   var touch = function () { idleAt = Date.now(); };
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
-  // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。戻すのは1秒の長押し（児童が触っただけでは戻らない）
+  // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。1回押すと戻る（利用者の判断）
   var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
   setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
   document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
-  var holdT = 0, cvEl = App.$('idle');
-  var holdEnd = function () { clearTimeout(holdT); holdT = 0; };
-  cvEl.addEventListener('pointerdown', function (e) { e.stopPropagation(); holdEnd(); holdT = setTimeout(function () { cvEl.hidden = true; cvEl.innerHTML = ''; touch(); }, 1000); });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { cvEl.addEventListener(ev, holdEnd); });
-  cvEl.addEventListener('click', function (e) { e.stopPropagation(); });
-  cvEl.addEventListener('contextmenu', function (e) { e.preventDefault(); }); // 長押しでメニューが出ないように
+  var cvEl = App.$('idle');
+  cvEl.addEventListener('click', function (e) { e.stopPropagation(); cvEl.hidden = true; cvEl.innerHTML = ''; touch(); });
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);
