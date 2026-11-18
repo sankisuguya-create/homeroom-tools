@@ -282,7 +282,7 @@
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
       var name = String(x.name || '').trim(), id = String(x.id || '').trim();
       if (!name) return Promise.reject(new Error('名前を入れてください'));
-      if (id && !/^\d{8}$/.test(id)) return Promise.reject(new Error('児童IDは数字8桁です（分からなければ空のまま）'));
+      if (id && !C.isKidId(id)) return Promise.reject(new Error('児童IDは英数字20文字までです（分からなければ空のまま）'));
       if (id && S.kids[id]) return Promise.reject(new Error('その児童IDはもう使われています'));
       if (!id) { var n = 1; while (S.kids['T' + FY + ('00' + n).slice(-3)]) n++; id = 'T' + FY + ('00' + n).slice(-3); }
       var t = { id: id, name: name, kana: String(x.kana || '').trim(), male: !!x.male };
@@ -384,7 +384,7 @@
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
-    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; })); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
+    suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
     devices: function () { return later({ list: [], window: null, mine: '', demo: true }); },
     openDeviceWindow: function () { return later({ until: new Date(Date.now() + 600000).toISOString() }); },
@@ -405,7 +405,7 @@
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;
-        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: (S.kids[x.id] || {}).area || '' };
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '' };
         if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
         else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
