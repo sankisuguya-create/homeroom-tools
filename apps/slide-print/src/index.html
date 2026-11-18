@@ -1,66 +1,115 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8">
+<html lang="ja"><head><meta charset="utf-8">
 <style>
-body{font-family:sans-serif;margin:0;background:#f4f4f4;color:#222}
-.bar{position:sticky;top:0;background:#fff;padding:12px 16px;box-shadow:0 1px 4px #0002;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-input[type=text]{flex:1;min-width:240px;font-size:16px;padding:10px;border:1px solid #999;border-radius:6px}
-button{font-size:16px;padding:10px 18px;border:0;border-radius:6px;background:#1a73e8;color:#fff;cursor:pointer}
-button:disabled{background:#aaa}
-label{font-size:15px}
-#msg{width:100%;font-size:15px}
-#pages{padding:16px;display:flex;flex-direction:column;align-items:center;gap:16px}
-.pg{background:#fff;box-shadow:0 1px 4px #0003;padding:8px;width:min(100%,700px)}
-.pg img{width:100%;display:block}
-.pg .nm{font-size:13px;margin-bottom:4px}
-.pg.err{color:#c00}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1f2328;--sub:#5f6670;--line:#d0d5dc;--accent:#1a73e8;--accent-ink:#fff;--err:#c62828}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.6}
+main{max-width:640px;margin:0 auto;padding:48px 16px 64px}
+h1{font-size:24px;font-weight:700;margin:0 0 8px}
+.lead{color:var(--sub);margin:0 0 32px}
+.step{background:var(--card);border-radius:16px;padding:24px;margin-bottom:24px}
+.step.off{opacity:.4;pointer-events:none}
+.no{display:inline-flex;width:32px;height:32px;border-radius:50%;background:var(--accent);color:var(--accent-ink);align-items:center;justify-content:center;font-weight:700;margin-right:8px}
+.ttl{display:flex;align-items:center;font-size:18px;font-weight:700;margin-bottom:16px}
+.row{display:flex;gap:8px}
+input[type=text]{flex:1;min-width:0;height:56px;font-size:16px;padding:0 16px;border:2px solid var(--line);border-radius:12px;background:#fff}
+input[type=text]:focus{outline:none;border-color:var(--accent)}
+.btn{height:56px;min-width:120px;font-size:17px;font-weight:700;border:0;border-radius:12px;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+.btn:disabled{background:var(--line);cursor:default}
+.btn.big{width:100%;height:64px;font-size:20px}
+details{margin-top:16px;color:var(--sub);font-size:14px}
+summary{cursor:pointer;min-height:48px;display:flex;align-items:center}
+.bar{height:8px;background:var(--line);border-radius:4px;overflow:hidden;margin-top:16px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+#msg{margin-top:8px;color:var(--sub);font-size:14px;min-height:24px}
+#msg.err{color:var(--err)}
+.sw{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-bottom:16px;cursor:pointer}
+.sw button{width:56px;height:32px;border-radius:16px;border:0;background:var(--line);position:relative;cursor:pointer}
+.sw button::after{content:"";position:absolute;top:4px;left:4px;width:24px;height:24px;border-radius:50%;background:#fff;transition:left .15s}
+.sw button[aria-checked=true]{background:var(--accent)}
+.sw button[aria-checked=true]::after{left:28px}
+#pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:24px}
+.pg{background:#fff;border:1px solid var(--line);border-radius:8px;padding:4px;font-size:12px;overflow:hidden}
+.pg img{width:100%;display:block;border-radius:4px}
+.pg .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:2px}
+.pg.err{color:var(--err);border-color:var(--err)}
 @page land{size:A4 landscape;margin:8mm}
 @page port{size:A4 portrait;margin:8mm}
 @media print{
-  .bar,.pg.err{display:none}
   body{background:#fff}
-  #pages{padding:0;display:block}
-  .pg{box-shadow:none;padding:0;width:auto;height:100vh;display:flex;flex-direction:column;break-after:page}
+  main{max-width:none;padding:0}
+  h1,.lead,#s1,#s2 .ttl,#s2 .sw,#s2 .btn,.pg.err{display:none}
+  .step{padding:0;margin:0;border-radius:0}
+  #pages{display:block;margin:0}
+  .pg{border:0;border-radius:0;padding:0;height:100vh;display:flex;flex-direction:column;break-after:page;font-size:12pt}
   .pg.l{page:land}.pg.p{page:port}
-  .pg img{flex:1;min-height:0;width:100%;object-fit:contain}
+  .pg img{flex:1;min-height:0;object-fit:contain;border-radius:0}
   body:not(.shownm) .nm{display:none}
 }
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#16181c;--card:#22252b;--ink:#e8eaed;--sub:#a0a6ae;--line:#3a3f47}}
 </style></head><body class="shownm">
-<div class="bar">
-  <input id="url" type="text" placeholder="課題フォルダのURLを貼る">
-  <button id="go">読み込む</button>
-  <button id="pr" disabled>印刷</button>
-  <label><input id="nm" type="checkbox" checked> 名前を印刷</label>
-  <div id="msg">Driveの「Classroom」→ 授業 → 課題 のフォルダを開き、そのURLを貼ってください。</div>
-</div>
-<div id="pages"></div>
+<main>
+  <h1>スライド1枚目まとめ印刷</h1>
+  <p class="lead">Classroomで集めたスライドの1枚目だけを、まとめて印刷します。</p>
+
+  <section class="step" id="s1">
+    <div class="ttl"><span class="no">1</span>課題フォルダのURLを貼る</div>
+    <div class="row">
+      <input id="url" type="text" placeholder="https://drive.google.com/drive/folders/…" data-flow="1" autocomplete="off">
+      <button class="btn" id="go" data-flow="2">読み込む</button>
+    </div>
+    <div class="bar" hidden id="bar"><i></i></div>
+    <div id="msg"></div>
+    <details>
+      <summary>フォルダはどこ？</summary>
+      Googleドライブ →「Classroom」→ 授業名 → 課題名 のフォルダを開き、アドレスバーのURLをコピーします。
+    </details>
+  </section>
+
+  <section class="step off" id="s2">
+    <div class="ttl"><span class="no">2</span>印刷する</div>
+    <label class="sw" for="nm">名前も印刷する<button id="nm" role="switch" aria-checked="true"></button></label>
+    <button class="btn big" id="pr" data-flow="3">印刷</button>
+    <div id="pages"></div>
+  </section>
+</main>
 <script>
 var $=function(id){return document.getElementById(id)};
-function run(fn,arg){return new Promise(function(ok,ng){google.script.run.withSuccessHandler(ok).withFailureHandler(ng)[fn](arg)})}
-$('nm').onchange=function(){document.body.classList.toggle('shownm',this.checked)};
+function run(fn,arg){return new Promise(function(ok,ng){var r=google.script.run;if(typeof r[fn]!=='function')return ng(new Error('サーバーに「'+fn+'」がありません'));r.withSuccessHandler(ok).withFailureHandler(ng)[fn](arg)})}
+function msg(t,err){$('msg').textContent=t;$('msg').className=err?'err':''}
+$('nm').onclick=function(e){e.preventDefault();var on=this.getAttribute('aria-checked')!=='true';this.setAttribute('aria-checked',on);document.body.classList.toggle('shownm',on)};
 $('pr').onclick=function(){window.print()};
-$('go').onclick=async function(){
-  $('go').disabled=$('pr').disabled=true;$('pages').innerHTML='';
+$('url').addEventListener('paste',function(){setTimeout(load,0)});
+$('url').addEventListener('keydown',function(e){if(e.key==='Enter')load()});
+$('go').onclick=load;
+var busy=false;
+async function load(){
+  if(busy||!$('url').value.trim())return;
+  busy=true;$('go').disabled=true;$('s2').classList.add('off');$('pages').innerHTML='';
+  var bar=$('bar'),fill=bar.firstChild;bar.hidden=false;fill.style.width='0';
   try{
+    msg('フォルダを確認しています…');
     var r=await run('apiListFiles',$('url').value);
-    if(!r.files.length) throw new Error('スライドが見つかりません');
-    var ng=0,loads=[];
-    for(var i=0;i<r.files.length;i++){
+    if(!r.files.length)throw new Error('このフォルダにスライドがありません');
+    var ng=0,loads=[],n=r.files.length;
+    for(var i=0;i<n;i++){
       var f=r.files[i];
-      $('msg').textContent=r.folder+'：'+(i+1)+' / '+r.files.length+' 件目を読み込み中…';
+      msg('読み込み中 '+(i+1)+' / '+n);
       var d=document.createElement('div');d.className='pg';
       d.innerHTML='<div class="nm"></div>';d.firstChild.textContent=f.label;
       $('pages').appendChild(d);
       try{
         var t=await run('apiThumb',f.id);
         d.classList.add(t.w>=t.h?'l':'p');
-        var img=new Image();img.src=t.url;d.appendChild(img);
+        var img=new Image();img.alt='';img.src=t.url;d.appendChild(img);
         loads.push(new Promise(function(ok){img.onload=img.onerror=ok}));
-      }catch(e){ng++;d.classList.add('err');d.appendChild(document.createTextNode('読み込めませんでした（'+e.message+'）'));}
+      }catch(e){ng++;d.classList.add('err');d.appendChild(document.createTextNode('読み込めません'));}
+      fill.style.width=((i+1)/n*100)+'%';
     }
     await Promise.all(loads);
-    $('msg').textContent=r.folder+'：'+(r.files.length-ng)+'件 準備完了'+(ng?'（'+ng+'件失敗・印刷されません）':'')+'。「印刷」を押してください。';
-    $('pr').disabled=false;
-  }catch(e){$('msg').textContent='エラー：'+e.message}
-  $('go').disabled=false;
-};
+    msg(r.folder+'：'+(n-ng)+'人分そろいました'+(ng?'（赤枠の'+ng+'件は印刷されません）':''),ng>0);
+    $('s2').classList.remove('off');$('pr').focus();
+  }catch(e){msg(e.message.indexOf('URL')>=0||e.message.indexOf('スライド')>=0?e.message:'読み込めませんでした。URLを確かめてください（'+e.message+'）',true);bar.hidden=true}
+  busy=false;$('go').disabled=false;
+}
 </script></body></html>
