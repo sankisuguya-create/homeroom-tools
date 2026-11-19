@@ -55,3 +55,10 @@ function retry_(fn) {
     }
   }
 }
+
+// PDF用：サムネイルの画像を data URL で返す（画面側の canvas に描くため）
+function apiImage(url) {
+  if (!/^https:\/\/[\w.-]+\.googleusercontent\.com\//.test(String(url))) throw new Error('画像のURLが正しくありません');
+  var b = UrlFetchApp.fetch(url).getBlob();
+  return 'data:' + b.getContentType() + ';base64,' + Utilities.base64Encode(b.getBytes());
+}
