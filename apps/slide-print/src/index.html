@@ -182,7 +182,7 @@ async function load(keepOff){
     msg('フォルダを確認しています…');
     var r=await run('apiListFiles',$('url').value);
     if(!r.files.length)throw new Error('このフォルダにスライドがありません');
-    var ng=0,loads=[],n=r.files.length,t0=Date.now(),size=which==='all'?'MEDIUM':'LARGE';
+    var firstErr='',ng=0,loads=[],n=r.files.length,t0=Date.now(),size=which==='all'?'MEDIUM':'LARGE';
     for(var i=0;i<n;i++){
       var f=r.files[i];
       var eta=i>=2?Math.ceil((Date.now()-t0)/i*(n-i)/1000):0;
@@ -199,13 +199,13 @@ async function load(keepOff){
           var img=new Image();img.alt='';img.src=t.url;d.appendChild(img);
           loads.push(new Promise(function(ok){img.onload=img.onerror=ok}));
         });
-      }catch(e){ng++;var d=card(f.label);d.classList.add('err');d.appendChild(document.createTextNode(e.message.indexOf('枚目')>=0?e.message:'読み込めません'));}
+      }catch(e){ng++;var em=String(e&&e.message||e);if(!firstErr)firstErr=em;var d=card(f.label);d.classList.add('err');d.appendChild(document.createTextNode(em.indexOf('枚目')>=0?em:'読み込めません：'+em));}
       fill.style.width=((i+1)/n*100)+'%';
     }
     await Promise.all(loads);
     loadedAt=Date.now();saveHist($('url').value.trim(),r.folder);
     var people=r.files.filter(function(f){return !f.template}).length;
-    msg(r.folder+'：'+people+'人分'+(ng?'（赤枠の'+ng+'件は読み込めず、印刷されません）':'')+(keepOff?'。もう一度「印刷」を押してください':''),ng>0);
+    msg(r.folder+'：'+people+'人分'+(ng?'（赤枠の'+ng+'件は読み込めず、印刷されません）':'')+(keepOff?'。もう一度「印刷」を押してください':'')+(firstErr&&firstErr.indexOf('枚目')<0?' ／ 原因：'+firstErr:''),ng>0);
     $('s2').classList.remove('off');count();$('pr').focus();
   }catch(e){msg(e.message.indexOf('URL')>=0||e.message.indexOf('スライド')>=0?e.message:'読み込めませんでした。URLを確かめてください（'+e.message+'）',true);bar.hidden=true}
   busy=false;$('go').disabled=false;
