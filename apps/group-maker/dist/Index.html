@@ -183,6 +183,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     sex: ['性別', '男女'],
     cls: ['組', 'クラス', '学級'],
     no: ['出席番号', '番号', '番', 'no'],
+    birth: ['生年月日', '誕生日'],
     id2: ['生徒管理コード'], // 児童IDの列が空の時に代わりに使う（校務システムの書き出し）
     grade: ['学年'],
     // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
@@ -191,13 +192,14 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
     fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
   };
-  var LABEL = { id: '児童ID', id2: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
+  var LABEL = { birth: '生年月日', sib: '兄弟', id: '児童ID', id2: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
     sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
   // 名前・よみとして使える列（どれか1つでもあればよい）
   var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
   function norm(h) { return String(h).replace(/[\s　]/g, '').toLowerCase(); }
   function roleOfHeader(h) {
     var n = norm(h);
+    if (/^兄弟[0-9０-９]*$/.test(n)) return 'sib'; // 校務システム：兄弟1・兄弟2…（3人以上は右に列が増える）
     for (var r in NAMES) if (NAMES[r].some(function (x) { return norm(x) === n; })) return r;
     return null;
   }
@@ -257,6 +259,24 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
   function areaOf(town) {
     return toHalf(town).replace(/[\s　]/g, '').replace(/[0-9０-９].*$/, '').replace(/[一二三四五六七八九十〇]+丁目.*$/, '').replace(/[-－ー‐丁目番地号の]+$/, '').slice(0, 20);
   }
+  // 兄弟の欄「学年-組-番号 名前」（例「5-1-1 会田さとる」）を読む。読めなければ null
+  function sibOf(v) {
+    var m = toHalf(v).replace(/[ー－‐−]/g, '-').match(/^(\d{1,2})\s*-\s*(\d{1,2})\s*-\s*(\d{1,2})\s*(.*)$/);
+    if (!m || !(+m[1] >= 1 && +m[1] <= 6)) return null;
+    return { g: +m[1], cls: +m[2], no: +m[3], n: m[4].trim().slice(0, 20) };
+  }
+  // 続柄：年上か年下か（学年）と、兄弟の性別（貼った表の中の同じ学年・組・番号の行）で決める。性別が分からなければ '?'（サーバーが名簿から探す）
+  function relOf(sibG, ownG, sex) {
+    var older = sibG >= ownG; // 同じ学年（双子）は兄・姉とする
+    if (sex === '男') return older ? '兄' : '弟';
+    if (sex === '女') return older ? '姉' : '妹';
+    return '?';
+  }
+  // 生年月日：「2018/04/02」「2018-4-2」「2018年4月2日」は 2018/4/2 にそろえる。読めない形はそのまま（20文字まで）
+  function birthOf(v) {
+    var s = toHalf(v).replace(/[－‐−ー]/g, '-').replace(/[／]/g, '/').trim(), m = s.match(/^(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/);
+    return m ? m[1] + '/' + (+m[2]) + '/' + (+m[3]) : s.slice(0, 20);
+  }
   function gradeOf(v) { var s = toHalf(v).replace(/年(生)?$/, ''); return /^[1-6]$/.test(s) ? +s : null; }
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no,sp}], errors: [文], counts: {男,女},
@@ -280,6 +300,11 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     var cell = function (r, k) { return col[k] != null ? String(r[col[k]] || '').trim() : ''; };
     var join = function (a, b) { return (a + ' ' + b).trim(); };
     var filterGrade = col.grade != null && opt.grade != null && +opt.grade > 0;
+    // 兄弟：列（兄弟1・兄弟2…）を全部集め、表の全部の行から「学年-組-番号 → 性別」を作る（学年で絞る前に）
+    var sibCols = []; roles.forEach(function (x, c) { if (x === 'sib') sibCols.push(c); });
+    var sexAt = {}, idAt = {};
+    if (sibCols.length && col.grade != null && col.cls != null && col.no != null)
+      body.forEach(function (r) { var k = gradeOf(cell(r, 'grade')) + '-' + toHalf(cell(r, 'cls')).replace(/組$/, '') + '-' + toHalf(cell(r, 'no')); sexAt[k] = sexOf(r[col.sex] || ''); idAt[k] = idOf(cell(r, 'id') || cell(r, 'id2')); });
     body.forEach(function (r, i) {
       var line = (header ? i + 2 : i + 1) + '行目：';
       // 名前：名前 → 姓＋名 → 正式名前 → 正式姓＋正式名（空欄の多い表でも、埋まっている列を使う）
@@ -304,9 +329,15 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
       if (sp) nsp++;
       var o = { id: id, name: name, kana: kana, male: sex === '男', sex: sex, cls: cls, no: no || 0 };
       if (sp) o.sp = sp;
+      if (sibCols.length) {
+        var own = filterGrade ? +opt.grade : (opt.grade != null ? +opt.grade : gradeOf(cell(r, 'grade')) || 0), sibs = [];
+        sibCols.forEach(function (c) { var sb = sibOf(r[c] || ''); if (sb) { var kk = sb.g + '-' + sb.cls + '-' + sb.no; sb.r = relOf(sb.g, own, sexAt[kk] || ''); if (idAt[kk]) sb.id = idAt[kk]; sibs.push(sb); } }); // 学年・組・番号は兄弟の児童を探す（結び付ける）ためだけに使う
+        if (sibs.length) o.sib = sibs.slice(0, 8);
+      }
       // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から
       var town = cell(r, 'town'), addr = cell(r, 'addr') || (cell(r, 'pref') + cell(r, 'city') + town + (cell(r, 'apt') ? ' ' + cell(r, 'apt') : '')).trim();
       if (addr) { o.addr = addr.slice(0, 200); o.area = areaOf(town); }
+      var bd = birthOf(cell(r, 'birth')); if (bd) o.birth = bd;
       rows.push(o);
     });
     // 番号が無ければ貼った順に振る

@@ -10,12 +10,12 @@
 .bic{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .tab .x{border:0;background:none;color:var(--sub);cursor:pointer;padding:0 2px;line-height:1}
 .tab.cmp{border-style:dashed}
-.vio{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.vio{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .vio.has{border-color:var(--alert);color:var(--alert);background:var(--alert-soft);font-weight:700}
 .hint{flex:1;min-width:0;font-size:.95rem;color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hint b{color:var(--ink)}
 .hint.follow{color:var(--ink);font-weight:700}
-.decided{background:var(--soft);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
+.decided{background:var(--soft);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;font-size:.9rem;display:flex;gap:10px;align-items:center}
 .board{flex:1;min-height:0;overflow:hidden;position:relative}
 .cols{height:100%;display:grid;grid-template-columns:repeat(var(--nc),minmax(0,1fr));gap:6px}
 

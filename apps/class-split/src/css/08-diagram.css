@@ -114,3 +114,6 @@ table.r th .sa b{display:inline-block;min-width:1.2em;border-radius:50%;backgrou
 .setcols{display:flex;gap:28px;flex-wrap:wrap}
 .setrow{display:flex;flex-direction:column;gap:4px;margin:8px 0;max-width:640px}
 .setrow input{padding:5px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
+.nmk{display:block;font-size:.62em;line-height:1.1;color:var(--sub);font-weight:400;overflow:hidden;text-overflow:ellipsis}
+.kedit{border:0;background:none;color:var(--link);cursor:pointer;font:inherit;padding:0 2px}
+.rlock[aria-pressed="true"]{background:var(--fill)}

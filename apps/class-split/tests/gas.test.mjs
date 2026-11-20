@@ -368,10 +368,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiListGrades').ok, true, 'resetDevices で制限が外れる');
 
     // 児童IDは8桁に限らない。住所（全文と町名）が名簿に入り、住所の無い表を貼り直しても消えない
-    const ad = call('apiImportRoster', FY, 4, [{ id: 'A123', name: '住所 タロウ', kana: 'じゅうしょ たろう', male: true, cls: 0, no: 10, addr: '大阪府西市中央三丁目5-2', area: '中央' }]);
+    const ad = call('apiImportRoster', FY, 4, [{ id: 'A123', name: '住所 タロウ', kana: 'じゅうしょ たろう', male: true, cls: 0, no: 10, addr: '大阪府西市中央三丁目5-2', area: '中央', birth: '2017/5/6' }]);
     assert.ok(ad.ok, ad.err);
     const kA = call('apiBoot', 4).v.kids.A123;
-    assert.ok(kA && kA.addr === '大阪府西市中央三丁目5-2' && kA.area === '中央', '住所と町名が名簿に入る（8桁でない児童IDでも）');
+    assert.ok(kA && kA.addr === '大阪府西市中央三丁目5-2' && kA.area === '中央' && kA.birth === '2017/5/6', '住所・町名・生年月日が名簿に入る（8桁でない児童IDでも）');
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'A123', name: '住所 タロウ', kana: 'じゅうしょ たろう', male: true, cls: 0, no: 10 }]).ok);
     assert.equal(call('apiBoot', 4).v.kids.A123.addr, '大阪府西市中央三丁目5-2', '住所の無い表を貼り直しても消えない');
     assert.equal(call('apiImportRoster', FY, 4, [{ id: 'A 1', name: 'x', cls: 0, no: 1 }]).ok, false, '空白を含む児童IDは断る');
@@ -389,6 +389,28 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.match(stt, /○ 控え/); assert.match(stt, /○ 毎週の控えのきっかけ/);
     assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
 
+    // 兄弟：続柄が分からない兄弟（'?'）は今年度の名簿の同じ学年・組・番号の児童の性別で決め、配慮項目の表に入る
+    const sb0 = call('apiImportRoster', FY, 4, [{ id: 'SB1', name: '兄弟 太', kana: '', male: true, cls: 0, no: 60, sib: [{ r: '?', g: 5, cls: 1, no: 1, n: '児童' }, { r: '?', g: 1, cls: 9, no: 9, n: '不明' }] }]);
+    assert.ok(sb0.ok, sb0.err);
+    const sbA = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB1').a.sib;
+    assert.equal(sbA.length, 2); assert.equal(sbA[0].g, 5); assert.ok(['兄', '姉'].includes(sbA[0].r), '年上は兄か姉'); assert.equal(sbA[1].r, '弟', '名簿にいない年下は弟（画面で直せる）');
+
+    // 兄弟の学年は、結び付いた兄弟の今の名簿から読む（年度が替われば上がる）。組の振り分け（交流級）
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'SB2', name: '兄弟 次', kana: '', male: true, cls: 0, no: 61, sib: [{ r: '?', g: 3, cls: 1, no: 1, n: '古い名前', id: '40000011' }] }]).ok);
+    const sb2 = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').a.sib[0];
+    assert.deepEqual([sb2.g, sb2.n, sb2.id], [4, '児童11', '40000011'], '学年と名前は兄弟の児童の名簿から');
+    const mv = call('apiSetKidClass', FY, 4, 'SB2', 1);
+    assert.ok(mv.ok, mv.err);
+    assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, 1, '組を移せる（交流級の振り分け）');
+
+    // 名前・よみ・組・番号を直す（児童IDは変えない）
+    const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });
+    assert.ok(upd.ok, upd.err);
+    const upr = call('apiBoot', 4).v; const upk = upr.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2');
+    assert.ok(upk.cls === 0 && upk.no === 70 && upr.kids.SB2.name === '直した 名前' && upr.kids.SB2.kana === 'なおした なまえ', '名前・よみ・組・番号が変わる');
+    assert.equal(call('apiUpdateKid', FY, 4, 'SB2', { name: '', cls: 0, no: 1 }).ok, false, '名前は空にできない');
+    assert.equal(call('apiUpdateKid', FY - 1, 4, 'SB2', { name: 'x', cls: 0, no: 1 }).ok, false, '直せない年度は断る');
+
     // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
     call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);
@@ -397,6 +419,16 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const ros = db().getSheetByName('roster_' + FY).data.map(r => String(r[0])), att = db().getSheetByName('attrs_' + FY).data.map(r => String(r[0]));
     assert.ok(!ros.includes('ZZ1') && !ros.includes('ZZ2'), '名簿から外れる');
     assert.ok(!att.includes('ZZ1') && att.includes('ZZ2'), '誤登録は配慮項目も消え、転出は残る（年度替わりで消す）');
+    // 転出児童：転出は一覧に残り、同じ児童IDで戻せる（誤登録は残らない）
+    const lf = call('apiLeftKids', FY, 4).v;
+    assert.ok(lf.some(x => x.id === 'ZZ2' && x.leftGrade === 4) && !lf.some(x => x.id === 'ZZ1'), '転出した児童だけが転出児童の一覧に残る');
+    assert.equal(call('apiLeftKids', FY, 5).v.length, 0, 'ほかの学年には出ない');
+    const rs = call('apiRestoreKid', FY, 4, 'ZZ2', 2);
+    assert.ok(rs.ok, rs.err);
+    const back = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'ZZ2');
+    assert.ok(back && back.cls === 2 && back.a.k3 === 1, '同じ児童IDで戻り、配慮項目もつながる');
+    assert.ok(!call('apiLeftKids', FY, 4).v.some(x => x.id === 'ZZ2'), '戻すと転出児童の一覧から消える');
+    assert.equal(call('apiRestoreKid', FY, 4, 'ZZ2', 2).ok, false, '一覧にいない児童は戻せない');
     assert.equal(call('apiRemoveKids', FY - 1, 4, ['40000011'], 'leave').ok, false, '直せない年度は断る');
     const tin = call('apiImportRoster', FY, 4, [{ id: '', name: '転入 C', kana: 'てんにゅう', male: true, cls: 1, no: 9 }], { temp: true });
     assert.ok(tin.ok, tin.err);

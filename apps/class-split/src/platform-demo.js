@@ -43,7 +43,8 @@
       for (var i = 0; i < n; i++) {
         var male = R() < .5, sn = pick(SUR), gn = male ? pick(GM) : pick(GF);
         var id = String(20000000 + entry * 1000 + i + 1);
-        S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: pick(C.AREAS) };
+        var ar0 = pick(C.AREAS);
+        S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: ar0, addr: '見本県見本市' + ar0 + '町' + (1 + i % 5) + '丁目' + (1 + i % 20) + '-' + (1 + i % 9), birth: (entry - 7 + (i % 3 === 0 ? 1 : 0)) + '/' + (1 + i % 12) + '/' + (1 + i % 28) }; // 住所・生年月日は作りもの（カードの見本）
         ids.push(id);
         var a = {};
         C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? Math.min(at.max, 1 + Math.floor(R() * R() * 3)) : 0; });
@@ -393,7 +394,12 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
-    removeKids: function (fy, grade, ids) { gen(); var set = {}; ids.forEach(function (id) { set[id] = 1; }); var cur = yearRows(fy, grade), n0 = cur.length; S.years[fy][grade] = cur.filter(function (r) { return !set[r.id]; }); return later({ n: n0 - S.years[fy][grade].length }); },
+    updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; S.kids[id].name = x.name; S.kids[id].kana = x.kana; return later({ ok: true }); },
+    setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
+    leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },
+    restoreKid: function (fy, grade, id, cls) { gen(); var x = (S.left || []).filter(function (y) { return y.id === id; })[0]; if (!x) return Promise.reject(new Error('転出児童の一覧にいません')); var cur = yearRows(fy, grade), max = 0; cur.forEach(function (r) { if (r.cls === cls && r.no > max) max = r.no; }); cur.push({ id: id, cls: cls, no: max + 1, a: x.a || {} }); S.left = S.left.filter(function (y) { return y.id !== id; }); return later({ cls: cls }); },
+    removeKids: function (fy, grade, ids, reason) { gen(); var set = {}; ids.forEach(function (id) { set[id] = 1; }); var cur = yearRows(fy, grade), n0 = cur.length;
+      if (reason !== 'mistake') { S.left = (S.left || []).filter(function (y) { return !set[y.id]; }); cur.forEach(function (r) { if (set[r.id]) { var k = S.kids[r.id] || {}; S.left.push({ id: r.id, name: k.name, kana: k.kana, male: k.male, leftFy: fy, leftGrade: grade, cls: r.cls, no: r.no, a: r.a }); } }); } S.years[fy][grade] = cur.filter(function (r) { return !set[r.id]; }); return later({ n: n0 - S.years[fy][grade].length }); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
       if (opt && opt.temp && !opt.dry) { var sq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) sq = Math.max(sq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (sq++)).slice(-3); }); }
@@ -409,9 +415,10 @@
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;
-        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '' };
-        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
-        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '', birth: x.birth || (S.kids[x.id] || {}).birth || '' };
+        var sbs = x.sib ? C.normSibs(x.sib.map(function (b) { return { r: b.r === '?' ? (b.g >= grade ? '兄' : '弟') : b.r, g: b.g, n: b.n }; })) : null;
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } if (sbs) byId[x.id].a.sib = sbs; updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } if (sbs) a.sib = sbs; cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
       var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
       var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });
