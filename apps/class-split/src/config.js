@@ -149,13 +149,16 @@
     if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
     return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
       var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
-      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+      var o = { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+      if (x && x.id && /^[A-Za-z0-9_-]{1,20}$/.test(String(x.id))) o.id = String(x.id); // 名簿の兄弟の児童ID（学年は名簿から読むので、年度が替われば自動で上がる）
+      return o;
     });
   };
   CONFIG.sibText = function (list) {
-    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+    // 「5年 会田さとる」の形（続柄は出さない。利用者の判断）
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return (gl ? gl[1] : '') + (x.n ? ' ' + x.n : ''); }).join('、');
   };
-  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { var o = { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; if (x.id) o.id = x.id; return o; }); };
   // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
   CONFIG.familyWords = function (memo) {
     var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');

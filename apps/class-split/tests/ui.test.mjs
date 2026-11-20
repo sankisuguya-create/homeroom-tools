@@ -465,7 +465,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.locator('td.memo.cc').nth(1).click(); await p.waitForSelector('#mtx');
   await p.click('[data-sbadd]'); await p.selectOption('[data-sbr="0"]', '姉'); await p.selectOption('[data-sbg="0"]', '7'); await p.fill('[data-sbn="0"]', 'ハナ');
   await p.click('.dlg [data-act="ok"]'); await p.waitForFunction(() => !document.getElementById('mtx'));
-  ok(await p.locator('td.memo .msib', { hasText: '姉（中1）ハナ' }).count() === 1, '備考の窓で兄弟を足すと、名簿の備考の欄に出る');
+  ok(await p.locator('td.memo .msib', { hasText: '中1 ハナ' }).count() === 1, '備考の窓で兄弟を足すと、名簿の備考の欄に出る');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
@@ -584,8 +584,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#moveB');
   const n0 = await p.locator('table.r tbody tr').count();
-  await p.click('#moveB'); await p.waitForSelector('[aria-label="転入・転出・削除"]');
-  await p.click('[data-mrs="mistake"]');
+  await p.click('#moveB'); await p.waitForSelector('[aria-label="児童登録/削除"]');
+  ok((await p.locator('#moveB').textContent()).includes('児童登録/削除'), 'ボタンの名前は「児童登録/削除」');
+  await p.click('[data-mtab="out"]'); await p.click('[data-mrs="mistake"]');
   await p.locator('[data-mp]').nth(0).check(); await p.locator('[data-mp]').nth(1).check();
   p.once('dialog', d => d.accept('2人を外す'));
   await p.click('#mgo');
@@ -596,6 +597,14 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#min');
   await p.waitForFunction(() => /転入として登録しました/.test(document.getElementById('toast').textContent));
   ok((await p.locator('table.r tbody').textContent()).includes('転入 ハナ'), '転入した児童を名簿の画面から足せる（児童IDなし）');
+  // 特別支援学級の児童の交流級を、児童登録/削除の窓で振り分ける
+  await p.click('#moveB'); await p.click('[data-mtab="sp"]');
+  if (await p.locator('[data-msp]').count()) {
+    const b = p.locator('[data-msp][aria-pressed="false"]').first(), q = await b.getAttribute('data-msp');
+    await b.click(); await p.waitForSelector('[data-msp="' + q + '"][aria-pressed="true"]');
+    ok(true, '特別支援学級の児童の交流級を振り分けられる');
+  } else ok(false, '見本の3年に特別支援学級の児童がいない');
+  await p.keyboard.press('Escape');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

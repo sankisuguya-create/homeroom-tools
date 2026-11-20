@@ -153,13 +153,16 @@
     if (typeof list === 'string') { try { list = JSON.parse(list || '[]'); } catch (e) { list = []; } }
     return (Array.isArray(list) ? list : []).slice(0, 8).map(function (x) {
       var g = Math.floor(+(x && x.g)); if (!(g >= 0 && g <= 10)) g = 0;
-      return { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+      var o = { r: CONFIG.SIB_REL.indexOf(x && x.r) >= 0 ? x.r : '兄', g: g, n: String((x && x.n) || '').replace(/[<>&"'`]/g, '').trim().slice(0, 20) };
+      if (x && x.id && /^[A-Za-z0-9_-]{1,20}$/.test(String(x.id))) o.id = String(x.id); // 名簿の兄弟の児童ID（学年は名簿から読むので、年度が替われば自動で上がる）
+      return o;
     });
   };
   CONFIG.sibText = function (list) {
-    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return x.r + '（' + (gl ? gl[1] : '') + '）' + (x.n ? x.n : ''); }).join('、');
+    // 「5年 会田さとる」の形（続柄は出さない。利用者の判断）
+    return CONFIG.normSibs(list).map(function (x) { var gl = CONFIG.SIB_GRADES.filter(function (q) { return q[0] === x.g; })[0]; return (gl ? gl[1] : '') + (x.n ? ' ' + x.n : ''); }).join('、');
   };
-  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { return { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; }); };
+  CONFIG.nextSibs = function (list) { return CONFIG.normSibs(list).map(function (x) { var o = { r: x.r, g: x.g > 0 ? Math.min(10, x.g + 1) : 0, n: x.n }; if (x.id) o.id = x.id; return o; }); };
   // 家庭環境：備考の文から、定型の言葉（MEMO_PICKS の「家庭環境」）を拾う（個人票の印刷で、備考の欄の下にまとめて出す）
   CONFIG.familyWords = function (memo) {
     var grp = CONFIG.MEMO_PICKS.filter(function (gp) { return gp.label === '家庭環境'; })[0], m = String(memo || '');
@@ -1071,7 +1074,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_d2c2380c41c5';
+var SERVER_BUILD = 'BUILD_19d0f4bc57c8';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1437,6 +1440,9 @@ var apiBoot_ = api_(function (grade) {
       return { id: r.id, cls: r.cls, no: r.no, a: am[r.id] || emptyAttrs_() };
     }) });
   }
+  // 兄弟の学年：結び付いた兄弟の児童は、今年度の名簿の学年を使う（年度が替われば自動で上がる）。名前も名簿のものに
+  var nowG = {}; rosterRows_(FY).forEach(function (r) { nowG[r.id] = r; });
+  years.forEach(function (y) { y.rows.forEach(function (r) { (r.a.sib || []).forEach(function (s) { var k = s.id && nowG[s.id]; if (k) { s.g = k.grade + (y.fy - FY); s.n = String(k.name).replace(/[<>&"'`]/g, '').slice(0, 20); } }); }); });
   var incs = incidents_().filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); });
   var dec = decisionOf_(FY, grade);
   return {
@@ -1572,14 +1578,15 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
     var sibRows = rows.filter(function (x) { return x.sib && x.sib.length; });
     if (sibRows.length) {
       var at0 = {}, FY0 = CONFIG.fiscalYear();
-      rosterRows_(FY0).forEach(function (r) { at0[r.grade + '-' + (r.cls + 1) + '-' + r.no] = r.male ? '男' : '女'; });
+      var id0 = {};
+      rosterRows_(FY0).forEach(function (r) { var k = r.grade + '-' + (r.cls + 1) + '-' + r.no; at0[k] = r.male ? '男' : '女'; id0[k] = r.id; });
       var atS = read_('attrs_' + fy), arS = {}, newS = [];
       atS.rows.forEach(function (r) { arS[String(r.id8)] = r; });
       sibRows.forEach(function (x) {
         var list = CONFIG.normSibs(x.sib.map(function (s) {
           var r = s.r;
           if (r === '?') { var sx = at0[s.g + '-' + s.cls + '-' + s.no], older = +s.g >= grade; r = sx === '女' ? (older ? '姉' : '妹') : (older ? '兄' : '弟'); } // 分からなければ兄・弟（画面で直せる）
-          return { r: r, g: s.g, n: s.n };
+          return { r: r, g: s.g, n: s.n, id: s.id || id0[s.g + '-' + s.cls + '-' + s.no] || '' }; // 兄弟の児童に結び付ける（学年は名簿から読む）
         }));
         var val = JSON.stringify(list), r0 = arS[String(x.id)];
         if (r0) { if (String(r0.sib || '') !== val) writeCell_(atS, r0, 'sib', val); }
@@ -1657,6 +1664,23 @@ var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
     return k;
   });
   return { n: n, backupError: bkErr };
+});
+
+// 組を移す（特別支援学級の児童の交流級を振り分ける）：番号はその組の最後。直せる年度だけ
+var apiSetKidClass_ = api_(function (fy, grade, id, cls) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade; cls = +cls; id = String(id);
+  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
+  if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
+  return withLock_(function () {
+    var t = read_('roster_' + fy), row = null, max = 0;
+    t.rows.forEach(function (r) { if (+r.grade !== grade) return; if (String(r.id8) === id) row = r; else if (+r['class'] === cls + 1 && +r.no > max) max = +r.no; });
+    if (!row) throw userError_('名簿にいない児童です');
+    if (+row['class'] !== cls + 1) { writeCell_(t, row, 'class', cls + 1); writeCell_(t, row, 'no', max + 1); }
+    log_(by, 'setKidClass', 1);
+    return { cls: cls, no: +row['class'] === cls + 1 ? +row.no : max + 1 };
+  });
 });
 
 // 取り込む前の差分：追加・名前が変わる・ほかの学年にいる児童・貼った中にいない児童。
@@ -2405,3 +2429,4 @@ function apiSuggestions() { return apiSuggestions_.apply(null, arguments); }
 function apiPruneLog() { return apiPruneLog_.apply(null, arguments); }
 function apiClearSuggestions() { return apiClearSuggestions_.apply(null, arguments); }
 function apiRemoveKids() { return apiRemoveKids_.apply(null, arguments); }
+function apiSetKidClass() { return apiSetKidClass_.apply(null, arguments); }

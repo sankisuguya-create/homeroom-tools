@@ -296,9 +296,9 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     var filterGrade = col.grade != null && opt.grade != null && +opt.grade > 0;
     // 兄弟：列（兄弟1・兄弟2…）を全部集め、表の全部の行から「学年-組-番号 → 性別」を作る（学年で絞る前に）
     var sibCols = []; roles.forEach(function (x, c) { if (x === 'sib') sibCols.push(c); });
-    var sexAt = {};
-    if (sibCols.length && col.grade != null && col.cls != null && col.no != null && col.sex != null)
-      body.forEach(function (r) { var k = gradeOf(cell(r, 'grade')) + '-' + toHalf(cell(r, 'cls')).replace(/組$/, '') + '-' + toHalf(cell(r, 'no')); sexAt[k] = sexOf(r[col.sex] || ''); });
+    var sexAt = {}, idAt = {};
+    if (sibCols.length && col.grade != null && col.cls != null && col.no != null)
+      body.forEach(function (r) { var k = gradeOf(cell(r, 'grade')) + '-' + toHalf(cell(r, 'cls')).replace(/組$/, '') + '-' + toHalf(cell(r, 'no')); sexAt[k] = sexOf(r[col.sex] || ''); idAt[k] = idOf(cell(r, 'id') || cell(r, 'id2')); });
     body.forEach(function (r, i) {
       var line = (header ? i + 2 : i + 1) + '行目：';
       // 名前：名前 → 姓＋名 → 正式名前 → 正式姓＋正式名（空欄の多い表でも、埋まっている列を使う）
@@ -325,7 +325,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
       if (sp) o.sp = sp;
       if (sibCols.length) {
         var own = filterGrade ? +opt.grade : (opt.grade != null ? +opt.grade : gradeOf(cell(r, 'grade')) || 0), sibs = [];
-        sibCols.forEach(function (c) { var sb = sibOf(r[c] || ''); if (sb) { sb.r = relOf(sb.g, own, sexAt[sb.g + '-' + sb.cls + '-' + sb.no] || ''); sibs.push(sb); } });
+        sibCols.forEach(function (c) { var sb = sibOf(r[c] || ''); if (sb) { var kk = sb.g + '-' + sb.cls + '-' + sb.no; sb.r = relOf(sb.g, own, sexAt[kk] || ''); if (idAt[kk]) sb.id = idAt[kk]; sibs.push(sb); } }); // 学年・組・番号は兄弟の児童を探す（結び付ける）ためだけに使う
         if (sibs.length) o.sib = sibs.slice(0, 8);
       }
       // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から

@@ -395,6 +395,14 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const sbA = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB1').a.sib;
     assert.equal(sbA.length, 2); assert.equal(sbA[0].g, 5); assert.ok(['兄', '姉'].includes(sbA[0].r), '年上は兄か姉'); assert.equal(sbA[1].r, '弟', '名簿にいない年下は弟（画面で直せる）');
 
+    // 兄弟の学年は、結び付いた兄弟の今の名簿から読む（年度が替われば上がる）。組の振り分け（交流級）
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'SB2', name: '兄弟 次', kana: '', male: true, cls: 0, no: 61, sib: [{ r: '?', g: 3, cls: 1, no: 1, n: '古い名前', id: '40000011' }] }]).ok);
+    const sb2 = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').a.sib[0];
+    assert.deepEqual([sb2.g, sb2.n, sb2.id], [4, '児童11', '40000011'], '学年と名前は兄弟の児童の名簿から');
+    const mv = call('apiSetKidClass', FY, 4, 'SB2', 1);
+    assert.ok(mv.ok, mv.err);
+    assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, 1, '組を移せる（交流級の振り分け）');
+
     // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
     call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);

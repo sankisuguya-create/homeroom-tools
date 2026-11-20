@@ -323,7 +323,7 @@ test('試行の Excel：zip を作って読み戻すと同じ中身（圧縮し�
 
 test('兄弟：形をそろえ、決定で来年度に写す時は学年を1つ上げる（未就学はそのまま、高校以上で止める）', () => {
   assert.deepEqual(C.normSibs('[{"r":"兄","g":5,"n":"<b>太郎"},{"r":"x","g":99}]'), [{ r: '兄', g: 5, n: 'b太郎' }, { r: '兄', g: 0, n: '' }]);
-  assert.equal(C.sibText([{ r: '姉', g: 7, n: '' }, { r: '弟', g: 0, n: 'ジロウ' }]), '姉（中1）、弟（未就学）ジロウ');
+  assert.equal(C.sibText([{ r: '姉', g: 7, n: '' }, { r: '弟', g: 0, n: 'ジロウ' }]), '中1、未就学 ジロウ');
   const rows = E.nextYearRows([{ id: 'a', kana: 'あ', a: { sib: [{ r: '兄', g: 6, n: '' }, { r: '妹', g: 0, n: '' }, { r: '姉', g: 10, n: '' }] } }], new Int8Array([0]), 1);
   assert.deepEqual(rows[0].a.sib.map(x => x.g), [7, 0, 10]);
   assert.deepEqual(C.familyWords('母子家庭。忘れ物が多い。祖父母が養育'), ['母子家庭', '祖父母が養育']);
@@ -352,4 +352,10 @@ test('目安箱の判定：名簿の名前（姓名・姓・名）、8桁の番�
   assert.deepEqual(C.piiHits('ハナが', names), [], 'かな2文字の名は拾わない');
   assert.deepEqual(C.piiHits('さくらさんが', names), ['さくら']);
   assert.deepEqual(C.piiHits('20250001 と N2026001 と a.b@edu.nishi.or.jp', []).sort(), ['20250001', 'N2026001', 'a.b@edu.nishi.or.jp'].sort());
+});
+
+test('兄弟：「5年 会田さとる」の形で出す。児童IDは残し、決定で写す時も残る', () => {
+  assert.equal(C.sibText([{ r: '兄', g: 5, n: '会田さとる', id: 'S1' }]), '5年 会田さとる');
+  assert.equal(C.normSibs([{ r: '兄', g: 5, n: 'a', id: 'S1' }])[0].id, 'S1');
+  assert.deepEqual(C.nextSibs([{ r: '兄', g: 5, n: 'a', id: 'S1' }])[0], { r: '兄', g: 6, n: 'a', id: 'S1' });
 });
