@@ -452,6 +452,16 @@
   }
 
   // 押すと並べ替える見出し
+  // 見出しを2段にする：中黒（・）があればそこで改行（中黒は消す）。無ければ、6文字以上は漢字とかなの切れ目で（例：学力｜しんどさ）、それも無ければ半分で
+  function head2(label) {
+    var t = String(label || ''), esc = App.esc, i = t.indexOf('・');
+    if (i > 0 && i < t.length - 1) return esc(t.slice(0, i)) + '<br>' + esc(t.slice(i + 1));
+    if (t.length <= 5) return esc(t);
+    var cut = -1;
+    for (var j = 2; j <= t.length - 2; j++) { if (/[一-龥々]/.test(t[j - 1]) && /[ぁ-んァ-ヶー]/.test(t[j])) { cut = j; break; } }
+    if (cut < 0) cut = Math.ceil(t.length / 2);
+    return esc(t.slice(0, cut)) + '<br>' + esc(t.slice(cut));
+  }
   // 学内（1〜6年）に弟・妹がいるか（家庭数を数える：いない児童＝その家庭のいちばん下の子として1家庭）。同じ学年は続柄が弟・妹の時
   function hasYoungerInSchool(r, grade) {
     return (r.a && r.a.sib || []).some(function (s) { return s.g >= 1 && s.g <= 6 && (s.g < grade || (s.g === grade && (s.r === '弟' || s.r === '妹'))); });
@@ -482,8 +492,8 @@
     // 見出しの集計：表示中の児童の男女の数と、家庭数（学内に弟・妹がいない児童の数）
     var nM = 0, nF = 0, nFam = 0;
     rows.forEach(function (x) { var s0 = d.kids[x.r.id] || {}; if (s0.male) nM++; else nF++; if (!hasYoungerInSchool(x.r, Y.grade)) nFam++; });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? sth('cls', '', '組') : '') + sth('no', '', '番号') + sth('kana', '', '名前', 'よみの順', 'text-align:left') + sth('sex', 'sxc', '性別<br><small class="hcnt">男' + nM + '女' + nF + '</small>') + sth('sp', 'spc', '特支', '特別支援学級') +
-      C.ATTRS.map(function (at) { return sth(at.k, 'an', App.esc(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考<small class="hfam" title="学内（1〜6年）に弟・妹がいない児童の数">家庭数 ' + nFam + '</small>') + '</tr></thead><tbody>';
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? sth('cls', '', '組') : '') + sth('no', '', '番号') + sth('kana', '', '名前', 'よみの順', 'text-align:left') + sth('sex', 'sxc', '性別<br><small class="hcnt"><b class="cm">男' + nM + '</b><b class="cf">女' + nF + '</b></small>') + sth('sp', 'spc', '特支', '特別支援学級') +
+      C.ATTRS.map(function (at) { return sth(at.k, 'an', head2(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考<small class="hfam" title="学内（1〜6年）に弟・妹がいない児童の数">家庭数 ' + nFam + '</small>') + '</tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
       h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls < 0 ? 'なし' : r.cls + 1) + '</td>' : '') +
