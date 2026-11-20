@@ -70,6 +70,10 @@
 
   document.addEventListener('click', function (e) {
     var t = e.target, scr = App.screens[App.st.screen];
+    // 畳んだメニュー：押すと開閉。項目を押したら閉じて、そのまま各画面の click へ。外を押したら閉じる
+    var dd = t.closest('[data-dd]');
+    if (dd) { var pop = dd.nextElementSibling, open = pop.hidden; App.closeDd(); pop.hidden = !open; dd.setAttribute('aria-expanded', String(open)); return; }
+    App.closeDd();
     if (t.closest('.trial')) { App.toggleTrial(); return; }
     if (t.closest('#reloadBtn')) { App.reload(); return; }
     if (t.closest('#tundo')) { if (App.toastUndo) App.toastUndo(); App.$('toast').hidden = true; return; }
@@ -84,7 +88,7 @@
       return;
     }
     var go = t.closest('[data-go]');
-    if (go) { if (go.dataset.paste) App.st.openPaste = true; App.go(go.dataset.go); return; } // data-paste：名簿の画面で貼る窓をすぐ開く
+    if (go) { if (go.dataset.paste) App.st.openPaste = true; if (go.dataset.school) App.st.openSchool = true; App.go(go.dataset.go); return; } // data-paste：名簿の画面で貼る窓をすぐ開く
     if (scr && scr.click) scr.click(t, e);
   });
   document.addEventListener('dblclick', function (e) { var scr = App.screens[App.st.screen]; if (!App.dlg && scr && scr.dblclick) scr.dblclick(e.target); });

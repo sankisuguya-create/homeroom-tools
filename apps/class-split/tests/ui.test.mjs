@@ -20,6 +20,8 @@ const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt
 const browser = await chromium.launch(exe);
 // 名簿のロックは初めはロック中。試験では、ロックの操作を確かめる所以外はロックを外して始める
 const newPage = async (o) => { const pg = await browser.newPage(o); await pg.addInitScript(() => { try { if (localStorage.getItem('classSplit.rosterLock') == null) localStorage.setItem('classSplit.rosterLock', '0'); } catch (e) { } }); return pg; };
+// 畳んだメニュー（名簿の管理 ▾・その他 ▾）の中の項目は、メニューを開いてから押す
+const mclick = async (p, sel) => { const el = p.locator(sel).first(); if (!(await el.isVisible())) { const id = await p.evaluate(s => { const e = document.querySelector(s), dd = e && e.closest('.ddm'); return dd ? dd.querySelector('[data-dd]').dataset.dd : ''; }, sel); if (id) { await p.click('[data-dd="' + id + '"]'); await el.waitFor({ state: 'visible', timeout: 5000 }); } } await el.click(); };
 let fails = 0;
 const C_STEP1 = '管理職に報告した。';
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
@@ -230,16 +232,16 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('#cword', '4年のクラス替えを決定'); await p.click('[data-act="ok"]');
   await p.waitForSelector('.decided');
   ok(true, '決定すると決定済みの表示');
-  ok(await p.locator('.decided', { hasText: 'A組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 1, '決定の直後は組の番号が仮');
+  { const tt = await p.locator('.decided').getAttribute('title'); ok(tt.includes('A組＝1組') && tt.includes('（仮）'), '決定の直後は組の番号が仮（帯の説明に組の対応）'); }
   {
-    const [dl] = await Promise.all([p.waitForEvent('download'), p.click('#xlsOut')]);
+    const [dl] = await Promise.all([p.waitForEvent('download'), mclick(p, '#xlsOut')]);
     const buf = fs.readFileSync(await dl.path()), txt = buf.toString('utf8');
     ok(buf.slice(0, 2).toString() === 'PK' && txt.includes('生徒管理番号') && txt.includes('仮番号') && txt.includes('>A組<'), '決定した組を Excel（次年度組編成の列）で出せる');
     if (process.env.XLSX_OUT) fs.writeFileSync(process.env.XLSX_OUT, buf);
   }
   await p.click('#cnames'); await p.click('[data-cn="0:2"]'); await p.keyboard.press('Enter');
-  await p.waitForSelector('.decided:has-text("A組＝2組")');
-  ok(await p.locator('.decided', { hasText: 'B組＝1組' }).count() === 1 && await p.locator('.decided', { hasText: '（仮）' }).count() === 0, '組の番号を決めると入れ替わり、仮が外れる');
+  await p.waitForSelector('.decided[title*="A組＝2組"]');
+  { const tt = await p.locator('.decided').getAttribute('title'); ok(tt.includes('B組＝1組') && !tt.includes('（仮）'), '組の番号を決めると入れ替わり、仮が外れる'); }
   ok(await p.locator('.ncl').first().textContent() === 'A組', 'クラス分けの枠は A組…');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   { const fy = await p.evaluate(() => App.st.data.fy); ok(await p.locator('#rfy option[value="' + (fy + 1) + '"]').count() === 1, '名簿に準備中の年度（来年度）が出る'); await p.selectOption('#rfy', String(fy)); }
@@ -371,7 +373,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.board .chip').count() === 0 && await p.locator('.ordbox [data-gord^="0:plus"]').count() === 1, '案はいきなり作らず、重み付けと並び順（＋付きが先を含む）の窓を先に出す');
   await p.click('[data-gord="0:plus"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
   ok(await p.locator('.board .chip.plusin').count() > 0, '作るとカードを一度に出し、＋付きのカードを目立たせる');
-  ok(await p.locator('#order.ordbtn').count() === 1, '並び順のボタンは上の帯に出る');
+  ok(await p.locator('.bar #order').count() === 1, '並び順は上の帯の「その他」にある');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
@@ -423,9 +425,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#paste');
-  ok(await p.locator('.bar #paste, #main > div #paste').count() >= 1, '名簿の上の帯に「名簿を貼る」');
-  await p.click('#paste'); await p.waitForSelector('#ptxt');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-dd="rmenu"]');
+  ok(await p.locator('.rbar #paste').count() === 1, '名簿の上の帯の「名簿の管理」に「名簿を貼る」');
+  await mclick(p, '#paste'); await p.waitForSelector('#ptxt');
   await p.fill('#ptxt', '組\t番号\t児童ID\t名前\tよみ\t性別\n1\t40\t99990001\t新入 ハナ\tしんにゅう はな\t女');
   await p.click('#okbtn'); await p.waitForSelector('[aria-label="取り込む前の確認"]');
   ok((await p.locator('[aria-label="取り込む前の確認"]').textContent()).includes('追加 1人'), '取り込む前に差分を見せる');
@@ -476,9 +478,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 900 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
+  await p.click('[data-g="1"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-dd="rmenu"]');
   // 見本は今年度を順位で決めているので、学力の窓は順位のタブで開く
-  await p.click('#acadB'); await p.waitForSelector('#rklist');
+  await mclick(p, '#acadB'); await p.waitForSelector('#rklist');
   ok(await p.locator('[data-acaduse="rank"]').isChecked(), '見本の今年度は順位で「賢い」を決めている');
   await p.click('[data-acadtab="score"]'); await p.waitForSelector('.sctab');
   await p.click('[data-acadtab="rank"]'); await p.waitForSelector('#rklist');
@@ -495,8 +497,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
 {
   const p = await newPage({ viewport: { width: 1093, height: 614 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#acadB');
-  await p.click('#acadB'); await p.waitForSelector('#rklist');
+  await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-dd="rmenu"]');
+  await mclick(p, '#acadB'); await p.waitForSelector('#rklist');
   const hgt = await p.evaluate(() => document.getElementById('rklist').getBoundingClientRect().height);
   ok(hgt >= 250, `低い画面でも順位の一覧が見える（高さ ${Math.round(hgt)}px）`);
   ok(await p.locator('.rkdlg [data-act="ok"]').isVisible(), '保存のボタンが画面の中に残る');
@@ -584,9 +586,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#moveB');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-dd="rmenu"]');
   const n0 = await p.locator('table.r tbody tr').count();
-  await p.click('#moveB'); await p.waitForSelector('[aria-label="児童登録/削除"]');
+  await mclick(p, '#moveB'); await p.waitForSelector('[aria-label="児童登録/削除"]');
   ok((await p.locator('#moveB').textContent()).includes('児童登録/削除'), 'ボタンの名前は「児童登録/削除」');
   await p.click('[data-mtab="out"]'); await p.click('[data-mrs="mistake"]');
   await p.locator('[data-mp]').nth(0).check(); await p.locator('[data-mp]').nth(1).check();
@@ -595,23 +597,23 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForFunction(() => /名簿から外しました/.test(document.getElementById('toast').textContent));
   ok(await p.locator('table.r tbody tr').count() === n0 - 2, '選んだ2人を名簿から外せる');
   // 転出 → 転出した児童（出戻り）から戻す
-  await p.click('#moveB'); await p.click('[data-mtab="out"]');
+  await mclick(p, '#moveB'); await p.click('[data-mtab="out"]');
   const nm = await p.locator('[data-mp]').first().evaluate(el => el.closest('tr').cells[3].textContent);
   await p.locator('[data-mp]').first().check();
   p.once('dialog', d => d.accept('1人を外す')); await p.click('#mgo');
   await p.waitForFunction(() => /名簿から外しました/.test(document.getElementById('toast').textContent));
-  await p.click('#moveB'); await p.click('[data-mtab="left"]'); await p.waitForSelector('[data-mrt]');
+  await mclick(p, '#moveB'); await p.click('[data-mtab="left"]'); await p.waitForSelector('[data-mrt]');
   ok((await p.locator('[aria-label="児童登録/削除"]').textContent()).includes(nm), '転出した児童が「転出した児童」に残る');
   await p.locator('[data-mrt$=":1"]').first().click();
   await p.waitForFunction(() => /組に戻しました/.test(document.getElementById('toast').textContent));
   ok((await p.locator('table.r tbody').textContent()).includes(nm), '出戻りの児童を名簿に戻せる');
-  await p.click('#moveB'); await p.click('[data-mtab="in"]');
+  await mclick(p, '#moveB'); await p.click('[data-mtab="in"]');
   await p.fill('#mfn', '転入 ハナ'); await p.fill('#mfk', 'てんにゅう はな'); await p.click('[data-msx="0"]');
   await p.click('#min');
   await p.waitForFunction(() => /転入として登録しました/.test(document.getElementById('toast').textContent));
   ok((await p.locator('table.r tbody').textContent()).includes('転入 ハナ'), '転入した児童を名簿の画面から足せる（児童IDなし）');
   // 特別支援学級の児童の交流級を、児童登録/削除の窓で振り分ける
-  await p.click('#moveB'); await p.click('[data-mtab="sp"]');
+  await mclick(p, '#moveB'); await p.click('[data-mtab="sp"]');
   if (await p.locator('[data-msp]').count()) {
     const b = p.locator('[data-msp][aria-pressed="false"]').first(), q = await b.getAttribute('data-msp');
     await b.click(); await p.waitForSelector('[data-msp="' + q + '"][aria-pressed="true"]');
@@ -700,6 +702,27 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(/5年1[0-9]{2}人/.test(await p.locator('[data-g="5"]').textContent()), '来年度のメニューに、決定した学年（4年→来年度5年）の名簿が出る：' + await p.locator('[data-g="5"]').textContent());
   await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
   ok(await p.inputValue('#rfy') === String(FY + 1), '来年度の名簿を開ける');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 上部の帯：1段に収める。学力・全校の事案・転入生は帯に出さない（名簿の管理・メニュー・クラスなしへ）
+{
+  const p = await newPage({ viewport: { width: 1093, height: 614 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  const oneRow = sel => p.evaluate(s => { const bar = document.querySelector(s); return bar.getBoundingClientRect().height <= 48; }, sel);
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="4"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  ok(await oneRow('#main .rbar'), '1093px でも名簿の帯は1段');
+  ok(await p.locator('.rbar [data-scope="school"]').count() === 0 && await p.locator('.rbar > #acadB').count() === 0, '名簿の帯に「学力」「全校の事案」のボタンは無い（学力は名簿の管理の中）');
+  await mclick(p, '#trB'); await p.waitForSelector('#trn');
+  await p.fill('#trn', '転入 タロウ'); await p.fill('#trk', 'てんにゅう たろう'); await p.click('#tradd');
+  await p.waitForFunction(() => /転入予定に足しました/.test(document.getElementById('toast').textContent));
+  ok((await p.locator('.nonebox').textContent()).includes('転入 タロウ'), '転入予定の児童を「クラスなし」で足せる');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
+  ok(await oneRow('.bar') && await p.locator('#trans').count() === 0, '1093px でもクラス分けの帯は1段・「転入生」のボタンは無い');
+  ok(await p.locator('.board .chip', { hasText: '転入 タロウ' }).count() === 1, '「クラスなし」で足した転入予定の児童が盤面に入る');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-school]'); await p.waitForSelector('#main .state:has-text("全校の事案")');
+  ok(true, 'メニュー画面から全校の事案を開ける');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

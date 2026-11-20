@@ -395,34 +395,38 @@
     // 名簿を貼る：年度の初めや転入の時にすぐ使えるよう、上の帯に出す（直せる年度だけ）
     // 「その他」の窓をやめ、年度・全校の事案・絞り込み・使い方を帯に出す
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
-    h += '<span class="sp"></span>' +
-      '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '</option>'; }).join('') + '</select></label>' +
-      (R.scope !== 'school' ? '<button class="btn" id="acadB" title="クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）">学力…</button>' : '') +
-      '<button class="btn" data-scope="' + (R.scope === 'school' ? 'cls' : 'school') + '" aria-pressed="' + (R.scope === 'school') + '">全校の事案</button>' +
-      (edit && R.scope !== 'school' ? '<button class="btn" id="moveB" title="児童を足す（転入など）・名簿から外す（転出・誤登録）・特別支援学級の児童の交流級を振り分ける">児童登録/削除…</button>' : '') +
-      (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
-      '<button class="btn" id="rhelp" title="名簿の使い方">?</button>';
+    // 名簿の管理（まれに使う操作をまとめる）：名簿を貼る・児童登録/削除・転入予定の児童・学力（点数・順位）
+    var canTr = R.fy === d.fy && !d.decision && d.grade < 6;
+    h += '<span class="sp"></span>' + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
+      (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
+      (canTr ? App.ddItem('trB', '転入予定の児童…', '来年度に転入する児童を足す（クラスなしの画面）') : '') +
+      App.ddItem('acadB', '学力（点数・順位）…', 'クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）') +
+      (edit ? '' : '<div class="note" style="padding:6px 10px">名簿を貼る・児童登録は、ロックを外すと出ます</div>')) : '');
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : R.scope === 'cls' && R.cls === -1 ? '<div class="nonewrap">' + table(Y, edit) + noneExtra(Y) + '</div>' : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
     // ロックのボタンは、いちばん上の「メニュー ＞ 4年 ＞ 名簿」の右に置く
-    App.$('toptools').innerHTML = canEdit && R.scope !== 'school' ? '<button class="btn rlock" id="rlock" aria-pressed="' + LOCK + '" title="' + (LOCK ? 'ロック中：押すと名簿を編集できる' : '編集できる：押すとロックする（誤って触っても変わらない）') + '">' + (LOCK ? '🔒 ロック中' : '🔓 編集中') + '</button>' : '';
+    var yrs = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
+    App.$('toptools').innerHTML = (canEdit && R.scope !== 'school' ? '<button class="btn rlock" id="rlock" aria-pressed="' + LOCK + '" title="' + (LOCK ? 'ロック中：押すと名簿を編集できる' : '編集できる：押すとロックする（誤って触っても変わらない）') + '">' + (LOCK ? '🔒 ロック中' : '🔓 編集中') + '</button>' : '') +
+      '<span class="tr">' + (R.scope !== 'school' ? '<label class="rfy">年度 <select id="rfy">' + yrs.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '</option>'; }).join('') + '</select></label>' : '') + '<button class="btn" id="rhelp" title="名簿の使い方">?</button></span>';
     App.fitNames(App.$('main'));
     kidPop();
   }
 
   // クラスなしの下：転出済みの児童（この学年に当たる）と、転入予定の児童（クラス分けの「転入生」）
-  var LEFT = {};
+  var LEFT = {}, TRF = { male: true, n: '', k: '', i: '' }; // 転入予定の入力中の値（描き直しても消さない）
   function noneExtra(Y) {
     var d = D(), esc = App.esc, key = R.fy + ':' + Y.grade, edit = R.fy === editableFy() && !LOCK;
     if (!LEFT[key]) {
       LEFT[key] = 'loading';
-      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) render(); }, function () { LEFT[key] = []; });
+      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
     }
-    var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [];
+    var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
     return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込んでいます…</div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
-      '<h3>転入予定の児童</h3>' + (tr.length ? '<ul>' + tr.map(function (x) { return '<li>' + esc(x.name) + '</li>'; }).join('') + '</ul><div class="note">クラス分けの「転入生」で登録した児童です（決定で来年度の名簿に入ります）。</div>' : '<div class="note">いません（クラス分けの「転入生」で登録します）</div>') + '</div>';
+      '<h3>転入予定の児童（来年度）</h3>' + (tr.length ? '<ul>' + tr.map(function (x) { return '<li>' + esc(x.name) + (x.kana ? '<span class="note">（' + esc(x.kana) + '）</span>' : '') + (trEdit ? ' <button class="btn" data-trdel="' + esc(x.id) + '" title="転入予定から外す">外す</button>' : '') + '</li>'; }).join('') + '</ul>' : '<div class="note">いません</div>') +
+      (trEdit ? '<div class="rbar trform"><input id="trn" placeholder="名前" maxlength="40" value="' + esc(TRF.n) + '"><input id="trk" placeholder="よみ" maxlength="60" value="' + esc(TRF.k) + '"><button class="lv" data-trsx="1" aria-pressed="' + TRF.male + '">男</button><button class="lv" data-trsx="0" aria-pressed="' + !TRF.male + '">女</button><input id="tri" placeholder="児童ID（分からなければ空）" maxlength="20" style="width:12em" value="' + esc(TRF.i) + '"><button class="btn primary" id="tradd">転入予定に足す</button></div>' +
+        '<div class="note">クラス分けで、どこかの組に入れる案を作れます。決定すると来年度の名簿に入ります。</div>' : '<div class="note">' + (d.decision ? '決定の後は足せません。' : '今年度の名簿の時だけ足せます。') + '</div>') + '</div>';
   }
 
   // ア・身・通：有無と内容（例：卵・エピペン）を書く。内容はアイコンにカーソルを合わせると出る
@@ -934,7 +938,7 @@
   function refocus(id, pos) { var el = App.$(id); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
 
   App.screens.roster = {
-    enter: function () { reset(); var vf = App.st.viewFy; if (vf && yearOf(vf)) R.fy = vf; render(); }, // メニューで年度を選んでいれば、その年度の名簿を開く
+    enter: function () { reset(); var vf = App.st.viewFy; if (vf && yearOf(vf)) R.fy = vf; if (App.st.openSchool) { App.st.openSchool = false; R.scope = 'school'; R.school = null; } render(); }, // メニューで年度を選んでいれば、その年度の名簿を開く
     render: render,
     selectKid: function (id) { R.kid = id; render(); },
     click: function (t, e) {
@@ -982,6 +986,21 @@
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#moveB')) { moveDialog(); return true; }
       if (t.closest('#noneLeft')) { moveDialog('left'); return true; }
+      if ((x = t.closest('[data-trsx]'))) { TRF.male = x.dataset.trsx === '1'; document.querySelectorAll('[data-trsx]').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.trsx === '1') === TRF.male)); }); return true; }
+      if (t.closest('#tradd')) {
+        var tn = App.$('trn').value.trim(), tk = App.$('trk').value.trim(), ti = App.$('tri').value.trim();
+        if (!tn) { App.toast('名前を入れてください'); return true; }
+        if (ti && !C.isKidId(ti)) { App.toast('児童IDは英数字20文字までです'); return true; }
+        TRF.n = TRF.k = TRF.i = '';
+        App.save(function () { return App.pf().addTransfer(d.grade, { name: tn, kana: tk, male: TRF.male, id: ti }); }).then(function () { return App.reload(); }).then(function () { R.scope = 'cls'; R.cls = -1; render(); App.toast(tn + 'を転入予定に足しました'); });
+        return true;
+      }
+      if ((x = t.closest('[data-trdel]'))) {
+        var tid = x.dataset.trdel;
+        App.save(function () { return App.pf().removeTransfer(d.grade, tid); }).then(function () { return App.reload(); }).then(function () { R.scope = 'cls'; R.cls = -1; render(); App.toast('転入予定から外しました'); });
+        return true;
+      }
+      if (t.closest('#trB')) { R.scope = 'cls'; R.cls = -1; render(); setTimeout(function () { var el = App.$('trn'); if (el) el.focus(); }, 0); return true; }
       if (t.closest('#rhelp')) { helpDialog(); return true; }
       if (t.closest('#acadB')) { App.acadDialog(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }
@@ -993,6 +1012,7 @@
     },
     input: function (t) {
       if (t.id === 'rfy') { R.fy = +t.value; render(); return; }
+      if (t.id === 'trn') { TRF.n = t.value; return; } if (t.id === 'trk') { TRF.k = t.value; return; } if (t.id === 'tri') { TRF.i = t.value; return; }
     },
     key: function (e) {
       if (e.key === 'Escape' && R.kid) { R.kid = null; R.form = null; render(); return true; }

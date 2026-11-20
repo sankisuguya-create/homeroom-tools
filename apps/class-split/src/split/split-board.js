@@ -45,13 +45,16 @@
     var IC_PRT = '<svg class="bic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6M7 17H4V9h16v8h-3M7 14h10v7H7z"/></svg>';
     h += '<span class="bacts">';
     var adm = !!(App.me && App.me.admin), ADM = '（管理者だけができます）'; // 決定・取り消し・組の番号は管理者だけ（サーバーでも断る）
-    if (ro) h += '<span class="decided">決定済み：' + App.esc(S.decision.plan) + '　' + namesText() + '</span>' +
-      b('cnames', '組の番号を決める…', adm ? '' : ADM, 'primary', !adm) + b('prt', IC_PRT, '個人票を印刷', 'icb', np) + b('xlsOut', 'Excel で出す', '決定した組を「次年度組編成」の Excel で出す', 'primary') + b('undoDecide', '決定を取り消す…', adm ? '' : ADM, 'danger', !adm);
-    else h += b('undo', '↶', '戻す（Ctrl+Z）', '', np || !p.hist.length) + b('redo', '↷', 'やり直す（Ctrl+Y）', '', np || !p.fut.length) + b('dup', '複製', 'この案を写して新しい案にする（D）', '', np) +
-      '<span class="bsep"></span>' + b('pairs', 'つける離す', 'つける・離す・組に固定（P）') + b('trans', '転入生') +
-      '<span class="bsep"></span>' + b('order', IC_ORD, '組の中のカードの並び順', 'ordbtn icb', np) + b('prt', IC_PRT, '個人票を印刷', 'icb', np);
-    h += b('fs', '⛶', '全画面（F）') + b('hbtn', '?', 'ショートカット一覧（?）');
-    if (!ro) h += '<span class="bsep"></span>' + b('decide', '決定', App.st.grade >= 6 ? '6年は決定しません' : !adm ? '決定は' + ADM : 'この案でクラス替えを決める（来年度の名簿を作る）', 'warnbtn', np || App.st.grade >= 6 || !adm) + b('gen', '案を作る', '（G）', 'primary');
+    // 帯は1段に収める：毎日の操作だけを出し、まれな操作は「その他 ▾」に畳む。主の操作（案を作る）だけを大きく、決定は間を空けて置く
+    var dd = App.ddItem, IT = function (id, label, title, off) { return dd(id, label, title, off); };
+    if (ro) h += '<span class="decided" title="' + App.esc(namesText()) + '">決定済み（' + App.esc(S.decision.plan) + '）</span>' +
+      b('cnames', '組の番号を決める…', adm ? '' : ADM, 'primary', !adm) +
+      App.ddMenu('smenu', 'その他', IT('prt', '個人票を印刷…', '', np) + IT('xlsOut', 'Excel で出す（次年度組編成）', '') + IT('fs', '全画面（F）', '') + IT('hbtn', '使い方・ショートカット（?）', '')) +
+      '<span class="bgap"></span>' + b('undoDecide', '決定を取り消す…', adm ? '' : ADM, 'danger', !adm);
+    else h += b('undo', '↶', '戻す（Ctrl+Z）', 'bsm', np || !p.hist.length) + b('redo', '↷', 'やり直す（Ctrl+Y）', 'bsm', np || !p.fut.length) +
+      b('pairs', 'つける離す', 'つける・離す・組に固定（P）') +
+      App.ddMenu('smenu', 'その他', IT('dup', 'この案を複製（D）', '', np) + IT('order', '組の中の並び順…', '', np) + IT('prt', '個人票を印刷…', '', np) + IT('fs', '全画面（F）', '') + IT('hbtn', '使い方・ショートカット（?）', '')) +
+      '<span class="bgap"></span>' + b('decide', '決定…', App.st.grade >= 6 ? '6年は決定しません' : !adm ? '決定は' + ADM : 'この案でクラス替えを決める（来年度の名簿を作る）', 'warnbtn', np || App.st.grade >= 6 || !adm) + b('gen', '案を作る', '（G）', 'primary bmain');
     return '<div class="bar">' + h + '</span></div>';
   }
 
