@@ -393,8 +393,10 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    removeKids: function (fy, grade, ids) { gen(); var set = {}; ids.forEach(function (id) { set[id] = 1; }); var cur = yearRows(fy, grade), n0 = cur.length; S.years[fy][grade] = cur.filter(function (r) { return !set[r.id]; }); return later({ n: n0 - S.years[fy][grade].length }); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
+      if (opt && opt.temp && !opt.dry) { var sq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) sq = Math.max(sq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (sq++)).slice(-3); }); }
       // 新1年：児童IDが無ければ仮の番号（本番の server.gs と同じ形 N＋年度＋3桁）
       if (grade === 0 && !(opt && opt.dry)) { var seq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) seq = Math.max(seq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (seq++)).slice(-3); }); }
       var cur = yearRows(fy, grade), byId = {}, added = 0, updated = 0, classes = {};

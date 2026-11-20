@@ -393,6 +393,7 @@
       '<label class="rfy">年度 <select id="rfy">' + years.map(function (fy) { return '<option value="' + fy + '"' + (fy === R.fy ? ' selected' : '') + '>' + fy + '</option>'; }).join('') + '</select></label>' +
       (R.scope !== 'school' ? '<button class="btn" id="acadB" title="クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）">学力…</button>' : '') +
       '<button class="btn" data-scope="' + (R.scope === 'school' ? 'cls' : 'school') + '" aria-pressed="' + (R.scope === 'school') + '">全校の事案</button>' +
+      (edit && R.scope !== 'school' ? '<button class="btn" id="moveB" title="転入した児童を足す・転出した児童や誤って登録した児童を名簿から外す">転入・転出・削除…</button>' : '') +
       (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
       '<button class="btn" id="rhelp" title="名簿の使い方">?</button>';
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
@@ -698,6 +699,80 @@
       }
     });
   }
+  // 転入・転出・削除：名簿の画面で、1人を足す・選んだ児童を外す
+  function moveDialog() {
+    var d = D(), fy = editableFy(), Y = yearOf(fy), grade = Y ? Y.grade : (fy === d.fy ? d.grade : d.grade + 1), esc = App.esc;
+    var rows = Y ? Y.rows.slice() : [], nc = 1; rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var M = { tab: 'out', scope: 'cls', cls: R.cls < nc ? R.cls : 0, pick: {}, reason: 'leave', f: { name: '', kana: '', male: true, cls: R.cls < nc ? R.cls : 0, id: '' } };
+    var shown = function () { return rows.filter(function (r) { return M.scope === 'all' || r.cls === M.cls; }).sort(function (a, b) { return a.cls - b.cls || a.no - b.no; }); };
+    var picked = function () { return shown().filter(function (r) { return M.pick[r.id]; }); };
+    var nextNo = function (k) { var m = 0; rows.forEach(function (r) { if (r.cls === k && r.no > m) m = r.no; }); return m + 1; };
+    var clsBtns = function (attr, cur) { return Array.from({ length: nc }, function (_, k) { return '<button class="tab" ' + attr + '="' + k + '" aria-selected="' + (cur === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join(''); };
+    App.openDlg({
+      html: function () {
+        var h = '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="転入・転出・削除" style="max-width:720px"><h2>' + fy + '年度 ' + C.gradeLabel(grade) + '：転入・転出・削除</h2>' +
+          '<div class="rbar"><button class="tab" data-mtab="out" aria-selected="' + (M.tab === 'out') + '">名簿から外す（転出・誤登録）</button><button class="tab" data-mtab="in" aria-selected="' + (M.tab === 'in') + '">転入した児童を足す</button></div>';
+        if (M.tab === 'out') {
+          var list = shown(), n = picked().length;
+          h += '<div class="rbar"><span class="lab">表示</span>' + clsBtns('data-mcls', M.scope === 'cls' ? M.cls : -1) + '<button class="tab" data-mall="1" aria-selected="' + (M.scope === 'all') + '">学年全体</button></div>' +
+            '<div class="rbar"><span class="lab">理由</span><button class="lv" data-mrs="leave" aria-pressed="' + (M.reason === 'leave') + '">転出した</button><button class="lv" data-mrs="mistake" aria-pressed="' + (M.reason === 'mistake') + '">誤って登録した</button></div>' +
+            '<p class="note">' + (M.reason === 'leave' ? '転出：この年度の名簿から外します。配慮項目・事案の記録は過年度の記録として残り、設定の「年度替わり」で消します。' : '誤って登録：この年度の名簿と配慮項目から消します。') + '外す前にデータの控えを取ります。</p>' +
+            '<div class="tw" style="max-height:300px"><table class="r ro"><thead><tr><th><input type="checkbox" id="mallp"' + (list.length && n === list.length ? ' checked' : '') + ' aria-label="すべて"></th><th>組</th><th>番号</th><th style="text-align:left">名前</th><th>児童ID</th></tr></thead><tbody>' +
+            list.map(function (r) { var s = d.kids[r.id] || {}; return '<tr><td><input type="checkbox" data-mp="' + esc(r.id) + '"' + (M.pick[r.id] ? ' checked' : '') + '></td><td>' + (r.cls + 1) + '</td><td>' + r.no + '</td><td style="text-align:left">' + esc(s.name || '') + '</td><td>' + esc(r.id) + '</td></tr>'; }).join('') +
+            '</tbody></table></div>' +
+            '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn danger" id="mgo"' + (n ? '' : ' disabled') + '>選んだ' + n + '人を外す…</button></div>';
+        } else {
+          var f = M.f;
+          h += '<label class="setrow">名前<input id="mfn" value="' + esc(f.name) + '" maxlength="40" placeholder="例：山田 花子"></label>' +
+            '<label class="setrow">よみ<input id="mfk" value="' + esc(f.kana) + '" maxlength="60" placeholder="例：やまだ はなこ"></label>' +
+            '<div class="rbar"><span class="lab">性別</span><button class="lv" data-msx="1" aria-pressed="' + f.male + '">男</button><button class="lv" data-msx="0" aria-pressed="' + !f.male + '">女</button></div>' +
+            '<div class="rbar"><span class="lab">組</span>' + clsBtns('data-mfc', f.cls) + '<span class="note">番号は ' + nextNo(f.cls) + ' 番（組の最後）</span></div>' +
+            '<label class="setrow">児童ID（分からなければ空のまま。仮の番号を振り、あとで名簿を貼ると名前で照らして付け替えます）<input id="mfi" value="' + esc(f.id) + '" maxlength="20"></label>' +
+            '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" id="min"' + (f.name.trim() ? '' : ' disabled') + '>転入を登録する</button></div>';
+        }
+        return h + '</div></div>';
+      },
+      input: function (t) {
+        var f = M.f;
+        if (t.id === 'mallp') { shown().forEach(function (r) { M.pick[r.id] = t.checked; }); App.refreshDlg(); return; }
+        if (t.dataset.mp) { M.pick[t.dataset.mp] = t.checked; App.refreshDlg(); return; }
+        if (t.id === 'mfn') { f.name = t.value; var b = App.$('min'); if (b) b.disabled = !f.name.trim(); }
+        else if (t.id === 'mfk') f.kana = t.value; else if (t.id === 'mfi') f.id = t.value.trim();
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-mtab]'))) { M.tab = x.dataset.mtab; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-mcls]'))) { M.scope = 'cls'; M.cls = +x.dataset.mcls; App.refreshDlg(); return true; }
+        if (t.closest('[data-mall]')) { M.scope = 'all'; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-mrs]'))) { M.reason = x.dataset.mrs; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-msx]'))) { M.f.male = x.dataset.msx === '1'; App.refreshDlg(); return true; }
+        if ((x = t.closest('[data-mfc]'))) { M.f.cls = +x.dataset.mfc; App.refreshDlg(); return true; }
+        if (t.closest('#mgo')) {
+          var ps = picked(), word = ps.length + '人を外す', names = ps.map(function (r) { return (d.kids[r.id] || {}).name || r.id; });
+          if (!ps.length) return true;
+          var typed = prompt((M.reason === 'mistake' ? '誤って登録した児童として消します：' : '転出した児童として名簿から外します：') + names.slice(0, 10).join('、') + (names.length > 10 ? ' ほか' + (names.length - 10) + '人' : '') + '\n確かめるため「' + word + '」と入力してください');
+          if (typed == null) return true;
+          if (typed.trim() !== word) { App.toast('入力した語が違います'); return true; }
+          App.closeDlg();
+          App.save(function () { return App.pf().removeKids(fy, grade, ps.map(function (r) { return r.id; }), M.reason); }).then(function (r) {
+            return App.reload().then(function () { App.toast((r.backupError ? '⚠ ' + r.backupError + '。' : '') + r.n + '人を名簿から外しました'); });
+          });
+          return true;
+        }
+        if (t.closest('#min')) {
+          var f = M.f; if (!f.name.trim()) return true;
+          if (f.id && !C.isKidId(f.id)) { App.toast('児童IDは英数字20文字までです'); return true; }
+          var row = { id: f.id, name: f.name.trim(), kana: f.kana.trim(), male: f.male, sex: f.male ? '男' : '女', cls: f.cls, no: nextNo(f.cls) };
+          App.closeDlg();
+          App.save(function () { return App.pf().importRoster(fy, grade, [row], { temp: true }); }).then(function () {
+            return App.reload().then(function () { R.cls = f.cls; render(); App.toast(row.name + 'を' + (f.cls + 1) + '組に転入として登録しました'); });
+          });
+          return true;
+        }
+        return false;
+      }
+    });
+  }
   function importConfirm(fy, grade, rows, df) {
     var esc = App.esc, word = df.risky ? '上書きする' : '';
     var list = function (title, a) { return a.length ? '<div><b>' + title + ' ' + a.length + '人</b><div class="note">' + esc(a.slice(0, 8).join('、')) + (a.length > 8 ? ' ほか' + (a.length - 8) + '人' : '') + '</div></div>' : ''; };
@@ -768,6 +843,7 @@
       if (t.closest('td.ji')) return true; // 事案の欄は角から開く
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
+      if (t.closest('#moveB')) { moveDialog(); return true; }
       if (t.closest('#rhelp')) { helpDialog(); return true; }
       if (t.closest('#acadB')) { App.acadDialog(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }
