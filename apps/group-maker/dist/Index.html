@@ -183,6 +183,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     sex: ['性別', '男女'],
     cls: ['組', 'クラス', '学級'],
     no: ['出席番号', '番号', '番', 'no'],
+    id2: ['生徒管理コード'], // 児童IDの列が空の時に代わりに使う（校務システムの書き出し）
     grade: ['学年'],
     // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
     sei: ['姓'], mei: ['名'], seiK: ['姓ふりがな'], meiK: ['名ふりがな'],
@@ -190,7 +191,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
     fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
   };
-  var LABEL = { id: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
+  var LABEL = { id: '児童ID', id2: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
     sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
   // 名前・よみとして使える列（どれか1つでもあればよい）
   var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
@@ -273,7 +274,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
     var col = {};
     roles.forEach(function (r, c) { if (r && col[r] == null) col[r] = c; });
     var errors = [], rows = [], seen = {}, m = 0, f = 0, skipped = { grade: 0, blank: 0 }, nsp = 0;
-    if (!opt.tempId && col.id == null) errors.push(LABEL.id + 'の列が見つかりません');
+    if (!opt.tempId && col.id == null && col.id2 == null) errors.push(LABEL.id + 'の列が見つかりません');
     if (!NAME_ROLES.some(function (r) { return col[r] != null; })) errors.push(LABEL.name + 'の列が見つかりません');
     if (errors.length) { empty.roles = roles; empty.header = header; empty.errors = errors; return empty; }
     var cell = function (r, k) { return col[k] != null ? String(r[col[k]] || '').trim() : ''; };
@@ -286,7 +287,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
       var kana = cell(r, 'kana') || join(cell(r, 'seiK'), cell(r, 'meiK')) || cell(r, 'fkana') || join(cell(r, 'fseiK'), cell(r, 'fmeiK'));
       if (filterGrade) { var gr = gradeOf(cell(r, 'grade')); if (gr !== +opt.grade) { skipped.grade++; return; } }
       if (!name) { skipped.blank++; return; } // 名前の無い行（空欄の行・集計の行など）は読み飛ばす
-      var rawId = cell(r, 'id');
+      var rawId = cell(r, 'id') || cell(r, 'id2');
       var id = idOf(rawId);
       var sex = col.sex != null ? sexOf(r[col.sex] || '') : '';
       var rawCls = cell(r, 'cls'), sp = '', cls;
@@ -295,7 +296,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
       else if (/^\d+$/.test(toHalf(rawCls))) { errors.push(line + '組が読めません（1〜9）'); return; }
       else { sp = rawCls.slice(0, 20); cls = -1; } // 数字でない組＝特別支援学級
       var no = col.no != null ? +toHalf(r[col.no] || '') : 0;
-      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが読めません（英数字20文字まで）'); return; }
+      if (!id && !(opt.tempId && !rawId)) { errors.push(line + '児童IDが読めません（' + (rawId ? '「' + rawId.slice(0, 24) + '」。英数字20文字まで' : '空欄') + '）'); return; }
       if (id && seen[id]) { errors.push(line + '児童ID ' + id + ' が重複しています'); return; }
       if (col.sex != null && !sex) errors.push(line + '性別が読めません（男／女）');
       if (id) seen[id] = 1;
