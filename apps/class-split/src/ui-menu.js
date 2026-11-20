@@ -4,27 +4,32 @@
   var App = g.App;
   App.screens.menu = {
     render: function () {
-      var st = App.st, cur = (st.grades || []).filter(function (x) { return x.grade === st.grade; })[0];
+      var st = App.st, FY0 = App.pf().fiscalYear, vfy = st.viewFy || FY0, off = vfy - FY0, dg = st.grade + off, now = !off;
+      var cur = (st.grades || []).filter(function (x) { return x.grade === dg; })[0];
+      if (!cur && st.grades && st.grades.length) { cur = st.grades[0]; st.grade = cur.grade - off; dg = cur.grade; } // 見ている年度にその学年が無ければ先頭の学年
+      // 年度の選択：来年度（決定した学年の名簿）と過去の年度も見られる
+      var yearSel = '<label class="mfy">年度 <select id="mfy">' + (st.years || [FY0]).map(function (y) { return '<option value="' + y + '"' + (y === vfy ? ' selected' : '') + '>' + y + '年度' + (y === FY0 ? '（今年度）' : y === FY0 + 1 ? '（来年度）' : '') + '</option>'; }).join('') + '</select></label>';
       // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
       var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
       App.$('main').innerHTML = '<div class="menu">' + warn +
-        '<section><h2>学年を選ぶ</h2><div class="grades">' + st.grades.map(function (x) {
-          return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === st.grade) + '">' + g.CONFIG.gradeLabel(x.grade) + '<small>' + (x.count ? x.count + '人' + (x.grade === 0 ? '' : '・' + x.classes + '学級') : '名簿なし') + (x.decided ? '・決定済み' : '') + '</small></button>';
+        '<section><h2>学年を選ぶ ' + yearSel + '</h2>' + (now ? '' : '<p class="note">' + vfy + '年度の名簿を見ています。' + (off > 0 ? 'クラス替えを決定した学年だけが入っています。' : '') + 'クラス分けは今年度だけです。</p>') + '<div class="grades">' + st.grades.map(function (x) {
+          return '<button class="gbtn" data-g="' + x.grade + '" aria-pressed="' + (x.grade === dg) + '">' + g.CONFIG.gradeLabel(x.grade) + '<small>' + (x.count ? x.count + '人' + (x.grade === 0 ? '' : '・' + x.classes + '学級') : '名簿なし') + (x.decided ? '・決定済み' : '') + '</small></button>';
         }).join('') + '</div></section>' +
-        '<section><h2>' + g.CONFIG.gradeLabel(st.grade) + 'で何をしますか</h2><div class="bigs">' +
+        '<section><h2>' + App.viewLabel() + 'で何をしますか</h2><div class="bigs">' +
         // 名簿が0人の学年は、名簿を貼る入口を先頭に大きく出す（名簿の画面を開くと、すぐ貼る窓が開く）
-        (cur && !cur.count ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b><span>' + (st.grade === 0 ? '来年度に入学する児童の名簿を、Excel やスプレッドシートからコピーして貼る。児童IDは無くてよい（仮の番号を振る）。' : 'まだ名簿がありません。Excel やスプレッドシートの名簿をコピーして貼る。') + '</span></button>'
+        (cur && !cur.count && now ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b><span>' + (st.grade === 0 ? '来年度に入学する児童の名簿を、Excel やスプレッドシートからコピーして貼る。児童IDは無くてよい（仮の番号を振る）。' : 'まだ名簿がありません。Excel やスプレッドシートの名簿をコピーして貼る。') + '</span></button>'
           : '<button class="big" data-go="roster"><b>名簿を見る</b><span>' + (st.grade === 0 ? '来年度に入学する児童の名簿。配慮項目の入力。' : '今年度と過去の年度の学級名簿。配慮項目の入力、児童ごとの経年の記録。') + '</span></button>') +
-        (st.grade === 0 ? '' : '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>') + // 新1年は入学前なので事案は無い
-        (st.grade >= 6 ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>' + (st.grade === 0 ? '入学する児童を1年の学級に分ける案を作り、入れ替え・比較して決める。' : '来年度の学級の案を作り、入れ替え・比較して決める。') + '</span></button>') + // 6年は卒業するのでクラス分けは無い
+        (st.grade <= 0 ? '' : '<button class="big" data-go="incidents"><b>事案管理</b><span>事案の登録と記録（発覚・経緯・指導）、その後の経緯、市教委への報告書の出力。</span></button>') + // 新1年は入学前なので事案は無い
+        (st.grade >= 6 || !now ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>' + (st.grade === 0 ? '入学する児童を1年の学級に分ける案を作り、入れ替え・比較して決める。' : '来年度の学級の案を作り、入れ替え・比較して決める。') + '</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
-        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button>' +
+        '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button> <button class="btn" data-go="roster" data-school="1" title="全校の事案と、関わった児童の一覧">全校の事案</button>' +
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p>' +
         '<p class="note"><button class="linkbtn" data-go="suggest">目安箱（このアプリへの意見）</button></p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
+    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
     click: function (t) {
       var gb = t.closest('[data-g]');
-      if (gb) { App.st.grade = +gb.dataset.g; App.st.gradeChosen = true; App.screens.menu.render(); return true; }
+      if (gb) { var cg = +gb.dataset.g - App.viewOff(); App.preload(cg); App.st.grade = cg; App.st.gradeChosen = true; App.screens.menu.render(); return true; } // 見ている年度の学年を、今年度の学年に直して持つ
       return false;
     }
   };

@@ -19,6 +19,12 @@
   // 程度の＋：縦横が同じ長さの十字を図で描く（字の＋はフォントによって縦長になる）。
   // 下に敷く白い十字は黒より両側と両端に1目盛りずつ大きく、縁取りの幅がどこでも同じになる
   var PLUS = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0V10M0 5H10" stroke="#fff" stroke-width="4.4"/><path d="M5 1.2V8.8M1.2 5H8.8" stroke="#1A1A1A" stroke-width="2"/></svg>';
+  // 畳んだメニュー（「名簿の管理 ▾」「その他 ▾」）：まれに使う操作をまとめる。中の項目は元の id のまま（各画面の click がそのまま効く）
+  App.ddMenu = function (id, label, items, title) {
+    return '<span class="ddm"><button type="button" class="btn" data-dd="' + id + '" aria-haspopup="true" aria-expanded="false"' + (title ? ' title="' + title + '"' : '') + '>' + label + ' ▾</button><div class="ddpop" hidden>' + items + '</div></span>';
+  };
+  App.ddItem = function (id, label, title, off, attrs) { return '<button type="button" class="ddi" id="' + id + '"' + (title ? ' title="' + title + '"' : '') + (off ? ' disabled' : '') + (attrs || '') + '>' + label + '</button>'; };
+  App.closeDd = function () { document.querySelectorAll('.ddpop:not([hidden])').forEach(function (el) { el.hidden = true; var b = el.previousElementSibling; if (b) b.setAttribute('aria-expanded', 'false'); }); };
   App.mark = function (at, lv, note) {
     lv = Math.min(lv, at.max || lv); // 以前の値（程度3）はアイコン＋で出す
     return '<span class="b ' + at.sh + '" style="--c:' + at.c + ';--t:' + at.t + '" data-a="' + at.k + '" data-lv="' + lv + '"' + (note ? ' data-t="' + App.esc(note) + '"' : '') + '><i></i><em>' + at.s + '</em>' +
@@ -171,8 +177,9 @@
   // 送れていない保存がある間は、画面を閉じる時にブラウザが確かめる
   var LATEST = {}, PENDING = 0, SEQ = 0;
   App.pending = function () { return PENDING; };
+  App.saveGen = 0; // 保存のたびに進める（読んだ学年のデータを使い回してよいかの印。main.js の bootFor）
   App.save = function (fn, key) {
-    var id = ++SEQ; if (key) LATEST[key] = id;
+    var id = ++SEQ; if (key) LATEST[key] = id; App.saveGen++;
     PENDING++;
     var done = function () { PENDING = Math.max(0, PENDING - 1); };
     var stale = function () { return key && LATEST[key] !== id; };

@@ -99,3 +99,7 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 .spstrip .spname{margin-right:2px}.spstrip .spname small{margin-left:3px;color:#5a4a3a}
 .spstrip .lv{padding:1px 6px;font-size:.75rem}
 .head .spn{background:#FFE0BF;color:#1A1A1A;border-radius:3px;padding:0 3px}
+.bar .bgap{display:inline-block;width:20px}
+.bar .bmain{height:40px;padding:0 18px;font-size:15px}
+.bar .bsm{min-width:32px;padding:0 6px}
+.bar .decided{white-space:nowrap}

@@ -253,12 +253,13 @@
   g.Platforms.demo = {
     name: 'demo',
     fiscalYear: FY,
-    listGrades: function () { gen();
-      var out = [];
-      for (var grade = 0; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める）
-        var rows = yearRows(FY, grade), nc = 0;
+    rosterYears: function () { gen(); var ys = {}; ys[FY] = 1; ys[FY + 1] = 1; Object.keys(S.years).forEach(function (y) { if (Object.keys(S.years[y]).some(function (g) { return S.years[y][g].length; })) ys[y] = 1; }); return later(Object.keys(ys).map(Number).sort()); },
+    listGrades: function (fy0) { gen();
+      var out = [], fy = +fy0 || FY;
+      for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
+        var rows = yearRows(fy, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
-        out.push({ grade: grade, count: rows.length, classes: nc, decided: !!S.decisions[grade] });
+        out.push({ grade: grade, count: rows.length, classes: nc, decided: fy === FY && !!S.decisions[grade] });
       }
       return later(out);
     },
@@ -394,7 +395,7 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
-    updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; S.kids[id].name = x.name; S.kids[id].kana = x.kana; return later({ ok: true }); },
+    updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; var k = S.kids[id]; k.name = x.name; k.kana = x.kana; if (x.male !== undefined) k.male = x.male; ['birth', 'addr', 'area'].forEach(function (f) { if (x[f] !== undefined) k[f] = x[f]; }); if (x.sp !== undefined) { if (x.sp) { r.a.sp = 1; r.a.spn = x.spn || ''; } else { delete r.a.sp; delete r.a.spn; } } return later({ ok: true }); },
     setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
     leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },
     restoreKid: function (fy, grade, id, cls) { gen(); var x = (S.left || []).filter(function (y) { return y.id === id; })[0]; if (!x) return Promise.reject(new Error('転出児童の一覧にいません')); var cur = yearRows(fy, grade), max = 0; cur.forEach(function (r) { if (r.cls === cls && r.no > max) max = r.no; }); cur.push({ id: id, cls: cls, no: max + 1, a: x.a || {} }); S.left = S.left.filter(function (y) { return y.id !== id; }); return later({ cls: cls }); },

@@ -35,7 +35,7 @@ body[data-screen="roster"] table.r th .b{font-size:.8em}
 .kidpop table.h{font-size:.95rem}
 body[data-screen="roster"] table.r td.nm{font-size:1em;letter-spacing:0}
 /* 名簿の見出し：項目は正式な名称で示す（長い名称は折り返す） */
-body[data-screen="roster"] table.r th.an{white-space:normal;font-size:.78em;line-height:1.2;min-width:3.5em;max-width:6em;vertical-align:bottom}
+body[data-screen="roster"] table.r th.an{white-space:nowrap;font-size:12px;line-height:1.2;min-width:3.5em;vertical-align:bottom} /* 2段に収める（head2 で改行）*/
 /* 窓の経年の記録：学年-組-番 を全年度で縦にそろえる（左寄せ・等幅の数字・番号は2桁分の幅で右寄せ） */
 table.h td.gcn{text-align:left;white-space:nowrap;font-variant-numeric:tabular-nums;padding-left:8px}
 /* 学年・組・番は字の幅に頼らず、箱の幅で縦をそろえる */
@@ -69,3 +69,6 @@ body[data-screen="roster"] table.r :is(th,td).sxc{width:3.6em;min-width:3.6em;ma
 body[data-screen="roster"] table.r td.memo .msib{color:var(--sub);margin-left:.4em}
 .sibrow{display:flex;gap:6px;align-items:center;margin:4px 0}
 .sibrow input{flex:1;min-width:0;font:inherit;padding:3px 6px}
+/* 見出しは2段に収める（head2 で改行を入れる）。小さめの字で、折り返さない */
+body[data-screen="roster"] table.r th{font-size:13px;line-height:1.2;vertical-align:bottom}
+.hcnt .cm{color:#1A62D6;font-weight:700}.hcnt .cf{color:#D11F3A;font-weight:700;margin-left:2px}

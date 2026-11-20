@@ -47,6 +47,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
 
     const g = call('apiListGrades').v;
     assert.deepEqual(g.map(x => x.grade), [0, 1, 2, 3, 4, 5, 6], '新1年（0）から6年まで');
+    assert.deepEqual(call('apiListGrades', FY + 1).v.map(x => x.grade), [1, 2, 3, 4, 5, 6], 'ほかの年度は1〜6年');
+    assert.ok(call('apiRosterYears').v.includes(FY) && call('apiRosterYears').v.includes(FY + 1), '選べる年度に今年度と来年度');
     const g4 = g.find(x => x.grade === 4);
     assert.equal(g4.count, 8); assert.equal(g4.classes, 2);
 
@@ -402,12 +404,22 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const mv = call('apiSetKidClass', FY, 4, 'SB2', 1);
     assert.ok(mv.ok, mv.err);
     assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, 1, '組を移せる（交流級の振り分け）');
+    assert.ok(call('apiSetKidClass', FY, 4, 'SB2', -1).ok);
+    assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, -1, 'クラスなしにできる');
+    assert.ok(call('apiSetKidClass', FY, 4, 'SB2', 1).ok);
 
     // 名前・よみ・組・番号を直す（児童IDは変えない）
     const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });
     assert.ok(upd.ok, upd.err);
     const upr = call('apiBoot', 4).v; const upk = upr.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2');
     assert.ok(upk.cls === 0 && upk.no === 70 && upr.kids.SB2.name === '直した 名前' && upr.kids.SB2.kana === 'なおした なまえ', '名前・よみ・組・番号が変わる');
+    const ue2 = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', male: false, cls: 0, no: 70, birth: '2016/7/8', addr: '見本市中央1-2', area: '中央', sp: true, spn: 'ひまわり' });
+    assert.ok(ue2.ok, ue2.err);
+    const u2 = call('apiBoot', 4).v, u2r = u2.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2');
+    assert.ok(u2.kids.SB2.male === false && u2.kids.SB2.birth === '2016/7/8' && u2.kids.SB2.addr === '見本市中央1-2' && u2.kids.SB2.area === '中央', '性別・生年月日・住所・町名を直せる');
+    assert.ok(u2r.a.sp === 1 && u2r.a.spn === 'ひまわり', '特別支援学級の印と学級名を直せる');
+    assert.ok(call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', cls: 0, no: 70 }).ok);
+    assert.equal(call('apiBoot', 4).v.kids.SB2.addr, '見本市中央1-2', '送られていない項目は消さない');
     assert.equal(call('apiUpdateKid', FY, 4, 'SB2', { name: '', cls: 0, no: 1 }).ok, false, '名前は空にできない');
     assert.equal(call('apiUpdateKid', FY - 1, 4, 'SB2', { name: 'x', cls: 0, no: 1 }).ok, false, '直せない年度は断る');
 

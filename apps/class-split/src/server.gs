@@ -336,7 +336,8 @@ function api_(fn) {
     var last = args[args.length - 1];
     DEV_ = last && typeof last === 'object' && last.__dev ? args.pop().__dev : null; DEV_NEW_ = ''; DEVICE_CHECKED_ = '';
     forget_();
-    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined }); }
+    var t0 = Date.now();
+    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: Date.now() - t0 }); } // ms：サーバーでかかった時間（遅い時の手がかり）
     catch (e) {
       var m = String(e && e.message || e), dev = m.indexOf('USER:DEVICE:') === 0;
       return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, device: dev, err: m.replace(/^USER:(DEVICE:)?/, ''), dev: DEV_NEW_ || undefined }); // 登録の後で失敗しても、合い言葉は端末に渡す
@@ -344,17 +345,25 @@ function api_(fn) {
   };
 }
 
-var apiListGrades_ = api_(function () {
+// fy：見る年度（省略は今年度）。今年度は新1年〜6年、ほかの年度は1〜6年。決定の印は今年度だけ
+var apiListGrades_ = api_(function (fy0) {
   requireTeacher_();
-  var fy = CONFIG.fiscalYear(), by = {};
+  var FY = CONFIG.fiscalYear(), fy = +fy0 || FY, by = {};
   rosterRows_(fy).forEach(function (r) {
     var g = by[r.grade] = by[r.grade] || { grade: r.grade, count: 0, classes: 0, decided: false };
     g.count++; if (r.cls + 1 > g.classes) g.classes = r.cls + 1;
   });
-  Object.keys(by).forEach(function (g) { by[g].decided = !!decisionOf_(fy, +g); });
+  Object.keys(by).forEach(function (g) { by[g].decided = fy === FY && !!decisionOf_(fy, +g); });
   var out = [];
-  CONFIG.GRADES.forEach(function (g) { out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
+  CONFIG.GRADES.forEach(function (g) { if (g === 0 && fy !== FY) return; out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
+});
+// メニューで選べる年度：名簿のある年度と、今年度・来年度
+var apiRosterYears_ = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), set = {}; set[FY] = 1; set[FY + 1] = 1;
+  rosterSheets_().forEach(function (fy) { set[fy] = 1; });
+  return Object.keys(set).map(Number).sort();
 });
 
 var apiBoot_ = api_(function (grade) {
@@ -645,7 +654,7 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
   fy = +fy; grade = +grade; id = String(id); x = x || {};
   var name = String(x.name || '').trim(), cls = +x.cls, no = +x.no;
   if (!name) throw userError_('名前を入れてください');
-  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
   if (!(no >= 1 && no <= 99)) throw userError_('出席番号は1〜99にしてください');
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
   if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
@@ -653,8 +662,20 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
     var t = read_('roster_' + fy), row = null;
     t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
     if (!row) throw userError_('名簿にいない児童です');
+    ensureCols_('roster_' + fy, ROSTER_HEAD); t = read_('roster_' + fy); t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
     var o = { name: plainText_(name, 40), kana: plainText_(String(x.kana || '').trim(), 60), 'class': cls + 1, no: no };
-    Object.keys(o).forEach(function (c) { if (String(row[c]) !== String(o[c])) writeCell_(t, row, c, o[c]); });
+    // 性別・生年月日・住所・町名は、送られてきた時だけ書く（古い画面から送られても消さない）
+    if (x.male !== undefined) o.sex = x.male ? '男' : '女';
+    ['birth', 'addr', 'area'].forEach(function (k) { if (x[k] !== undefined) o[k] = plainText_(String(x[k] || '').trim(), k === 'addr' ? 200 : 40); });
+    Object.keys(o).forEach(function (c) { if (String(row[c] == null ? '' : row[c]) !== String(o[c])) writeCell_(t, row, c, o[c]); });
+    // 特別支援学級（配慮項目の表の sp・spn）
+    if (x.sp !== undefined) {
+      ensureCols_('attrs_' + fy, attrsHead_());
+      var at = read_('attrs_' + fy), ar = null; at.rows.forEach(function (r) { if (String(r.id8) === id) ar = r; });
+      var sp = x.sp ? 1 : '', spn = x.sp ? plainText_(String(x.spn || '').trim(), 20) : '';
+      if (ar) { if (String(ar.sp || '') !== String(sp)) writeCell_(at, ar, 'sp', sp); if (String(ar.spn || '') !== spn) writeCell_(at, ar, 'spn', spn); }
+      else if (sp) append_('attrs_' + fy, attrsHead_(), [{ id8: id, sp: 1, spn: spn }]);
+    }
     log_(by, 'updateKid', 1);
     return { ok: true };
   });
@@ -664,7 +685,7 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
 var apiSetKidClass_ = api_(function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
-  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
   if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
   return withLock_(function () {
@@ -1428,3 +1449,4 @@ function apiSetKidClass() { return apiSetKidClass_.apply(null, arguments); }
 function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
 function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }
 function apiUpdateKid() { return apiUpdateKid_.apply(null, arguments); }
+function apiRosterYears() { return apiRosterYears_.apply(null, arguments); }
