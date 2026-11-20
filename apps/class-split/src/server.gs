@@ -186,7 +186,7 @@ function setup() {
   ensureWeeklyTrigger_();
   return ss.getUrl();
 }
-var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no', 'addr', 'area']; // addr：住所の全文、area：町名（地区の偏りに使う）
+var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no', 'addr', 'area', 'birth']; // addr：住所の全文、area：町名（地区の偏りに使う）
 var TABLES_ = [
   { name: 'settings', head: ['key', 'json'] },
   { name: 'decisions', head: ['fy', 'grade', 'plan', 'by', 'at', 'undone', 'names'] }, // names：A組から順の組の番号（例 2,1,3）。空＝仮（A組＝1組…）
@@ -200,7 +200,7 @@ var TABLES_ = [
   // 目安箱：アプリへの意見。送った人は残さない（at・開いていた画面・本文だけ）
   { name: 'suggestions', head: ['at', 'screen', 'text'] },
   // 転出児童：出戻りに備えて残す（転出した年度・その時の学年と組）。年度替わりの削除で消える
-  { name: 'left', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'cls', 'no', 'addr', 'area', 'at', 'by'] }
+  { name: 'left', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'cls', 'no', 'addr', 'area', 'at', 'by', 'birth'] }
 ];
 // side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
 function attrsHead_() {
@@ -299,9 +299,11 @@ function setSetting_(key, value) {
 function rosterRows_(fy) {
   return read_('roster_' + fy).rows.filter(function (r) { return String(r.id8); }).map(function (r) {
     return { id: String(r.id8), name: String(r.name), kana: String(r.kana || ''), male: String(r.sex) === '男',
-      grade: +r.grade, cls: (+r['class']) - 1, no: +r.no, addr: String(r.addr || ''), area: String(r.area || '') };
+      grade: +r.grade, cls: (+r['class']) - 1, no: +r.no, addr: String(r.addr || ''), area: String(r.area || ''), birth: dateText_(r.birth) };
   });
 }
+// 生年月日：シートが日付として読んだ時も 2018/4/2 の形の文字にそろえる
+function dateText_(v) { if (v instanceof Date) return v.getFullYear() + '/' + (v.getMonth() + 1) + '/' + v.getDate(); return String(v || ''); }
 function attrsMap_(fy) {
   var m = {};
   read_('attrs_' + fy).rows.forEach(function (r) {
@@ -365,7 +367,7 @@ var apiBoot_ = api_(function (grade) {
     var rows = rosterRows_(fy).filter(function (r) { return r.grade === gy; });
     if (!rows.length) continue;
     years.push({ fy: fy, grade: gy, rows: rows.map(function (r) {
-      kids[r.id] = { id: r.id, name: r.name, kana: r.kana, male: r.male, area: r.area, addr: r.addr };
+      kids[r.id] = { id: r.id, name: r.name, kana: r.kana, male: r.male, area: r.area, addr: r.addr, birth: r.birth };
       idset[r.id] = 1;
       return { id: r.id, cls: r.cls, no: r.no, a: am[r.id] || emptyAttrs_() };
     }) });
@@ -497,10 +499,10 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
       if (!CONFIG.isKidId(id)) throw userError_(grade === 0 ? '児童IDは英数字20文字までか、空のままにしてください' : '児童IDが読めない行があります（英数字20文字まで）');
       classes[+x.cls] = 1; ids[id] = 1;
       var o = { id8: id, name: plainText_(x.name, 40), kana: plainText_(x.kana || '', 60), sex: x.male ? '男' : (x.sex || '女'), grade: grade, 'class': (+x.cls) + 1, no: +x.no,
-        addr: plainText_(String(x.addr || ''), 200), area: plainText_(String(x.area || ''), 40) };
+        addr: plainText_(String(x.addr || ''), 200), area: plainText_(String(x.area || ''), 40), birth: plainText_(String(x.birth || ''), 20) };
       var r = byId[id];
       // 住所は、貼った表に住所があった時だけ書き換える（住所の無い名簿を貼り直しても消さない）
-      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].concat(x.addr ? ['addr', 'area'] : []).forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
+      if (r) { ['name', 'kana', 'sex', 'grade', 'class', 'no'].concat(x.addr ? ['addr', 'area'] : []).concat(x.birth ? ['birth'] : []).forEach(function (c) { if (String(r[c]) !== String(o[c])) writeCell_(t, r, c, o[c]); }); updated++; }
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
@@ -590,8 +592,8 @@ var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
     if (reason !== 'mistake') { // 転出：出戻りに備えて転出児童の一覧に残す（同じ児童の古い行は置き換える）
       var keep = rosterRows_(fy).filter(function (r) { return r.grade === grade && set[r.id]; });
       removeRows_('left', function (r) { return set[String(r.id8)]; });
-      sheet_(db_(), 'left', TABLES_[8].head);
-      append_('left', TABLES_[8].head, keep.map(function (r) { return { fy: fy, grade: grade, id8: r.id, name: plainText_(r.name, 40), kana: plainText_(r.kana, 60), sex: r.male ? '男' : '女', cls: r.cls + 1, no: r.no, addr: plainText_(r.addr, 200), area: plainText_(r.area, 40), at: new Date().toISOString(), by: by }; }));
+      ensureCols_('left', TABLES_[8].head); // 生年月日の列が無い古い表にも足す
+      append_('left', TABLES_[8].head, keep.map(function (r) { return { fy: fy, grade: grade, id8: r.id, name: plainText_(r.name, 40), kana: plainText_(r.kana, 60), sex: r.male ? '男' : '女', cls: r.cls + 1, no: r.no, addr: plainText_(r.addr, 200), area: plainText_(r.area, 40), at: new Date().toISOString(), by: by, birth: plainText_(r.birth, 20) }; }));
     }
     var k = removeRows_('roster_' + fy, function (r) { return +r.grade === grade && set[String(r.id8)]; });
     if (reason === 'mistake') removeRows_('attrs_' + fy, function (r) { return set[String(r.id8)]; });
@@ -624,7 +626,7 @@ var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
     var t = read_(name), max = 0, dup = false;
     t.rows.forEach(function (r) { if (String(r.id8) === id) dup = true; if (+r.grade === grade && +r['class'] === cls + 1 && +r.no > max) max = +r.no; });
     if (dup) throw userError_('すでに名簿にいます');
-    append_(name, ROSTER_HEAD, [{ id8: id, name: String(lr.name), kana: String(lr.kana), sex: String(lr.sex), grade: grade, 'class': cls + 1, no: max + 1, addr: String(lr.addr || ''), area: String(lr.area || '') }]);
+    append_(name, ROSTER_HEAD, [{ id8: id, name: String(lr.name), kana: String(lr.kana), sex: String(lr.sex), grade: grade, 'class': cls + 1, no: max + 1, addr: String(lr.addr || ''), area: String(lr.area || ''), birth: dateText_(lr.birth) }]);
     ensureCols_('attrs_' + fy, attrsHead_());
     var has = read_('attrs_' + fy).rows.some(function (r) { return String(r.id8) === id; });
     if (!has && +lr.fy !== fy) {
@@ -996,7 +998,7 @@ var apiDecide_ = api_(function (grade, plan) {
     ensureCols_('roster_' + nfy, ROSTER_HEAD);
     append_('roster_' + nfy, ROSTER_HEAD, rows.map(function (r) {
       var s = info[r.id];
-      return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no, addr: s.addr || '', area: s.area || '' };
+      return { id8: r.id, name: s.name, kana: s.kana, sex: s.male ? '男' : '女', grade: grade + 1, 'class': r.cls + 1, no: r.no, addr: s.addr || '', area: s.area || '', birth: s.birth || '' };
     }));
     ensureCols_('attrs_' + nfy, attrsHead_());
     append_('attrs_' + nfy, attrsHead_(), rows.map(function (r) { var o = { id8: r.id }; CONFIG.ATTRS.forEach(function (at) { o[at.k] = r.a[at.k]; if ((at.side || at.ctx) && r.a[at.k + '_t']) o[at.k + '_t'] = plainText_(r.a[at.k + '_t'], 1000); if (at.ctx && r.a[at.k + '_i']) o[at.k + '_i'] = r.a[at.k + '_i'].join(','); }); if (r.a.sp) o.sp = 1; if (r.a.memo) o.memo = plainText_(r.a.memo, 400); if (r.a.sib && r.a.sib.length) o.sib = JSON.stringify(r.a.sib); return o; }));

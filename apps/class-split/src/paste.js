@@ -10,6 +10,7 @@
     sex: ['性別', '男女'],
     cls: ['組', 'クラス', '学級'],
     no: ['出席番号', '番号', '番', 'no'],
+    birth: ['生年月日', '誕生日'],
     id2: ['生徒管理コード'], // 児童IDの列が空の時に代わりに使う（校務システムの書き出し）
     grade: ['学年'],
     // 校務システムの書き出し：名前の列が空の時に組み立てる部品（姓＋名、正式名前、正式姓＋正式名）
@@ -18,7 +19,7 @@
     addr: ['住所'], pref: ['都道府県'], city: ['市区町村'], town: ['町番地', '町名番地', '町名'], apt: ['アパート/マンション名', 'アパート・マンション名', '建物名'],
     fname: ['正式名前'], fkana: ['正式名前ふりがな'], fsei: ['正式姓'], fmei: ['正式名'], fseiK: ['正式姓ふりがな'], fmeiK: ['正式名ふりがな']
   };
-  var LABEL = { sib: '兄弟', id: '児童ID', id2: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
+  var LABEL = { birth: '生年月日', sib: '兄弟', id: '児童ID', id2: '児童ID', name: '名前', kana: 'よみ', sex: '性別', cls: '組', no: '番号', grade: '学年', addr: '住所', pref: '都道府県', city: '市区町村', town: '町番地', apt: '建物名',
     sei: '姓', mei: '名', seiK: '姓よみ', meiK: '名よみ', fname: '正式名前', fkana: '正式よみ', fsei: '正式姓', fmei: '正式名', fseiK: '正式姓よみ', fmeiK: '正式名よみ' };
   // 名前・よみとして使える列（どれか1つでもあればよい）
   var NAME_ROLES = ['name', 'sei', 'fname', 'fsei'];
@@ -98,6 +99,11 @@
     if (sex === '女') return older ? '姉' : '妹';
     return '?';
   }
+  // 生年月日：「2018/04/02」「2018-4-2」「2018年4月2日」は 2018/4/2 にそろえる。読めない形はそのまま（20文字まで）
+  function birthOf(v) {
+    var s = toHalf(v).replace(/[－‐−ー]/g, '-').replace(/[／]/g, '/').trim(), m = s.match(/^(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})\s*日?/);
+    return m ? m[1] + '/' + (+m[2]) + '/' + (+m[3]) : s.slice(0, 20);
+  }
   function gradeOf(v) { var s = toHalf(v).replace(/年(生)?$/, ''); return /^[1-6]$/.test(s) ? +s : null; }
 
   // 戻り値：{ roles: 列ごとの役割, header: 見出しの行があったか, rows: [{id,name,kana,male,cls,no,sp}], errors: [文], counts: {男,女},
@@ -158,6 +164,7 @@
       // 住所：「住所」1列か、都道府県＋市区町村＋町番地（＋建物名）。町名は町番地から
       var town = cell(r, 'town'), addr = cell(r, 'addr') || (cell(r, 'pref') + cell(r, 'city') + town + (cell(r, 'apt') ? ' ' + cell(r, 'apt') : '')).trim();
       if (addr) { o.addr = addr.slice(0, 200); o.area = areaOf(town); }
+      var bd = birthOf(cell(r, 'birth')); if (bd) o.birth = bd;
       rows.push(o);
     });
     // 番号が無ければ貼った順に振る

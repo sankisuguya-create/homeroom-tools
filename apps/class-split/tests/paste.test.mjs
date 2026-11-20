@@ -64,7 +64,8 @@ test('校務システムの書き出し：見出しで読み、名前は空な�
   const used = r.roles.filter(Boolean);
   assert.ok(used.includes('grade') && used.includes('sei') && used.includes('town'), '学年・姓・住所の列を読む');
   assert.equal(r.rows[0].addr, '県市1-1', '住所は都道府県＋市区町村＋町番地');
-  assert.ok(!JSON.stringify(r.rows).includes('祖母宅') && !JSON.stringify(r.rows).includes('000-000') && !JSON.stringify(r.rows).includes('2018/04/02'), '電話・緊急下校先・生年月日は入らない');
+  assert.ok(!JSON.stringify(r.rows).includes('祖母宅') && !JSON.stringify(r.rows).includes('000-000'), '電話・緊急下校先は入らない');
+  assert.equal(r.rows[0].birth, '2018/4/2', '生年月日は読み、形をそろえる');
 });
 test('セルの中の改行（Excel の "…"）で行が割れない', () => {
   const r = parseRoster('児童ID\t名前\t備考\n30000001\t"山田\n太郎"\t"a""b"\n30000002\t佐藤 花\tx', 0);
@@ -107,4 +108,9 @@ test('兄弟：「学年-組-番号 名前」を兄弟1・兄弟2…の列から
   assert.deepEqual(r.rows[0].sib.map(x => x.id || ''), ['K5', 'K1', ''], '表の中の兄弟の児童IDに結び付ける');
   assert.deepEqual(r.rows[0].sib.map(x => [x.r, x.g, x.cls, x.no, x.n]), [['兄', 5, 1, 1, '会田さとる'], ['妹', 1, 2, 3, '会田はな'], ['?', 6, 2, 4, '会田ゆう']]);
   assert.ok(r.roles.includes('sib'));
+});
+
+test('生年月日：形をそろえる', () => {
+  const r = parseRoster('児童ID\t名前\t生年月日\n1\tA\t2018年4月2日\n2\tB\t２０１７－１２－０１\n3\tC\tH30.4.2', 0);
+  assert.deepEqual(r.rows.map(x => x.birth), ['2018/4/2', '2017/12/1', 'H30.4.2']);
 });

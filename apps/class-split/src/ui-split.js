@@ -13,7 +13,7 @@
     var idx = {};
     var kids = rows.map(function (r, i) {
       var s = d.kids[r.id]; idx[r.id] = i;
-      return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area, home: r.a && r.a.sp ? r.cls : -1 }; // home：特別支援学級の児童の、初めの交流級（今の組と同じ番号）
+      return { id: r.id, name: s.name, kana: s.kana, male: s.male, old: r.cls, no: r.no, a: r.a, area: s.area, addr: s.addr || '', birth: s.birth || '', home: r.a && r.a.sp ? r.cls : -1 }; // home：特別支援学級の児童の、初めの交流級（今の組と同じ番号）
     });
     // 新年度の転入生：旧学級は無し（-1）。名簿の児童の後ろに並べる
     (d.transfers || []).forEach(function (t) {

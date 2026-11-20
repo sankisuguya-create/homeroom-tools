@@ -44,3 +44,4 @@
 .dg.ro .dg-canvas{pointer-events:none;aspect-ratio:2/1;height:auto !important}
 .pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
 .pc-famline{margin-top:auto;padding-top:.5mm;border-top:.2mm dashed #666} /* 備考の欄のいちばん下に置く */
+.pc-addr{font-size:6.5pt;line-height:1.15;color:#333;overflow:hidden;max-height:2.4em;word-break:break-all}

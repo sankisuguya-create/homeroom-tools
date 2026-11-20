@@ -43,7 +43,8 @@
       for (var i = 0; i < n; i++) {
         var male = R() < .5, sn = pick(SUR), gn = male ? pick(GM) : pick(GF);
         var id = String(20000000 + entry * 1000 + i + 1);
-        S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: pick(C.AREAS) };
+        var ar0 = pick(C.AREAS);
+        S.kids[id] = { id: id, name: sn[0] + ' ' + gn[0], kana: sn[1] + ' ' + gn[1], male: male, area: ar0, addr: '見本県見本市' + ar0 + '町' + (1 + i % 5) + '丁目' + (1 + i % 20) + '-' + (1 + i % 9), birth: (entry - 7 + (i % 3 === 0 ? 1 : 0)) + '/' + (1 + i % 12) + '/' + (1 + i % 28) }; // 住所・生年月日は作りもの（カードの見本）
         ids.push(id);
         var a = {};
         C.ATTRS.forEach(function (at) { a[at.k] = R() < P_ATTR[at.k] ? Math.min(at.max, 1 + Math.floor(R() * R() * 3)) : 0; });
@@ -414,7 +415,7 @@
       cur.forEach(function (r) { byId[r.id] = r; });
       rows.forEach(function (x) {
         classes[x.cls] = 1;
-        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '' };
+        S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '', birth: x.birth || (S.kids[x.id] || {}).birth || '' };
         var sbs = x.sib ? C.normSibs(x.sib.map(function (b) { return { r: b.r === '?' ? (b.g >= grade ? '兄' : '弟') : b.r, g: b.g, n: b.n }; })) : null;
         if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } if (sbs) byId[x.id].a.sib = sbs; updated++; }
         else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } if (sbs) a.sib = sbs; cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
