@@ -7,6 +7,7 @@
 
   function crumb() {
     var st = App.st;
+    App.$('toptools').innerHTML = ''; // 画面ごとの上部の道具（名簿のロックなど）は、その画面が入れる
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
       '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' || st.screen === 'suggest' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : st.screen === 'suggest' ? '目安箱' : 'クラス分け');
   }
