@@ -637,10 +637,15 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok((await p.locator('#rlock').textContent()).includes('編集中'), '押すとロックが外れる');
   await p.locator('[data-kedit]').first().click(); await p.waitForSelector('#kename');
   await p.fill('#kename', '直した 名前'); await p.click('[data-kecls="1"]'); await p.fill('#keno', '40');
+  await p.fill('#keaddr', '見本市南町9-9'); await p.fill('#kebirth', '2016/1/2');
   await p.click('.dlg [data-act="ok"]');
   await p.waitForFunction(() => /直しました/.test(document.getElementById('toast').textContent));
   await p.click('[data-cls="1"]');
   ok((await p.locator('table.r tbody').textContent()).includes('直した 名前'), '名前・組を直すと、移した組の名簿に出る');
+  ok(await p.evaluate(() => { const d = App.st.data, k = Object.values(d.kids).find(x => x.name === '直した 名前'); return k && k.addr === '見本市南町9-9' && k.birth === '2016/1/2'; }), '住所・生年月日も名簿の画面から直せる');
+  await p.locator('[data-kedit]').first().click(); await p.waitForSelector('#kememo'); await p.click('#kememo');
+  ok(await p.locator('#mtx').count() === 1, '「兄弟・備考を直す…」で備考の窓が開く');
+  await p.keyboard.press('Escape');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }

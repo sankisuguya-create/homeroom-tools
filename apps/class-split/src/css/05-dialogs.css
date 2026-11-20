@@ -63,3 +63,6 @@
 .hlp input{flex:1;min-width:0;padding:3px 6px;border:1px solid var(--line);border-radius:4px;font:inherit}
 .spbox{background:var(--fill-b);border-radius:6px;padding:8px 10px;margin:6px 0;font-size:.9rem}
 .spbox table{margin-top:4px}
+.kegrid{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+@media (max-width:560px){.kegrid{grid-template-columns:1fr}}
+.kedlg{gap:6px}.kedlg .setrow{margin:2px 0}.kedlg .rbar{margin:0}

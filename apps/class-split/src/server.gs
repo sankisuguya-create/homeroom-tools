@@ -654,8 +654,20 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
     var t = read_('roster_' + fy), row = null;
     t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
     if (!row) throw userError_('名簿にいない児童です');
+    ensureCols_('roster_' + fy, ROSTER_HEAD); t = read_('roster_' + fy); t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
     var o = { name: plainText_(name, 40), kana: plainText_(String(x.kana || '').trim(), 60), 'class': cls + 1, no: no };
-    Object.keys(o).forEach(function (c) { if (String(row[c]) !== String(o[c])) writeCell_(t, row, c, o[c]); });
+    // 性別・生年月日・住所・町名は、送られてきた時だけ書く（古い画面から送られても消さない）
+    if (x.male !== undefined) o.sex = x.male ? '男' : '女';
+    ['birth', 'addr', 'area'].forEach(function (k) { if (x[k] !== undefined) o[k] = plainText_(String(x[k] || '').trim(), k === 'addr' ? 200 : 40); });
+    Object.keys(o).forEach(function (c) { if (String(row[c] == null ? '' : row[c]) !== String(o[c])) writeCell_(t, row, c, o[c]); });
+    // 特別支援学級（配慮項目の表の sp・spn）
+    if (x.sp !== undefined) {
+      ensureCols_('attrs_' + fy, attrsHead_());
+      var at = read_('attrs_' + fy), ar = null; at.rows.forEach(function (r) { if (String(r.id8) === id) ar = r; });
+      var sp = x.sp ? 1 : '', spn = x.sp ? plainText_(String(x.spn || '').trim(), 20) : '';
+      if (ar) { if (String(ar.sp || '') !== String(sp)) writeCell_(at, ar, 'sp', sp); if (String(ar.spn || '') !== spn) writeCell_(at, ar, 'spn', spn); }
+      else if (sp) append_('attrs_' + fy, attrsHead_(), [{ id8: id, sp: 1, spn: spn }]);
+    }
     log_(by, 'updateKid', 1);
     return { ok: true };
   });
