@@ -96,3 +96,14 @@ test('校務システム：生徒コードが空なら生徒管理コードを�
   const e = parseRoster('児童ID\t名前\n\tA', 0);
   assert.match(e.errors[0], /空欄/);
 });
+
+test('兄弟：「学年-組-番号 名前」を兄弟1・兄弟2…の列から読み、続柄は学年と表の中の性別で決める', () => {
+  const t = ['学年\t組\t番号\t名前\t性別\t兄弟1\t兄弟2\t兄弟3',
+    '3\t1\t1\t会田 ひろ\t男\t5-1-1 会田さとる\t1-2-3 会田はな\t６－２－４ 会田ゆう',
+    '5\t1\t1\t会田 さとる\t男\t3-1-1 会田ひろ\t\t',
+    '1\t2\t3\t会田 はな\t女\t\t\t'].join('\n');
+  const r = parseRoster(t, 0, { grade: 3, tempId: true });
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.rows[0].sib.map(x => [x.r, x.g, x.cls, x.no, x.n]), [['兄', 5, 1, 1, '会田さとる'], ['妹', 1, 2, 3, '会田はな'], ['?', 6, 2, 4, '会田ゆう']]);
+  assert.ok(r.roles.includes('sib'));
+});

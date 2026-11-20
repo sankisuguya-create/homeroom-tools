@@ -389,6 +389,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.match(stt, /○ 控え/); assert.match(stt, /○ 毎週の控えのきっかけ/);
     assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
 
+    // 兄弟：続柄が分からない兄弟（'?'）は今年度の名簿の同じ学年・組・番号の児童の性別で決め、配慮項目の表に入る
+    const sb0 = call('apiImportRoster', FY, 4, [{ id: 'SB1', name: '兄弟 太', kana: '', male: true, cls: 0, no: 60, sib: [{ r: '?', g: 5, cls: 1, no: 1, n: '児童' }, { r: '?', g: 1, cls: 9, no: 9, n: '不明' }] }]);
+    assert.ok(sb0.ok, sb0.err);
+    const sbA = call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB1').a.sib;
+    assert.equal(sbA.length, 2); assert.equal(sbA[0].g, 5); assert.ok(['兄', '姉'].includes(sbA[0].r), '年上は兄か姉'); assert.equal(sbA[1].r, '弟', '名簿にいない年下は弟（画面で直せる）');
+
     // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
     call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);

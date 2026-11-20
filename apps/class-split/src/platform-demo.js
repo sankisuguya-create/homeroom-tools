@@ -410,8 +410,9 @@
       rows.forEach(function (x) {
         classes[x.cls] = 1;
         S.kids[x.id] = { id: x.id, name: x.name, kana: x.kana, male: x.male, area: x.addr ? (x.area || '') : (S.kids[x.id] || {}).area || '', addr: x.addr || (S.kids[x.id] || {}).addr || '' };
-        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } updated++; }
-        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
+        var sbs = x.sib ? C.normSibs(x.sib.map(function (b) { return { r: b.r === '?' ? (b.g >= grade ? '兄' : '弟') : b.r, g: b.g, n: b.n }; })) : null;
+        if (byId[x.id]) { byId[x.id].cls = x.cls; byId[x.id].no = x.no; if (x.sp) { byId[x.id].a.sp = 1; byId[x.id].a.spn = x.sp; } if (sbs) byId[x.id].a.sib = sbs; updated++; }
+        else { var a = {}; C.ATTRS.forEach(function (at) { a[at.k] = 0; }); if (x.sp) { a.sp = 1; a.spn = x.sp; } if (sbs) a.sib = sbs; cur.push({ id: x.id, cls: x.cls, no: x.no, a: a }); added++; }
       });
       var ids = {}; rows.forEach(function (x) { ids[x.id] = 1; });
       var missing = cur.filter(function (r) { return classes[r.cls] && !ids[r.id]; }).map(function (r) { return S.kids[r.id].name; });

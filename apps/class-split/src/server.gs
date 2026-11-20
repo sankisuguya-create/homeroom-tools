@@ -499,6 +499,25 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
       else added.push(o);
     });
     append_(name, ROSTER_HEAD, added);
+    // 兄弟（校務システムの「学年-組-番号 名前」）：続柄が分からない（'?'）兄弟は、今年度の名簿の同じ学年・組・番号の児童の性別で決める。配慮項目の表の sib に書く
+    var sibRows = rows.filter(function (x) { return x.sib && x.sib.length; });
+    if (sibRows.length) {
+      var at0 = {}, FY0 = CONFIG.fiscalYear();
+      rosterRows_(FY0).forEach(function (r) { at0[r.grade + '-' + (r.cls + 1) + '-' + r.no] = r.male ? '男' : '女'; });
+      var atS = read_('attrs_' + fy), arS = {}, newS = [];
+      atS.rows.forEach(function (r) { arS[String(r.id8)] = r; });
+      sibRows.forEach(function (x) {
+        var list = CONFIG.normSibs(x.sib.map(function (s) {
+          var r = s.r;
+          if (r === '?') { var sx = at0[s.g + '-' + s.cls + '-' + s.no], older = +s.g >= grade; r = sx === '女' ? (older ? '姉' : '妹') : (older ? '兄' : '弟'); } // 分からなければ兄・弟（画面で直せる）
+          return { r: r, g: s.g, n: s.n };
+        }));
+        var val = JSON.stringify(list), r0 = arS[String(x.id)];
+        if (r0) { if (String(r0.sib || '') !== val) writeCell_(atS, r0, 'sib', val); }
+        else newS.push({ id8: String(x.id), sib: val });
+      });
+      append_('attrs_' + fy, attrsHead_(), newS);
+    }
     // 特別支援学級の児童：配慮項目の表に「特別支援学級」の印と学級の名前を書く（組は交流級）
     var sps = rows.filter(function (x) { return x.sp; });
     if (sps.length) {
