@@ -680,6 +680,29 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// メニューの年度：過去の年度の名簿、来年度（決定した学年）を見られる。クラス分けは今年度だけ
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('#mfy');
+  const FY = await p.evaluate(() => App.pf().fiscalYear);
+  await p.selectOption('#mfy', String(FY - 1)); await p.waitForSelector('.menu .note:has-text("' + (FY - 1) + '年度の名簿を見ています")');
+  ok(await p.locator('[data-go="split"]').count() === 0, '過去の年度ではクラス分けを出さない');
+  await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  ok((await p.locator('#crumb').textContent()).includes((FY - 1) + '年度 6年') && await p.inputValue('#rfy') === String(FY - 1), '過去の年度の6年（卒業した学年）の名簿を開ける');
+  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('#mfy');
+  await p.selectOption('#mfy', String(FY)); await p.waitForSelector('[data-go="split"]');
+  await p.click('[data-g="4"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+  await p.click('#decide'); await p.waitForSelector('.dlg input[type=text]');
+  await p.fill('.dlg input[type=text]', await p.evaluate(() => document.querySelector('.dlg b').textContent)); await p.click('.dlg [data-act="ok"]'); await p.waitForSelector('.decided');
+  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('#mfy');
+  await p.selectOption('#mfy', String(FY + 1)); await p.waitForSelector('.menu .note:has-text("' + (FY + 1) + '年度の名簿を見ています")');
+  ok(/5年1[0-9]{2}人/.test(await p.locator('[data-g="5"]').textContent()), '来年度のメニューに、決定した学年（4年→来年度5年）の名簿が出る：' + await p.locator('[data-g="5"]').textContent());
+  await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  ok(await p.inputValue('#rfy') === String(FY + 1), '来年度の名簿を開ける');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

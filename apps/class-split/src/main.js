@@ -9,10 +9,13 @@
     var st = App.st;
     App.$('toptools').innerHTML = ''; // 画面ごとの上部の道具（名簿のロックなど）は、その画面が入れる
     App.$('crumb').innerHTML = st.screen === 'menu' ? '' :
-      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' || st.screen === 'suggest' ? '' : g.CONFIG.gradeLabel(st.grade) + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : st.screen === 'suggest' ? '目安箱' : 'クラス分け');
+      '<button data-go="menu">メニュー</button> ＞ ' + (st.screen === 'settings' || st.screen === 'suggest' ? '' : App.viewLabel() + ' ＞ ') + (st.screen === 'roster' ? '名簿' : st.screen === 'incidents' ? '事案管理' : st.screen === 'settings' ? '設定' : st.screen === 'suggest' ? '目安箱' : 'クラス分け');
   }
 
   // 画面を移る。学年のデータはここで1回だけ読む（以後の操作はサーバーを待たない）
+  // 見ている年度（メニューの年度）。学年（st.grade）はいつも「今年度の学年」で持ち、表示は見ている年度の学年に直す
+  App.viewOff = function () { var FY0 = App.pf().fiscalYear; return (App.st.viewFy || FY0) - FY0; };
+  App.viewLabel = function () { var off = App.viewOff(); return (off ? (App.pf().fiscalYear + off) + '年度 ' : '') + g.CONFIG.gradeLabel(App.st.grade + off); };
   App.go = function (screen, grade) {
     var st = App.st, prev = App.screens[st.screen];
     if (prev && prev.leave) prev.leave();
@@ -23,10 +26,11 @@
     crumb();
     if (screen === 'menu') {
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
-      return Promise.all([App.pf().listGrades(), App.pf().settings()]).then(function (r) {
-        st.grades = r[0];
+      var FY0 = App.pf().fiscalYear, vfy = st.viewFy || FY0;
+      return Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]).then(function (r) {
+        st.grades = r[0]; st.years = r[2];
         App.applySettings(r[1].settings); App.me = r[1].me;
-        if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
+        if (!st.gradeChosen && r[1].me.grade && vfy === FY0) st.grade = r[1].me.grade;
         App.screens.menu.render();
         App.preload(st.grade); // 選んでいる学年を裏で読み始める
         if (r[1].me.admin && App.pf().adminStatus && !App.adminChecked) {

@@ -934,7 +934,7 @@
   function refocus(id, pos) { var el = App.$(id); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
 
   App.screens.roster = {
-    enter: function () { reset(); render(); },
+    enter: function () { reset(); var vf = App.st.viewFy; if (vf && yearOf(vf)) R.fy = vf; render(); }, // メニューで年度を選んでいれば、その年度の名簿を開く
     render: render,
     selectKid: function (id) { R.kid = id; render(); },
     click: function (t, e) {

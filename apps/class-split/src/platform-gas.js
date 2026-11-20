@@ -53,7 +53,8 @@
   g.Platforms.gas = {
     name: 'gas',
     fiscalYear: C.fiscalYear(),
-    listGrades: function () { return call('apiListGrades'); },
+    listGrades: function (fy) { return call('apiListGrades', fy || 0); },
+    rosterYears: function () { return call('apiRosterYears'); },
     boot: function (grade) {
       return call('apiBoot', grade).then(function (d) {
         planVer[grade] = d.plans.ver || 0; pairsVer[grade] = d.pairsVer || 0;

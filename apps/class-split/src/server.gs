@@ -345,17 +345,25 @@ function api_(fn) {
   };
 }
 
-var apiListGrades_ = api_(function () {
+// fy：見る年度（省略は今年度）。今年度は新1年〜6年、ほかの年度は1〜6年。決定の印は今年度だけ
+var apiListGrades_ = api_(function (fy0) {
   requireTeacher_();
-  var fy = CONFIG.fiscalYear(), by = {};
+  var FY = CONFIG.fiscalYear(), fy = +fy0 || FY, by = {};
   rosterRows_(fy).forEach(function (r) {
     var g = by[r.grade] = by[r.grade] || { grade: r.grade, count: 0, classes: 0, decided: false };
     g.count++; if (r.cls + 1 > g.classes) g.classes = r.cls + 1;
   });
-  Object.keys(by).forEach(function (g) { by[g].decided = !!decisionOf_(fy, +g); });
+  Object.keys(by).forEach(function (g) { by[g].decided = fy === FY && !!decisionOf_(fy, +g); });
   var out = [];
-  CONFIG.GRADES.forEach(function (g) { out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
+  CONFIG.GRADES.forEach(function (g) { if (g === 0 && fy !== FY) return; out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
+});
+// メニューで選べる年度：名簿のある年度と、今年度・来年度
+var apiRosterYears_ = api_(function () {
+  requireTeacher_();
+  var FY = CONFIG.fiscalYear(), set = {}; set[FY] = 1; set[FY + 1] = 1;
+  rosterSheets_().forEach(function (fy) { set[fy] = 1; });
+  return Object.keys(set).map(Number).sort();
 });
 
 var apiBoot_ = api_(function (grade) {
@@ -1441,3 +1449,4 @@ function apiSetKidClass() { return apiSetKidClass_.apply(null, arguments); }
 function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
 function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }
 function apiUpdateKid() { return apiUpdateKid_.apply(null, arguments); }
+function apiRosterYears() { return apiRosterYears_.apply(null, arguments); }

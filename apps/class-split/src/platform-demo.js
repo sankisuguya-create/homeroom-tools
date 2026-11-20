@@ -253,12 +253,13 @@
   g.Platforms.demo = {
     name: 'demo',
     fiscalYear: FY,
-    listGrades: function () { gen();
-      var out = [];
-      for (var grade = 0; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める）
-        var rows = yearRows(FY, grade), nc = 0;
+    rosterYears: function () { gen(); var ys = {}; ys[FY] = 1; ys[FY + 1] = 1; Object.keys(S.years).forEach(function (y) { if (Object.keys(S.years[y]).some(function (g) { return S.years[y][g].length; })) ys[y] = 1; }); return later(Object.keys(ys).map(Number).sort()); },
+    listGrades: function (fy0) { gen();
+      var out = [], fy = +fy0 || FY;
+      for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
+        var rows = yearRows(fy, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
-        out.push({ grade: grade, count: rows.length, classes: nc, decided: !!S.decisions[grade] });
+        out.push({ grade: grade, count: rows.length, classes: nc, decided: fy === FY && !!S.decisions[grade] });
       }
       return later(out);
     },

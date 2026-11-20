@@ -47,6 +47,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
 
     const g = call('apiListGrades').v;
     assert.deepEqual(g.map(x => x.grade), [0, 1, 2, 3, 4, 5, 6], '新1年（0）から6年まで');
+    assert.deepEqual(call('apiListGrades', FY + 1).v.map(x => x.grade), [1, 2, 3, 4, 5, 6], 'ほかの年度は1〜6年');
+    assert.ok(call('apiRosterYears').v.includes(FY) && call('apiRosterYears').v.includes(FY + 1), '選べる年度に今年度と来年度');
     const g4 = g.find(x => x.grade === 4);
     assert.equal(g4.count, 8); assert.equal(g4.classes, 2);
 
