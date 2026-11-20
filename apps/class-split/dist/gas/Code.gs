@@ -1074,7 +1074,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_d7e4cc85f70b';
+var SERVER_BUILD = 'BUILD_8098a3fcb9ab';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1408,7 +1408,8 @@ function api_(fn) {
     var last = args[args.length - 1];
     DEV_ = last && typeof last === 'object' && last.__dev ? args.pop().__dev : null; DEV_NEW_ = ''; DEVICE_CHECKED_ = '';
     forget_();
-    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined }); }
+    var t0 = Date.now();
+    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: Date.now() - t0 }); } // ms：サーバーでかかった時間（遅い時の手がかり）
     catch (e) {
       var m = String(e && e.message || e), dev = m.indexOf('USER:DEVICE:') === 0;
       return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, device: dev, err: m.replace(/^USER:(DEVICE:)?/, ''), dev: DEV_NEW_ || undefined }); // 登録の後で失敗しても、合い言葉は端末に渡す

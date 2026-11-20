@@ -27,6 +27,7 @@
         App.applySettings(r[1].settings); App.me = r[1].me;
         if (!st.gradeChosen && r[1].me.grade) st.grade = r[1].me.grade;
         App.screens.menu.render();
+        App.preload(st.grade); // 選んでいる学年を裏で読み始める
         if (r[1].me.admin && App.pf().adminStatus && !App.adminChecked) {
           App.adminChecked = true;
           App.pf().adminStatus().then(function (a) { App.adminWarnings = a.warnings || []; if (App.adminWarnings.length && App.st.screen === 'menu') App.screens.menu.render(); }, function () {});
@@ -36,8 +37,20 @@
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
     App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
-    return App.pf().boot(st.grade).then(function (d) { st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
+    return bootFor(st.grade).then(function (d) { if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
+  // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。
+  // メニューで学年を選んだ時に先読みもする（App.preload）。見本・試行と本番は別に持つ
+  var BOOT = {};
+  function bootFor(grade) {
+    var key = (App.mode || '') + ':' + grade, c = BOOT[key];
+    if (c && c.gen === App.saveGen) return c.p;
+    var p = App.pf().boot(grade);
+    BOOT[key] = { gen: App.saveGen, p: p };
+    p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない
+    return p;
+  }
+  App.preload = function (grade) { if (grade == null) return; bootFor(grade).catch(function () { /* 開く時に読み直す */ }); };
   // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
   function loadFailed(e) {
     if (e && e.device) {

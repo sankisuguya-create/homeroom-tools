@@ -28,10 +28,12 @@
   function call(name) {
     var args = Array.prototype.slice.call(arguments, 1);
     args.push(devInfo());
+    var t0 = Date.now();
     return new Promise(function (res, rej) {
       var run = g.google.script.run
         .withSuccessHandler(function (s) {
           var r = JSON.parse(s);
+          if (g.console && r.ms != null) console.info('[クラス替え] ' + name + '：サーバー ' + r.ms + 'ms／往復 ' + (Date.now() - t0) + 'ms');
           warnBuild(r.build);
           if (r.dev) { try { localStorage.setItem(DEV_KEY, r.dev); } catch (x) { /* 保存できないと次から締め出される */ } }
           if (r.ok) res(r.v);

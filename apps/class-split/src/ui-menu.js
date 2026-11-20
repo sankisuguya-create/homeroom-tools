@@ -24,7 +24,7 @@
     },
     click: function (t) {
       var gb = t.closest('[data-g]');
-      if (gb) { App.st.grade = +gb.dataset.g; App.st.gradeChosen = true; App.screens.menu.render(); return true; }
+      if (gb) { App.preload(+gb.dataset.g); App.st.grade = +gb.dataset.g; App.st.gradeChosen = true; App.screens.menu.render(); return true; }
       return false;
     }
   };

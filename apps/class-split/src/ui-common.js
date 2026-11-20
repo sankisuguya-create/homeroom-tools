@@ -171,8 +171,9 @@
   // 送れていない保存がある間は、画面を閉じる時にブラウザが確かめる
   var LATEST = {}, PENDING = 0, SEQ = 0;
   App.pending = function () { return PENDING; };
+  App.saveGen = 0; // 保存のたびに進める（読んだ学年のデータを使い回してよいかの印。main.js の bootFor）
   App.save = function (fn, key) {
-    var id = ++SEQ; if (key) LATEST[key] = id;
+    var id = ++SEQ; if (key) LATEST[key] = id; App.saveGen++;
     PENDING++;
     var done = function () { PENDING = Math.max(0, PENDING - 1); };
     var stale = function () { return key && LATEST[key] !== id; };
