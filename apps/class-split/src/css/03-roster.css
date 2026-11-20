@@ -46,3 +46,9 @@ table.h tr.cur td{font-weight:700}
 .sugg{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:150px;overflow:auto}
 .sugg button{border:0;background:none;text-align:left;padding:3px 8px;cursor:pointer}
 .sugg button:hover{background:var(--fill)}
+th.memo{position:relative}
+.hfam{position:absolute;right:4px;bottom:2px;font-size:.62em;font-weight:400;color:var(--sub)}
+.hcnt{font-size:.68em;font-weight:400}
+.nonebox{margin:10px 2px;padding:8px 12px;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.nonebox h3{margin:6px 0 4px;font-size:1rem}.nonebox ul{margin:0 0 6px;padding-left:1.4em}
+.nonewrap{display:flex;flex-direction:column;min-height:0;overflow:auto}.nonewrap>.tw{flex:none}

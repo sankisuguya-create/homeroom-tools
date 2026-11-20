@@ -402,6 +402,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const mv = call('apiSetKidClass', FY, 4, 'SB2', 1);
     assert.ok(mv.ok, mv.err);
     assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, 1, '組を移せる（交流級の振り分け）');
+    assert.ok(call('apiSetKidClass', FY, 4, 'SB2', -1).ok);
+    assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, -1, 'クラスなしにできる');
+    assert.ok(call('apiSetKidClass', FY, 4, 'SB2', 1).ok);
 
     // 名前・よみ・組・番号を直す（児童IDは変えない）
     const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });

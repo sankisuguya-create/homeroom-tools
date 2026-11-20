@@ -174,6 +174,12 @@ table.h tr.cur td{font-weight:700}
 .sugg{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:4px;background:var(--panel);max-height:150px;overflow:auto}
 .sugg button{border:0;background:none;text-align:left;padding:3px 8px;cursor:pointer}
 .sugg button:hover{background:var(--fill)}
+th.memo{position:relative}
+.hfam{position:absolute;right:4px;bottom:2px;font-size:.62em;font-weight:400;color:var(--sub)}
+.hcnt{font-size:.68em;font-weight:400}
+.nonebox{margin:10px 2px;padding:8px 12px;border:1px dashed var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.nonebox h3{margin:6px 0 4px;font-size:1rem}.nonebox ul{margin:0 0 6px;padding-left:1.4em}
+.nonewrap{display:flex;flex-direction:column;min-height:0;overflow:auto}.nonewrap>.tw{flex:none}
 /* ▲ css/03-roster.css ここまで ▲ */
 /* ▼ css/04-split.css から ▼ */
 /* クラス分けの盤面と児童カード */
@@ -2647,7 +2653,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_986ca0d27e60';
+  var PAGE_BUILD = 'BUILD_a50dd325ac70';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3584,6 +3590,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     // 決定の後の準備中の年度：組の番号が仮の間は、どの新しい組かを添える
     var prov = R.fy === d.fy + 1 && d.decision && !d.decision.named ? d.decision.names : null;
     for (var k = 0; k < nc; k++) h += '<button class="tab" data-cls="' + k + '" aria-selected="' + (R.scope === 'cls' && R.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組' + (prov && prov.indexOf(k + 1) >= 0 ? '〔' + C.newClass(prov.indexOf(k + 1)) + '・仮〕' : '') + '（' + Y.rows.filter(function (r) { return r.cls === k; }).length + '人）</button>';
+    // クラスなし：どの組にも入っていない児童（未振り分けの特別支援学級の児童など）と、転出済み・転入予定の児童
+    var nNone = Y.rows.filter(function (r) { return r.cls < 0; }).length;
+    h += '<button class="tab" data-cls="-1" aria-selected="' + (R.scope === 'cls' && R.cls === -1) + '"><span class="band" style="background:' + App.classColor(-1).c + '"></span>クラスなし（' + nNone + '人）</button>';
     h += '<button class="tab" data-scope="grade" aria-selected="' + (R.scope === 'grade') + '">学年（' + Y.rows.length + '人）</button>';
     if (R.scope === 'school') h += '<span class="state">全校の事案を表示中<button class="btn" data-scope="cls">戻る</button></span>';
     else {
@@ -3602,12 +3611,25 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       (edit && R.scope !== 'school' ? '<button class="btn" id="moveB" title="児童を足す（転入など）・名簿から外す（転出・誤登録）・特別支援学級の児童の交流級を振り分ける">児童登録/削除…</button>' : '') +
       (edit && R.scope !== 'school' ? '<button class="btn primary" id="paste" title="既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する">名簿を貼る…</button>' : '') +
       '<button class="btn" id="rhelp" title="名簿の使い方">?</button>';
-    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : table(Y, edit)) + '</div>';
+    h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : R.scope === 'cls' && R.cls === -1 ? '<div class="nonewrap">' + table(Y, edit) + noneExtra(Y) + '</div>' : table(Y, edit)) + '</div>';
     h += '<div class="legend">' + C.ATTRS.map(function (at) { return '<span class="c">' + App.mark(at, 1) + at.label + '</span>'; }).join('') +
       '<span>＋＝負担が明確に増える（アイコンにカーソルで説明）　点線の数字＝その年度の事案の件数</span></div>';
     App.$('main').innerHTML = h;
     App.fitNames(App.$('main'));
     kidPop();
+  }
+
+  // クラスなしの下：転出済みの児童（この学年に当たる）と、転入予定の児童（クラス分けの「転入生」）
+  var LEFT = {};
+  function noneExtra(Y) {
+    var d = D(), esc = App.esc, key = R.fy + ':' + Y.grade, edit = R.fy === editableFy() && !LOCK;
+    if (!LEFT[key]) {
+      LEFT[key] = 'loading';
+      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) render(); }, function () { LEFT[key] = []; });
+    }
+    var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [];
+    return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込んでいます…</div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
+      '<h3>転入予定の児童</h3>' + (tr.length ? '<ul>' + tr.map(function (x) { return '<li>' + esc(x.name) + '</li>'; }).join('') + '</ul><div class="note">クラス分けの「転入生」で登録した児童です（決定で来年度の名簿に入ります）。</div>' : '<div class="note">いません（クラス分けの「転入生」で登録します）</div>') + '</div>';
   }
 
   // ア・身・通：有無と内容（例：卵・エピペン）を書く。内容はアイコンにカーソルを合わせると出る
@@ -3637,6 +3659,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 押すと並べ替える見出し
+  // 学内（1〜6年）に弟・妹がいるか（家庭数を数える：いない児童＝その家庭のいちばん下の子として1家庭）。同じ学年は続柄が弟・妹の時
+  function hasYoungerInSchool(r, grade) {
+    return (r.a && r.a.sib || []).some(function (s) { return s.g >= 1 && s.g <= 6 && (s.g < grade || (s.g === grade && (s.r === '弟' || s.r === '妹'))); });
+  }
   function sth(k, cls, label, title, style) {
     var i = SORT.map(function (x) { return x.k; }).indexOf(k), on = i >= 0;
     return '<th class="' + cls + ' sorth' + (on ? ' on' : '') + '" data-csort="' + k + '"' + (style ? ' style="' + style + '"' : '') + ' title="' + (title ? title + '：' : '') + '押した順に並べる優先になる（もう一度で逆、3回目で外す）">' + label +
@@ -3660,11 +3686,14 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       }
       return a.id < b.id ? -1 : 1;
     });
-    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? sth('cls', '', '組') : '') + sth('no', '', '番号') + sth('kana', '', '名前', 'よみの順', 'text-align:left') + sth('sex', 'sxc', '性別') + sth('sp', 'spc', '特支', '特別支援学級') +
-      C.ATTRS.map(function (at) { return sth(at.k, 'an', App.esc(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考') + '</tr></thead><tbody>';
+    // 見出しの集計：表示中の児童の男女の数と、家庭数（学内に弟・妹がいない児童の数）
+    var nM = 0, nF = 0, nFam = 0;
+    rows.forEach(function (x) { var s0 = d.kids[x.r.id] || {}; if (s0.male) nM++; else nF++; if (!hasYoungerInSchool(x.r, Y.grade)) nFam++; });
+    var h = '<div class="tw"><table class="r ' + (edit ? '' : 'ro') + '"><thead><tr>' + (R.scope === 'grade' ? sth('cls', '', '組') : '') + sth('no', '', '番号') + sth('kana', '', '名前', 'よみの順', 'text-align:left') + sth('sex', 'sxc', '性別<br><small class="hcnt">男' + nM + '女' + nF + '</small>') + sth('sp', 'spc', '特支', '特別支援学級') +
+      C.ATTRS.map(function (at) { return sth(at.k, 'an', App.esc(at.label)); }).join('') + sth('ji', 'jh', '事案数<br><small>(被害)</small>') + (showPairs ? sth('pr', 'pr', 'つける<br>離す') : '') + sth('memo', 'memo', '備考<small class="hfam" title="学内（1〜6年）に弟・妹がいない児童の数">家庭数 ' + nFam + '</small>') + '</tr></thead><tbody>';
     rows.forEach(function (x) {
       var r = x.r, s = d.kids[r.id];
-      h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls + 1) + '</td>' : '') +
+      h += '<tr class="' + (r.id === R.kid ? 'on' : '') + '">' + (R.scope === 'grade' ? '<td><span class="band" style="background:' + App.classColor(r.cls).c + '"></span>' + (r.cls < 0 ? 'なし' : r.cls + 1) + '</td>' : '') +
         '<td>' + r.no + '</td><td class="nm" data-kid="' + r.id + '">' + App.nameBox(s.name, s.kana) + (edit ? '<button type="button" class="kedit" data-kedit="' + r.id + '" title="名前・よみ・組・番号を直す" aria-label="名前・よみ・組・番号を直す">✎</button>' : '') + '</td><td class="sxc"><span class="sx ' + (s.male ? 'm' : 'f') + '">' + (s.male ? '男' : '女') + '</span></td>' +
         '<td class="cell spc" data-cell="' + r.id + '" data-k="sp" title="特別支援学級">' + (r.a.sp ? '<span class="spb">支</span>' : '') + '</td>' +
         C.ATTRS.map(function (at) { var v = r.a[at.k] | 0; return '<td class="cell' + (edit ? ' cc' : '') + (at.k === 'k7' && r.a.k7s ? ' auto' : '') + '" data-cell="' + r.id + '" data-k="' + at.k + '">' + (v ? App.mark(at, v, r.a[at.k + '_t']) : '') + '</td>'; }).join('') +
@@ -3849,7 +3878,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var nc = 1; r.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
       P.nc = Math.max(nc, 1);
       var rr = 0;
-      r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= 0 && P.sa[k] < 9)) P.sa[k] = rr++ % P.nc; });
+      r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= -1 && P.sa[k] < 9)) P.sa[k] = -1; }); // 初めはクラスなし（あとで名簿の「児童登録/削除」で振り分けてもよい）
     };
     var summary = function () {
       var r = P.res = g.Paste.parseRoster(P.text, P.cls, { tempId: grade === 0, grade: grade });
@@ -3869,12 +3898,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         r.errors.slice(0, 6).map(function (e) { return '<li>' + esc(e) + '</li>'; }).join('') + (r.errors.length > 6 ? '<li>ほか' + (r.errors.length - 6) + '件</li>' : '') + '</ul></div>';
       // 特別支援学級の児童：通常の学級とは別に並べ、交流級を選ぶ（取り込むと、その組の名簿に「特別支援学級」の印つきで入る）
       var sps = r.rows.filter(function (x) { return x.sp; });
-      if (sps.length) h += '<div class="spbox"><b>特別支援学級の児童 ' + sps.length + '人</b>：交流級を選んでください（仮に組を順に当てています）<table class="r ro"><tbody>' +
+      if (sps.length) h += '<div class="spbox"><b>特別支援学級の児童 ' + sps.length + '人</b>：交流級を選んでください（決まっていなければ「クラスなし」のまま取り込み、あとで振り分けられます）<table class="r ro"><tbody>' +
         sps.map(function (x) {
           var k = spKey(x);
           return '<tr><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.sp) + '</td><td style="text-align:left"><div class="lvs">' + Array.from({ length: Math.max(P.nc, 1) }, function (_, c) {
             return '<button class="lv" data-spa="' + esc(k) + ':' + c + '" aria-pressed="' + (P.sa[k] === c) + '">' + (c + 1) + '組</button>';
-          }).join('') + '</div></td></tr>';
+          }).join('') + '<button class="lv" data-spa="' + esc(k) + ':-1" aria-pressed="' + (P.sa[k] === -1) + '">クラスなし</button></div></td></tr>';
         }).join('') + '</tbody></table></div>';
       if (r.rows.length) h += '<div class="tw" style="max-height:180px"><table class="r ro"><thead><tr><th>組</th><th>番号</th><th>児童ID</th><th style="text-align:left">名前</th><th>よみ</th><th>性別</th></tr></thead><tbody>' +
         r.rows.slice(0, 5).map(function (x) { return '<tr><td>' + (x.sp ? esc(x.sp) : x.cls + 1) + '</td><td>' + x.no + '</td><td>' + x.id + '</td><td style="text-align:left">' + esc(x.name) + '</td><td>' + esc(x.kana) + '</td><td>' + (x.sex || '—') + '</td></tr>'; }).join('') +
@@ -3898,7 +3927,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       },
       onOk: function () {
         if (!P.res || !P.res.rows.length) return;
-        var rows = P.res.rows.map(function (x) { if (!x.sp) return x; var y = Object.assign({}, x); y.cls = P.sa[spKey(x)] || 0; return y; }); // 特別支援学級の児童は交流級の組に入れる
+        var rows = P.res.rows.map(function (x) { if (!x.sp) return x; var y = Object.assign({}, x); var c0 = P.sa[spKey(x)]; y.cls = c0 >= -1 ? c0 : -1; return y; }); // 特別支援学級の児童は交流級の組に入れる
         App.closeDlg();
         // 書く前に差分を見せる。別の学年・年度の表の疑いがある時は、語を打って確かめる
         App.pf().importRoster(fy, grade, rows, { dry: true }).then(function (df) { importConfirm(fy, grade, rows, df); }, function (e) { App.toast(String(e && e.message || e)); });
@@ -3920,9 +3949,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         return '<div class="pop" data-close="1"><div class="dlg kedlg" role="dialog" aria-modal="true" aria-label="児童の情報" style="max-width:640px"><h2>' + esc(s.name) + '（' + fy + '年度・児童ID ' + esc(id) + '）</h2>' +
           '<div class="kegrid">' + inp('名前', 'kename', F.name, 40) + inp('よみ', 'kekana', F.kana, 60) + '</div>' +
           '<div class="rbar"><span class="lab">性別</span><button class="lv" data-kesx="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-kesx="0" aria-pressed="' + !F.male + '">女</button>' +
-          '<span class="lab" style="margin-left:14px">組</span>' + Array.from({ length: nc }, function (_, k) { return '<button class="tab" data-kecls="' + k + '" aria-selected="' + (F.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join('') +
+          '<span class="lab" style="margin-left:14px">組</span>' + Array.from({ length: nc }, function (_, k) { return '<button class="tab" data-kecls="' + k + '" aria-selected="' + (F.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join('') + '<button class="tab" data-kecls="-1" aria-selected="' + (F.cls < 0) + '">クラスなし</button>' +
           '<label style="margin-left:14px">出席番号 <input id="keno" type="number" min="1" max="99" value="' + F.no + '" style="width:4.5em"></label></div>' +
-          (dup ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : '') +
+          (dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : '') +
           '<div class="kegrid">' + inp('生年月日', 'kebirth', F.birth, 20, '例：2018/4/2') + inp('町名（住所の偏りに使う）', 'kearea', F.area, 40, '例：中央') + '</div>' +
           inp('住所', 'keaddr', F.addr, 200, '例：大阪府西市中央三丁目5-2') +
           '<div class="rbar"><span class="lab">特別支援学級</span><button class="lv" data-kesp="1" aria-pressed="' + F.sp + '">在籍</button><button class="lv" data-kesp="0" aria-pressed="' + !F.sp + '">なし</button>' +
@@ -3958,10 +3987,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 
   // 転入・転出・削除：名簿の画面で、1人を足す・選んだ児童を外す
-  function moveDialog() {
+  function moveDialog(tab0) {
     var d = D(), fy = editableFy(), Y = yearOf(fy), grade = Y ? Y.grade : (fy === d.fy ? d.grade : d.grade + 1), esc = App.esc;
     var rows = Y ? Y.rows.slice() : [], nc = 1; rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
-    var M = { tab: 'in', scope: 'cls', cls: R.cls < nc ? R.cls : 0, pick: {}, reason: 'leave', f: { name: '', kana: '', male: true, cls: R.cls < nc ? R.cls : 0, id: '' } };
+    var M = { tab: tab0 || 'in', scope: 'cls', cls: R.cls < nc ? R.cls : 0, pick: {}, reason: 'leave', f: { name: '', kana: '', male: true, cls: R.cls < nc ? R.cls : 0, id: '' } };
     var shown = function () { return rows.filter(function (r) { return M.scope === 'all' || r.cls === M.cls; }).sort(function (a, b) { return a.cls - b.cls || a.no - b.no; }); };
     var picked = function () { return shown().filter(function (r) { return M.pick[r.id]; }); };
     var nextNo = function (k) { var m = 0; rows.forEach(function (r) { if (r.cls === k && r.no > m) m = r.no; }); return m + 1; };
@@ -4000,7 +4029,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
             (sps.length ? '<table class="r ro"><tbody>' + sps.map(function (r) {
               var s = d.kids[r.id] || {};
               return '<tr><td style="text-align:left">' + esc(s.name || '') + (r.a.spn ? '<small class="note">（' + esc(r.a.spn) + '）</small>' : '') + '</td><td style="text-align:left"><div class="lvs">' +
-                Array.from({ length: Math.max(nc, 1) }, function (_, k) { return '<button class="lv" data-msp="' + esc(r.id) + ':' + k + '" aria-pressed="' + (r.cls === k) + '">' + (k + 1) + '組</button>'; }).join('') + '</div></td></tr>';
+                Array.from({ length: Math.max(nc, 1) }, function (_, k) { return '<button class="lv" data-msp="' + esc(r.id) + ':' + k + '" aria-pressed="' + (r.cls === k) + '">' + (k + 1) + '組</button>'; }).join('') + '<button class="lv" data-msp="' + esc(r.id) + ':-1" aria-pressed="' + (r.cls < 0) + '">クラスなし</button></div></td></tr>';
             }).join('') + '</tbody></table>' : '<div class="empty">特別支援学級の児童はいません</div>') +
             '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div>';
         } else {
@@ -4032,6 +4061,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         if ((x = t.closest('[data-mrt]'))) {
           var q2 = x.dataset.mrt, j = q2.lastIndexOf(':'), rid = q2.slice(0, j), kc = +q2.slice(j + 1), who = (M.left.filter(function (y) { return y.id === rid; })[0] || {}).name || '';
           App.closeDlg();
+          LEFT = {};
           App.save(function () { return App.pf().restoreKid(fy, grade, rid, kc); }).then(function () {
             return App.reload().then(function () { R.cls = kc; render(); App.toast(who + 'を' + (kc + 1) + '組に戻しました'); });
           });
@@ -4042,7 +4072,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           if (!row0 || row0.cls === k) return true;
           App.save(function () { return App.pf().setKidClass(fy, grade, sid, k); }).then(function () {
             var mx = 0; rows.forEach(function (r) { if (r.cls === k && r.no > mx) mx = r.no; }); row0.cls = k; row0.no = mx + 1; // 画面の名簿も直す（開き直さない）
-            App.refreshDlg(); App.toast(((d.kids[sid] || {}).name || '') + 'の交流級を' + (k + 1) + '組にしました');
+            App.refreshDlg(); App.toast(((d.kids[sid] || {}).name || '') + (k < 0 ? 'をクラスなしにしました' : 'の交流級を' + (k + 1) + '組にしました'));
           });
           return true;
         }
@@ -4053,6 +4083,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           if (typed == null) return true;
           if (typed.trim() !== word) { App.toast('入力した語が違います'); return true; }
           App.closeDlg();
+          LEFT = {};
           App.save(function () { return App.pf().removeKids(fy, grade, ps.map(function (r) { return r.id; }), M.reason); }).then(function (r) {
             return App.reload().then(function () { App.toast((r.backupError ? '⚠ ' + r.backupError + '。' : '') + r.n + '人を名簿から外しました'); });
           });
@@ -4147,6 +4178,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#moveB')) { moveDialog(); return true; }
+      if (t.closest('#noneLeft')) { moveDialog('left'); return true; }
       if (t.closest('#rhelp')) { helpDialog(); return true; }
       if (t.closest('#acadB')) { App.acadDialog(); return true; }
       if (t.closest('#unorder')) { SORT = []; saveSort(); render(); return true; }

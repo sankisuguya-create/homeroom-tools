@@ -662,6 +662,21 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.evaluate(() => window.__boots) === 2, '保存した後は読み直す');
   await p.close();
 }
+// 名簿の見出しの集計（男女・家庭数）と「クラスなし」
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="4"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  const cnt = await p.evaluate(() => { const rows = [...document.querySelectorAll('table.r tbody tr')]; return [rows.filter(r => r.querySelector('.sx.m')).length, rows.filter(r => r.querySelector('.sx.f')).length]; });
+  ok((await p.locator('.hcnt').textContent()) === '男' + cnt[0] + '女' + cnt[1], '性別の見出しに男女の数：' + (await p.locator('.hcnt').textContent()));
+  ok(/家庭数 \d+/.test(await p.locator('.hfam').textContent()), '備考の見出しの右下に家庭数');
+  await p.click('[data-cls="-1"]'); await p.waitForSelector('.nonebox');
+  ok((await p.locator('.nonebox').textContent()).includes('転出済みの児童') && (await p.locator('.nonebox').textContent()).includes('転入予定の児童'), '「クラスなし」に転出済み・転入予定の欄');
+  ok(/中島 リス/.test(await p.locator('.nonebox').textContent()), '転入予定の児童（見本の4年の転入生）が出る');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

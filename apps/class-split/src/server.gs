@@ -646,7 +646,7 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
   fy = +fy; grade = +grade; id = String(id); x = x || {};
   var name = String(x.name || '').trim(), cls = +x.cls, no = +x.no;
   if (!name) throw userError_('名前を入れてください');
-  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
   if (!(no >= 1 && no <= 99)) throw userError_('出席番号は1〜99にしてください');
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
   if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
@@ -677,7 +677,7 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
 var apiSetKidClass_ = api_(function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
-  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
   if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
   return withLock_(function () {
