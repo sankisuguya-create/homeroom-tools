@@ -1074,7 +1074,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_e616a679d3c1';
+var SERVER_BUILD = 'BUILD_532d017fe46e';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1706,6 +1706,27 @@ var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
     removeRows_('left', function (r) { return String(r.id8) === id; });
     log_(by, 'restoreKid', 1);
     return { cls: cls, no: max + 1 };
+  });
+});
+
+// 名前・よみ・組・番号を直す（名簿の画面の ✎）。直せる年度だけ。児童IDは変えない
+var apiUpdateKid_ = api_(function (fy, grade, id, x) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade; id = String(id); x = x || {};
+  var name = String(x.name || '').trim(), cls = +x.cls, no = +x.no;
+  if (!name) throw userError_('名前を入れてください');
+  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  if (!(no >= 1 && no <= 99)) throw userError_('出席番号は1〜99にしてください');
+  var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
+  if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
+  return withLock_(function () {
+    var t = read_('roster_' + fy), row = null;
+    t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
+    if (!row) throw userError_('名簿にいない児童です');
+    var o = { name: plainText_(name, 40), kana: plainText_(String(x.kana || '').trim(), 60), 'class': cls + 1, no: no };
+    Object.keys(o).forEach(function (c) { if (String(row[c]) !== String(o[c])) writeCell_(t, row, c, o[c]); });
+    log_(by, 'updateKid', 1);
+    return { ok: true };
   });
 });
 
@@ -2476,3 +2497,4 @@ function apiRemoveKids() { return apiRemoveKids_.apply(null, arguments); }
 function apiSetKidClass() { return apiSetKidClass_.apply(null, arguments); }
 function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
 function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }
+function apiUpdateKid() { return apiUpdateKid_.apply(null, arguments); }

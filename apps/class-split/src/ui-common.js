@@ -25,7 +25,7 @@
       (lv > 1 ? '<u>' + PLUS + '</u>' : '') + '</span>';
   };
   // 名簿の名前：枠は空白込み8文字分。入らない名前だけ、左へ流して最初に戻すのを繰り返す
-  App.nameBox = function (name) { return '<span class="nmw"><span class="nmt">' + App.esc(name) + '</span></span>'; };
+  App.nameBox = function (name, kana) { return '<span class="nmw">' + (kana ? '<small class="nmk">' + App.esc(kana) + '</small>' : '') + '<span class="nmt">' + App.esc(name) + '</span></span>'; }; // kana：名前の上に小さく
   App.fitNames = function (root) {
     var ts = root.querySelectorAll('.nmt'), over = [];
     for (var i = 0; i < ts.length; i++) { var d = ts[i].scrollWidth - ts[i].parentNode.clientWidth; if (d > 1) over.push([ts[i], d]); } // 測ってから書く（行ごとの再計算を避ける）

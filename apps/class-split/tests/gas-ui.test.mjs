@@ -35,7 +35,9 @@ const intoSplit = async (p) => {
 };
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);
-const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+// 名簿のロックは初めはロック中。試験では、ロックの操作を確かめる所以外はロックを外して始める
+const newPage = async (o) => { const pg = await browser.newPage(o); await pg.addInitScript(() => { try { if (localStorage.getItem('classSplit.rosterLock') == null) localStorage.setItem('classSplit.rosterLock', '0'); } catch (e) { } }); return pg; };
+const p = await newPage({ viewport: { width: 1366, height: 768 } });
 const errs = []; p.on('pageerror', e => errs.push(e.message));
 await p.exposeFunction('gasCall', (name, args) => gas.ctx[name](...args));
 await p.addInitScript(() => {
@@ -110,7 +112,7 @@ ok(gas.call('apiBoot', 5).v.pairs.length === 1, 'つける・離すがシート�
 ok(await p.locator('#gen').count() === 1, '保存後もクラス分けの画面のまま');
 
 // 版ずれの警告
-const p2 = await browser.newPage();
+const p2 = await newPage();
 await p2.exposeFunction('gasCall', (name, args) => JSON.stringify({ ...JSON.parse(gas.ctx[name](...args)), build: 'BUILD_old' }));
 await p2.addInitScript(() => {
   const make = (ok, ng) => new Proxy({}, { get: (_, k) => k === 'withSuccessHandler' ? f => make(f, ng) : k === 'withFailureHandler' ? f => make(ok, f) : (...a) => window.gasCall(k, a).then(ok, ng) });

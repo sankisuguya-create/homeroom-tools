@@ -393,6 +393,7 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; S.kids[id].name = x.name; S.kids[id].kana = x.kana; return later({ ok: true }); },
     setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
     leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },
     restoreKid: function (fy, grade, id, cls) { gen(); var x = (S.left || []).filter(function (y) { return y.id === id; })[0]; if (!x) return Promise.reject(new Error('転出児童の一覧にいません')); var cur = yearRows(fy, grade), max = 0; cur.forEach(function (r) { if (r.cls === cls && r.no > max) max = r.no; }); cur.push({ id: id, cls: cls, no: max + 1, a: x.a || {} }); S.left = S.left.filter(function (y) { return y.id !== id; }); return later({ cls: cls }); },

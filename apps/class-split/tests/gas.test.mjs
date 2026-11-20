@@ -403,6 +403,14 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(mv.ok, mv.err);
     assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2').cls, 1, '組を移せる（交流級の振り分け）');
 
+    // 名前・よみ・組・番号を直す（児童IDは変えない）
+    const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });
+    assert.ok(upd.ok, upd.err);
+    const upr = call('apiBoot', 4).v; const upk = upr.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2');
+    assert.ok(upk.cls === 0 && upk.no === 70 && upr.kids.SB2.name === '直した 名前' && upr.kids.SB2.kana === 'なおした なまえ', '名前・よみ・組・番号が変わる');
+    assert.equal(call('apiUpdateKid', FY, 4, 'SB2', { name: '', cls: 0, no: 1 }).ok, false, '名前は空にできない');
+    assert.equal(call('apiUpdateKid', FY - 1, 4, 'SB2', { name: 'x', cls: 0, no: 1 }).ok, false, '直せない年度は断る');
+
     // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
     call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);

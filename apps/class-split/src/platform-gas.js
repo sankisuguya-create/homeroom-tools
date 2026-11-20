@@ -88,6 +88,7 @@
     removeTransfer: function (grade, id) { return call('apiRemoveTransfer', grade, id); },
     leftKids: function (fy, grade) { return call('apiLeftKids', fy, grade); },
     restoreKid: function (fy, grade, id, cls) { return call('apiRestoreKid', fy, grade, id, cls); },
+    updateKid: function (fy, grade, id, x) { return call('apiUpdateKid', fy, grade, id, x); },
     setKidClass: function (fy, grade, id, cls) { return call('apiSetKidClass', fy, grade, id, cls); },
     removeKids: function (fy, grade, ids, reason) { return call('apiRemoveKids', fy, grade, ids, reason); },
     importRoster: function (fy, grade, rows, opt) { return call('apiImportRoster', fy, grade, rows, opt || {}); },
