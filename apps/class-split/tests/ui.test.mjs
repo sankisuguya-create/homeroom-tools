@@ -592,6 +592,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#mgo');
   await p.waitForFunction(() => /名簿から外しました/.test(document.getElementById('toast').textContent));
   ok(await p.locator('table.r tbody tr').count() === n0 - 2, '選んだ2人を名簿から外せる');
+  // 転出 → 転出した児童（出戻り）から戻す
+  await p.click('#moveB'); await p.click('[data-mtab="out"]');
+  const nm = await p.locator('[data-mp]').first().evaluate(el => el.closest('tr').cells[3].textContent);
+  await p.locator('[data-mp]').first().check();
+  p.once('dialog', d => d.accept('1人を外す')); await p.click('#mgo');
+  await p.waitForFunction(() => /名簿から外しました/.test(document.getElementById('toast').textContent));
+  await p.click('#moveB'); await p.click('[data-mtab="left"]'); await p.waitForSelector('[data-mrt]');
+  ok((await p.locator('[aria-label="児童登録/削除"]').textContent()).includes(nm), '転出した児童が「転出した児童」に残る');
+  await p.locator('[data-mrt$=":1"]').first().click();
+  await p.waitForFunction(() => /組に戻しました/.test(document.getElementById('toast').textContent));
+  ok((await p.locator('table.r tbody').textContent()).includes(nm), '出戻りの児童を名簿に戻せる');
   await p.click('#moveB'); await p.click('[data-mtab="in"]');
   await p.fill('#mfn', '転入 ハナ'); await p.fill('#mfk', 'てんにゅう はな'); await p.click('[data-msx="0"]');
   await p.click('#min');

@@ -198,7 +198,9 @@ var TABLES_ = [
   // 新年度の転入生：クラス分けに加え、決定で来年度の名簿に入れる。grade は今年度の学年（その学年のクラス分けに入る）
   { name: 'transfers', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'by', 'at'] },
   // 目安箱：アプリへの意見。送った人は残さない（at・開いていた画面・本文だけ）
-  { name: 'suggestions', head: ['at', 'screen', 'text'] }
+  { name: 'suggestions', head: ['at', 'screen', 'text'] },
+  // 転出児童：出戻りに備えて残す（転出した年度・その時の学年と組）。年度替わりの削除で消える
+  { name: 'left', head: ['fy', 'grade', 'id8', 'name', 'kana', 'sex', 'cls', 'no', 'addr', 'area', 'at', 'by'] }
 ];
 // side の項目（ア・身・通）は内容の文字も持つ（列名は k5_t など）
 function attrsHead_() {
@@ -585,6 +587,12 @@ var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
   var set = {}; ids.forEach(function (id) { set[id] = 1; });
   var bkErr = tryBackup_('名簿から外す前');
   var n = withLock_(function () {
+    if (reason !== 'mistake') { // 転出：出戻りに備えて転出児童の一覧に残す（同じ児童の古い行は置き換える）
+      var keep = rosterRows_(fy).filter(function (r) { return r.grade === grade && set[r.id]; });
+      removeRows_('left', function (r) { return set[String(r.id8)]; });
+      sheet_(db_(), 'left', TABLES_[8].head);
+      append_('left', TABLES_[8].head, keep.map(function (r) { return { fy: fy, grade: grade, id8: r.id, name: plainText_(r.name, 40), kana: plainText_(r.kana, 60), sex: r.male ? '男' : '女', cls: r.cls + 1, no: r.no, addr: plainText_(r.addr, 200), area: plainText_(r.area, 40), at: new Date().toISOString(), by: by }; }));
+    }
     var k = removeRows_('roster_' + fy, function (r) { return +r.grade === grade && set[String(r.id8)]; });
     if (reason === 'mistake') removeRows_('attrs_' + fy, function (r) { return set[String(r.id8)]; });
     if (fy === FY) removeRows_('pairs_' + FY + '_' + cohort, function (r) { return set[String(r.a)] || set[String(r.b)]; });
@@ -592,6 +600,41 @@ var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
     return k;
   });
   return { n: n, backupError: bkErr };
+});
+
+// 転出児童：この学年（今の学年に直して）に当たる児童。転出した年度から学年を進めて数える
+function leftOf_(fy, grade) {
+  return read_('left').rows.filter(function (r) { return String(r.id8) && +r.grade + (fy - +r.fy) === grade; }).map(function (r) {
+    return { id: String(r.id8), name: String(r.name), kana: String(r.kana), male: String(r.sex) === '男', leftFy: +r.fy, leftGrade: +r.grade, cls: +r.cls - 1, no: +r.no, at: String(r.at) };
+  });
+}
+var apiLeftKids_ = api_(function (fy, grade) { requireTeacher_(); return leftOf_(+fy, +grade); });
+// 出戻り：転出児童を、同じ児童IDで名簿に戻す（番号は組の最後）。戻す年度に配慮項目の行が無ければ、転出した年度の行を写す
+var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade; cls = +cls; id = String(id);
+  if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
+  var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
+  if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
+  return withLock_(function () {
+    var lr = read_('left').rows.filter(function (r) { return String(r.id8) === id; })[0];
+    if (!lr) throw userError_('転出児童の一覧にいません');
+    var name = 'roster_' + fy;
+    ensureCols_(name, ROSTER_HEAD);
+    var t = read_(name), max = 0, dup = false;
+    t.rows.forEach(function (r) { if (String(r.id8) === id) dup = true; if (+r.grade === grade && +r['class'] === cls + 1 && +r.no > max) max = +r.no; });
+    if (dup) throw userError_('すでに名簿にいます');
+    append_(name, ROSTER_HEAD, [{ id8: id, name: String(lr.name), kana: String(lr.kana), sex: String(lr.sex), grade: grade, 'class': cls + 1, no: max + 1, addr: String(lr.addr || ''), area: String(lr.area || '') }]);
+    ensureCols_('attrs_' + fy, attrsHead_());
+    var has = read_('attrs_' + fy).rows.some(function (r) { return String(r.id8) === id; });
+    if (!has && +lr.fy !== fy) {
+      var src = read_('attrs_' + (+lr.fy)).rows.filter(function (r) { return String(r.id8) === id; })[0];
+      if (src) { var o = {}; attrsHead_().forEach(function (h) { if (src[h] !== undefined && src[h] !== '') o[h] = src[h]; }); o.id8 = id; append_('attrs_' + fy, attrsHead_(), [o]); }
+    }
+    removeRows_('left', function (r) { return String(r.id8) === id; });
+    log_(by, 'restoreKid', 1);
+    return { cls: cls, no: max + 1 };
+  });
 });
 
 // 組を移す（特別支援学級の児童の交流級を振り分ける）：番号はその組の最後。直せる年度だけ
@@ -1260,6 +1303,7 @@ var apiPurge_ = api_(function (ids) {
     });
     removeRows_('incident_kids', function (r) { return set[String(r.id8)]; });
     removeRows_('transfers', function (r) { return set[String(r.id8)]; });
+    removeRows_('left', function (r) { return set[String(r.id8)]; });
     var left = {};
     read_('incident_kids').rows.forEach(function (r) { left[r.inc_id] = 1; });
     var t = read_('incidents');
@@ -1358,3 +1402,5 @@ function apiPruneLog() { return apiPruneLog_.apply(null, arguments); }
 function apiClearSuggestions() { return apiClearSuggestions_.apply(null, arguments); }
 function apiRemoveKids() { return apiRemoveKids_.apply(null, arguments); }
 function apiSetKidClass() { return apiSetKidClass_.apply(null, arguments); }
+function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
+function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }

@@ -394,7 +394,10 @@
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
     setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
-    removeKids: function (fy, grade, ids) { gen(); var set = {}; ids.forEach(function (id) { set[id] = 1; }); var cur = yearRows(fy, grade), n0 = cur.length; S.years[fy][grade] = cur.filter(function (r) { return !set[r.id]; }); return later({ n: n0 - S.years[fy][grade].length }); },
+    leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },
+    restoreKid: function (fy, grade, id, cls) { gen(); var x = (S.left || []).filter(function (y) { return y.id === id; })[0]; if (!x) return Promise.reject(new Error('転出児童の一覧にいません')); var cur = yearRows(fy, grade), max = 0; cur.forEach(function (r) { if (r.cls === cls && r.no > max) max = r.no; }); cur.push({ id: id, cls: cls, no: max + 1, a: x.a || {} }); S.left = S.left.filter(function (y) { return y.id !== id; }); return later({ cls: cls }); },
+    removeKids: function (fy, grade, ids, reason) { gen(); var set = {}; ids.forEach(function (id) { set[id] = 1; }); var cur = yearRows(fy, grade), n0 = cur.length;
+      if (reason !== 'mistake') { S.left = (S.left || []).filter(function (y) { return !set[y.id]; }); cur.forEach(function (r) { if (set[r.id]) { var k = S.kids[r.id] || {}; S.left.push({ id: r.id, name: k.name, kana: k.kana, male: k.male, leftFy: fy, leftGrade: grade, cls: r.cls, no: r.no, a: r.a }); } }); } S.years[fy][grade] = cur.filter(function (r) { return !set[r.id]; }); return later({ n: n0 - S.years[fy][grade].length }); },
     importRoster: function (fy, grade, rows, opt) {
       gen();
       if (opt && opt.temp && !opt.dry) { var sq = 1; Object.keys(S.kids).forEach(function (id) { if (id.indexOf('N' + fy) === 0) sq = Math.max(sq, +id.slice(5) + 1); }); rows.forEach(function (x) { if (!x.id) x.id = 'N' + fy + ('00' + (sq++)).slice(-3); }); }
