@@ -389,6 +389,19 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.match(stt, /○ 控え/); assert.match(stt, /○ 毎週の控えのきっかけ/);
     assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
 
+    // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
+    call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);
+    const rmA = call('apiRemoveKids', FY, 4, ['ZZ1'], 'mistake'), rmB = call('apiRemoveKids', FY, 4, ['ZZ2'], 'leave');
+    assert.ok(rmA.ok && rmA.v.n === 1 && rmB.ok && rmB.v.n === 1, rmA.err || rmB.err);
+    const ros = db().getSheetByName('roster_' + FY).data.map(r => String(r[0])), att = db().getSheetByName('attrs_' + FY).data.map(r => String(r[0]));
+    assert.ok(!ros.includes('ZZ1') && !ros.includes('ZZ2'), '名簿から外れる');
+    assert.ok(!att.includes('ZZ1') && att.includes('ZZ2'), '誤登録は配慮項目も消え、転出は残る（年度替わりで消す）');
+    assert.equal(call('apiRemoveKids', FY - 1, 4, ['40000011'], 'leave').ok, false, '直せない年度は断る');
+    const tin = call('apiImportRoster', FY, 4, [{ id: '', name: '転入 C', kana: 'てんにゅう', male: true, cls: 1, no: 9 }], { temp: true });
+    assert.ok(tin.ok, tin.err);
+    assert.ok(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.some(r => /^N\d{7}$/.test(r.id) && r.cls === 1), '転入は児童IDなしで仮の番号');
+
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
     assert.ok(sb.ok && sb.v.blocked && sb.v.blocked.includes('児童11'), '名簿の名前が入っていれば送らない');

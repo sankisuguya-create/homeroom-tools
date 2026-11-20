@@ -166,6 +166,7 @@ await winCtx.close();
 
 // 放置の覆い：タブが隠れると覆い、押すと戻る
 await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+ok((await p.locator('#idle .fp-back').textContent()).includes('クリックで作業に戻る'), '覆いの上に「クリックで作業に戻る」');
 ok(await p.locator('#idle:not([hidden]) .fp-paper').count() === 1, 'ほかのタブに移ると、プリントに見せかけた覆いで画面を隠す');
 await p.click('#idle');
 ok(await p.locator('#idle[hidden]').count() === 1, '押すと戻る');

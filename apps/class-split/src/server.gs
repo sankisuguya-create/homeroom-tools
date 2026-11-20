@@ -487,7 +487,7 @@ var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
     if (relinked) { t = read_(name); byId = {}; t.rows.forEach(function (r) { byId[String(r.id8)] = r; }); }
     var nextTemp = tempIdSeq_(fy);
     rows.forEach(function (x) {
-      if (!String(x.id || '') && grade === 0) x.id = 'N' + fy + ('00' + (nextTemp++)).slice(-3);
+      if (!String(x.id || '') && (grade === 0 || opt.temp)) x.id = 'N' + fy + ('00' + (nextTemp++)).slice(-3); // 新1年と、名簿の画面の転入（児童IDが分からない時）は仮の番号
       var id = String(x.id);
       if (!CONFIG.isKidId(id)) throw userError_(grade === 0 ? '児童IDは英数字20文字までか、空のままにしてください' : '児童IDが読めない行があります（英数字20文字まで）');
       classes[+x.cls] = 1; ids[id] = 1;
@@ -549,6 +549,27 @@ function replaceIds_(fy, map) {
   };
   sw('roster_' + fy, ['id8']); sw('attrs_' + fy, ['id8']); sw('pairs_carry', ['a', 'b']); sw('incident_kids', ['id8']);
 }
+
+// 名簿から外す：転出した児童（配慮項目・経緯は過年度の記録として残し、年度替わりで消す）と、誤って登録した児童（その年度の配慮項目も消す）。
+// 直せる年度（決定前は今年度、決定後は来年度）だけ。外す前に控えを取る
+var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade; ids = (ids || []).map(String).filter(Boolean);
+  if (!ids.length) throw userError_('外す児童を選んでください');
+  var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
+  var editable = decisionOf_(FY, cohort) ? FY + 1 : FY;
+  if (fy !== editable) throw userError_('この年度の名簿は直せません');
+  var set = {}; ids.forEach(function (id) { set[id] = 1; });
+  var bkErr = tryBackup_('名簿から外す前');
+  var n = withLock_(function () {
+    var k = removeRows_('roster_' + fy, function (r) { return +r.grade === grade && set[String(r.id8)]; });
+    if (reason === 'mistake') removeRows_('attrs_' + fy, function (r) { return set[String(r.id8)]; });
+    if (fy === FY) removeRows_('pairs_' + FY + '_' + cohort, function (r) { return set[String(r.a)] || set[String(r.b)]; });
+    log_(by, reason === 'mistake' ? 'removeMistake' : 'removeLeave', k);
+    return k;
+  });
+  return { n: n, backupError: bkErr };
+});
 
 // 取り込む前の差分：追加・名前が変わる・ほかの学年にいる児童・貼った中にいない児童。
 // 別の学年や年度の表を貼って上書きする誤りを、書く前に見せて止める（名前の5割以上が変わる、またはほかの学年の児童がいる時は確かめを要る）
@@ -1295,3 +1316,4 @@ function apiSuggest() { return apiSuggest_.apply(null, arguments); }
 function apiSuggestions() { return apiSuggestions_.apply(null, arguments); }
 function apiPruneLog() { return apiPruneLog_.apply(null, arguments); }
 function apiClearSuggestions() { return apiClearSuggestions_.apply(null, arguments); }
+function apiRemoveKids() { return apiRemoveKids_.apply(null, arguments); }

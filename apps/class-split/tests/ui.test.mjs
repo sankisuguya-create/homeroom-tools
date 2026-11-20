@@ -577,6 +577,28 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 名簿の画面の転入・転出・削除：誤って登録した児童を外し、転入した児童を足す
+{
+  const p = await browser.newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#moveB');
+  const n0 = await p.locator('table.r tbody tr').count();
+  await p.click('#moveB'); await p.waitForSelector('[aria-label="転入・転出・削除"]');
+  await p.click('[data-mrs="mistake"]');
+  await p.locator('[data-mp]').nth(0).check(); await p.locator('[data-mp]').nth(1).check();
+  p.once('dialog', d => d.accept('2人を外す'));
+  await p.click('#mgo');
+  await p.waitForFunction(() => /名簿から外しました/.test(document.getElementById('toast').textContent));
+  ok(await p.locator('table.r tbody tr').count() === n0 - 2, '選んだ2人を名簿から外せる');
+  await p.click('#moveB'); await p.click('[data-mtab="in"]');
+  await p.fill('#mfn', '転入 ハナ'); await p.fill('#mfk', 'てんにゅう はな'); await p.click('[data-msx="0"]');
+  await p.click('#min');
+  await p.waitForFunction(() => /転入として登録しました/.test(document.getElementById('toast').textContent));
+  ok((await p.locator('table.r tbody').textContent()).includes('転入 ハナ'), '転入した児童を名簿の画面から足せる（児童IDなし）');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

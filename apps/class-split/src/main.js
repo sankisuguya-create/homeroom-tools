@@ -142,7 +142,7 @@
   var touch = function () { idleAt = Date.now(); };
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
   // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。1回押すと戻る（利用者の判断）
-  var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
+  var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = '<div class="fp-back">クリックで作業に戻る</div>' + App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
   setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
   document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
   var cvEl = App.$('idle');

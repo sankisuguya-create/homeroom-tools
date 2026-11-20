@@ -88,3 +88,11 @@ test('住所：「住所」1列でも、4列（都道府県・市区町村・町
   const b = parseRoster('児童ID\t名前\t住所\n1001\tA\t西市中央1-2', 0);
   assert.equal(b.rows[0].addr, '西市中央1-2');
 });
+
+test('校務システム：生徒コードが空なら生徒管理コードを児童IDに使う。読めない時は値を示す', () => {
+  const r = parseRoster('生徒管理コード\t生徒コード\t学年\t名前\n100234\t\t4\tA\n100235\t\t4\tB\n1 00236\t\t4\tC', 0, { grade: 4 });
+  assert.deepEqual(r.rows.map(x => x.id), ['100234', '100235']);
+  assert.match(r.errors[0], /「1 00236」/);
+  const e = parseRoster('児童ID\t名前\n\tA', 0);
+  assert.match(e.errors[0], /空欄/);
+});
