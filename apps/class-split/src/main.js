@@ -18,6 +18,7 @@
   App.viewLabel = function () { var off = App.viewOff(); return (off ? (App.pf().fiscalYear + off) + '年度 ' : '') + g.CONFIG.gradeLabel(App.st.grade + off); };
   App.go = function (screen, grade) {
     var st = App.st, prev = App.screens[st.screen];
+    if (prev && prev.dirty && st.screen !== screen && prev.dirty() && !confirm('保存していない変更があります。保存せずに移りますか？')) return Promise.resolve(); // 設定を直して保存せずにメニューへ、など
     if (prev && prev.leave) prev.leave();
     App.closeDlg();
     if (grade) st.grade = grade;
@@ -41,17 +42,17 @@
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
-    App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
+    App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>';
     return bootFor(st.grade).then(function (d) { if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
   // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。
   // メニューで学年を選んだ時に先読みもする（App.preload）。見本・試行と本番は別に持つ
-  var BOOT = {};
+  var BOOT = {}, BOOT_TTL = 5 * 60000;
   function bootFor(grade) {
     var key = (App.mode || '') + ':' + grade, c = BOOT[key];
-    if (c && c.gen === App.saveGen) return c.p;
+    if (c && c.gen === App.saveGen && Date.now() - c.at < BOOT_TTL) return c.p; // 5分たったら読み直す（ほかの先生の入力を見るため）
     var p = App.pf().boot(grade);
-    BOOT[key] = { gen: App.saveGen, p: p };
+    BOOT[key] = { gen: App.saveGen, p: p, at: Date.now() };
     p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない
     return p;
   }
@@ -84,7 +85,7 @@
       if (act && act.dataset.act === 'close') { App.closeDlg(); return; }
       if (act && act.dataset.act === 'next' && App.dlg.onTab) { App.dlg.onTab(); return; }
       if (App.dlg.click && App.dlg.click(t)) return;
-      if (t.closest('[data-close]') && !t.closest('.dlg,.viol')) App.closeDlg();
+      if (t.closest('[data-close]') && !t.closest('.dlg,.viol')) App.tryCloseDlg(); // 窓の外を押した：打った内容があれば確かめる
       return;
     }
     var go = t.closest('[data-go]');
@@ -96,7 +97,7 @@
   document.addEventListener('submit', function (e) { e.preventDefault(); var scr = App.screens[App.st.screen]; if (scr && scr.submit) scr.submit(e.target); });
   document.addEventListener('keydown', function (e) {
     if (App.dlg) {
-      if (e.key === 'Escape') { e.preventDefault(); App.closeDlg(); }
+      if (e.key === 'Escape') { e.preventDefault(); App.tryCloseDlg(); }
       else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing && (!e.target.matches('textarea') || e.ctrlKey || e.metaKey)) { e.preventDefault(); App.dlg.onOk(); }
       else if (e.key === 'Tab' && App.dlg.onTab && App.dlg.onTab()) e.preventDefault();
       return;
@@ -165,7 +166,7 @@
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
   // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。1回押すと戻る（利用者の判断）
   var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = '<div class="fp-back">クリックで作業に戻る</div>' + App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
-  setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
+  setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) { if (App.relock) App.relock(); hide(); } }, 10000); // 放置したら名簿のロックも掛け直す（タブを移っただけの時は掛けない）
   document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
   var cvEl = App.$('idle');
   cvEl.addEventListener('click', function (e) { e.stopPropagation(); cvEl.hidden = true; cvEl.innerHTML = ''; touch(); });

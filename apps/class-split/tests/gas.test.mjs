@@ -264,7 +264,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const sx = call('apiSaveSettings', call('apiSettings').v.settings);
     assert.equal(sx.ok, false, '管理者でない教員は設定を保存できない'); assert.ok(sx.err.includes('管理者'));
     assert.equal(call('apiLeaveCandidates').ok, false); assert.equal(call('apiPurge', ['60000001']).ok, false, '管理者でない教員は記録を消せない');
-    for (const [fn, ...a] of [['apiDecide', 4, { name: 'x', assign: {} }], ['apiUndoDecide', 4], ['apiSetClassNames', 4, [1, 2]], ['apiClearSuggestions'], ['apiPruneLog']]) {
+    for (const [fn, ...a] of [['apiDecide', 4, { name: 'x', assign: {} }], ['apiUndoDecide', 4], ['apiSetClassNames', 4, [1, 2]], ['apiClearSuggestions'], ['apiPruneLog'], ['apiRemoveKids', FY, 4, ['40000011'], 'mistake']]) {
       const r = call(fn, ...a); assert.equal(r.ok, false, fn + ' は管理者だけ'); assert.ok(r.err.includes('管理者'), fn);
     }
     env.user = 'kyoto@edu.nishi.or.jp';
@@ -423,6 +423,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiUpdateKid', FY, 4, 'SB2', { name: '', cls: 0, no: 1 }).ok, false, '名前は空にできない');
     assert.equal(call('apiUpdateKid', FY - 1, 4, 'SB2', { name: 'x', cls: 0, no: 1 }).ok, false, '直せない年度は断る');
 
+    // 仮の番号 T（転入予定）も、本来の児童IDの名簿を貼ると名前で照らして付け替える
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'T' + FY + '901', name: '転入 予定', kana: 'てんにゅう よてい', male: true, cls: 0, no: 90 }]).ok);
+    const tr1 = call('apiImportRoster', FY, 4, [{ id: 'R9001', name: '転入　予定', kana: 'てんにゅう よてい', male: true, cls: 0, no: 90 }]);
+    assert.ok(tr1.ok && tr1.v.relinked === 1 && tr1.v.added === 0, 'T の仮の番号も付け替わる（二重にならない）');
+
     // 名簿から外す：転出は名簿だけ、誤登録は配慮項目も消す。直せない年度は断る。名簿の画面の転入は児童IDなしで仮の番号
     assert.ok(call('apiImportRoster', FY, 4, [{ id: 'ZZ1', name: '誤登録 A', kana: '', male: true, cls: 0, no: 50 }, { id: 'ZZ2', name: '転出 B', kana: '', male: false, cls: 0, no: 51 }]).ok);
     call('apiSetAttr', FY, 4, 'ZZ1', 'k3', 1); call('apiSetAttr', FY, 4, 'ZZ2', 'k3', 1);
@@ -445,6 +450,14 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const tin = call('apiImportRoster', FY, 4, [{ id: '', name: '転入 C', kana: 'てんにゅう', male: true, cls: 1, no: 9 }], { temp: true });
     assert.ok(tin.ok, tin.err);
     assert.ok(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.some(r => /^N\d{7}$/.test(r.id) && r.cls === 1), '転入は児童IDなしで仮の番号');
+
+    // 児童IDの先頭の0を落とさない（スプレッドシートは数字だけの文字を数値にする。列を書式なしテキストにしてから書く）
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: '0012345', name: '先頭 ゼロ', kana: '', male: true, cls: 0, no: 80 }]).ok);
+    assert.ok(call('apiBoot', 4).v.kids['0012345'], '0で始まる児童IDのまま読める');
+    const z2 = call('apiImportRoster', FY, 4, [{ id: '0012345', name: '先頭 ゼロ', kana: '', male: true, cls: 0, no: 80 }], { dry: true });
+    assert.equal(z2.v.added, 0, '貼り直しても二重に足さない');
+    call('apiSetAttr', FY, 4, '0012345', 'k3', 1);
+    assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === '0012345').a.k3, 1, '配慮項目も0で始まる児童IDでつながる');
 
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');

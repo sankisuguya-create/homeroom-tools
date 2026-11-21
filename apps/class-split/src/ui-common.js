@@ -155,21 +155,27 @@
   // 浮く枠。dlg は {html, onOk, onKey}。Enter で onOk、Esc で閉じる
   App.dlg = null;
   // 窓を開いたら、入力欄にはすぐ書けるようにする（カーソルは書いてある文の最後）
+  // 窓の中で何か打ったか（打った後に、窓の外を押す・Esc で閉じかけたら確かめる。「やめる」を押した時は確かめない）
+  App.dlgDirty = false;
+  var NODIRTY = { pq: 1, qb: 1, fQ: 1, cword: 1, iword: 1 }; // 検索・確かめの語の欄は、打っても「保存していない内容」とみなさない
+  document.addEventListener('input', function (e) { if (App.dlg && e.target.closest && e.target.closest('#layer') && !NODIRTY[e.target.id] && e.target.matches('input[type=text],input:not([type]),input[type=number],textarea')) App.dlgDirty = true; }, true);
+  App.tryCloseDlg = function () { if (App.dlgDirty && !confirm('入力した内容は保存されていません。閉じますか？')) return; App.closeDlg(); };
   App.openDlg = function (d) {
+    if (App.dlg !== d) App.dlgDirty = false;
     App.dlg = d; App.$('layer').innerHTML = d.html();
     if (d.focus) { var f = App.$(d.focus); if (f) { f.focus(); if (f.setSelectionRange && /^(TEXTAREA|INPUT)$/.test(f.tagName) && f.type !== 'date') { var n = f.value.length; f.setSelectionRange(n, n); } } }
   };
   App.refreshDlg = function () { if (App.dlg) App.openDlg(App.dlg); };
-  App.closeDlg = function () { var d = App.dlg; App.dlg = null; App.$('layer').innerHTML = ''; if (d && d.onClose) d.onClose(); };
+  App.closeDlg = function () { var d = App.dlg; App.dlg = null; App.dlgDirty = false; App.$('layer').innerHTML = ''; if (d && d.onClose) d.onClose(); };
 
   // 保存状態（自動保存の結果を必ず画面に返す）
   // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
   App.saveState = function (s, msg) {
     if (s !== undefined) { App.sv = s; App.svMsg = msg; }
-    var txt = App.sv === 'saving' ? '保存中…' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
+    var txt = App.sv === 'saving' ? '保存中' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
     ['save', 'save2'].forEach(function (id) {
       var el = App.$(id);
-      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
+      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; if (App.sv === 'saving') { var d = document.createElement('span'); d.className = 'dots'; el.appendChild(d); } } // 保存中は点が0〜3個で回る
     });
   };
   // 保存：失敗したら間を延ばしながら（5→10→20→40→60秒）やり直す。6回失敗したら止め、閉じるまで消えない知らせで「もう一度」を出す。
@@ -178,8 +184,20 @@
   var LATEST = {}, PENDING = 0, SEQ = 0;
   App.pending = function () { return PENDING; };
   App.saveGen = 0; // 保存のたびに進める（読んだ学年のデータを使い回してよいかの印。main.js の bootFor）
+  // 同じ key の保存は順に送る（速く何度も押した時、後の値が先に届いて古い値で上書きされないように）。順番が来た時に、もっと新しい保存が待っていれば、古い方は送らない
+  var QUEUE = {};
   App.save = function (fn, key) {
-    var id = ++SEQ; if (key) LATEST[key] = id; App.saveGen++;
+    var id = ++SEQ; if (key) LATEST[key] = id; App.saveGen++; App.dlgDirty = false; // 保存したら、窓の中の内容は保存済み
+    if (key) {
+      PENDING++; App.saveState('saving');
+      var prev = QUEUE[key] || Promise.resolve();
+      var run = prev.then(function () { PENDING = Math.max(0, PENDING - 1); if (LATEST[key] !== id) return; return App.saveNow(fn, key, id); }, function () { PENDING = Math.max(0, PENDING - 1); if (LATEST[key] === id) return App.saveNow(fn, key, id); });
+      QUEUE[key] = run.then(null, function () {});
+      return run;
+    }
+    return App.saveNow(fn, key, id);
+  };
+  App.saveNow = function (fn, key, id) {
     PENDING++;
     var done = function () { PENDING = Math.max(0, PENDING - 1); };
     var stale = function () { return key && LATEST[key] !== id; };
@@ -201,7 +219,9 @@
     };
     return attempt(0);
   };
-  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0) { e.preventDefault(); e.returnValue = ''; } });
+  // まだ送っていない変更（クラス分けの盤面は少し待ってまとめて送る）も、閉じる前にブラウザで確かめる
+  App.unsavedHooks = [];
+  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0 || App.unsavedHooks.some(function (f) { return f(); })) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -26,7 +26,7 @@
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p>' +
         '<p class="note"><button class="linkbtn" data-go="suggest">目安箱（このアプリへの意見）</button></p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
-    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
+    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
     click: function (t) {
       var gb = t.closest('[data-g]');
       if (gb) { var cg = +gb.dataset.g - App.viewOff(); App.preload(cg); App.st.grade = cg; App.st.gradeChosen = true; App.screens.menu.render(); return true; } // 見ている年度の学年を、今年度の学年に直して持つ

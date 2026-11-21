@@ -262,17 +262,25 @@ function ensureCols_(name, head) {
   return sh;
 }
 function rowOf_(head, o) { return head.map(function (h) { return o[h] === undefined ? '' : o[h]; }); }
+// 児童IDの列（と生年月日）は「書式なしテキスト」にしてから書く。スプレッドシートは数字だけの文字を数値に変え、先頭の0を落とす（0012 → 12）。
+// 落ちると次の取り込みで別の児童として二重に足される。書く列ごとに書式を当てる（古い表にも効く）
+var TEXT_COLS_ = { id8: 1, a: 1, b: 1, birth: 1 };
+function textCols_(sh, cols, r0, n) {
+  cols.forEach(function (c, i) { if (TEXT_COLS_[c]) sh.getRange(r0, i + 1, n, 1).setNumberFormat('@'); });
+}
 function append_(name, head, objs) {
   if (!objs.length) return;
   var sh = sheet_(db_(), name, head);
   var cur = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
   if (!cur[0]) cur = head;
+  textCols_(sh, cur, sh.getLastRow() + 1, objs.length);
   forget_(); sh.getRange(sh.getLastRow() + 1, 1, objs.length, cur.length).setValues(objs.map(function (o) { return rowOf_(cur, o); }));
 }
 // 書き戻しは変えた行の変えた列だけ（同時に別の行を直している人を上書きしない）
 function writeCell_(t, row, col, value) {
   var c = t.head.indexOf(col);
   if (c < 0) throw new Error('列がありません：' + col);
+  if (TEXT_COLS_[col]) t.sh.getRange(row._r, c + 1).setNumberFormat('@');
   forget_(); t.sh.getRange(row._r, c + 1).setValue(value);
 }
 function withLock_(fn) {
@@ -370,6 +378,7 @@ var apiBoot_ = api_(function (grade) {
   readLog_('boot', +grade);
   requireTeacher_();
   grade = +grade;
+  if (!(grade >= -1 && grade <= 12)) throw userError_('学年が違います'); // 新1年（0）〜過去の年度の卒業した学年まで
   var FY = CONFIG.fiscalYear(), entry = FY - grade + 1, years = [], kids = {}, idset = {};
   for (var fy = Math.min(entry, FY); fy <= FY + 1; fy++) { // 新1年（grade 0）は今年度の0学年から
     var gy = fy - entry + 1, am = attrsMap_(fy);
@@ -589,7 +598,7 @@ function replaceIds_(fy, map) {
 // 名簿から外す：転出した児童（配慮項目・経緯は過年度の記録として残し、年度替わりで消す）と、誤って登録した児童（その年度の配慮項目も消す）。
 // 直せる年度（決定前は今年度、決定後は来年度）だけ。外す前に控えを取る
 var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
-  var by = requireTeacher_();
+  var by = reason === 'mistake' ? requireAdmin_() : requireTeacher_(); // 誤登録の削除（配慮項目も消える）は管理者だけ
   fy = +fy; grade = +grade; ids = (ids || []).map(String).filter(Boolean);
   if (!ids.length) throw userError_('外す児童を選んでください');
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
@@ -1104,7 +1113,7 @@ function removeRows_(name, pred) {
   if (!n) return 0;
   var w = all[0].length;
   forget_();
-  if (keep.length) t.sh.getRange(2, 1, keep.length, w).setValues(keep);
+  if (keep.length) { textCols_(t.sh, all[0].map(String), 2, keep.length); t.sh.getRange(2, 1, keep.length, w).setValues(keep); } // 詰めた行にも児童IDの列の書式を当てる
   t.sh.deleteRows(2 + keep.length, n);
   return n;
 }

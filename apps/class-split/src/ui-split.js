@@ -71,6 +71,7 @@
     saveT = setTimeout(function () { if (pend) pend(); }, 1200);
   }
   function flush() { clearTimeout(saveT); if (pend) pend(); }
+  App.unsavedHooks.push(function () { return !!pend; }); // 盤面を動かして1.2秒以内に閉じようとした時も確かめる
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();

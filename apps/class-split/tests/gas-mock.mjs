@@ -9,12 +9,14 @@ export function makeGas(src) {
   let nextId = 1;
   class Range {
     constructor(sh, r, c, nr, nc) { Object.assign(this, { sh, r, c, nr, nc }); }
-    setValues(v) { for (let i = 0; i < this.nr; i++) { const row = this.sh.data[this.r - 1 + i] || (this.sh.data[this.r - 1 + i] = []); for (let j = 0; j < this.nc; j++) row[this.c - 1 + j] = v[i][j]; } return this; }
+    // 本物のスプレッドシートと同じく、数字だけの文字は数値に変える（書式なしテキストの列を除く）。先頭の0が落ちるのを試験で再現する
+    setValues(v) { for (let i = 0; i < this.nr; i++) { const r0 = this.r - 1 + i, row = this.sh.data[r0] || (this.sh.data[r0] = []); for (let j = 0; j < this.nc; j++) { let x = v[i][j]; const fm = (this.sh.fmt[r0] || {})[this.c - 1 + j]; if (r0 > 0 && typeof x === 'string' && /^\d+$/.test(x) && fm !== '@') x = Number(x); row[this.c - 1 + j] = x; } } return this; }
+    setNumberFormat(f) { for (let i = 0; i < this.nr; i++) { const r0 = this.r - 1 + i, m = this.sh.fmt[r0] || (this.sh.fmt[r0] = {}); for (let j = 0; j < this.nc; j++) m[this.c - 1 + j] = f; } return this; }
     setValue(x) { return this.setValues([[x]]); }
     getValues() { const out = []; for (let i = 0; i < this.nr; i++) { const row = this.sh.data[this.r - 1 + i] || []; const o = []; for (let j = 0; j < this.nc; j++) o.push(row[this.c - 1 + j] ?? ''); out.push(o); } return out; }
   }
   class Sheet {
-    constructor(name) { this.name = name; this.data = []; }
+    constructor(name) { this.name = name; this.data = []; this.fmt = {}; }
     getName() { return this.name; }
     width() { return Math.max(0, ...this.data.map(r => r.length)); }
     getDataRange() { return new Range(this, 1, 1, this.data.length, this.width()); }
