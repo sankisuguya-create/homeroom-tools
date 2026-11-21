@@ -336,7 +336,7 @@
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
       return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）
     };
-    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読んでいます…' : '見つかりません') + '</div>';
+    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読み込み中<span class="dots"></span>' : '見つかりません') + '</div>';
   }
 
   // ===== 始める =====

@@ -76,6 +76,9 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .ddi{display:block;text-align:left;border:0;background:none;font:inherit;font-size:14px;padding:9px 12px;border-radius:6px;cursor:pointer;color:inherit;white-space:nowrap}
 .ddi:hover{background:#eef1f4}.ddi[disabled]{color:#9aa1a8;cursor:default;background:none}
 .toptools .tr{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
+.dots::after{content:'';display:inline-block;width:1.6em;text-align:left;animation:dots 1.2s steps(1,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.dots::after{animation:none;content:'...'}}
 /* ▲ css/01-base.css ここまで ▲ */
 /* ▼ css/02-marks.css から ▼ */
 /* 配慮項目の印（アイコンの形） */
@@ -2833,10 +2836,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 表示は上部の見出し行（#save）と、クラス分けの帯（#save2）の両方。帯を描き直した時は App.saveState() で戻す
   App.saveState = function (s, msg) {
     if (s !== undefined) { App.sv = s; App.svMsg = msg; }
-    var txt = App.sv === 'saving' ? '保存中…' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
+    var txt = App.sv === 'saving' ? '保存中' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
     ['save', 'save2'].forEach(function (id) {
       var el = App.$(id);
-      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; }
+      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; if (App.sv === 'saving') { var d = document.createElement('span'); d.className = 'dots'; el.appendChild(d); } } // 保存中は点が0〜3個で回る
     });
   };
   // 保存：失敗したら間を延ばしながら（5→10→20→40→60秒）やり直す。6回失敗したら止め、閉じるまで消えない知らせで「もう一度」を出す。
@@ -2845,8 +2848,20 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var LATEST = {}, PENDING = 0, SEQ = 0;
   App.pending = function () { return PENDING; };
   App.saveGen = 0; // 保存のたびに進める（読んだ学年のデータを使い回してよいかの印。main.js の bootFor）
+  // 同じ key の保存は順に送る（速く何度も押した時、後の値が先に届いて古い値で上書きされないように）。順番が来た時に、もっと新しい保存が待っていれば、古い方は送らない
+  var QUEUE = {};
   App.save = function (fn, key) {
     var id = ++SEQ; if (key) LATEST[key] = id; App.saveGen++;
+    if (key) {
+      PENDING++; App.saveState('saving');
+      var prev = QUEUE[key] || Promise.resolve();
+      var run = prev.then(function () { PENDING = Math.max(0, PENDING - 1); if (LATEST[key] !== id) return; return App.saveNow(fn, key, id); }, function () { PENDING = Math.max(0, PENDING - 1); if (LATEST[key] === id) return App.saveNow(fn, key, id); });
+      QUEUE[key] = run.then(null, function () {});
+      return run;
+    }
+    return App.saveNow(fn, key, id);
+  };
+  App.saveNow = function (fn, key, id) {
     PENDING++;
     var done = function () { PENDING = Math.max(0, PENDING - 1); };
     var stale = function () { return key && LATEST[key] !== id; };
@@ -2868,7 +2883,9 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     };
     return attempt(0);
   };
-  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0) { e.preventDefault(); e.returnValue = ''; } });
+  // まだ送っていない変更（クラス分けの盤面は少し待ってまとめて送る）も、閉じる前にブラウザで確かめる
+  App.unsavedHooks = [];
+  g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0 || App.unsavedHooks.some(function (f) { return f(); })) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
@@ -3081,7 +3098,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p>' +
         '<p class="note"><button class="linkbtn" data-go="suggest">目安箱（このアプリへの意見）</button></p></section></div>'; // 貼った版を GitHub の dist と照らす
     },
-    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
+    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
     click: function (t) {
       var gb = t.closest('[data-g]');
       if (gb) { var cg = +gb.dataset.g - App.viewOff(); App.preload(cg); App.st.grade = cg; App.st.gradeChosen = true; App.screens.menu.render(); return true; } // 見ている年度の学年を、今年度の学年に直して持つ
@@ -3196,11 +3213,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         if (t.closest('[data-rank]')) { App.closeDlg(); rankDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
-        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }); return true; }
+        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }, 'attr:' + r.id + ':' + 'k7'); return true; }
         if (at.k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; cell.innerHTML = v ? '<span class="spb">支</span>' : ''; }
         else { r.a[at.k] = v; cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : ''; }
         App.closeDlg();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); }, 'attr:' + r.id + ':' + at.k);
         return true;
       }
     });
@@ -3236,7 +3253,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         if (incs.length) r.a[at.k + '_i'] = incs; else delete r.a[at.k + '_i'];
         App.closeDlg();
         cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); }, 'attr:' + r.id + ':' + at.k);
       }
     });
   }
@@ -3447,7 +3464,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         if (text) r.a.memo = text; else delete r.a.memo;
         if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); }, 'attr:' + r.id + ':' + 'memo');
         if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
@@ -3545,7 +3562,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
     }
     var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
-    return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込んでいます…</div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
+    return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込み中<span class="dots"></span></div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
       '<h3>転入予定の児童（来年度）</h3>' + (tr.length ? '<ul>' + tr.map(function (x) { return '<li>' + esc(x.name) + (x.kana ? '<span class="note">（' + esc(x.kana) + '）</span>' : '') + (trEdit ? ' <button class="btn" data-trdel="' + esc(x.id) + '" title="転入予定から外す">外す</button>' : '') + '</li>'; }).join('') + '</ul>' : '<div class="note">いません</div>') +
       (trEdit ? '<div class="rbar trform"><input id="trn" placeholder="名前" maxlength="40" value="' + esc(TRF.n) + '"><input id="trk" placeholder="よみ" maxlength="60" value="' + esc(TRF.k) + '"><button class="lv" data-trsx="1" aria-pressed="' + TRF.male + '">男</button><button class="lv" data-trsx="0" aria-pressed="' + !TRF.male + '">女</button><input id="tri" placeholder="児童ID（分からなければ空）" maxlength="20" style="width:12em" value="' + esc(TRF.i) + '"><button class="btn primary" id="tradd">転入予定に足す</button></div>' +
         '<div class="note">クラス分けで、どこかの組に入れる案を作れます。決定すると来年度の名簿に入ります。</div>' : '<div class="note">' + (d.decision ? '決定の後は足せません。' : '今年度の名簿の時だけ足せます。') + '</div>') + '</div>';
@@ -3560,7 +3577,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       App.closeDlg();
       cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
       if (R.kid === r.id) render();
-      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); });
+      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); }, 'attr:' + r.id + ':' + at.k);
     };
     App.openDlg({
       focus: 'ntx',
@@ -3736,7 +3753,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function schoolTable() {
     if (!R.school) {
       App.pf().schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
-      return '<div class="tw"><div class="empty">読み込んでいます…</div></div>';
+      return '<div class="tw"><div class="empty">読み込み中<span class="dots"></span></div></div>';
     }
     var esc = App.esc, rows = R.school.slice().sort(function (a, b) { return b.count - a.count || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
     return '<div class="tw"><table class="r ro"><thead><tr><th>学年</th><th>組</th><th>番号</th><th style="text-align:left">名前</th><th>件数</th><th>最新</th></tr></thead><tbody>' +
@@ -3942,7 +3959,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           // 転出児童：転出した時に残した児童。この学年に当たる児童（学年は年度に合わせて進める）を、同じ児童IDで名簿に戻す
           if (!M.left) {
             App.pf().leftKids(fy, grade).then(function (l) { M.left = l; App.refreshDlg(); }, function (e) { App.toast(String(e && e.message || e)); });
-            h += '<div class="empty">読み込んでいます…</div>';
+            h += '<div class="empty">読み込み中<span class="dots"></span></div>';
           } else {
             h += '<p class="note">転出として外した児童です（この学年に当たる児童）。戻ってきたら、組を押して名簿に戻します。同じ児童IDで戻るので、配慮項目・事案・兄弟などの記録はつながったままです。</p>' +
               (M.left.length ? '<table class="r ro"><thead><tr><th style="text-align:left">名前</th><th>転出した時</th><th style="text-align:left">戻す組</th></tr></thead><tbody>' + M.left.map(function (x) {
@@ -4091,7 +4108,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
           var sv = r.a.sp ? 0 : 1, sfy = R.fy, sg = Y.grade;
           if (sv) r.a.sp = 1; else delete r.a.sp;
           x.innerHTML = sv ? '<span class="spb">支</span>' : '';
-          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); });
+          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); }, 'attr:' + r.id + ':' + 'sp');
           return true;
         }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
@@ -4100,7 +4117,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         var v = k === 'k7' ? r.a.k7m : r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = r.a[k] ? App.mark(at, r.a[k]) : ''; x.classList.toggle('auto', !!(k === 'k7' && r.a.k7s)); // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); }, 'attr:' + r.id + ':' + k);
         return true;
       }
       if (t.closest('td.ji')) return true; // 事案の欄は角から開く
@@ -4811,7 +4828,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
       return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）
     };
-    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読んでいます…' : '見つかりません') + '</div>';
+    return items.length ? '<div class="sugg">' + items.map(function (r) { return '<button type="button" data-pick="' + r.id + '">' + label(r) + '</button>'; }).join('') + '</div>' : '<div class="note">' + (others.length && !SCHOOL ? '全校の名簿を読み込み中<span class="dots"></span>' : '見つかりません') + '</div>';
   }
 
   // ===== 始める =====
@@ -5184,6 +5201,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     saveT = setTimeout(function () { if (pend) pend(); }, 1200);
   }
   function flush() { clearTimeout(saveT); if (pend) pend(); }
+  App.unsavedHooks.push(function () { return !!pend; }); // 盤面を動かして1.2秒以内に閉じようとした時も確かめる
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
@@ -6226,7 +6244,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var esc = App.esc;
     if (!T.log) {
       App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
       (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
@@ -6240,7 +6258,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var esc = App.esc, D = T.dev;
     if (!D) {
       App.pf().devices().then(function (d) { T.dev = d; if (App.st.screen === 'settings' && T.tab === 'devices') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     var left = D.window ? Math.max(0, Math.round((new Date(D.window.until) - Date.now()) / 1000)) : 0;
     var fmt = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
@@ -6260,7 +6278,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var esc = App.esc;
     if (!T.sugg) {
       App.pf().suggestions().then(function (l) { T.sugg = l; if (App.st.screen === 'settings' && T.tab === 'sugg') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     return '<p class="note">メニューの下の「目安箱」から届いた意見です（' + T.sugg.length + '件）。送った人は記録していません。年度末に「まとめてコピー」して、改善を頼む時に渡してください。</p>' +
       (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button><button class="btn danger" id="sgclear">読んだ意見を消す…</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
@@ -6272,7 +6290,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var esc = App.esc, s = T.s;
     if (!T.cand) {
       App.pf().leaveCandidates().then(function (c) { T.cand = c; T.pick = {}; /* 元に戻せないので、初めは誰も選ばない */ if (App.st.screen === 'settings' && T.tab === 'year') render(); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     var n = T.cand.filter(function (x) { return T.pick[x.id]; }).length;
     // 年度末の手順：3月の決定から4〜5月の後片付けまでを、上から順に並べる（決定の状態はメニューの学年の一覧から）
@@ -6327,7 +6345,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   App.screens.settings = {
     enter: function () {
       T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
-      App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
+      App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },
@@ -6484,7 +6502,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
-    App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
+    App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>';
     return bootFor(st.grade).then(function (d) { if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
   // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。

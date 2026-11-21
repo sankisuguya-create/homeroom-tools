@@ -726,6 +726,21 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 速く何度も押した時：同じ欄の保存は順に送り、最後の値だけが残る（後の値が先に届いて古い値で上書きされない）。読み込み中・保存中は点が回る
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k2"]');
+  await p.evaluate(() => { const pf = App.pf(), f = pf.setAttr; window.__sent = []; let n = 0; pf.setAttr = function (fy, g, id, k, v) { window.__sent.push(v); const d = [300, 50, 10][n++ % 3]; return new Promise(r => setTimeout(r, d)).then(() => f.apply(pf, arguments)); }; });
+  const cell = p.locator('td.cell[data-k="k2"]').first();
+  await cell.click(); await cell.click(); await cell.click();
+  ok(/保存中/.test(await p.textContent('#save')) && await p.locator('#save .dots').count() === 1, '保存中は「保存中」と点が回る');
+  await p.waitForFunction(() => /保存済み/.test(document.getElementById('save').textContent), null, { timeout: 5000 });
+  const sent = await p.evaluate(() => window.__sent), id = await cell.getAttribute('data-cell');
+  const kept = await p.evaluate(id => { const d = App.st.data, r = d.years.find(y => y.fy === d.fy).rows.find(x => x.id === id); return r.a.k2 | 0; }, id);
+  ok(sent[sent.length - 1] === kept && sent.length <= 3, '3回押しても、最後の値で保存される（送ったのは ' + sent.join('→') + '）');
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);

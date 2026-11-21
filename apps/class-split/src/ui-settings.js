@@ -87,7 +87,7 @@
     var esc = App.esc;
     if (!T.log) {
       App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
       (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
@@ -101,7 +101,7 @@
     var esc = App.esc, D = T.dev;
     if (!D) {
       App.pf().devices().then(function (d) { T.dev = d; if (App.st.screen === 'settings' && T.tab === 'devices') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     var left = D.window ? Math.max(0, Math.round((new Date(D.window.until) - Date.now()) / 1000)) : 0;
     var fmt = function (iso) { var d = new Date(iso); return isNaN(d) ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
@@ -121,7 +121,7 @@
     var esc = App.esc;
     if (!T.sugg) {
       App.pf().suggestions().then(function (l) { T.sugg = l; if (App.st.screen === 'settings' && T.tab === 'sugg') render(); }, function (e) { App.toast(String(e && e.message || e)); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     return '<p class="note">メニューの下の「目安箱」から届いた意見です（' + T.sugg.length + '件）。送った人は記録していません。年度末に「まとめてコピー」して、改善を頼む時に渡してください。</p>' +
       (T.sugg.length ? '<div class="rbar"><button class="btn primary" id="sgcopy">まとめてコピー</button><button class="btn danger" id="sgclear">読んだ意見を消す…</button></div><table class="r ro"><thead><tr><th>日付</th><th style="text-align:left">意見</th></tr></thead><tbody>' +
@@ -133,7 +133,7 @@
     var esc = App.esc, s = T.s;
     if (!T.cand) {
       App.pf().leaveCandidates().then(function (c) { T.cand = c; T.pick = {}; /* 元に戻せないので、初めは誰も選ばない */ if (App.st.screen === 'settings' && T.tab === 'year') render(); });
-      return '<div class="empty">読み込んでいます…</div>';
+      return '<div class="empty">読み込み中<span class="dots"></span></div>';
     }
     var n = T.cand.filter(function (x) { return T.pick[x.id]; }).length;
     // 年度末の手順：3月の決定から4〜5月の後片付けまでを、上から順に並べる（決定の状態はメニューの学年の一覧から）
@@ -188,7 +188,7 @@
   App.screens.settings = {
     enter: function () {
       T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
-      App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
+      App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },

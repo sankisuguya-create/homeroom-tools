@@ -76,11 +76,11 @@
         if (t.closest('[data-rank]')) { App.closeDlg(); rankDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
-        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }); return true; }
+        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }, 'attr:' + r.id + ':' + 'k7'); return true; }
         if (at.k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; cell.innerHTML = v ? '<span class="spb">支</span>' : ''; }
         else { r.a[at.k] = v; cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : ''; }
         App.closeDlg();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); }, 'attr:' + r.id + ':' + at.k);
         return true;
       }
     });
@@ -116,7 +116,7 @@
         if (incs.length) r.a[at.k + '_i'] = incs; else delete r.a[at.k + '_i'];
         App.closeDlg();
         cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); }, 'attr:' + r.id + ':' + at.k);
       }
     });
   }
@@ -327,7 +327,7 @@
         if (text) r.a.memo = text; else delete r.a.memo;
         if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); }, 'attr:' + r.id + ':' + 'memo');
         if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
       }
     });
@@ -425,7 +425,7 @@
       App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
     }
     var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
-    return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込んでいます…</div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
+    return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込み中<span class="dots"></span></div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
       '<h3>転入予定の児童（来年度）</h3>' + (tr.length ? '<ul>' + tr.map(function (x) { return '<li>' + esc(x.name) + (x.kana ? '<span class="note">（' + esc(x.kana) + '）</span>' : '') + (trEdit ? ' <button class="btn" data-trdel="' + esc(x.id) + '" title="転入予定から外す">外す</button>' : '') + '</li>'; }).join('') + '</ul>' : '<div class="note">いません</div>') +
       (trEdit ? '<div class="rbar trform"><input id="trn" placeholder="名前" maxlength="40" value="' + esc(TRF.n) + '"><input id="trk" placeholder="よみ" maxlength="60" value="' + esc(TRF.k) + '"><button class="lv" data-trsx="1" aria-pressed="' + TRF.male + '">男</button><button class="lv" data-trsx="0" aria-pressed="' + !TRF.male + '">女</button><input id="tri" placeholder="児童ID（分からなければ空）" maxlength="20" style="width:12em" value="' + esc(TRF.i) + '"><button class="btn primary" id="tradd">転入予定に足す</button></div>' +
         '<div class="note">クラス分けで、どこかの組に入れる案を作れます。決定すると来年度の名簿に入ります。</div>' : '<div class="note">' + (d.decision ? '決定の後は足せません。' : '今年度の名簿の時だけ足せます。') + '</div>') + '</div>';
@@ -440,7 +440,7 @@
       App.closeDlg();
       cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
       if (R.kid === r.id) render();
-      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); });
+      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); }, 'attr:' + r.id + ':' + at.k);
     };
     App.openDlg({
       focus: 'ntx',
@@ -616,7 +616,7 @@
   function schoolTable() {
     if (!R.school) {
       App.pf().schoolIncidents().then(function (rows) { R.school = rows; if (App.st.screen === 'roster' && R.scope === 'school') render(); });
-      return '<div class="tw"><div class="empty">読み込んでいます…</div></div>';
+      return '<div class="tw"><div class="empty">読み込み中<span class="dots"></span></div></div>';
     }
     var esc = App.esc, rows = R.school.slice().sort(function (a, b) { return b.count - a.count || a.grade - b.grade || a.cls - b.cls || a.no - b.no; });
     return '<div class="tw"><table class="r ro"><thead><tr><th>学年</th><th>組</th><th>番号</th><th style="text-align:left">名前</th><th>件数</th><th>最新</th></tr></thead><tbody>' +
@@ -822,7 +822,7 @@
           // 転出児童：転出した時に残した児童。この学年に当たる児童（学年は年度に合わせて進める）を、同じ児童IDで名簿に戻す
           if (!M.left) {
             App.pf().leftKids(fy, grade).then(function (l) { M.left = l; App.refreshDlg(); }, function (e) { App.toast(String(e && e.message || e)); });
-            h += '<div class="empty">読み込んでいます…</div>';
+            h += '<div class="empty">読み込み中<span class="dots"></span></div>';
           } else {
             h += '<p class="note">転出として外した児童です（この学年に当たる児童）。戻ってきたら、組を押して名簿に戻します。同じ児童IDで戻るので、配慮項目・事案・兄弟などの記録はつながったままです。</p>' +
               (M.left.length ? '<table class="r ro"><thead><tr><th style="text-align:left">名前</th><th>転出した時</th><th style="text-align:left">戻す組</th></tr></thead><tbody>' + M.left.map(function (x) {
@@ -971,7 +971,7 @@
           var sv = r.a.sp ? 0 : 1, sfy = R.fy, sg = Y.grade;
           if (sv) r.a.sp = 1; else delete r.a.sp;
           x.innerHTML = sv ? '<span class="spb">支</span>' : '';
-          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); });
+          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); }, 'attr:' + r.id + ':' + 'sp');
           return true;
         }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
@@ -980,7 +980,7 @@
         var v = k === 'k7' ? r.a.k7m : r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = r.a[k] ? App.mark(at, r.a[k]) : ''; x.classList.toggle('auto', !!(k === 'k7' && r.a.k7s)); // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); });
+        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); }, 'attr:' + r.id + ':' + k);
         return true;
       }
       if (t.closest('td.ji')) return true; // 事案の欄は角から開く

@@ -41,7 +41,7 @@
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
-    App.$('main').innerHTML = '<div class="empty">読み込んでいます…</div>';
+    App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>';
     return bootFor(st.grade).then(function (d) { if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
   };
   // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。
