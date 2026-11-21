@@ -37,6 +37,17 @@ jobs:
           node-version: '22'
       - name: 生成物と正本の一致
         run: python3 scripts/build.py --check
+      - name: アイコンメーカーの生成物と正本の一致
+        run: |
+          node apps/icon-maker/scripts/build.mjs
+          if ! git diff --exit-code -- apps/icon-maker/dist; then
+            echo "::error::apps/icon-maker/dist が src と合っていません。node apps/icon-maker/scripts/build.mjs を実行してコミットしてください。"
+            exit 1
+          fi
+      - name: アイコンメーカーとノート評価の検査
+        run: |
+          node apps/icon-maker/tests/test-app.mjs
+          node apps/note-assessment/gas/scripts/localcheck.js
       - name: 計算とサーバーのテスト
         run: node --test apps/class-split/tests/engine.test.mjs apps/class-split/tests/gas.test.mjs apps/class-split/tests/paste.test.mjs apps/classroom-clock/tests/core.test.mjs apps/group-maker/tests/core.test.mjs
       - name: Playwright を入れる

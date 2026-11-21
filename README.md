@@ -4,16 +4,18 @@
 
 ## 収録ツール
 
-| ツール | 用途 | 最初に読むもの |
-|---|---|---|
-| [ノート評価](apps/note-assessment/) | 児童の自己転写から単元評価・期末評定を組み立てる | [概要](apps/note-assessment/README.md) |
-| [ダンスカウント表](apps/dance-count/) | 集団演技を8カウント単位で作成・印刷する | [概要](apps/dance-count/README.md) |
-| [アイコンメーカー](apps/icon-maker/) | 校務資料用の統一アイコンを作る | [概要](apps/icon-maker/README.md) |
-| [回収チェック表](apps/collection-check/) | 同意書・集金などの回収を名簿×品目の表で追う | [概要](apps/collection-check/README.md) |
-| [教室の時計](apps/classroom-clock/) | 教室のモニターに時計・タイマー・ストップウォッチを映す。操作は手元のPCだけ | [概要](apps/classroom-clock/README.md) |
-| [グループ分け](apps/group-maker/) | 名簿からランダムに2〜30人組を作り、モニターに枠で大きく映す。欠席・離す組合せ・前回の相手を避ける | [概要](apps/group-maker/README.md) |
-| [クラス替え](apps/class-split/) | 学年の名簿（配慮項目・事案・経年の記録）とクラス替えの案づくり・入れ替え・決定（見本） | [概要](apps/class-split/README.md) |
-| [スライドまとめ印刷](apps/slide-print/) | Classroomで提出されたGoogleスライドの指定した枚目を一括で画像化して印刷する（GAS） | [概要](apps/slide-print/README.md) |
+| ツール | 用途 | 最初に読むもの | 本番で使うもの |
+|---|---|---|---|
+| [ノート評価](apps/note-assessment/) | 児童の自己転写から単元評価・期末評定を組み立てる | [概要](apps/note-assessment/README.md) | GAS：`gas/dist/` の5つ |
+| [ダンスカウント表](apps/dance-count/) | 集団演技を8カウント単位で作成・印刷する | [概要](apps/dance-count/README.md) | `dist/Index.html` を開く |
+| [アイコンメーカー](apps/icon-maker/) | 校務資料用の統一アイコンを作る | [概要](apps/icon-maker/README.md) | GAS：`dist/` の `Code.gs`・`Index.html` |
+| [回収チェック表](apps/collection-check/) | 同意書・集金などの回収を名簿×品目の表で追う | [概要](apps/collection-check/README.md) | `dist/Index.html` を開く |
+| [教室の時計](apps/classroom-clock/) | 教室のモニターに時計・タイマー・ストップウォッチを映す。操作は手元のPCだけ | [概要](apps/classroom-clock/README.md) | `dist/Index.html` を開く |
+| [グループ分け](apps/group-maker/) | 名簿からランダムに2〜30人組を作り、モニターに枠で大きく映す。欠席・離す組合せ・前回の相手を避ける | [概要](apps/group-maker/README.md) | `dist/Index.html` を開く |
+| [クラス替え](apps/class-split/) | 学年の名簿（配慮項目・事案・経年の記録）とクラス替えの案づくり・入れ替え・決定（見本） | [概要](apps/class-split/README.md) | GAS：`dist/gas/` の3つ（`dist/Index.html` は見本） |
+| [スライドまとめ印刷](apps/slide-print/) | Classroomで提出されたGoogleスライドの指定した枚目を一括で画像化して印刷する（GAS） | [概要](apps/slide-print/README.md) | GAS：`src/` の2つ（ビルドなし） |
+
+「本番で使うもの」以外は貼らない。GAS は同じコミットのものを一式で貼る（一部だけ貼り直さない）。手順の詳細は各「概要」。
 
 机の配置図は、場所（体育館・プールなど）と体育館の用具の立体を足して、別リポジトリ flow-line-guide の `apps/haichi/`（配置図）へ移しました。
 
