@@ -192,6 +192,7 @@
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
     render: function () { if (T.s) render(); },
+    dirty: function () { return !!T.dirty; },
     // 受付で利用者の一覧が増えるので、設定を読み直す（タブはそのまま）
     reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
@@ -228,6 +229,7 @@
         App.save(function () { return App.pf().revokeDevice(x.dataset.drev); }).then(function () { T.dev = null; render(); }); return true;
       }
       if (t.closest('#ssave')) {
+        t.closest('#ssave').disabled = true; // 二度押しで二重に送らない
         App.save(function () { return App.pf().saveSettings(s); }).then(function (saved) {
           T.s = clone(saved); T.dirty = false; App.applySettings(saved); render(); App.toast('設定を保存しました');
         });

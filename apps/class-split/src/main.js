@@ -18,6 +18,7 @@
   App.viewLabel = function () { var off = App.viewOff(); return (off ? (App.pf().fiscalYear + off) + '年度 ' : '') + g.CONFIG.gradeLabel(App.st.grade + off); };
   App.go = function (screen, grade) {
     var st = App.st, prev = App.screens[st.screen];
+    if (prev && prev.dirty && st.screen !== screen && prev.dirty() && !confirm('保存していない変更があります。保存せずに移りますか？')) return Promise.resolve(); // 設定を直して保存せずにメニューへ、など
     if (prev && prev.leave) prev.leave();
     App.closeDlg();
     if (grade) st.grade = grade;
@@ -84,7 +85,7 @@
       if (act && act.dataset.act === 'close') { App.closeDlg(); return; }
       if (act && act.dataset.act === 'next' && App.dlg.onTab) { App.dlg.onTab(); return; }
       if (App.dlg.click && App.dlg.click(t)) return;
-      if (t.closest('[data-close]') && !t.closest('.dlg,.viol')) App.closeDlg();
+      if (t.closest('[data-close]') && !t.closest('.dlg,.viol')) App.tryCloseDlg(); // 窓の外を押した：打った内容があれば確かめる
       return;
     }
     var go = t.closest('[data-go]');
@@ -96,7 +97,7 @@
   document.addEventListener('submit', function (e) { e.preventDefault(); var scr = App.screens[App.st.screen]; if (scr && scr.submit) scr.submit(e.target); });
   document.addEventListener('keydown', function (e) {
     if (App.dlg) {
-      if (e.key === 'Escape') { e.preventDefault(); App.closeDlg(); }
+      if (e.key === 'Escape') { e.preventDefault(); App.tryCloseDlg(); }
       else if (e.key === 'Enter' && !App.dlg.noEnter && App.dlg.onOk && !e.isComposing && (!e.target.matches('textarea') || e.ctrlKey || e.metaKey)) { e.preventDefault(); App.dlg.onOk(); }
       else if (e.key === 'Tab' && App.dlg.onTab && App.dlg.onTab()) e.preventDefault();
       return;
@@ -165,7 +166,7 @@
   ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(function (ev) { addEventListener(ev, touch, true); });
   // 覆いは、ありきたりの算数・国語のプリントに見せる（fakeprint.js。隠すたびに替える）。1回押すと戻る（利用者の判断）
   var hide = function () { var cv = App.$('idle'); if (!cv || !cv.hidden) return; cv.innerHTML = '<div class="fp-back">クリックで作業に戻る</div>' + App.fakePrint(); cv.scrollTop = 0; cv.hidden = false; tip.hidden = true; };
-  setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) hide(); }, 10000);
+  setInterval(function () { if (Date.now() - idleAt > IDLE_MIN * 60000) { if (App.relock) App.relock(); hide(); } }, 10000); // 放置したら名簿のロックも掛け直す（タブを移っただけの時は掛けない）
   document.addEventListener('visibilitychange', function () { if (document.hidden) hide(); });
   var cvEl = App.$('idle');
   cvEl.addEventListener('click', function (e) { e.stopPropagation(); cvEl.hidden = true; cvEl.innerHTML = ''; touch(); });

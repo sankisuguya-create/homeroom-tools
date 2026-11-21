@@ -8,6 +8,7 @@
   function D() { return App.st.data; }
   // ロック：名簿の表の編集（配慮項目・備考・つける離す・名前・組・番号）を止める。端末ごとに覚える（初めはロック）
   var LOCK = (function () { try { return localStorage.getItem('classSplit.rosterLock') !== '0'; } catch (e) { return true; } })();
+  App.relock = function () { if (!LOCK) { setLock(true); if (App.st.screen === 'roster' && !App.dlg) render(); } };
   function setLock(v) { LOCK = v; try { localStorage.setItem('classSplit.rosterLock', v ? '1' : '0'); } catch (e) { /* 今の画面には効く */ } }
   function editableFy() { return D().decision ? D().fy + 1 : D().fy; }
   function yearOf(fy) { return D().years.filter(function (y) { return y.fy === fy; })[0]; }
@@ -728,7 +729,7 @@
           '<div id="psum">' + summary() + '</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok" id="okbtn"' + (P.res && P.res.rows.length ? '' : ' disabled') + '>取り込む（' + (P.res ? P.res.rows.length : 0) + '人）<kbd>Ctrl+Enter</kbd></button></div></div></div>';
       },
-      input: function (t) { if (t.id === 'ptxt') { P.text = t.value; refresh(); } },
+      input: function (t) { if (t.id === 'ptxt') { P.text = t.value; clearTimeout(P.tm); if (P.text.length > 5000) P.tm = setTimeout(refresh, 300); else refresh(); } }, // 全校分などの大きな表は、打ち終わってから読む（貼るたびに固まらない）
       click: function (t) {
         var x = t.closest('[data-pcls]'); if (x) { P.cls = +x.dataset.pcls; refresh(); return true; }
         x = t.closest('[data-spa]'); if (x) { var q = x.dataset.spa, i = q.lastIndexOf(':'); P.sa[q.slice(0, i)] = +q.slice(i + 1); refresh(); return true; }
@@ -750,6 +751,7 @@
     var nc = 1; Y.rows.forEach(function (y) { if (y.cls + 1 > nc) nc = y.cls + 1; });
     var F = { name: s.name, kana: s.kana || '', male: !!s.male, cls: r.cls, no: r.no, birth: s.birth || '', addr: s.addr || '', area: s.area || '', sp: !!(r.a && r.a.sp), spn: (r.a && r.a.spn) || '' };
     var dupOf = function () { return Y.rows.filter(function (y) { return y.id !== id && y.cls === F.cls && y.no === F.no; }).map(function (y) { return (d.kids[y.id] || {}).name; })[0]; };
+    var dupHtml = function () { var dup = dupOf(); return dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : ''; };
     var inp = function (lab, idA, val, max, ph, w) { return '<label class="setrow">' + lab + '<input id="' + idA + '" value="' + esc(val) + '" maxlength="' + max + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (w ? ' style="width:' + w + '"' : '') + '></label>'; };
     App.openDlg({
       focus: 'kename',
@@ -760,7 +762,7 @@
           '<div class="rbar"><span class="lab">性別</span><button class="lv" data-kesx="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-kesx="0" aria-pressed="' + !F.male + '">女</button>' +
           '<span class="lab" style="margin-left:14px">組</span>' + Array.from({ length: nc }, function (_, k) { return '<button class="tab" data-kecls="' + k + '" aria-selected="' + (F.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join('') + '<button class="tab" data-kecls="-1" aria-selected="' + (F.cls < 0) + '">クラスなし</button>' +
           '<label style="margin-left:14px">出席番号 <input id="keno" type="number" min="1" max="99" value="' + F.no + '" style="width:4.5em"></label></div>' +
-          (dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : '') +
+          '<div id="kedup">' + dupHtml() + '</div>' +
           '<div class="kegrid">' + inp('生年月日', 'kebirth', F.birth, 20, '例：2018/4/2') + inp('町名（住所の偏りに使う）', 'kearea', F.area, 40, '例：中央') + '</div>' +
           inp('住所', 'keaddr', F.addr, 200, '例：大阪府西市中央三丁目5-2') +
           '<div class="rbar"><span class="lab">特別支援学級</span><button class="lv" data-kesp="1" aria-pressed="' + F.sp + '">在籍</button><button class="lv" data-kesp="0" aria-pressed="' + !F.sp + '">なし</button>' +
@@ -772,7 +774,7 @@
       input: function (t) {
         var m = { kename: 'name', kekana: 'kana', kebirth: 'birth', kearea: 'area', keaddr: 'addr', kespn: 'spn' }[t.id];
         if (m) { F[m] = t.value; return; }
-        if (t.id === 'keno') { F.no = Math.max(1, Math.min(99, +t.value || 1)); var w = App.$('keno'), pos = w && w.selectionStart; App.refreshDlg(); var el = App.$('keno'); if (el) el.focus(); }
+        if (t.id === 'keno') { F.no = Math.max(1, Math.min(99, +t.value || 1)); var kd = App.$('kedup'); if (kd) kd.innerHTML = dupHtml(); } // 打つたびに窓を作り直さない（2桁を打つ途中でカーソルが飛ばないように）
       },
       click: function (t) {
         var x;

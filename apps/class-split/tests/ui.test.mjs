@@ -741,6 +741,29 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(sent[sent.length - 1] === kept && sent.length <= 3, '3回押しても、最後の値で保存される（送ったのは ' + sent.join('→') + '）');
   await p.close();
 }
+// 誤操作の守り：打った後に窓の外・Esc で閉じかけたら確かめる。設定を保存せずに離れる時も確かめる。番号は2桁を続けて打てる
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.memo');
+  await p.locator('td.memo').nth(2).click(); await p.waitForSelector('#mtx'); await p.fill('#mtx', '書きかけのメモ');
+  let asked = 0; p.once('dialog', d => { asked++; d.dismiss(); });
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  ok(asked === 1 && await p.locator('#mtx').count() === 1, '打った後に Esc を押すと確かめ、「キャンセル」なら窓は閉じない');
+  p.once('dialog', d => d.accept()); await p.mouse.click(5, 700); await p.waitForTimeout(200);
+  ok(await p.locator('#mtx').count() === 0, '窓の外を押して「OK」なら閉じる');
+  await p.locator('[data-kedit]').first().click(); await p.waitForSelector('#keno');
+  await p.fill('#keno', ''); await p.type('#keno', '12');
+  ok(await p.inputValue('#keno') === '12', '出席番号に2桁を続けて打てる（打つたびに窓を作り直さない）');
+  await p.locator('.dlg [data-act="close"]').click();
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="settings"]'); await p.waitForSelector('[data-al="k1"]');
+  await p.fill('[data-al="k1"]', '学習の支援X');
+  p.once('dialog', d => d.dismiss()); await p.click('[data-go="menu"]:visible'); await p.waitForTimeout(200);
+  ok(await p.locator('[data-al="k1"]').count() === 1, '設定を保存せずに離れようとすると確かめ、「キャンセル」なら残る');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);
