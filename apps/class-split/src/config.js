@@ -195,7 +195,8 @@
   CONFIG.GRADES = [0, 1, 2, 3, 4, 5, 6];
   CONFIG.gradeLabel = function (g) { return +g === 0 ? '新1年' : g + '年'; };
   // 新1年の仮の児童ID（入学前で8桁の番号が無い）。N＋年度＋3桁。入学後に8桁の番号を貼ると、名前とよみで照らして付け替える
-  CONFIG.isTempId = function (id) { return /^N\d{7}$/.test(String(id)); };
+  // 仮の児童ID：新1年・名簿の転入の N＋年度＋3桁と、転入予定の T＋年度＋3桁。どちらも本来の児童IDの名簿を貼ると名前で照らして付け替える
+  CONFIG.isTempId = function (id) { return /^[NT]\d{7}$/.test(String(id)); };
   // 児童ID：英数字（と - _）20文字まで。学校のメールの番号（8桁）が多いが、桁数は決めない（利用者の判断 2026-11）
   CONFIG.isKidId = function (id) { return /^[A-Za-z0-9_-]{1,20}$/.test(String(id)); };
 

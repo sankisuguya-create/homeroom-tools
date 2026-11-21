@@ -362,7 +362,7 @@
     } });
   }
 
-  function reset() { R.fy = editableFy(); R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
+  function reset() { R.fy = editableFy(); R.clsFix = true; R.cls = App.me && App.me.grade === App.st.grade && App.me.cls >= 0 ? App.me.cls : 0; R.scope = 'cls'; R.byCount = false; R.kid = null; R.form = null; R.school = null; }
 
   function render() {
     var d = D(), esc = App.esc;
@@ -376,6 +376,8 @@
       if (App.st.openPaste) { App.st.openPaste = false; pasteDialog(); }
       return;
     }
+    // 開いた時、どの組にも児童がいなくてクラスなしにだけいれば、クラスなしを開く（空の1組を見せない）
+    if (R.clsFix) { R.clsFix = false; if (R.scope === 'cls' && !Y.rows.some(function (r) { return r.cls >= 0; }) && Y.rows.some(function (r) { return r.cls < 0; })) R.cls = -1; }
     var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
     // 上の帯：編集中に使う「組・学年」の切り替えと、いまの状態（既定と違う時だけ）だけを出す。ほかは「その他…」の窓へ
     var h = '<div class="rbar">';
@@ -810,7 +812,7 @@
         if (M.tab === 'out') {
           var list = shown(), n = picked().length;
           h += '<div class="rbar"><span class="lab">表示</span>' + clsBtns('data-mcls', M.scope === 'cls' ? M.cls : -1) + '<button class="tab" data-mall="1" aria-selected="' + (M.scope === 'all') + '">学年全体</button></div>' +
-            '<div class="rbar"><span class="lab">理由</span><button class="lv" data-mrs="leave" aria-pressed="' + (M.reason === 'leave') + '">転出した</button><button class="lv" data-mrs="mistake" aria-pressed="' + (M.reason === 'mistake') + '">誤って登録した</button></div>' +
+            '<div class="rbar"><span class="lab">理由</span><button class="lv" data-mrs="leave" aria-pressed="' + (M.reason === 'leave') + '">転出した</button>' + (App.me && App.me.admin ? '<button class="lv" data-mrs="mistake" aria-pressed="' + (M.reason === 'mistake') + '">誤って登録した</button>' : '<span class="note">誤って登録した児童の削除は管理者だけができます</span>') + '</div>' +
             '<p class="note">' + (M.reason === 'leave' ? '転出：この年度の名簿から外し、「転出した児童（出戻り）」に残します。戻ってきたら、そこから同じ児童IDで名簿に戻せます。配慮項目・事案の記録も残ります（設定の「年度替わり」で、残す年数を過ぎたら消します）。' : '誤って登録：この年度の名簿と配慮項目から消します。') + '外す前にデータの控えを取ります。</p>' +
             '<div class="tw" style="max-height:300px"><table class="r ro"><thead><tr><th><input type="checkbox" id="mallp"' + (list.length && n === list.length ? ' checked' : '') + ' aria-label="すべて"></th><th>組</th><th>番号</th><th style="text-align:left">名前</th><th>児童ID</th></tr></thead><tbody>' +
             list.map(function (r) { var s = d.kids[r.id] || {}; return '<tr><td><input type="checkbox" data-mp="' + esc(r.id) + '"' + (M.pick[r.id] ? ' checked' : '') + '></td><td>' + (r.cls + 1) + '</td><td>' + r.no + '</td><td style="text-align:left">' + esc(s.name || '') + '</td><td>' + esc(r.id) + '</td></tr>'; }).join('') +

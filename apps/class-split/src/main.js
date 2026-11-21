@@ -46,12 +46,12 @@
   };
   // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。
   // メニューで学年を選んだ時に先読みもする（App.preload）。見本・試行と本番は別に持つ
-  var BOOT = {};
+  var BOOT = {}, BOOT_TTL = 5 * 60000;
   function bootFor(grade) {
     var key = (App.mode || '') + ':' + grade, c = BOOT[key];
-    if (c && c.gen === App.saveGen) return c.p;
+    if (c && c.gen === App.saveGen && Date.now() - c.at < BOOT_TTL) return c.p; // 5分たったら読み直す（ほかの先生の入力を見るため）
     var p = App.pf().boot(grade);
-    BOOT[key] = { gen: App.saveGen, p: p };
+    BOOT[key] = { gen: App.saveGen, p: p, at: Date.now() };
     p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない
     return p;
   }
