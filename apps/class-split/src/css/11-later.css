@@ -123,3 +123,27 @@
 @media print { #idle { display: none !important; } }
 .ylist{margin:0 0 8px;padding-left:1.4em;line-height:1.6}.ylist li{margin:2px 0}.ylist li.done{color:var(--sub)}.ylist .warn{color:var(--alert);font-weight:700}
 .fp-back{position:sticky;top:0;z-index:1;max-width:760px;margin:0 auto 10px;background:rgba(20,20,20,.78);color:#fff;text-align:center;padding:6px 10px;border-radius:6px;font-size:14px}
+/* メニュー：3つの機能を同じ大きさで少し重ねる（アイコンの3つの S と同じ並び。左ほど手前） */
+.bigs.bigs3{display:flex;gap:0;align-items:stretch}
+.bigs3>.big{flex:1 1 0;min-width:0;min-height:8.5em;border-radius:14px;padding:20px 22px;justify-content:center;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.bigs3>.big+.big{margin-left:-14px;padding-left:34px}
+.bigs3>.big:nth-child(1){z-index:3}.bigs3>.big:nth-child(2){z-index:2}.bigs3>.big:nth-child(3){z-index:1}
+.bigs3>.big:hover{z-index:4}
+.bigs3 .bsplit{background:var(--soft)}
+.bigs3 .big b{font-size:1.5rem}
+.mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mchip{font-style:normal;font-size:.8rem;border:1px solid var(--line);border-radius:10px;padding:1px 9px;color:var(--sub);background:var(--panel)}
+.mchip.red{border-color:var(--alert);color:var(--alert)}
+.mrecent{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px}
+.mrecent h2{margin:0 0 4px}
+.mrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--soft);padding:7px 2px;font:inherit;cursor:pointer;min-height:34px}
+.mrow:first-of-type{border-top:0}.mrow:hover{background:var(--soft)}
+.mrow .note{margin-left:auto}
+.mrow .tg{font-size:.75rem;padding:1px 7px;border-radius:9px;border:1.5px solid;white-space:nowrap}
+.mrow .tg.t3{color:var(--alert)}.mrow .tg.t1{color:var(--link)}
+.mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.mfoot .sp{flex:1}
+@media (max-width:560px){.bigs.bigs3{flex-direction:column}.bigs3>.big+.big{margin:-10px 0 0;padding-left:22px}}
+.bigs.bigs3>.big[data-go]{padding:20px 22px;min-height:8.5em;justify-content:center}
+.bigs.bigs3>.big[data-go] b{font-size:1.5rem}
+.bigs.bigs3>.big+.big[data-go]{padding-left:34px}

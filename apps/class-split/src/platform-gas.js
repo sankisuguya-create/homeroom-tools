@@ -102,6 +102,7 @@
     setClassNames: function (grade, names) { return call('apiSetClassNames', grade, names); },
     settings: function () { return call('apiSettings'); },
     saveSettings: function (s) { return call('apiSaveSettings', s); },
+    saveMyView: function (v) { return call('apiSaveMyView', v); },
     leaveCandidates: function () { return call('apiLeaveCandidates'); },
     purge: function (ids) { return call('apiPurge', ids); },
     trashIncident: function (id) { return call('apiTrashIncident', id); },
