@@ -87,7 +87,7 @@
         if (/いじめ/.test(type) && kids.length === 1 && R2() < .5) dg = { nodes: [{ id: '?1', x: 100, y: 110 }, { id: kids[0], x: 330, y: 110 }], groups: [], edges: [{ f: 'k:?1', t: 'k:' + kids[0] }] };
         var x = demoIncident({ date: date, dateEnd: dateEnd, detail: pick(DETAIL), type: type, title: mo + '月' + day + '日 ' + pick(PLACES) + 'の件', url: R2() < .4 ? '#demo-' + S.nextInc : '', ids: kids, diagram: dg,
           report: demoReport(type, date, dg, R2, pick2) });
-        x.id = S.nextInc++; incFy[x.id] = fyI;
+        x.id = S.nextInc++; incFy[x.id] = fyI; x.by = R2() < .4 ? 'demo@' + C.TEACHER_DOMAIN : 'sato@' + C.TEACHER_DOMAIN; x.rev = x.rev || date + 'T09:00:00.000Z';
         S.inc.push(x);
       }
       // どの学年にも、被害の児童が2人のいじめを1件（様式を児童ごとに作る見本）。今年度の最近の日付
@@ -310,7 +310,7 @@
     savePlans: function (grade, plans) { gen(); S.plans[grade] = clone(plans); return later({ ok: true }); },
     addIncident: function (x) { gen();
       // 本番は所有者の権限で文書の名前を取る。取れない時は title を空で返し、画面が入力を求める
-      var inc = Object.assign({ id: S.nextInc++ }, demoIncident(x));
+      var inc = Object.assign({ id: S.nextInc++ }, demoIncident(x), { by: 'demo@' + C.TEACHER_DOMAIN, rev: new Date().toISOString() });
       if (!inc.ids.length) return Promise.reject(new Error('関係する児童を選んでください'));
       S.inc.push(inc);
       return later(clone(inc));
@@ -430,8 +430,9 @@
       return later({ added: added, updated: updated, missing: missing });
     },
     savePairs: function (grade, pairs) { gen(); S.pairs[grade] = clone(pairs); return later({ ok: true }); },
-    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0, admin: true, owner: true, ownerEmail: 'demo@' + C.TEACHER_DOMAIN } }); },
+    settings: function () { gen(); return later({ settings: S.settings, me: { email: 'demo@' + C.TEACHER_DOMAIN, grade: 5, cls: 0, admin: true, owner: true, ownerEmail: 'demo@' + C.TEACHER_DOMAIN, view: clone(S.view || {}) } }); },
     saveSettings: function (x) { gen(); S.settings = clone(x); return later(S.settings); },
+    saveMyView: function (v) { S.view = clone(v); return later(S.view); },
     leaveCandidates: function () {
       gen();
       var now = {}, last = {}, cnt = {};

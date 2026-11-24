@@ -242,6 +242,10 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(xs.ok, xs.err); assert.ok(!/[<>"]/.test(xs.v.attrs.k1.label + xs.v.types[0]), '設定の文字から HTML の記号を落とす');
     call('apiSaveSettings', { attrs: { k1: { label: '学習の支援', s: '援', w: 3 } }, types: ['対人', 'けが'], teachers: [{ email: 'Tanaka@edu.nishi.or.jp', grade: 4, cls: 2 }], keepYears: 6 });
     const me = call('apiSettings').v.me;
+    // 先生ごとのメニューの表示：既定は空（全部出す）。保存すると次から返る。ほかの先生には効かない
+    assert.deepEqual(me.view, {});
+    assert.deepEqual(call('apiSaveMyView', { recent: false, junk: 1 }).v, { rost: true, inc: true, split: true, recent: false, others: true });
+    assert.equal(call('apiSettings').v.me.view.recent, false);
     assert.deepEqual([me.grade, me.cls], [4, 1], 'メールの大文字小文字を無視して担任を見つける');
     const hs = call('apiSaveSettings', { attrs: { k3: { label: '問題行動', s: '問', w: 3, help: ['トラブル', '  ', '深刻'] }, k5: { label: 'アレルギー', s: 'ア', w: 1, help: ['食物', '要配慮', 'これは捨てる'] } }, types: ['対人'] });
     assert.ok(hs.ok, hs.err);
