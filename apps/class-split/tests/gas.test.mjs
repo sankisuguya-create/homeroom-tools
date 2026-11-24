@@ -389,6 +389,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.DriveApp.createFolder = cf; env.DriveApp.getFoldersByName = gf;
     const stt = ctx.selfTest();
     assert.match(stt, /○ 控え/); assert.match(stt, /○ 毎週の控えのきっかけ/);
+    // タブのアイコン：ドライブに PNG を作って学校の中だけに共有し、画面にその URL を渡す。2回目は作り直さない
+    assert.match(stt, /○ タブのアイコン/);
+    const icId = env.PropertiesService.getScriptProperties().getProperty('ICON_ID');
+    assert.ok(icId); assert.match(ctx.selfTest(), new RegExp('タブのアイコン（ドライブに置いた画像）：' + icId));
+    assert.equal(env.DriveApp.getFileById(icId).sharing[0], 'DOMAIN_WITH_LINK');
+    assert.ok(ctx.doGet().icon.includes(icId), 'タブのアイコンの URL');
     assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
 
     // 兄弟：続柄が分からない兄弟（'?'）は今年度の名簿の同じ学年・組・番号の児童の性別で決め、配慮項目の表に入る

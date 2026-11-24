@@ -770,6 +770,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   ok(await p.title() === 'SSS' && (await p.textContent('#appname')) === 'SSS', 'タブと左上の名前は SSS');
+  ok((await p.textContent('#mfull')) === 'SSS（児童理解支援システム）', 'メニューの下に正式な名前');
   await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.pr');
   const q = await p.locator('td.pr').first().boundingBox(); await p.mouse.click(q.x + q.width - 4, q.y + q.height - 4);
   await p.waitForSelector('.dlg[aria-label="つける・離す"]');

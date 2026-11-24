@@ -72,9 +72,11 @@ export function makeGas(src) {
     PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) },
     DriveApp: {
-      getFileById: id => { const f = drive.file(id); if (!f) throw new Error('no access'); return f; },
+      getFileById: id => { const f = drive.file(id) || (drive.icons || {})[id]; if (!f) throw new Error('no access'); return f; },
       getFoldersByName: n => drive.iter(Object.values(drive.folders).filter(f => f.getName() === n)),
-      createFolder: n => drive.folder(n)
+      createFolder: n => drive.folder(n),
+      createFile: blob => { const id = 'ICON' + Object.keys(drive.icons ||= {}).length; const f = { getId: () => id, setSharing: (a, p) => { f.sharing = [a, p]; } }; drive.icons[id] = f; return f; },
+      Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK', ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' }, Permission: { VIEW: 'VIEW' }
     },
     ScriptApp: {
       getScriptId: () => 'SCRIPT1',
@@ -86,10 +88,11 @@ export function makeGas(src) {
     Utilities: {
       formatDate: d => d.toISOString().slice(0, 10),
       getUuid: () => crypto.randomUUID(),
+      base64Decode: b => Array.from(Buffer.from(b, 'base64')), newBlob: (bytes, type, name) => ({ bytes, type, name }),
       DigestAlgorithm: { SHA_256: 'sha256' }, Charset: { UTF_8: 'utf8' },
       computeDigest: (alg, s) => Array.from(crypto.createHash('sha256').update(String(s), 'utf8').digest()).map(b => b > 127 ? b - 256 : b)
     },
-    HtmlService: { createHtmlOutput: h => ({ h, setTitle() { return this; } }), createHtmlOutputFromFile: f => ({ f, setTitle() { return this; }, addMetaTag() { return this; } }) },
+    HtmlService: { createHtmlOutput: h => ({ h, setTitle() { return this; } }), createHtmlOutputFromFile: f => ({ f, setTitle() { return this; }, addMetaTag() { return this; }, setFaviconUrl(u) { this.icon = u; return this; } }) },
     console
   };
   env.Session = { getActiveUser: () => ({ getEmail: () => env.user }), getEffectiveUser: () => ({ getEmail: () => env.owner }) };

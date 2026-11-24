@@ -8,6 +8,18 @@ var DB_PROP = 'CLASS_SPLIT_DB_ID';
 // ===== 画面 =====
 // タブに出す名前（設定の「アプリの名前」。既定は SSS＝Student Support System。児童の目を引かない略称）
 function appName_() { try { return settings_().appName || 'SSS'; } catch (e) { return 'SSS'; } }
+// タブのアイコン：GAS は画像を返せないので、所有者のドライブに PNG を置き、その URL を渡す（GitHub など外部の置き場は使わない）
+// 画像はこのコードの中に持つ。setup・selfTest が作り、ID を ICON_ID に覚える
+var ICON_PNG_B64 = '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';
+function ensureIcon_() {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('ICON_ID');
+  if (id) { try { DriveApp.getFileById(id); return id; } catch (e) { /* 消されていたら作り直す */ } }
+  var f = DriveApp.createFile(Utilities.newBlob(Utilities.base64Decode(ICON_PNG_B64), 'image/png', 'SSS-icon.png'));
+  try { f.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
+  props.setProperty('ICON_ID', f.getId());
+  return f.getId();
+}
+function iconUrl_() { var id = PropertiesService.getScriptProperties().getProperty('ICON_ID'); return id ? 'https://drive.google.com/uc?export=view&id=' + id + '&.png' : ''; }
 function doGet() {
   var who = currentTeacher_();
   if (!who.ok || (!accessOf_(who.email).user && !deviceWindowSafe_())) {
@@ -17,9 +29,11 @@ function doGet() {
       '<h1 style="font-size:20px">' + msg + '</h1><p>' + escHtml_(who.email || '（アカウントが分かりません）') + sub + '</p></body></html>')
       .setTitle(appName_());
   }
-  return HtmlService.createHtmlOutputFromFile('Index')
+  var out = HtmlService.createHtmlOutputFromFile('Index')
     .setTitle(appName_())
     .addMetaTag('viewport', 'width=device-width,initial-scale=1');
+  try { var u = iconUrl_(); if (u) out.setFaviconUrl(u); } catch (e) { /* アイコンが無くても開く */ }
+  return out;
 }
 
 // ===== 利用者の確認 =====
@@ -186,6 +200,7 @@ function setup() {
   sheet_(ss, 'roster_' + fy, ROSTER_HEAD);
   sheet_(ss, 'attrs_' + fy, attrsHead_());
   ensureWeeklyTrigger_();
+  try { ensureIcon_(); } catch (e) { /* アイコンは selfTest で確かめる */ }
   return ss.getUrl();
 }
 var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no', 'addr', 'area', 'birth']; // addr：住所の全文、area：町名（地区の偏りに使う）
@@ -1243,6 +1258,7 @@ function selfTest() {
   var out = [], t = function (label, fn) { try { var v = fn(); out.push('○ ' + label + (v ? '：' + v : '')); } catch (e) { out.push('✕ ' + label + '：' + String(e && e.message || e)); } };
   t('データのスプレッドシート', function () { return db_().getName(); });
   t('控え（ドライブにフォルダを作り、複製する）', function () { backup_('動作確認'); PropertiesService.getScriptProperties().setProperty('BACKUP_ERR', ''); return BACKUP_FOLDER; });
+  t('タブのアイコン（ドライブに置いた画像）', function () { return ensureIcon_(); });
   t('毎週の控えのきっかけ', function () { ensureWeeklyTrigger_(); return ''; });
   t('共有の状態の読み取り', function () { var s = sharedWith_(DriveApp.getFileById(PropertiesService.getScriptProperties().getProperty(DB_PROP))); return s.length ? '所有者以外にも見えます：' + s.join('、') : '所有者だけ'; });
   var msg = out.join('\n');
@@ -1314,7 +1330,7 @@ function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
-    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS') };
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム') };
 }
 var apiSettings_ = api_(function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
@@ -1328,7 +1344,7 @@ var apiSaveSettings_ = api_(function (s) {
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
-    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS' };
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム' };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
