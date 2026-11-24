@@ -1658,7 +1658,7 @@ function include(name){
    画面側（PAGE_BUILD）と照合して警告を出すための値。
    サーバと画面は別スコープなので名前を分ける（preview.js は1スコープに
    読むので、同名だと宣言が衝突する）。 */
-const SERVER_BUILD = "BUILD_bc083e5e4fdc";
+const SERVER_BUILD = "BUILD_522cb2f8df84";
 
 /* ------------------------------------------------------------------
    役割の判定。ここが Step 3 の山場。

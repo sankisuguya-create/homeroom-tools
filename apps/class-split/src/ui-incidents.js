@@ -65,7 +65,7 @@
       trash: true,
       html: function () {
         return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="事案のゴミ箱" style="max-width:640px"><h2>事案のゴミ箱</h2>' +
-          (L === null ? '<div class="empty">読み込み中<span class="dots"></span></div>' : L.length ? '<table class="r ro"><tbody>' + L.map(function (x) {
+          (L === null ? '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>' : L.length ? '<table class="r ro"><tbody>' + L.map(function (x) {
             return '<tr><td style="text-align:left">' + esc(x.title || (x.type + 'の事案')) + '<div class="note">' + esc(x.date) + '・' + esc(x.type) + '　' + esc(String(x.at).slice(0, 10)) + ' に ' + esc(x.by) + ' が移した</div></td>' +
               '<td><button class="btn" data-trs="' + x.id + '">戻す</button>' + (adm ? ' <button class="btn danger" data-trx="' + x.id + '">完全に消す</button>' : '') + '</td></tr>';
           }).join('') + '</tbody></table>' : '<div class="empty">ゴミ箱は空です</div>') +

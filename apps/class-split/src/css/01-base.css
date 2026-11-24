@@ -65,6 +65,7 @@ kbd{font-family:Consolas,Menlo,var(--f);font-size:.8em;border:1px solid var(--li
 .ddi{display:block;text-align:left;border:0;background:none;font:inherit;font-size:14px;padding:9px 12px;border-radius:6px;cursor:pointer;color:inherit;white-space:nowrap}
 .ddi:hover{background:#eef1f4}.ddi[disabled]{color:#9aa1a8;cursor:default;background:none}
 .toptools .tr{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
-.dots::after{content:'';display:inline-block;width:1.6em;text-align:left;animation:dots 1.2s steps(1,end) infinite}
-@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
-@media (prefers-reduced-motion:reduce){.dots::after{animation:none;content:'...'}}
+.ldots{display:inline-block;width:1.6em;text-align:left}
+.ldots::after{content:'';animation:ldots 1.2s steps(1,end) infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.ldots::after{animation:none;content:'...'}}

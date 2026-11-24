@@ -9,6 +9,12 @@
 <?!= include('tokens') ?>
 <?!= include('material') ?>
 <style>
+/* 待ちの表示：点を0〜3個で回す（正本は - の skills/ui-layout/SKILL.md「待ちの表示」） */
+.ldots{display:inline-block;width:1.6em;text-align:left}
+.ldots::after{content:'';animation:ldots 1.2s steps(1,end) infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.ldots::after{animation:none;content:'...'}}
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);
   font-family:var(--font-ja);font-size:15px;line-height:1.7}
@@ -195,7 +201,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 
   <div class="busy hidden" id="busy">
     <div class="mark" aria-hidden="true"></div>
-    <p class="msg" id="busyMsg">よみこみ中…</p>
+    <p class="msg" id="busyMsg">よみこみ中<span class="ldots" aria-hidden="true"></span></p>
     <p class="sub">まってね</p>
   </div>
 
@@ -204,13 +210,13 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
 
   <div class="loading" id="loading">
     <div class="mark" aria-hidden="true"></div>
-    <span>よみこんで います…</span>
+    <span>よみこんで います<span class="ldots" aria-hidden="true"></span></span>
   </div>
   <div class="soonbar hidden" id="soonbar"></div>
 
   <div class="closed hidden" id="closedPanel">
     <div class="mark" aria-hidden="true"></div>
-    <p class="big">きろくを こうしんして います</p>
+    <p class="big">きろくを こうしんして います<span class="ldots" aria-hidden="true"></span></p>
     <p class="sub" id="closedSub"></p>
   </div>
 
@@ -220,7 +226,7 @@ svg.trend .dot.z{fill:var(--z-line);stroke:var(--sheet);stroke-width:1.5}
   </div>
 
   <div class="head hidden" id="head">
-    <h1 id="title">よみこんで います…</h1>
+    <h1 id="title">よみこんで います<span class="ldots" aria-hidden="true"></span></h1>
     <div class="badges">
       <span class="badge todo" id="todoBadge"></span>
       <span class="badge locked" id="lockBadge"></span>
@@ -710,7 +716,7 @@ function checkBuild(r){
 function busy(on, msg){
   busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
   const b = $("busy");
-  if(msg) $("busyMsg").textContent = msg;
+  if(msg){ $("busyMsg").textContent = msg; $("busyMsg").insertAdjacentHTML("beforeend", '<span class="ldots" aria-hidden="true"></span>'); } /* 終わるまで点を回す */
   b.classList.toggle("hidden", busyDepth === 0);
 }
 
@@ -790,8 +796,8 @@ function render(){
 function load(next){
   /* next は3通り: 未指定（最初の1回）・教科名（教科切替）・{view: 児童ID}（教師の見る児童切替）。 */
   const viewSwitch = next && typeof next === "object";
-  busy(true, viewSwitch ? "児童を かえています…"
-           : next     ? "きょうかを かえています…" : "よみこみ中…");
+  busy(true, viewSwitch ? "児童を かえています"
+           : next     ? "きょうかを かえています" : "よみこみ中");
   const api = viewSwitch ? ["apiReadAs", subject, next.view]
              : viewId    ? ["apiReadAs", next || subject, viewId]
              : next      ? ["apiRead", next]

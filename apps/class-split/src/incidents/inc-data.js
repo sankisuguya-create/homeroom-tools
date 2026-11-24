@@ -52,13 +52,13 @@
     var cs = App.$('icards'); if (!cs) return;
     var q = (I.q || '').trim(), list = homeList(), shown = list.filter(function (x) { return matchQ(x, q); });
     cs.innerHTML = cardsHtml(shown);
-    var n = App.$('inote'); if (n) n.textContent = homeNote(list, shown, q);
+    var n = App.$('inote'); if (n) n.innerHTML = homeNote(list, shown, q);
   }
-  function homeNote(list, shown, q) {
+  function homeNote(list, shown, q) { // HTML を返す（読み込み中の点を回すため）
     var gs = homeGrades(), lab = gs.length === 6 ? '全学年' : gs.join('・') + '年';
     var f = [].concat(HOME.types || [], (HOME.levels || []).map(function (k) { return 'いじめ・' + C.BULLY_LEVELS.filter(function (b) { return b.k === k; })[0].label; }), (HOME.status || []).map(function (k) { return C.STATUS.filter(function (s0) { return s0.k === k; })[0].label; }), (HOME.rep || []).map(function (k) { return k === 'yes' ? '報告済み' : '未報告'; }));
     lab += f.length ? '・' + f.join('／') : '';
-    return (q ? '「' + q + '」に合う事案 ' + shown.length + '件（' + lab + '）' : lab + 'の事案 ' + list.length + '件') + (homeOthers() && !ALLINC ? '　読み込み中…' : '');
+    return esc(q ? '「' + q + '」に合う事案 ' + shown.length + '件（' + lab + '）' : lab + 'の事案 ' + list.length + '件') + (homeOthers() && !ALLINC ? '　読み込み中<span class="ldots" aria-hidden="true"></span>' : '');
   }
   function homeDialog() {
     App.openDlg({

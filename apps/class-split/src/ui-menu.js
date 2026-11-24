@@ -59,7 +59,7 @@
       // 件数と最近の記録は、学年のデータ（先読み）が届いてから出す
       if (now && !sm && App.bootCached && st.grade != null) { var g0 = st.grade; App.preload(g0, function () { if (App.st.screen === 'menu' && App.st.grade === g0 && !App.viewOff()) App.screens.menu.render(); }); }
     },
-    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込み中<span class="dots"></span></div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
+    input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
     click: function (t) {
       var gb = t.closest('[data-g]');
       var mv = t.closest('[id^="mv-"]');
