@@ -75,7 +75,7 @@ export function makeGas(src) {
       getFileById: id => { const f = drive.file(id) || (drive.icons || {})[id]; if (!f) throw new Error('no access'); return f; },
       getFoldersByName: n => drive.iter(Object.values(drive.folders).filter(f => f.getName() === n)),
       createFolder: n => drive.folder(n),
-      createFile: blob => { const id = 'ICON' + Object.keys(drive.icons ||= {}).length; const f = { getId: () => id, setSharing: (a, p) => { f.sharing = [a, p]; } }; drive.icons[id] = f; return f; },
+      createFile: blob => { const id = 'ICON' + Object.keys(drive.icons ||= {}).length; const f = { getId: () => id, setSharing: (a, p) => { f.sharing = [a, p]; }, setTrashed: v => { f.trashed = v; } }; drive.icons[id] = f; return f; },
       Access: { DOMAIN_WITH_LINK: 'DOMAIN_WITH_LINK', ANYONE_WITH_LINK: 'ANYONE_WITH_LINK' }, Permission: { VIEW: 'VIEW' }
     },
     ScriptApp: {

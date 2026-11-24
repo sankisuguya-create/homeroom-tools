@@ -395,6 +395,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(icId); assert.match(ctx.selfTest(), new RegExp('タブのアイコン（ドライブに置いた画像）：' + icId));
     assert.equal(env.DriveApp.getFileById(icId).sharing[0], 'DOMAIN_WITH_LINK');
     assert.ok(ctx.doGet().icon.includes(icId), 'タブのアイコンの URL');
+    env.PropertiesService.getScriptProperties().setProperty('ICON_VER', '古い版');
+    ctx.selfTest(); const icId2 = env.PropertiesService.getScriptProperties().getProperty('ICON_ID');
+    assert.notEqual(icId2, icId, '画像を替えた版では作り直す'); assert.equal(env.DriveApp.getFileById(icId).trashed, true, '前の画像はゴミ箱へ');
     assert.ok(!call('apiAdminStatus').v.warnings.some(w => w.kind === 'backup'), 'selfTest で控えが取れたら知らせは消える');
 
     // 兄弟：続柄が分からない兄弟（'?'）は今年度の名簿の同じ学年・組・番号の児童の性別で決め、配慮項目の表に入る
