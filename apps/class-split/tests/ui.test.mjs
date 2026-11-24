@@ -771,6 +771,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   ok(await p.title() === 'SSS' && (await p.textContent('#appname')) === 'SSS', 'タブと左上の名前は SSS');
   ok((await p.textContent('#mfull')) === 'SSS（児童理解支援システム）', 'メニューの下に正式な名前');
+  // メニュー：3つのボタンに件数、下に最近の記録。表示は先生ごとに切り替える
+  await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
+  ok(await p.locator('.bigs3 > .big').count() === 3 && await p.locator('.bigs3 .big span:not(.mchips)').count() === 0, '3つのボタンに説明文は無い');
+  ok(/対応中 \d+件/.test(await p.locator('[data-go="incidents"] .mchips').textContent()), '事案のボタンに対応中の件数');
+  const bx = await p.locator('.bigs3 > .big').evaluateAll(es => es.map(e => e.getBoundingClientRect())); ok(bx[1].left < bx[0].right && Math.abs(bx[0].height - bx[2].height) < 1, '3つは同じ高さで少し重なる');
+  await mclick(p, '#mv-recent'); ok(await p.locator('.mrecent').count() === 0, '表示で最近の記録を消せる');
+  await mclick(p, '#mv-inc'); ok(await p.locator('[data-go="incidents"] .mchips').count() === 0, '表示で事案の件数を消せる');
+  await mclick(p, '#mv-recent'); await mclick(p, '#mv-inc'); await p.waitForSelector('.mrecent .mrow');
+  await p.locator('.mrecent .mrow').first().click(); await p.waitForSelector('#itrash');
+  ok(true, '最近の記録を押すとその事案が開く');
+  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
   await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.pr');
   const q = await p.locator('td.pr').first().boundingBox(); await p.mouse.click(q.x + q.width - 4, q.y + q.height - 4);
   await p.waitForSelector('.dlg[aria-label="つける・離す"]');

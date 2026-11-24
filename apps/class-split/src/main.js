@@ -54,10 +54,14 @@
     if (c && c.gen === App.saveGen && Date.now() - c.at < BOOT_TTL) return c.p; // 5分たったら読み直す（ほかの先生の入力を見るため）
     var p = App.pf().boot(grade);
     BOOT[key] = { gen: App.saveGen, p: p, at: Date.now() };
+    p.then(function (d) { READY[key] = { p: p, d: d }; }, function () {});
     p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない
     return p;
   }
-  App.preload = function (grade) { if (grade == null) return; bootFor(grade).catch(function () { /* 開く時に読み直す */ }); };
+  App.preload = function (grade, done) { if (grade == null) return; bootFor(grade).then(function () { if (done) done(); }, function () { /* 開く時に読み直す */ }); };
+  // 先読みが届いていれば、その学年のデータ（届いていなければ null）。メニューの件数に使う
+  var READY = {};
+  App.bootCached = function (grade) { var key = (App.mode || '') + ':' + grade, c = BOOT[key]; return c && c.gen === App.saveGen && READY[key] && READY[key].p === c.p ? READY[key].d : null; };
   // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
   function loadFailed(e) {
     if (e && e.device) {

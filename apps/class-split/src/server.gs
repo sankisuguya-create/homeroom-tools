@@ -801,7 +801,7 @@ function incidents_() {
     if (r.diagram) { try { dg = Engine.normDiagram(JSON.parse(String(r.diagram))); } catch (e) { dg = null; } }
     var rp = null;
     if (r.report) { try { rp = Report.norm(JSON.parse(String(r.report))); } catch (e) { rp = null; } }
-    return { id: +r.inc_id, rev: revOf_(r.at), date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
+    return { id: +r.inc_id, rev: revOf_(r.at), by: String(r.by || ''), date: isoDate_(r.date), dateEnd: r.date_end ? isoDate_(r.date_end) : '', detail: String(r.detail || ''), type: String(r.type), title: String(r.title), url: String(r.url), ids: kids[r.inc_id] || [], roles: roles[r.inc_id] || {}, diagram: dg, report: rp };
   });
 }
 // 事案の入力を確かめる：関係図があれば、関係する児童と役割は関係図から決める
@@ -1337,7 +1337,15 @@ function settings_() {
 var apiSettings_ = api_(function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
   s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
+  me.view = getSetting_('view_' + email, {});
   return { settings: s, me: me };
+});
+// 先生ごとのメニューの表示（出す・出さないだけ）
+var apiSaveMyView_ = api_(function (v) {
+  var email = requireTeacher_(), o = {};
+  ['rost', 'inc', 'split', 'recent', 'others'].forEach(function (k) { o[k] = !(v && v[k] === false); });
+  withLock_(function () { setSetting_('view_' + email, o); });
+  return o;
 });
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
@@ -1522,3 +1530,4 @@ function apiTrashIncident() { return apiTrashIncident_.apply(null, arguments); }
 function apiTrashList() { return apiTrashList_.apply(null, arguments); }
 function apiRestoreIncident() { return apiRestoreIncident_.apply(null, arguments); }
 function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }
+function apiSaveMyView() { return apiSaveMyView_.apply(null, arguments); }
