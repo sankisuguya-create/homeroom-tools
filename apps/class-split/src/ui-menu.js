@@ -23,6 +23,7 @@
         (st.grade >= 6 || !now ? '' : '<button class="big" data-go="split"><b>クラス分けをする</b><span>' + (st.grade === 0 ? '入学する児童を1年の学級に分ける案を作り、入れ替え・比較して決める。' : '来年度の学級の案を作り、入れ替え・比較して決める。') + '</span></button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' +
         '<section><button class="btn" data-go="settings">⚙ 設定（配慮項目・利用者と担任・事案と報告書・年度替わり）</button> <button class="btn" data-go="roster" data-school="1" title="全校の事案と、関わった児童の一覧">全校の事案</button>' +
+        '<p class="note" id="mfull">' + App.esc(App.fullName || 'SSS（児童理解支援システム）') + '</p>' +
         '<p class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</p>' +
         '<p class="note"><button class="linkbtn" data-go="suggest">目安箱（このアプリへの意見）</button></p></section></div>'; // 貼った版を GitHub の dist と照らす
     },

@@ -7,8 +7,8 @@
   var S = null; // { P, ctx, plans, active, view, sel, follow, lastGen, nc, readOnly }
 
   // ===== 読み込み：今年度の名簿から問題を組み立てる =====
-  function build() {
-    var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+  function build(fy) {
+    var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === (fy || d.fy); })[0];
     var rows = cur.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
     var idx = {};
     var kids = rows.map(function (r, i) {
@@ -123,6 +123,21 @@
   /* @include split/split-actions.js */
   /* @include split/split-zoom.js */
   /* @include split/split-excel.js */
+
+  // 名簿の画面から個人票を印刷する：その年度の今の組で並べる（クラスなしの児童は最後の「クラスなし」の頁）。クラス分けの状態は元に戻す
+  App.printRosterCards = function (fy, onlyCls) {
+    var keep = S, d = App.st.data, Y = d.years.filter(function (y) { return y.fy === fy; })[0];
+    if (!Y || !Y.rows.length) { App.toast('印刷する児童がいません'); return; }
+    build(fy);
+    var nc = 0, none = false;
+    S.P.kids.forEach(function (s) { if (s.tr) return; if (s.old < 0) none = true; else if (s.old + 1 > nc) nc = s.old + 1; });
+    var noneIdx = nc, asg = new Int8Array(S.P.kids.length);
+    S.P.kids.forEach(function (s, i) { asg[i] = s.tr ? -2 : s.old < 0 ? noneIdx : s.old; }); // 転入予定の児童は名簿にいないので刷らない
+    try {
+      printCards({ asg: asg, nc: nc + (none ? 1 : 0), only: onlyCls == null ? null : onlyCls < 0 ? noneIdx : onlyCls,
+        name: function (k) { return k === noneIdx ? 'クラスなし' : (k + 1) + '組'; }, head: fy + '年度 ' + C.gradeLabel(Y.grade) });
+    } finally { S = keep; }
+  };
 
   App.screens.split = {
     enter: function () {

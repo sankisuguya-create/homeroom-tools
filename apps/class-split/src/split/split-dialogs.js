@@ -130,10 +130,12 @@
   // 18×5cm の票を A4 縦に5枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
   // 左は上に良い項目（緑）、名前、下に負担の4項目と事案数。右上に配慮（紫）と備考、右下に離す・つける。色はアイコンと旧学級の帯（濃い方）だけ。女子は左を半円（画面のカードと同じ形）。字は枠に収まるまで縮める（下限6pt）
   var PRINT_PER_PAGE = 5, PRINT_MIN_PT = 6;
-  function printCards() {
-    var p = S.plans[S.active], kids = S.P.kids, esc = App.esc;
+  // opt（名簿の画面から）：{ asg: 組の割り当て, nc: 組の数, name: 組の名前, only: この組だけ, head: 見出しの学年 }
+  function printCards(opt) {
+    opt = opt || {};
+    var p = opt.asg ? { asg: opt.asg, letter: '' } : S.plans[S.active], kids = S.P.kids, esc = App.esc;
     var named = S.decision && S.decision.named, names = namesOf();
-    var clsName = function (k) { return named ? names[k] + '組' : C.newClass(k) + (S.decision ? '' : '（案' + p.letter + '）'); };
+    var clsName = opt.name || function (k) { return named ? names[k] + '組' : C.newClass(k) + (S.decision ? '' : '（案' + p.letter + '）'); };
     var rel = kids.map(function () { return { far: [], near: [] }; });
     S.P.pairs.forEach(function (q) {
       if (q.t !== 'far' && q.t !== 'near') return;
@@ -161,7 +163,8 @@
         '</div></div>';
     };
     var pages = [], total = 0;
-    for (var k = 0; k < S.P.nc; k++) {
+    for (var k = 0; k < (opt.nc || S.P.nc); k++) {
+      if (opt.only != null && k !== opt.only) continue;
       var ids = [];
       kids.forEach(function (s, i) { if (p.asg[i] === k) ids.push(i); });
       ids.sort(function (x, y) { return String(kids[x].kana).localeCompare(String(kids[y].kana), 'ja'); });
@@ -169,7 +172,7 @@
       for (var pg = 0; pg < np; pg++) {
         var part = ids.slice(pg * PRINT_PER_PAGE, (pg + 1) * PRINT_PER_PAGE);
         total += part.length;
-        pages.push('<div class="pp"><div class="pp-h">' + g.CONFIG.gradeLabel(App.st.grade) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
+        pages.push('<div class="pp"><div class="pp-h">' + (opt.head || g.CONFIG.gradeLabel(App.st.grade)) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
           '<div class="pp-f"><span class="pp-ruler"></span>この線が10cmなら実寸（倍率100%・余白なしで印刷）</div></div>');
       }
     }

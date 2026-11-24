@@ -1075,10 +1075,26 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_b814fa8dbac3';
+var SERVER_BUILD = 'BUILD_3ba48052bc18';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
+// タブに出す名前（設定の「アプリの名前」。既定は SSS＝Student Support System。児童の目を引かない略称）
+function appName_() { try { return settings_().appName || 'SSS'; } catch (e) { return 'SSS'; } }
+// タブのアイコン：GAS は画像を返せないので、所有者のドライブに PNG を置き、その URL を渡す（GitHub など外部の置き場は使わない）
+// 画像はこのコードの中に持つ。setup・selfTest が作り、ID を ICON_ID に覚える
+var ICON_PNG_B64 = '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';
+function ensureIcon_() {
+  var props = PropertiesService.getScriptProperties(), id = props.getProperty('ICON_ID');
+  var ver = String(ICON_PNG_B64.length) + ICON_PNG_B64.slice(-16); // 画像を替えた版を貼ったら作り直す
+  if (id && props.getProperty('ICON_VER') === ver) { try { DriveApp.getFileById(id); return id; } catch (e) { /* 消されていたら作り直す */ } }
+  if (id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (e) { /* 前の画像が無くても続ける */ } }
+  var f = DriveApp.createFile(Utilities.newBlob(Utilities.base64Decode(ICON_PNG_B64), 'image/png', 'SSS-icon.png'));
+  try { f.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
+  props.setProperty('ICON_ID', f.getId()); props.setProperty('ICON_VER', ver);
+  return f.getId();
+}
+function iconUrl_() { var id = PropertiesService.getScriptProperties().getProperty('ICON_ID'); return id ? 'https://drive.google.com/uc?export=view&id=' + id + '&.png' : ''; }
 function doGet() {
   var who = currentTeacher_();
   if (!who.ok || (!accessOf_(who.email).user && !deviceWindowSafe_())) {
@@ -1086,11 +1102,13 @@ function doGet() {
     var sub = !who.ok ? ' では開けません。' : ' は登録されていません。使う場合は、このアプリの管理者に登録を頼んでください。';
     return HtmlService.createHtmlOutput('<!doctype html><html lang="ja"><meta charset="utf-8"><body style="font-family:sans-serif;padding:24px">' +
       '<h1 style="font-size:20px">' + msg + '</h1><p>' + escHtml_(who.email || '（アカウントが分かりません）') + sub + '</p></body></html>')
-      .setTitle('クラス替え');
+      .setTitle(appName_());
   }
-  return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('クラス替え')
+  var out = HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle(appName_())
     .addMetaTag('viewport', 'width=device-width,initial-scale=1');
+  try { var u = iconUrl_(); if (u) out.setFaviconUrl(u); } catch (e) { /* アイコンが無くても開く */ }
+  return out;
 }
 
 // ===== 利用者の確認 =====
@@ -1257,6 +1275,7 @@ function setup() {
   sheet_(ss, 'roster_' + fy, ROSTER_HEAD);
   sheet_(ss, 'attrs_' + fy, attrsHead_());
   ensureWeeklyTrigger_();
+  try { ensureIcon_(); } catch (e) { /* アイコンは selfTest で確かめる */ }
   return ss.getUrl();
 }
 var ROSTER_HEAD = ['id8', 'name', 'kana', 'sex', 'grade', 'class', 'no', 'addr', 'area', 'birth']; // addr：住所の全文、area：町名（地区の偏りに使う）
@@ -1803,6 +1822,45 @@ function importDiff_(fy, grade, rows) {
     risky: other.length > 0 || (existing > 0 && renamed.length * 2 >= existing) };
 }
 
+// ===== 事案のゴミ箱 =====
+// ゴミ箱へ：deleted に「trash:日時:誰」を書く（一覧・名簿・クラス分けから消える）。戻すと元どおり。完全に消すのは管理者だけ
+// （年度替わりの削除で消えた事案の deleted は日時だけなので、ゴミ箱には出ない）
+var apiTrashIncident_ = api_(function (id) {
+  var by = requireTeacher_(); id = +id;
+  return withLock_(function () {
+    var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
+    if (!row) throw userError_('事案が見つかりません（ほかの先生が先に消したかもしれません）');
+    writeCell_(t, row, 'deleted', 'trash:' + new Date().toISOString() + ':' + by);
+    log_(by, 'trashIncident', id);
+    return { ok: true };
+  });
+});
+function trashRows_() { return read_('incidents').rows.filter(function (r) { return String(r.deleted).indexOf('trash:') === 0; }); }
+var apiTrashList_ = api_(function () {
+  requireTeacher_();
+  return trashRows_().map(function (r) { var p = String(r.deleted).split(':'); return { id: +r.inc_id, title: String(r.title || ''), date: isoDate_(r.date), type: String(r.type || ''), at: p.slice(1, 4).join(':'), by: p.slice(4).join(':') }; });
+});
+var apiRestoreIncident_ = api_(function (id) {
+  var by = requireTeacher_(); id = +id;
+  return withLock_(function () {
+    var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && String(r.deleted).indexOf('trash:') === 0; })[0];
+    if (!row) throw userError_('ゴミ箱にありません');
+    writeCell_(t, row, 'deleted', '');
+    log_(by, 'restoreIncident', id);
+    return { ok: true };
+  });
+});
+var apiEmptyTrash_ = api_(function (ids) {
+  var by = requireAdmin_();
+  return withLock_(function () {
+    var set = {}; trashRows_().forEach(function (r) { if (!ids || !ids.length || ids.map(Number).indexOf(+r.inc_id) >= 0) set[+r.inc_id] = 1; });
+    var n = removeRows_('incidents', function (r) { return set[+r.inc_id]; });
+    removeRows_('incident_kids', function (r) { return set[+r.inc_id]; });
+    log_(by, 'emptyTrash', n);
+    return { n: n };
+  });
+});
+
 // 事案の版：最後に直した時刻。直す時に読んだ時の版と比べ、ほかの先生が先に直していたら上書きしない
 function revOf_(at) { return at instanceof Date ? at.toISOString() : String(at || ''); }
 function incidents_() {
@@ -2275,6 +2333,7 @@ function selfTest() {
   var out = [], t = function (label, fn) { try { var v = fn(); out.push('○ ' + label + (v ? '：' + v : '')); } catch (e) { out.push('✕ ' + label + '：' + String(e && e.message || e)); } };
   t('データのスプレッドシート', function () { return db_().getName(); });
   t('控え（ドライブにフォルダを作り、複製する）', function () { backup_('動作確認'); PropertiesService.getScriptProperties().setProperty('BACKUP_ERR', ''); return BACKUP_FOLDER; });
+  t('タブのアイコン（ドライブに置いた画像）', function () { return ensureIcon_(); });
   t('毎週の控えのきっかけ', function () { ensureWeeklyTrigger_(); return ''; });
   t('共有の状態の読み取り', function () { var s = sharedWith_(DriveApp.getFileById(PropertiesService.getScriptProperties().getProperty(DB_PROP))); return s.length ? '所有者以外にも見えます：' + s.join('、') : '所有者だけ'; });
   var msg = out.join('\n');
@@ -2346,7 +2405,7 @@ function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
-    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || '') };
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム') };
 }
 var apiSettings_ = api_(function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
@@ -2360,7 +2419,7 @@ var apiSaveSettings_ = api_(function (s) {
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
-    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300) };
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム' };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
@@ -2532,3 +2591,7 @@ function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
 function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }
 function apiUpdateKid() { return apiUpdateKid_.apply(null, arguments); }
 function apiRosterYears() { return apiRosterYears_.apply(null, arguments); }
+function apiTrashIncident() { return apiTrashIncident_.apply(null, arguments); }
+function apiTrashList() { return apiTrashList_.apply(null, arguments); }
+function apiRestoreIncident() { return apiRestoreIncident_.apply(null, arguments); }
+function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }

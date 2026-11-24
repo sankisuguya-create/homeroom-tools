@@ -92,7 +92,7 @@
       '<label class="big ihb ihs">' + SVG('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>') + '<input id="iq" value="' + esc(I.q || '') + '" placeholder="事案を検索（名前・種別・内容）" autocomplete="off">' +
       '<button type="button" class="iqc' + (dflt ? '' : ' on') + '" id="ihset" title="検索の設定（学年・種別・いじめの段階・対応の状況）" aria-label="検索の設定"></button></label>' +
       '<label class="big ihb ihsort">' + SVG('<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>') + '<span>並び替え</span><select id="isort">' + SORTS.map(function (s0) { return '<option value="' + s0.k + '"' + ((HOME.sort || 'imp') === s0.k ? ' selected' : '') + '>' + esc(s0.label) + '</option>'; }).join('') + '</select></label></div>';
-    h += '<div class="note" id="inote">' + esc(homeNote(list, shown, q)) + '</div>';
+    h += '<div class="inoterow"><div class="note" id="inote">' + esc(homeNote(list, shown, q)) + '</div><button class="linkbtn" id="itrashbox">🗑 ゴミ箱を見る</button></div>'; // 件数の文は検索のたびに書き換わるので、ゴミ箱のボタンは外に置く
     h += '<div class="icards" id="icards">' + cardsHtml(shown) + '</div>';
     return h;
   }
@@ -114,7 +114,7 @@
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + typesHtml(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
-      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
+      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button><button class="btn" id="itrash" title="この事案をゴミ箱へ（あとで戻せる）">🗑 ゴミ箱へ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
       '<div class="istat"><span class="lab">対応</span>' + C.STATUS.map(function (s0) { return '<button class="lv ib st-' + s0.k + '" data-ist="' + s0.k + '" aria-pressed="' + (rp.status === s0.k) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') +
       '<span class="lab">報告</span><button class="lv ib irpb" data-irep="1" aria-pressed="' + !!rp.reported + '">' + REP_IC + (rp.reported ? esc(Rp.md(rp.reported)) + 'に報告済み' : '未報告') + '</button>' +

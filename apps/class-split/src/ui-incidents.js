@@ -57,6 +57,32 @@
   /* @include incidents/inc-form.js */
   /* @include incidents/inc-output.js */
 
+  // ゴミ箱：戻す（誰でも）・完全に消す（管理者だけ）
+  function trashDialog() {
+    var L = null, esc = App.esc, adm = !!(App.me && App.me.admin);
+    var load = function () { App.pf().trashList().then(function (l) { L = l; if (App.dlg && App.dlg.trash) App.refreshDlg(); }, function (e) { App.toast(String(e && e.message || e)); }); };
+    App.openDlg({
+      trash: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="事案のゴミ箱" style="max-width:640px"><h2>事案のゴミ箱</h2>' +
+          (L === null ? '<div class="empty">読み込み中<span class="dots"></span></div>' : L.length ? '<table class="r ro"><tbody>' + L.map(function (x) {
+            return '<tr><td style="text-align:left">' + esc(x.title || (x.type + 'の事案')) + '<div class="note">' + esc(x.date) + '・' + esc(x.type) + '　' + esc(String(x.at).slice(0, 10)) + ' に ' + esc(x.by) + ' が移した</div></td>' +
+              '<td><button class="btn" data-trs="' + x.id + '">戻す</button>' + (adm ? ' <button class="btn danger" data-trx="' + x.id + '">完全に消す</button>' : '') + '</td></tr>';
+          }).join('') + '</tbody></table>' : '<div class="empty">ゴミ箱は空です</div>') +
+          '<p class="note">戻すと、事案の一覧・名簿・クラス分けに元どおり出ます。' + (adm ? '完全に消すと元に戻せません（管理者だけ）。' : '完全に消すのは管理者だけです。') + '</p>' +
+          '<div class="acts">' + (adm && L && L.length ? '<button class="btn danger" id="trall" style="margin-right:auto">ゴミ箱を空にする…</button>' : '') + '<button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-trs]'))) { var id = +x.dataset.trs; App.save(function () { return App.pf().restoreIncident(id); }).then(function () { return App.reload(); }).then(function () { App.toast('ゴミ箱から戻しました'); trashDialog(); }); return true; }
+        if ((x = t.closest('[data-trx]'))) { var id2 = +x.dataset.trx; if (!confirm('この事案を完全に消します。元に戻せません。よろしいですか？')) return true; L = null; App.refreshDlg(); App.save(function () { return App.pf().emptyTrash([id2]); }).then(load); return true; }
+        if (t.closest('#trall')) { if (!confirm('ゴミ箱の事案 ' + L.length + '件を完全に消します。元に戻せません。よろしいですか？')) return true; L = null; App.refreshDlg(); App.save(function () { return App.pf().emptyTrash([]); }).then(function () { load(); App.toast('ゴミ箱を空にしました'); }); return true; }
+        return false;
+      }
+    });
+    load();
+  }
+
   App.screens.incidents = {
     enter: function () {
       I.mode = 'view'; I.form = null; I.focus = null; I.draft = null;
@@ -85,6 +111,13 @@
       if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
       if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
       if (t.closest('#ihome')) { I.sel = null; render(); return true; }
+      if (t.closest('#itrash')) {
+        var tx = incOf(I.sel);
+        if (!tx || !confirm('「' + titleOf(tx) + '」をゴミ箱へ移します。ゴミ箱から戻せます。よろしいですか？')) return true;
+        App.save(function () { return App.pf().trashIncident(tx.id); }).then(function () { I.sel = null; return App.reload(); }).then(function () { App.toast('ゴミ箱へ移しました（事案の一覧の「ゴミ箱を見る」から戻せます）'); });
+        return true;
+      }
+      if (t.closest('#itrashbox')) { trashDialog(); return true; }
       if (t.closest('#iadd2nd')) { newForm(null); render(); refocus('fQ'); return true; }
       if ((x = t.closest('[data-ist],[data-ilv],[data-irep]'))) {
         var xi = incOf(I.sel), rp0 = Rp.norm(xi.report);

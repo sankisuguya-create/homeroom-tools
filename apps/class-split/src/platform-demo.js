@@ -386,6 +386,10 @@
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
+    trashIncident: function (id) { gen(); var x = S.inc.filter(function (y) { return y.id === +id; })[0]; if (!x) return Promise.reject(new Error('事案が見つかりません')); S.inc = S.inc.filter(function (y) { return y !== x; }); (S.trash = S.trash || []).push({ x: x, at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN }); return later({ ok: true }); },
+    trashList: function () { return later((S.trash || []).map(function (t) { return { id: t.x.id, title: t.x.title, date: t.x.date, type: t.x.type, at: t.at, by: t.by }; })); },
+    restoreIncident: function (id) { var t = (S.trash || []).filter(function (y) { return y.x.id === +id; })[0]; if (!t) return Promise.reject(new Error('ゴミ箱にありません')); S.trash = S.trash.filter(function (y) { return y !== t; }); S.inc.push(t.x); return later({ ok: true }); },
+    emptyTrash: function (ids) { var n = (S.trash || []).length; S.trash = (ids && ids.length) ? S.trash.filter(function (t) { return ids.indexOf(t.x.id) < 0; }) : []; return later({ n: n - S.trash.length }); },
     suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
     clearSuggestions: function () { var n = (S.sugg || []).length; S.sugg = []; return later({ n: n }); },

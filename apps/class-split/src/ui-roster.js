@@ -403,6 +403,7 @@
     h += '<span class="sp"></span>' + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
       (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
       (canTr ? App.ddItem('trB', '転入予定の児童…', '来年度に転入する児童を足す（クラスなしの画面）') : '') +
+      App.ddItem('rprint', '個人票を印刷…', R.scope === 'grade' ? '学年の全員の個人票を、組ごとに印刷する' : 'この組の個人票を印刷する') +
       App.ddItem('acadB', '学力（点数・順位）…', 'クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）') +
       (edit ? '' : '<div class="note" style="padding:6px 10px">名簿を貼る・児童登録は、ロックを外すと出ます</div>')) : '');
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : R.scope === 'cls' && R.cls === -1 ? '<div class="nonewrap">' + table(Y, edit) + noneExtra(Y) + '</div>' : table(Y, edit)) + '</div>';
@@ -535,6 +536,8 @@
       (P.fix.length ? '<div class="pl"><b class="px">固</b>' + C.newClass(P.fix[0]) + '</div>' : '') + '</div>';
   }
 
+  // 今年度の学年と組（例：3年2組／クラスなし）。つける離すの窓で、本人と相手に添える
+  function curClassOf(id) { var d = D(), y = yearOf(d.fy), r = y && y.rows.filter(function (x) { return x.id === id; })[0]; return r ? C.gradeLabel(y.grade) + (r.cls < 0 ? 'クラスなし' : (r.cls + 1) + '組') : '転入予定'; }
   // その児童の、つける・離すの窓：相手をカードで並べ、カードを押すと経緯・理由・事案・何年生からを出す。追加と削除もここで
   function kidPairsDialog(id) {
     var d = D(), esc = App.esc, edit = pairEdit(), open = null, F = null;
@@ -579,7 +582,7 @@
             '<div class="kcards">' + xs.map(function (x) { return '<button type="button" class="kbtn' + (open === x.i ? ' on' : '') + '" data-popen="' + x.i + '">' + App.kidCard(other(x.p)) + '<span class="ksince">' + since(x.p) + '</span></button>'; }).join('') + '</div>' +
             xs.filter(function (x) { return x.i === open; }).map(detail).join('') + '</div>';
         };
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す" style="max-width:760px"><h2>' + esc(d.kids[id].name) + ' の、つける・離す</h2>' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す" style="max-width:760px"><h2>' + esc(d.kids[id].name) + '<small class="note">（' + esc(curClassOf(id)) + '）</small> の、つける・離す</h2>' +
           '<div class="prd">' + sec('far', '離す', 'pf') + sec('near', 'つける', 'pn') + (F ? form() : '') + '</div>' +
           (edit ? '' : '<div class="note">つける・離すは、今年度・決定前だけ直せます。</div>') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
@@ -989,6 +992,7 @@
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#moveB')) { moveDialog(); return true; }
+      if (t.closest('#rprint')) { App.printRosterCards(R.fy, R.scope === 'grade' ? null : R.cls); return true; }
       if (t.closest('#noneLeft')) { moveDialog('left'); return true; }
       if ((x = t.closest('[data-trsx]'))) { TRF.male = x.dataset.trsx === '1'; document.querySelectorAll('[data-trsx]').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.trsx === '1') === TRF.male)); }); return true; }
       if (t.closest('#tradd')) {

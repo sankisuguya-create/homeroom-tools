@@ -764,6 +764,35 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  ok(await p.title() === 'SSS' && (await p.textContent('#appname')) === 'SSS', 'タブと左上の名前は SSS');
+  ok((await p.textContent('#mfull')) === 'SSS（児童理解支援システム）', 'メニューの下に正式な名前');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.pr');
+  const q = await p.locator('td.pr').first().boundingBox(); await p.mouse.click(q.x + q.width - 4, q.y + q.height - 4);
+  await p.waitForSelector('.dlg[aria-label="つける・離す"]');
+  ok(/（3年\d組）/.test(await p.locator('.dlg[aria-label="つける・離す"] h2').textContent()), 'つける離すの窓に今の学年と組（例：3年1組）');
+  await p.keyboard.press('Escape');
+  await mclick(p, '#rprint'); await p.waitForSelector('#printbox .pc');
+  ok(await p.locator('#printbox .pp').count() >= 1 && /年度 3年 1組/.test(await p.locator('#printbox .pp-h').first().textContent()), '名簿の画面から、その組の個人票を印刷できる');
+  await p.click('#pclose');
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.icard');
+  const n0 = await p.locator('.icard').count();
+  await p.locator('.icard').first().click(); await p.waitForSelector('#itrash');
+  p.once('dialog', d => d.accept()); await p.click('#itrash');
+  await p.waitForFunction(() => /ゴミ箱へ移しました/.test(document.getElementById('toast').textContent));
+  await p.waitForSelector('.icard');
+  ok(await p.locator('.icard').count() === n0 - 1, '事案をゴミ箱へ移すと一覧から消える');
+  await p.click('#itrashbox'); await p.waitForSelector('[data-trs]');
+  await p.click('[data-trs]'); await p.waitForFunction(() => /ゴミ箱から戻しました/.test(document.getElementById('toast').textContent));
+  await p.keyboard.press('Escape'); await p.waitForSelector('.icard');
+  ok(await p.locator('.icard').count() === n0, 'ゴミ箱から戻すと一覧に戻る');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 await browser.close();
 console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
 process.exit(fails ? 1 : 0);
