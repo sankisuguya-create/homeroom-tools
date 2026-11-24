@@ -129,7 +129,7 @@
     var y = d.years.filter(function (x) { return x.fy === d.fy; })[0], r = y && y.rows.filter(function (x) { return x.id === id; })[0];
     var oc = App.classColor(r ? r.cls : -1);
     var marks = r ? C.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
-    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
+    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? C.gradeLabel(y.grade) + (r.cls < 0 ? 'クラスなし' : (r.cls + 1) + '組' + r.no + '番') : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
       (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
   };
   // 事案の数と、そのうち被害の側（被害・相互）の数。関係図の役割から数える

@@ -459,6 +459,17 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     call('apiSetAttr', FY, 4, '0012345', 'k3', 1);
     assert.equal(call('apiBoot', 4).v.years.find(y => y.fy === FY).rows.find(r => r.id === '0012345').a.k3, 1, '配慮項目も0で始まる児童IDでつながる');
 
+    // 事案のゴミ箱：移すと一覧から消え、戻すと戻る。完全に消すのは管理者だけ。アプリの名前（既定 SSS）
+    const incT = call('apiAddIncident', { url: '', title: 'ゴミ箱の試し', date: '2026-05-02', type: '対人', ids: ['40000011'] }).v.id;
+    assert.ok(call('apiTrashIncident', incT).ok);
+    assert.ok(!call('apiBoot', 4).v.incidents.some(x => x.id === incT) && call('apiTrashList').v.some(x => x.id === incT && x.title === 'ゴミ箱の試し'), 'ゴミ箱へ移すと一覧から消え、ゴミ箱に出る');
+    assert.ok(call('apiRestoreIncident', incT).ok && call('apiBoot', 4).v.incidents.some(x => x.id === incT), '戻すと一覧に戻る');
+    call('apiTrashIncident', incT);
+    env.user = 'sato@edu.nishi.or.jp'; const et = call('apiEmptyTrash', [incT]); env.user = 'tanaka@edu.nishi.or.jp';
+    assert.equal(et.ok, false, '完全に消すのは管理者だけ');
+    assert.ok(call('apiEmptyTrash', [incT]).v.n === 1 && !call('apiTrashList').v.length, '管理者は完全に消せる');
+    assert.equal(call('apiSettings').v.settings.appName, 'SSS', 'アプリの名前の既定は SSS');
+
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
     assert.ok(sb.ok && sb.v.blocked && sb.v.blocked.includes('児童11'), '名簿の名前が入っていれば送らない');

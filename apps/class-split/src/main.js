@@ -20,6 +20,7 @@
     var st = App.st, prev = App.screens[st.screen];
     if (prev && prev.dirty && st.screen !== screen && prev.dirty() && !confirm('保存していない変更があります。保存せずに移りますか？')) return Promise.resolve(); // 設定を直して保存せずにメニューへ、など
     if (prev && prev.leave) prev.leave();
+    var pb = document.getElementById('printbox'); if (pb) { pb.remove(); document.body.classList.remove('printing'); } // 名簿から開いた個人票の印刷も閉じる
     App.closeDlg();
     if (grade) st.grade = grade;
     st.screen = screen;

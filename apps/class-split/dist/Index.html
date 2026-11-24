@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>クラス替え</title>
+<title>SSS</title>
 <style>
 /* ▼ src/app.css から。直すのは src のほう ▼ */
 /* class-split の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
@@ -716,6 +716,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* ふりがな（虞犯）：小さく、行の高さを変えない */
 .itg ruby rt,.lv ruby rt,.meta ruby rt{font-size:.55em;line-height:1}
 .itg ruby{ruby-position:over}
+.inoterow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 /* ▲ css/09-incidents.css ここまで ▲ */
 /* ▼ css/10-print.css から ▼ */
 /* 個人票の印刷 */
@@ -895,7 +896,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
-<div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1>クラス替え</h1><span class="crumb" id="crumb"></span><span class="toptools" id="toptools"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
+<div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1 id="appname">SSS</h1><span class="crumb" id="crumb"></span><span class="toptools" id="toptools"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
 <div id="idle" hidden aria-label="画面を隠しています（押すと戻る）"></div>
@@ -2584,6 +2585,10 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     },
     // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ
     adminStatus: function () { return later({ warnings: [] }); },
+    trashIncident: function (id) { gen(); var x = S.inc.filter(function (y) { return y.id === +id; })[0]; if (!x) return Promise.reject(new Error('事案が見つかりません')); S.inc = S.inc.filter(function (y) { return y !== x; }); (S.trash = S.trash || []).push({ x: x, at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN }); return later({ ok: true }); },
+    trashList: function () { return later((S.trash || []).map(function (t) { return { id: t.x.id, title: t.x.title, date: t.x.date, type: t.x.type, at: t.at, by: t.by }; })); },
+    restoreIncident: function (id) { var t = (S.trash || []).filter(function (y) { return y.x.id === +id; })[0]; if (!t) return Promise.reject(new Error('ゴミ箱にありません')); S.trash = S.trash.filter(function (y) { return y !== t; }); S.inc.push(t.x); return later({ ok: true }); },
+    emptyTrash: function (ids) { var n = (S.trash || []).length; S.trash = (ids && ids.length) ? S.trash.filter(function (t) { return ids.indexOf(t.x.id) < 0; }) : []; return later({ n: n - S.trash.length }); },
     suggest: function (text, screen) { gen(); var hits = C.piiHits(text, Object.keys(S.kids).map(function (id) { return S.kids[id].name; }), Object.keys(S.kids)); if (hits.length) return later({ blocked: hits.slice(0, 10) }); (S.sugg = S.sugg || []).push({ at: new Date().toISOString(), screen: screen, text: String(text).trim() }); return later({ ok: true }); },
     suggestions: function () { return later(S.sugg || []); },
     clearSuggestions: function () { var n = (S.sugg || []).length; S.sugg = []; return later({ n: n }); },
@@ -2799,7 +2804,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var y = d.years.filter(function (x) { return x.fy === d.fy; })[0], r = y && y.rows.filter(function (x) { return x.id === id; })[0];
     var oc = App.classColor(r ? r.cls : -1);
     var marks = r ? C.ATTRS.filter(function (at) { return r.a[at.k] | 0; }).map(function (at) { return App.mark(at, r.a[at.k] | 0, r.a[at.k + '_t']); }).join('') : '';
-    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? (r.cls + 1) + '組' + r.no + '番' : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
+    return '<div class="kcard ' + (s.male ? 'm' : 'f') + '" style="--oc:' + oc.c + ';--ol:' + (r && r.a.sp ? '#FFE0BF' : oc.l) + '"><span class="nb">' + (r ? C.gradeLabel(y.grade) + (r.cls < 0 ? 'クラスなし' : (r.cls + 1) + '組' + r.no + '番') : '転入生') + '</span><b>' + App.esc(s.name) + '</b>' +
       (marks ? '<span class="mk">' + marks + '</span>' : '') + '</div>';
   };
   // 事案の数と、そのうち被害の側（被害・相互）の数。関係図の役割から数える
@@ -3546,6 +3551,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     h += '<span class="sp"></span>' + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
       (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
       (canTr ? App.ddItem('trB', '転入予定の児童…', '来年度に転入する児童を足す（クラスなしの画面）') : '') +
+      App.ddItem('rprint', '個人票を印刷…', R.scope === 'grade' ? '学年の全員の個人票を、組ごとに印刷する' : 'この組の個人票を印刷する') +
       App.ddItem('acadB', '学力（点数・順位）…', 'クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）') +
       (edit ? '' : '<div class="note" style="padding:6px 10px">名簿を貼る・児童登録は、ロックを外すと出ます</div>')) : '');
     h += '</div><div class="layout">' + (R.scope === 'school' ? schoolTable() : R.scope === 'cls' && R.cls === -1 ? '<div class="nonewrap">' + table(Y, edit) + noneExtra(Y) + '</div>' : table(Y, edit)) + '</div>';
@@ -3678,6 +3684,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       (P.fix.length ? '<div class="pl"><b class="px">固</b>' + C.newClass(P.fix[0]) + '</div>' : '') + '</div>';
   }
 
+  // 今年度の学年と組（例：3年2組／クラスなし）。つける離すの窓で、本人と相手に添える
+  function curClassOf(id) { var d = D(), y = yearOf(d.fy), r = y && y.rows.filter(function (x) { return x.id === id; })[0]; return r ? C.gradeLabel(y.grade) + (r.cls < 0 ? 'クラスなし' : (r.cls + 1) + '組') : '転入予定'; }
   // その児童の、つける・離すの窓：相手をカードで並べ、カードを押すと経緯・理由・事案・何年生からを出す。追加と削除もここで
   function kidPairsDialog(id) {
     var d = D(), esc = App.esc, edit = pairEdit(), open = null, F = null;
@@ -3722,7 +3730,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
             '<div class="kcards">' + xs.map(function (x) { return '<button type="button" class="kbtn' + (open === x.i ? ' on' : '') + '" data-popen="' + x.i + '">' + App.kidCard(other(x.p)) + '<span class="ksince">' + since(x.p) + '</span></button>'; }).join('') + '</div>' +
             xs.filter(function (x) { return x.i === open; }).map(detail).join('') + '</div>';
         };
-        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す" style="max-width:760px"><h2>' + esc(d.kids[id].name) + ' の、つける・離す</h2>' +
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="つける・離す" style="max-width:760px"><h2>' + esc(d.kids[id].name) + '<small class="note">（' + esc(curClassOf(id)) + '）</small> の、つける・離す</h2>' +
           '<div class="prd">' + sec('far', '離す', 'pf') + sec('near', 'つける', 'pn') + (F ? form() : '') + '</div>' +
           (edit ? '' : '<div class="note">つける・離すは、今年度・決定前だけ直せます。</div>') +
           '<div class="acts"><button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
@@ -4132,6 +4140,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if ((x = t.closest('[data-kid]'))) { R.kid = x.dataset.kid; R.form = null; render(); return true; }
       if (t.closest('#paste')) { pasteDialog(); return true; }
       if (t.closest('#moveB')) { moveDialog(); return true; }
+      if (t.closest('#rprint')) { App.printRosterCards(R.fy, R.scope === 'grade' ? null : R.cls); return true; }
       if (t.closest('#noneLeft')) { moveDialog('left'); return true; }
       if ((x = t.closest('[data-trsx]'))) { TRF.male = x.dataset.trsx === '1'; document.querySelectorAll('[data-trsx]').forEach(function (b) { b.setAttribute('aria-pressed', String((b.dataset.trsx === '1') === TRF.male)); }); return true; }
       if (t.closest('#tradd')) {
@@ -4449,7 +4458,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       '<label class="big ihb ihs">' + SVG('<circle cx="11" cy="11" r="6"/><path d="M16 16l4 4"/>') + '<input id="iq" value="' + esc(I.q || '') + '" placeholder="事案を検索（名前・種別・内容）" autocomplete="off">' +
       '<button type="button" class="iqc' + (dflt ? '' : ' on') + '" id="ihset" title="検索の設定（学年・種別・いじめの段階・対応の状況）" aria-label="検索の設定"></button></label>' +
       '<label class="big ihb ihsort">' + SVG('<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>') + '<span>並び替え</span><select id="isort">' + SORTS.map(function (s0) { return '<option value="' + s0.k + '"' + ((HOME.sort || 'imp') === s0.k ? ' selected' : '') + '>' + esc(s0.label) + '</option>'; }).join('') + '</select></label></div>';
-    h += '<div class="note" id="inote">' + esc(homeNote(list, shown, q)) + '</div>';
+    h += '<div class="inoterow"><div class="note" id="inote">' + esc(homeNote(list, shown, q)) + '</div><button class="linkbtn" id="itrashbox">🗑 ゴミ箱を見る</button></div>'; // 件数の文は検索のたびに書き換わるので、ゴミ箱のボタンは外に置く
     h += '<div class="icards" id="icards">' + cardsHtml(shown) + '</div>';
     return h;
   }
@@ -4471,7 +4480,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var rp = x.report || Rp.emptyReport(), b = isBully(x.type);
     var h = '<h2>' + esc(titleOf(x)) + '</h2><div class="meta">' + esc(App.span(x)) + '・' + typesHtml(x.type) + (x.url ? '・<a href="' + esc(x.url) + '" target="_blank" rel="noopener">文書 ↗</a>' : '') + '</div>' +
       '<div class="iacts"><button class="btn ib" id="iedit">' + IC.edit + '直す</button><button class="btn ib" id="iadd2">' + IC.addNote + 'その後の経緯を追記（様式Ⅱ用）</button><span class="sp"></span><span class="lab">出力</span>' +
-      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button></div>' +
+      '<button class="btn ib" data-iout="light">' + IC.file + '簡易報告書</button><button class="btn ib" data-iout="f1">' + IC.file + '様式Ⅰ</button><button class="btn ib" data-iout="f2">' + IC.file + '様式Ⅱ</button><button class="btn" id="itrash" title="この事案をゴミ箱へ（あとで戻せる）">🗑 ゴミ箱へ</button></div>' +
       // 対応の状況と、いじめの報告の段階（押すとすぐ保存）
       '<div class="istat"><span class="lab">対応</span>' + C.STATUS.map(function (s0) { return '<button class="lv ib st-' + s0.k + '" data-ist="' + s0.k + '" aria-pressed="' + (rp.status === s0.k) + '">' + ST_IC[s0.k] + esc(s0.label) + '</button>'; }).join('') +
       '<span class="lab">報告</span><button class="lv ib irpb" data-irep="1" aria-pressed="' + !!rp.reported + '">' + REP_IC + (rp.reported ? esc(Rp.md(rp.reported)) + 'に報告済み' : '未報告') + '</button>' +
@@ -4997,6 +5006,32 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function closeForm() { HIST = []; I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
 /* ▲ incidents/inc-output.js ここまで ▲ */
 
+  // ゴミ箱：戻す（誰でも）・完全に消す（管理者だけ）
+  function trashDialog() {
+    var L = null, esc = App.esc, adm = !!(App.me && App.me.admin);
+    var load = function () { App.pf().trashList().then(function (l) { L = l; if (App.dlg && App.dlg.trash) App.refreshDlg(); }, function (e) { App.toast(String(e && e.message || e)); }); };
+    App.openDlg({
+      trash: true,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg" role="dialog" aria-modal="true" aria-label="事案のゴミ箱" style="max-width:640px"><h2>事案のゴミ箱</h2>' +
+          (L === null ? '<div class="empty">読み込み中<span class="dots"></span></div>' : L.length ? '<table class="r ro"><tbody>' + L.map(function (x) {
+            return '<tr><td style="text-align:left">' + esc(x.title || (x.type + 'の事案')) + '<div class="note">' + esc(x.date) + '・' + esc(x.type) + '　' + esc(String(x.at).slice(0, 10)) + ' に ' + esc(x.by) + ' が移した</div></td>' +
+              '<td><button class="btn" data-trs="' + x.id + '">戻す</button>' + (adm ? ' <button class="btn danger" data-trx="' + x.id + '">完全に消す</button>' : '') + '</td></tr>';
+          }).join('') + '</tbody></table>' : '<div class="empty">ゴミ箱は空です</div>') +
+          '<p class="note">戻すと、事案の一覧・名簿・クラス分けに元どおり出ます。' + (adm ? '完全に消すと元に戻せません（管理者だけ）。' : '完全に消すのは管理者だけです。') + '</p>' +
+          '<div class="acts">' + (adm && L && L.length ? '<button class="btn danger" id="trall" style="margin-right:auto">ゴミ箱を空にする…</button>' : '') + '<button class="btn" data-act="close">閉じる<kbd>Esc</kbd></button></div></div></div>';
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-trs]'))) { var id = +x.dataset.trs; App.save(function () { return App.pf().restoreIncident(id); }).then(function () { return App.reload(); }).then(function () { App.toast('ゴミ箱から戻しました'); trashDialog(); }); return true; }
+        if ((x = t.closest('[data-trx]'))) { var id2 = +x.dataset.trx; if (!confirm('この事案を完全に消します。元に戻せません。よろしいですか？')) return true; L = null; App.refreshDlg(); App.save(function () { return App.pf().emptyTrash([id2]); }).then(load); return true; }
+        if (t.closest('#trall')) { if (!confirm('ゴミ箱の事案 ' + L.length + '件を完全に消します。元に戻せません。よろしいですか？')) return true; L = null; App.refreshDlg(); App.save(function () { return App.pf().emptyTrash([]); }).then(function () { load(); App.toast('ゴミ箱を空にしました'); }); return true; }
+        return false;
+      }
+    });
+    load();
+  }
+
   App.screens.incidents = {
     enter: function () {
       I.mode = 'view'; I.form = null; I.focus = null; I.draft = null;
@@ -5025,6 +5060,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       if (t.closest('#iasT,#iasT2')) { FOLD.assist = !FOLD.assist; saveFold(); renderAssist(); App.$('iassist').parentNode.classList.toggle('ac', !!FOLD.assist); return true; }
       if ((x = t.closest('[data-ph]')) && x.closest('.iassist,.irx')) { putPhrase(x.dataset.ph); return true; }
       if (t.closest('#ihome')) { I.sel = null; render(); return true; }
+      if (t.closest('#itrash')) {
+        var tx = incOf(I.sel);
+        if (!tx || !confirm('「' + titleOf(tx) + '」をゴミ箱へ移します。ゴミ箱から戻せます。よろしいですか？')) return true;
+        App.save(function () { return App.pf().trashIncident(tx.id); }).then(function () { I.sel = null; return App.reload(); }).then(function () { App.toast('ゴミ箱へ移しました（事案の一覧の「ゴミ箱を見る」から戻せます）'); });
+        return true;
+      }
+      if (t.closest('#itrashbox')) { trashDialog(); return true; }
       if (t.closest('#iadd2nd')) { newForm(null); render(); refocus('fQ'); return true; }
       if ((x = t.closest('[data-ist],[data-ilv],[data-irep]'))) {
         var xi = incOf(I.sel), rp0 = Rp.norm(xi.report);
@@ -5145,8 +5187,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var S = null; // { P, ctx, plans, active, view, sel, follow, lastGen, nc, readOnly }
 
   // ===== 読み込み：今年度の名簿から問題を組み立てる =====
-  function build() {
-    var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
+  function build(fy) {
+    var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === (fy || d.fy); })[0];
     var rows = cur.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
     var idx = {};
     var kids = rows.map(function (r, i) {
@@ -5592,10 +5634,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   // 18×5cm の票を A4 縦に5枚、隙間なしで並べる（裁断機で切って既存の個人票に貼る）。新しい組ごとに改ページし、組の中は五十音順。
   // 左は上に良い項目（緑）、名前、下に負担の4項目と事案数。右上に配慮（紫）と備考、右下に離す・つける。色はアイコンと旧学級の帯（濃い方）だけ。女子は左を半円（画面のカードと同じ形）。字は枠に収まるまで縮める（下限6pt）
   var PRINT_PER_PAGE = 5, PRINT_MIN_PT = 6;
-  function printCards() {
-    var p = S.plans[S.active], kids = S.P.kids, esc = App.esc;
+  // opt（名簿の画面から）：{ asg: 組の割り当て, nc: 組の数, name: 組の名前, only: この組だけ, head: 見出しの学年 }
+  function printCards(opt) {
+    opt = opt || {};
+    var p = opt.asg ? { asg: opt.asg, letter: '' } : S.plans[S.active], kids = S.P.kids, esc = App.esc;
     var named = S.decision && S.decision.named, names = namesOf();
-    var clsName = function (k) { return named ? names[k] + '組' : C.newClass(k) + (S.decision ? '' : '（案' + p.letter + '）'); };
+    var clsName = opt.name || function (k) { return named ? names[k] + '組' : C.newClass(k) + (S.decision ? '' : '（案' + p.letter + '）'); };
     var rel = kids.map(function () { return { far: [], near: [] }; });
     S.P.pairs.forEach(function (q) {
       if (q.t !== 'far' && q.t !== 'near') return;
@@ -5623,7 +5667,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         '</div></div>';
     };
     var pages = [], total = 0;
-    for (var k = 0; k < S.P.nc; k++) {
+    for (var k = 0; k < (opt.nc || S.P.nc); k++) {
+      if (opt.only != null && k !== opt.only) continue;
       var ids = [];
       kids.forEach(function (s, i) { if (p.asg[i] === k) ids.push(i); });
       ids.sort(function (x, y) { return String(kids[x].kana).localeCompare(String(kids[y].kana), 'ja'); });
@@ -5631,7 +5676,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       for (var pg = 0; pg < np; pg++) {
         var part = ids.slice(pg * PRINT_PER_PAGE, (pg + 1) * PRINT_PER_PAGE);
         total += part.length;
-        pages.push('<div class="pp"><div class="pp-h">' + g.CONFIG.gradeLabel(App.st.grade) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
+        pages.push('<div class="pp"><div class="pp-h">' + (opt.head || g.CONFIG.gradeLabel(App.st.grade)) + ' ' + esc(clsName(k)) + '　' + (pg + 1) + '/' + np + '</div>' + part.map(card).join('') +
           '<div class="pp-f"><span class="pp-ruler"></span>この線が10cmなら実寸（倍率100%・余白なしで印刷）</div></div>');
       }
     }
@@ -5763,7 +5808,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 
   function pairsDialog() {
     App.pairsDialog({
-      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old }; }), nc: S.P.nc, pre: '旧',
+      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old, tr: !!s.tr }; }), nc: S.P.nc, pre: '旧',
       // 案を先に保存してから読み込み直す（案は残る）
       save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
     });
@@ -5777,7 +5822,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     var carry = (d.carry || []).slice();
     var F = { t: 'far', a: o.a || null, b: null, k: 0, memo: '' };
-    var cl = function (s) { return s.cls < 0 ? '転入' : o.pre + (s.cls + 1) + '組'; };
+    var cl = function (s) { return s.cls < 0 ? (s.tr ? '転入' : 'クラスなし') : g.CONFIG.gradeLabel(App.st.grade) + (s.cls + 1) + '組'; }; // 今年度の学年と組（例：4年2組）
     var nm = function (id) { var s = kidOf[id]; return s ? s.name + '（' + cl(s) + '）' : id; };
     var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + C.newClass(p.k) : nm(p.a) + ' と ' + nm(p.b); };
     var sugg = function (q, slot) {
@@ -6078,6 +6123,21 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   }
 /* ▲ split/split-excel.js ここまで ▲ */
 
+  // 名簿の画面から個人票を印刷する：その年度の今の組で並べる（クラスなしの児童は最後の「クラスなし」の頁）。クラス分けの状態は元に戻す
+  App.printRosterCards = function (fy, onlyCls) {
+    var keep = S, d = App.st.data, Y = d.years.filter(function (y) { return y.fy === fy; })[0];
+    if (!Y || !Y.rows.length) { App.toast('印刷する児童がいません'); return; }
+    build(fy);
+    var nc = 0, none = false;
+    S.P.kids.forEach(function (s) { if (s.tr) return; if (s.old < 0) none = true; else if (s.old + 1 > nc) nc = s.old + 1; });
+    var noneIdx = nc, asg = new Int8Array(S.P.kids.length);
+    S.P.kids.forEach(function (s, i) { asg[i] = s.tr ? -2 : s.old < 0 ? noneIdx : s.old; }); // 転入予定の児童は名簿にいないので刷らない
+    try {
+      printCards({ asg: asg, nc: nc + (none ? 1 : 0), only: onlyCls == null ? null : onlyCls < 0 ? noneIdx : onlyCls,
+        name: function (k) { return k === noneIdx ? 'クラスなし' : (k + 1) + '組'; }, head: fy + '年度 ' + C.gradeLabel(Y.grade) });
+    } finally { S = keep; }
+  };
+
   App.screens.split = {
     enter: function () {
       var d = App.st.data, cur = d.years.filter(function (y) { return y.fy === d.fy; })[0];
@@ -6179,6 +6239,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
+    var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
     if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.map(safe).filter(Boolean);
@@ -6188,7 +6249,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案・報告書・名前'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
     // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
     var admin = !!(App.me && App.me.admin);
@@ -6223,6 +6284,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     } else if (T.tab === 'types') {
       h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
+        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
         '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
         '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
         '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
@@ -6415,6 +6477,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       else if (t.id === 'slots') set(function () { s.slots = t.value.split('\n'); });
       else if (t.id === 'school') set(function () { s.school = t.value; });
       else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
+      else if (t.id === 'appnm') set(function () { s.appName = t.value.trim(); });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;
@@ -6491,6 +6554,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
     var st = App.st, prev = App.screens[st.screen];
     if (prev && prev.dirty && st.screen !== screen && prev.dirty() && !confirm('保存していない変更があります。保存せずに移りますか？')) return Promise.resolve(); // 設定を直して保存せずにメニューへ、など
     if (prev && prev.leave) prev.leave();
+    var pb = document.getElementById('printbox'); if (pb) { pb.remove(); document.body.classList.remove('printing'); } // 名簿から開いた個人票の印刷も閉じる
     App.closeDlg();
     if (grade) st.grade = grade;
     st.screen = screen;

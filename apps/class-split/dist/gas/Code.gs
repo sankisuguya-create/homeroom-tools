@@ -1075,10 +1075,12 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_b814fa8dbac3';
+var SERVER_BUILD = 'BUILD_fdc5f425209e';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
+// タブに出す名前（設定の「アプリの名前」。既定は SSS＝Student Support System。児童の目を引かない略称）
+function appName_() { try { return settings_().appName || 'SSS'; } catch (e) { return 'SSS'; } }
 function doGet() {
   var who = currentTeacher_();
   if (!who.ok || (!accessOf_(who.email).user && !deviceWindowSafe_())) {
@@ -1086,10 +1088,10 @@ function doGet() {
     var sub = !who.ok ? ' では開けません。' : ' は登録されていません。使う場合は、このアプリの管理者に登録を頼んでください。';
     return HtmlService.createHtmlOutput('<!doctype html><html lang="ja"><meta charset="utf-8"><body style="font-family:sans-serif;padding:24px">' +
       '<h1 style="font-size:20px">' + msg + '</h1><p>' + escHtml_(who.email || '（アカウントが分かりません）') + sub + '</p></body></html>')
-      .setTitle('クラス替え');
+      .setTitle(appName_());
   }
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('クラス替え')
+    .setTitle(appName_())
     .addMetaTag('viewport', 'width=device-width,initial-scale=1');
 }
 
@@ -1803,6 +1805,45 @@ function importDiff_(fy, grade, rows) {
     risky: other.length > 0 || (existing > 0 && renamed.length * 2 >= existing) };
 }
 
+// ===== 事案のゴミ箱 =====
+// ゴミ箱へ：deleted に「trash:日時:誰」を書く（一覧・名簿・クラス分けから消える）。戻すと元どおり。完全に消すのは管理者だけ
+// （年度替わりの削除で消えた事案の deleted は日時だけなので、ゴミ箱には出ない）
+var apiTrashIncident_ = api_(function (id) {
+  var by = requireTeacher_(); id = +id;
+  return withLock_(function () {
+    var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
+    if (!row) throw userError_('事案が見つかりません（ほかの先生が先に消したかもしれません）');
+    writeCell_(t, row, 'deleted', 'trash:' + new Date().toISOString() + ':' + by);
+    log_(by, 'trashIncident', id);
+    return { ok: true };
+  });
+});
+function trashRows_() { return read_('incidents').rows.filter(function (r) { return String(r.deleted).indexOf('trash:') === 0; }); }
+var apiTrashList_ = api_(function () {
+  requireTeacher_();
+  return trashRows_().map(function (r) { var p = String(r.deleted).split(':'); return { id: +r.inc_id, title: String(r.title || ''), date: isoDate_(r.date), type: String(r.type || ''), at: p.slice(1, 4).join(':'), by: p.slice(4).join(':') }; });
+});
+var apiRestoreIncident_ = api_(function (id) {
+  var by = requireTeacher_(); id = +id;
+  return withLock_(function () {
+    var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && String(r.deleted).indexOf('trash:') === 0; })[0];
+    if (!row) throw userError_('ゴミ箱にありません');
+    writeCell_(t, row, 'deleted', '');
+    log_(by, 'restoreIncident', id);
+    return { ok: true };
+  });
+});
+var apiEmptyTrash_ = api_(function (ids) {
+  var by = requireAdmin_();
+  return withLock_(function () {
+    var set = {}; trashRows_().forEach(function (r) { if (!ids || !ids.length || ids.map(Number).indexOf(+r.inc_id) >= 0) set[+r.inc_id] = 1; });
+    var n = removeRows_('incidents', function (r) { return set[+r.inc_id]; });
+    removeRows_('incident_kids', function (r) { return set[+r.inc_id]; });
+    log_(by, 'emptyTrash', n);
+    return { n: n };
+  });
+});
+
 // 事案の版：最後に直した時刻。直す時に読んだ時の版と比べ、ほかの先生が先に直していたら上書きしない
 function revOf_(at) { return at instanceof Date ? at.toISOString() : String(at || ''); }
 function incidents_() {
@@ -2346,7 +2387,7 @@ function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
-    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || '') };
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS') };
 }
 var apiSettings_ = api_(function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
@@ -2360,7 +2401,7 @@ var apiSaveSettings_ = api_(function (s) {
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
-    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300) };
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS' };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
@@ -2532,3 +2573,7 @@ function apiLeftKids() { return apiLeftKids_.apply(null, arguments); }
 function apiRestoreKid() { return apiRestoreKid_.apply(null, arguments); }
 function apiUpdateKid() { return apiUpdateKid_.apply(null, arguments); }
 function apiRosterYears() { return apiRosterYears_.apply(null, arguments); }
+function apiTrashIncident() { return apiTrashIncident_.apply(null, arguments); }
+function apiTrashList() { return apiTrashList_.apply(null, arguments); }
+function apiRestoreIncident() { return apiRestoreIncident_.apply(null, arguments); }
+function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }

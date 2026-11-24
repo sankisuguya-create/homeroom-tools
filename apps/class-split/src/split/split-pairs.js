@@ -46,7 +46,7 @@
 
   function pairsDialog() {
     App.pairsDialog({
-      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old }; }), nc: S.P.nc, pre: '旧',
+      kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old, tr: !!s.tr }; }), nc: S.P.nc, pre: '旧',
       // 案を先に保存してから読み込み直す（案は残る）
       save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
     });
@@ -60,7 +60,7 @@
     var list = d.pairs.map(function (p) { return JSON.parse(JSON.stringify(p)); });
     var carry = (d.carry || []).slice();
     var F = { t: 'far', a: o.a || null, b: null, k: 0, memo: '' };
-    var cl = function (s) { return s.cls < 0 ? '転入' : o.pre + (s.cls + 1) + '組'; };
+    var cl = function (s) { return s.cls < 0 ? (s.tr ? '転入' : 'クラスなし') : g.CONFIG.gradeLabel(App.st.grade) + (s.cls + 1) + '組'; }; // 今年度の学年と組（例：4年2組）
     var nm = function (id) { var s = kidOf[id]; return s ? s.name + '（' + cl(s) + '）' : id; };
     var desc = function (p) { return p.t === 'fix' ? nm(p.a) + ' → ' + C.newClass(p.k) : nm(p.a) + ' と ' + nm(p.b); };
     var sugg = function (q, slot) {

@@ -14,6 +14,7 @@
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
+    var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
     if (s.slots && s.slots.length) C.TIME_SLOTS = s.slots.map(safe).filter(Boolean);
@@ -23,7 +24,7 @@
   function render() {
     var esc = App.esc, s = T.s;
     // 学校の設定（学年の先生全員に効く・保存が要る）と、この端末だけの表示（すぐ効く・ほかの先生には効かない）を分けて並べる
-    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案と報告書'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
+    var tabs = [['attrs', '配慮項目'], ['teachers', '利用者と担任'], ['types', '事案・報告書・名前'], ['year', '年度替わり'], ['log', '記録'], ['sugg', '目安箱'], ['devices', '端末'], ['view', '表示']];
     var tab = function (t) { return '<button class="tab" data-stab="' + t[0] + '" aria-selected="' + (T.tab === t[0]) + '">' + t[1] + '</button>'; };
     // 学校の設定を変えられるのは管理者だけ（サーバーでも断る）。管理者でない人には「表示」だけを出す
     var admin = !!(App.me && App.me.admin);
@@ -58,6 +59,7 @@
     } else if (T.tab === 'types') {
       h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
+        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
         '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
         '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
         '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
@@ -250,6 +252,7 @@
       else if (t.id === 'slots') set(function () { s.slots = t.value.split('\n'); });
       else if (t.id === 'school') set(function () { s.school = t.value; });
       else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
+      else if (t.id === 'appnm') set(function () { s.appName = t.value.trim(); });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;
