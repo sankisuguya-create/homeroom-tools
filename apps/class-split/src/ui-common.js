@@ -175,7 +175,7 @@
     var txt = App.sv === 'saving' ? '保存中' : App.sv === 'err' ? '保存できません：' + (App.svMsg || '') : App.sv === 'ok' ? '保存済み' : '';
     ['save', 'save2'].forEach(function (id) {
       var el = App.$(id);
-      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; if (App.sv === 'saving') { var d = document.createElement('span'); d.className = 'dots'; el.appendChild(d); } } // 保存中は点が0〜3個で回る
+      if (el) { el.className = 'save' + (App.sv === 'err' ? ' err' : ''); el.textContent = txt; if (App.sv === 'saving') { var d = document.createElement('span'); d.className = 'ldots'; d.setAttribute('aria-hidden', 'true'); el.appendChild(d); } } // 保存中は点が0〜3個で回る
     });
   };
   // 保存：失敗したら間を延ばしながら（5→10→20→40→60秒）やり直す。6回失敗したら止め、閉じるまで消えない知らせで「もう一度」を出す。

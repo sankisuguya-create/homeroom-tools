@@ -101,6 +101,12 @@
 }
 </style>
 <style>
+/* 待ちの表示：点を0〜3個で回す（正本は - の skills/ui-layout/SKILL.md「待ちの表示」） */
+.ldots{display:inline-block;width:1.6em;text-align:left}
+.ldots::after{content:'';animation:ldots 1.2s steps(1,end) infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.ldots::after{animation:none;content:'...'}}
+
 *{box-sizing:border-box}
 body{margin:0;background:var(--paper);color:var(--ink);
   font-family:var(--font-ja);font-size:14px;line-height:1.7}
@@ -225,7 +231,7 @@ td.num.not-ready{color:var(--warn);font-weight:700;text-decoration:underline dot
   </div>
   <div class="busy hidden" id="busy">
     <div class="mark" aria-hidden="true"></div>
-    <p class="msg" id="busyMsg">処理中…</p>
+    <p class="msg" id="busyMsg">処理中<span class="ldots" aria-hidden="true"></span></p>
   </div>
 
   <div class="errbar hidden" id="errbar"></div>
@@ -467,7 +473,7 @@ const SYM_MIGRATION = {
 const $ = id => document.getElementById(id);
 /* 貼り付け一式の版。build.py が dist を作るとき焼き込む。
    サーバが返す build と違ったら、Code.gs と html が別の版で混在している。 */
-const PAGE_BUILD = "BUILD_bc083e5e4fdc";
+const PAGE_BUILD = "BUILD_522cb2f8df84";
 let B = null, subject = null, tab = "unit", unitName = null, term = 0;
 let editUnits = [];
 
@@ -490,19 +496,19 @@ function hideErr(){ $("errbar").classList.add("hidden"); }
 let busyDepth = 0;
 function busy(on, msg){
   busyDepth = Math.max(0, busyDepth + (on ? 1 : -1));
-  if(msg) $("busyMsg").textContent = msg;
+  if(msg){ $("busyMsg").textContent = msg; $("busyMsg").insertAdjacentHTML("beforeend", '<span class="ldots" aria-hidden="true"></span>'); } /* 終わるまで点を回す */
   $("busy").classList.toggle("hidden", busyDepth === 0);
 }
 const BUSY_MSG = {
-  apiTeacherBoot:"よみこみ中…", apiUnitTable:"よみこみ中…", apiTermTable:"よみこみ中…",
-  apiAdoptAll:"採用しています…", apiAdoptRanks:"採用しています…",
-  apiBulk:"全員に入れています…", apiSaveUnits:"単元を保存しています…",
-  apiSaveRule:"設定を保存しています…", apiSaveSubject:"教科を保存しています…",
-  apiSetRated:"単元の評価をしています…", apiExportTerm:"書き出しています…"
+  apiTeacherBoot:"よみこみ中", apiUnitTable:"よみこみ中", apiTermTable:"よみこみ中",
+  apiAdoptAll:"採用しています", apiAdoptRanks:"採用しています",
+  apiBulk:"全員に入れています", apiSaveUnits:"単元を保存しています",
+  apiSaveRule:"設定を保存しています", apiSaveSubject:"教科を保存しています",
+  apiSetRated:"単元の評価をしています", apiExportTerm:"書き出しています"
 };
 function call(fn, args, done){
   hideErr();
-  busy(true, BUSY_MSG[fn] || "処理中…");
+  busy(true, BUSY_MSG[fn] || "処理中");
   google.script.run
     .withSuccessHandler(function(r){
       busy(false);

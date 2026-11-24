@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="ja"><head><meta charset="utf-8">
 <style>
+/* 待ちの表示：点を0〜3個で回す（正本は - の skills/ui-layout/SKILL.md「待ちの表示」） */
+.ldots{display:inline-block;width:1.6em;text-align:left}
+.ldots::after{content:'';animation:ldots 1.2s steps(1,end) infinite}
+@keyframes ldots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+@media (prefers-reduced-motion:reduce){.ldots::after{animation:none;content:'...'}}
+
 :root{--bg:#f6f7f9;--card:#fff;--ink:#1f2328;--sub:#5f6670;--line:#d0d5dc;--accent:#1a73e8;--accent-ink:#fff;--err:#c62828}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hiragino Sans","Noto Sans JP",sans-serif;font-size:16px;line-height:1.6}
@@ -111,7 +117,7 @@ input[type=text]:focus{outline:none;border-color:var(--accent)}
 <script>
 var $=function(id){return document.getElementById(id)};
 function run(fn){var a=[].slice.call(arguments,1);return new Promise(function(ok,ng){var r=google.script.run;if(typeof r[fn]!=='function')return ng(new Error('サーバーに「'+fn+'」がありません。Code.gs を貼り直してください'));var h=r.withSuccessHandler(ok).withFailureHandler(ng);h[fn].apply(h,a)})}
-function msg(t,err){$('msg').textContent=t;$('msg').className=err?'err':''}
+function msg(t,err,wait){$('msg').textContent=t;if(wait)$('msg').insertAdjacentHTML('beforeend','<span class="ldots" aria-hidden="true"></span>');$('msg').className=err?'err':''} // wait：終わるまで点を回す
 $('nm').onclick=function(e){e.preventDefault();var on=this.getAttribute('aria-checked')!=='true';this.setAttribute('aria-checked',on);document.body.classList.toggle('shownm',on)};
 var opt={paper:'A4',per:'1',mar:'12'};
 try{Object.assign(opt,JSON.parse(localStorage.getItem('slidePrintOpt')||'{}'))}catch(e){}
@@ -173,7 +179,7 @@ async function makePdf(){
       var cw=(sh.pw-2*sh.m-GAP*(sh.cols-1))/sh.cols,ch=(sh.ph-2*sh.m-GAP*(sh.rows-1))/sh.rows;
       for(var k=0;k<sh.items.length;k++){
         var it=sh.items[k],x=sh.m+(k%sh.cols)*(cw+GAP),y=sh.m+Math.floor(k/sh.cols)*(ch+GAP),top=0;
-        msg('PDFを作っています '+(++done)+' / '+total);
+        msg('PDFを作っています '+(++done)+' / '+total,false,true);
         if(NM){g.fillStyle='#000';g.font=Math.round(3.5*PX)+'px sans-serif';g.textBaseline='top';g.fillText(it.label,x*PX,y*PX);top=5}
         // 画像はサーバー経由で取り直す（Googleの画像はそのままでは canvas に描けないため）
         var data=await run('apiImage',it.img.src),im=await loadImg(data);
@@ -224,14 +230,14 @@ async function load(keepOff){
   busy=true;$('go').disabled=true;$('s2').classList.add('off');$('pages').innerHTML='';
   var bar=$('bar'),fill=bar.firstChild;bar.hidden=false;fill.style.width='0';
   try{
-    msg('フォルダを確認しています…');
+    msg('フォルダを確認しています',false,true);
     var r=await run('apiListFiles',$('url').value);
     if(!r.files.length)throw new Error('このフォルダにスライドがありません');
     var firstErr='',ng=0,loads=[],n=r.files.length,t0=Date.now(),size=which==='all'?'MEDIUM':'LARGE';
     for(var i=0;i<n;i++){
       var f=r.files[i];
       var eta=i>=2?Math.ceil((Date.now()-t0)/i*(n-i)/1000):0;
-      msg('読み込み中 '+(i+1)+' / '+n+(eta>=20?'（あと約'+(eta>=60?Math.round(eta/60)+'分':eta+'秒')+'）':''));
+      msg('読み込み中 '+(i+1)+' / '+n+(eta>=20?'（あと約'+(eta>=60?Math.round(eta/60)+'分':eta+'秒')+'）':''),false,true);
       try{
         var r2=await run('apiThumbs',f.id,which,size);
         if(!r2.items.length)throw new Error(which+'枚目がありません（全'+r2.total+'枚）');

@@ -734,7 +734,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.evaluate(() => { const pf = App.pf(), f = pf.setAttr; window.__sent = []; let n = 0; pf.setAttr = function (fy, g, id, k, v) { window.__sent.push(v); const d = [300, 50, 10][n++ % 3]; return new Promise(r => setTimeout(r, d)).then(() => f.apply(pf, arguments)); }; });
   const cell = p.locator('td.cell[data-k="k2"]').first();
   await cell.click(); await cell.click(); await cell.click();
-  ok(/保存中/.test(await p.textContent('#save')) && await p.locator('#save .dots').count() === 1, '保存中は「保存中」と点が回る');
+  ok(/保存中/.test(await p.textContent('#save')) && await p.locator('#save .ldots').count() === 1, '保存中は「保存中」と点が回る');
   await p.waitForFunction(() => /保存済み/.test(document.getElementById('save').textContent), null, { timeout: 5000 });
   const sent = await p.evaluate(() => window.__sent), id = await cell.getAttribute('data-cell');
   const kept = await p.evaluate(id => { const d = App.st.data, r = d.years.find(y => y.fy === d.fy).rows.find(x => x.id === id); return r.a.k2 | 0; }, id);
