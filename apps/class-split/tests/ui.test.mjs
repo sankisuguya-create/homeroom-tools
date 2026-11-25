@@ -111,7 +111,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('table.cmp').count() === 1, `${w}x${h} 比較の表`);
 
   // 名簿：年度タブ・児童の経年の記録
-  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="menu"]:visible'); ok(await p.locator('.gbtn').count() > 0, 'メニューへ戻ると、待たずにすぐメニューが出る（前に読んだ一覧で描く）');
+  await p.waitForSelector('.gbtn'); await p.waitForFunction(() => !document.getElementById('busy')); ok(true, '移動中の表示は読み終えると消える');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#rmore').count() === 0 && await p.locator('#rfy').count() === 1, `${w}x${h} 「その他」の窓は無く、年度・全校の事案・絞り込みは上の帯`);
   ok(await p.locator('#rfy option').count() === 6, `${w}x${h} 6年は6年度分の名簿（年度の選択）`);
@@ -524,6 +525,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
   ok(await p.locator('table.r tbody tr').count() === 40, '児童IDなしで40人が名簿に入る');
   await p.click('[data-go="menu"]:visible');
+  await p.waitForFunction(() => /40人/.test(document.querySelector('[data-g="0"]').textContent), null, { timeout: 5000 }).catch(() => {}); // すぐ出したメニューを、届いた一覧で描き直す
   ok((await p.locator('[data-g="0"]').textContent()).includes('40人'), 'メニューに人数が出る');
   await p.click('[data-go="split"]'); await intoSplit(p);
   ok(await p.locator('.board .chip').count() === 40, '新1年のクラス分けの盤面に40人');
