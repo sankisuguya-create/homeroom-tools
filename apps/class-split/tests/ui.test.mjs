@@ -384,7 +384,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.evaluate(() => { App.saveGen++; /* 先読みした分を使わせない */ const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (App.st.screen !== 'roster' || n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); }); // メニューの先読みは失敗させず、名簿を開く読み込みだけを1回失敗させる
-  await p.click('[data-go="roster"]'); await p.waitForSelector('#reloadBtn');
+  await p.evaluate(() => { App.saveGen++; App.go('roster'); }); await p.waitForSelector('#reloadBtn'); // 先読み（メニューの描き直しが読んだ分）を使わせず、すぐ名簿を開く
   ok(/時間切れ/.test(await p.textContent('#main')), '読み込めない時は理由と「もう一度」を出す');
   await p.click('#reloadBtn'); await p.waitForSelector('td.nm');
   ok(true, '「もう一度」で読み込める');
