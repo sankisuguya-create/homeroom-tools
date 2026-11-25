@@ -111,7 +111,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('table.cmp').count() === 1, `${w}x${h} 比較の表`);
 
   // 名簿：年度タブ・児童の経年の記録
-  await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
+  await p.click('[data-go="menu"]:visible'); ok(await p.locator('.gbtn').count() > 0, 'メニューへ戻ると、待たずにすぐメニューが出る（前に読んだ一覧で描く）');
+  await p.waitForSelector('.gbtn'); await p.waitForFunction(() => !document.getElementById('busy')); ok(true, '移動中の表示は読み終えると消える');
   await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
   ok(await p.locator('#main .rbar').count() === 1 && await p.locator('#rmore').count() === 0 && await p.locator('#rfy').count() === 1, `${w}x${h} 「その他」の窓は無く、年度・全校の事案・絞り込みは上の帯`);
   ok(await p.locator('#rfy option').count() === 6, `${w}x${h} 6年は6年度分の名簿（年度の選択）`);
@@ -382,8 +383,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.evaluate(() => { App.saveGen++; /* 先読みした分を使わせない */ const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); });
-  await p.click('[data-go="roster"]'); await p.waitForSelector('#reloadBtn');
+  await p.evaluate(() => { App.saveGen++; /* 先読みした分を使わせない */ const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (App.st.screen !== 'roster' || n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); }); // メニューの先読みは失敗させず、名簿を開く読み込みだけを1回失敗させる
+  await p.evaluate(() => { App.saveGen++; App.go('roster'); }); await p.waitForSelector('#reloadBtn'); // 先読み（メニューの描き直しが読んだ分）を使わせず、すぐ名簿を開く
   ok(/時間切れ/.test(await p.textContent('#main')), '読み込めない時は理由と「もう一度」を出す');
   await p.click('#reloadBtn'); await p.waitForSelector('td.nm');
   ok(true, '「もう一度」で読み込める');
@@ -524,6 +525,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
   ok(await p.locator('table.r tbody tr').count() === 40, '児童IDなしで40人が名簿に入る');
   await p.click('[data-go="menu"]:visible');
+  await p.waitForFunction(() => /40人/.test(document.querySelector('[data-g="0"]').textContent), null, { timeout: 5000 }).catch(() => {}); // すぐ出したメニューを、届いた一覧で描き直す
   ok((await p.locator('[data-g="0"]').textContent()).includes('40人'), 'メニューに人数が出る');
   await p.click('[data-go="split"]'); await intoSplit(p);
   ok(await p.locator('.board .chip').count() === 40, '新1年のクラス分けの盤面に40人');
@@ -776,6 +778,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.locator('.bigs3 > .big').count() === 3 && await p.locator('.bigs3 .big span:not(.mchips)').count() === 0, '3つのボタンに説明文は無い');
   ok(/対応中 \d+件/.test(await p.locator('[data-go="incidents"] .mchips').textContent()), '事案のボタンに対応中の件数');
   const bx = await p.locator('.bigs3 > .big').evaluateAll(es => es.map(e => e.getBoundingClientRect())); ok(bx[1].left < bx[0].right && Math.abs(bx[0].height - bx[2].height) < 1, '3つは同じ高さで少し重なる');
+  const w5 = (await p.locator('.bigs3 [data-go="roster"]').boundingBox()).width;
+  await p.click('[data-g="6"]'); await p.waitForSelector('.bigs3 .bslot', { state: 'attached' });
+  ok(await p.locator('.bigs3 [data-go="split"]').count() === 0 && Math.abs((await p.locator('.bigs3 [data-go="roster"]').boundingBox()).width - w5) < 1, '6年はクラス分けの場所を空け、名簿のボタンの幅は変えない');
+  await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
   await mclick(p, '#mv-recent'); ok(await p.locator('.mrecent').count() === 0, '表示で最近の記録を消せる');
   await mclick(p, '#mv-inc'); ok(await p.locator('[data-go="incidents"] .mchips').count() === 0, '表示で事案の件数を消せる');
   await mclick(p, '#mv-recent'); await mclick(p, '#mv-inc'); await p.waitForSelector('.mrecent .mrow');

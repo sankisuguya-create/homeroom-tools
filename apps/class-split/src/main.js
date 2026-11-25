@@ -29,8 +29,13 @@
     if (screen === 'menu') {
       // 設定（項目の名前・頭文字・重み、担任と学級）もここで読む。担任なら初めはその学年を選ぶ
       var FY0 = App.pf().fiscalYear, vfy = st.viewFy || FY0;
+      // 一度読んだ学年の一覧があれば、背景と同時にすぐメニューを出し、届いた新しい一覧で描き直す（戻る時に背景だけ先に変わらない）
+      var quick = st.grades && st.gradesFy === vfy && App.me;
+      if (quick) App.screens.menu.render(); else App.busy('移動中');
       return Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]).then(function (r) {
-        st.grades = r[0]; st.years = r[2];
+        App.busy(false);
+        if (App.st.screen !== 'menu') return; // 待つ間にほかの画面へ移っていたら描かない
+        st.grades = r[0]; st.years = r[2]; st.gradesFy = vfy;
         App.applySettings(r[1].settings); App.me = r[1].me;
         if (!st.gradeChosen && r[1].me.grade && vfy === FY0) st.grade = r[1].me.grade;
         App.screens.menu.render();
@@ -64,6 +69,7 @@
   App.bootCached = function (grade) { var key = (App.mode || '') + ':' + grade, c = BOOT[key]; return c && c.gen === App.saveGen && READY[key] && READY[key].p === c.p ? READY[key].d : null; };
   // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
   function loadFailed(e) {
+    App.busy(false);
     if (e && e.device) {
       App.$('main').innerHTML = '<div class="menu"><section><h2>この端末では開けません</h2><p>' + App.esc(e.message) + '</p>' +
         '<p class="note">校務用のパソコンを登録するには、管理者に設定の「端末」で「10分間 登録を受け付ける」を押してもらい、その間にこのページを開き直してください。</p><button class="btn primary" id="reloadBtn">開き直す</button></section></div>';
@@ -72,6 +78,13 @@
     App.$('main').innerHTML = '<div class="menu"><section><h2>読み込めませんでした</h2><p>' + App.esc((e && e.message) || '通信の誤り') + '</p>' +
       '<p class="note">通信が不安定な時に起こります。少し待ってから押してください。</p><button class="btn primary" id="reloadBtn">もう一度読み込む</button> <button class="btn" data-go="menu">メニューへ</button></section></div>';
   }
+  // 画面の中央に大きく「移動中…」を重ねる（読み込みを待つ間、押しても効かないことを示す）
+  App.busy = function (text) {
+    var el = document.getElementById('busy');
+    if (!text) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'busy'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.innerHTML = '<div>' + App.esc(text) + '<span class="dots"></span></div>';
+  };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
   document.addEventListener('click', function (e) {
