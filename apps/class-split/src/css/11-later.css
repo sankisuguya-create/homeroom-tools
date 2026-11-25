@@ -150,3 +150,4 @@
 /* 移動中：画面の中央に大きく重ねる */
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
 #busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.bigs.bigs3>.bslot{visibility:hidden;pointer-events:none}

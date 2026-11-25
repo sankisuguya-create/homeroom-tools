@@ -921,6 +921,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 /* 移動中：画面の中央に大きく重ねる */
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
 #busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.bigs.bigs3>.bslot{visibility:hidden;pointer-events:none}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -2708,7 +2709,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_da8a356c89d7';
+  var PAGE_BUILD = 'BUILD_a6a1f08b247a';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3274,6 +3275,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       // 管理者への知らせ（共有の状態・年度替わりの消し忘れ）。読み込みは main.js が go('menu') の時に1回
       var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
       var v = App.myView(), d = now && App.bootCached ? App.bootCached(st.grade) : null, sm = d ? App.menuSummary(d, v) : null;
+      var EMPTY = '<div class="big bslot" aria-hidden="true"></div>'; // 無い機能の場所は空けておく（ほかのボタンの幅と位置を変えない）
       var chips = sm ? sm.chips : { rost: '', inc: '', split: '' };
       var recent = sm && v.recent ? '<section class="mrecent"><h2>最近の記録</h2>' + (sm.recent.length ? sm.recent.join('') : '<p class="note">まだありません</p>') + '</section>' : '';
       App.$('main').innerHTML = '<div class="menu">' + warn +
@@ -3284,8 +3286,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
         // 名簿が0人の学年は、名簿を貼る入口を先頭に出す（名簿の画面を開くと、すぐ貼る窓が開く）
         (cur && !cur.count && now ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b></button>'
           : '<button class="big" data-go="roster"><b>名簿を見る</b>' + chips.rost + '</button>') +
-        (st.grade <= 0 ? '' : '<button class="big" data-go="incidents"><b>事案管理</b>' + chips.inc + '</button>') + // 新1年は入学前なので事案は無い
-        (st.grade >= 6 || !now ? '' : '<button class="big bsplit" data-go="split"><b>クラス分けをする</b>' + chips.split + '</button>') + // 6年は卒業するのでクラス分けは無い
+        (st.grade <= 0 ? EMPTY : '<button class="big" data-go="incidents"><b>事案管理</b>' + chips.inc + '</button>') + // 新1年は入学前なので事案は無い
+        (st.grade >= 6 || !now ? EMPTY : '<button class="big bsplit" data-go="split"><b>クラス分けをする</b>' + chips.split + '</button>') + // 6年は卒業するのでクラス分けは無い
         '</div></section>' + recent +
         '<section class="mfoot"><button class="btn" data-go="settings">⚙ 設定</button><button class="btn" data-go="roster" data-school="1" title="全校の事案と、関わった児童の一覧">全校の事案</button>' +
         App.ddMenu('mview', '表示', VIEW_KEYS.map(function (k) { return App.ddItem('mv-' + k[0], (v[k[0]] ? '☑ ' : '☐ ') + k[1], '', false, ' role="menuitemcheckbox" aria-checked="' + !!v[k[0]] + '"'); }).join(''), 'メニューに出すものを選ぶ（先生ごとに覚える）') +
