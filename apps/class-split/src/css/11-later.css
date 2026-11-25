@@ -156,3 +156,5 @@
 .mrow .md i{font-style:normal;display:inline-block;width:2ch}
 .mrow .md i:first-child{text-align:right}
 .mrow .mt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* メニューの一番下の「表示 ▾」は上へ開く（メニューを1画面に収めたまま、スクロールさせない） */
+.mfoot .ddpop{top:auto;bottom:calc(100% + 4px);left:0;right:auto}
