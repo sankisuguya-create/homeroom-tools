@@ -784,6 +784,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   { const hs = await p.locator('.bigs3 > *').evaluateAll(es => es.map(e => e.getBoundingClientRect().height)); ok(hs.every(h => Math.abs(h - bx[0].height) < 1), '6年でもボタンの高さは5年と同じ（' + hs.map(Math.round).join('・') + '）'); }
   await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
   { const ys = await p.locator('.bigs3 > .big b').evaluateAll(es => es.map(e => Math.round(e.getBoundingClientRect().top))); ok(new Set(ys).size === 1, '札のあるなしで機能の名前の高さが変わらない（' + ys.join('・') + '）'); }
+  { const xs = await p.locator('.mrow').evaluateAll(es => es.map(e => { const r = document.createRange(); r.selectNodeContents(e.querySelector('.md').childNodes[1]); return Math.round(r.getBoundingClientRect().left) + ':' + Math.round(e.querySelector('.mt').getBoundingClientRect().left); }));
+    const t0 = await p.locator('.mrow .mt').first().textContent();
+    ok(new Set(xs).size === 1 && !/^\d+月\d+日/.test(t0), '最近の記録は日付の / と題名の1文字目が縦に揃い、題名の頭の「〇月〇日」は省く（' + xs[0] + '）'); }
+  { await p.click('[data-dd="mview"]'); const pb = await p.locator('.mfoot .ddpop').boundingBox(), bb = await p.locator('[data-dd="mview"]').boundingBox(); ok(pb.y + pb.height <= bb.y, '「表示 ▾」は上へ開く'); await p.click('[data-dd="mview"]'); }
   await mclick(p, '#mv-recent'); ok(await p.locator('.mrecent').count() === 0, '表示で最近の記録を消せる');
   await mclick(p, '#mv-inc'); ok((await p.locator('[data-go="incidents"] .mchips').textContent()) === '', '表示で事案の件数を消せる（札の行の場所は残す）');
   await mclick(p, '#mv-recent'); await mclick(p, '#mv-inc'); await p.waitForSelector('.mrecent .mrow');

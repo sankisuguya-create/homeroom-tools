@@ -139,7 +139,7 @@
 .mrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--soft);padding:7px 2px;font:inherit;cursor:pointer;min-height:34px}
 .mrow:first-of-type{border-top:0}.mrow:hover{background:var(--soft)}
 .mrow .note{margin-left:auto}
-.mrow .tg{font-size:.75rem;padding:1px 7px;border-radius:9px;border:1.5px solid;white-space:nowrap}
+.mrow .tg{font-size:.75rem;padding:1px 7px;border-radius:9px;border:1.5px solid;white-space:nowrap;min-width:5.5em;text-align:center;box-sizing:border-box}
 .mrow .tg.t3{color:var(--alert)}.mrow .tg.t1{color:var(--link)}
 .mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .mfoot .sp{flex:1}
@@ -151,3 +151,10 @@
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
 #busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
 .bigs.bigs3>.bslot{visibility:hidden;pointer-events:none;box-sizing:border-box} /* div は content-box なので、ボタン（border-box）と高さを揃える */
+/* 最近の記録：日付の / と題名の1文字目を縦に揃える */
+.mrow .md{flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mrow .md i{font-style:normal;display:inline-block;width:2ch}
+.mrow .md i:first-child{text-align:right}
+.mrow .mt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* メニューの一番下の「表示 ▾」は上へ開く（メニューを1画面に収めたまま、スクロールさせない） */
+.mfoot .ddpop{top:auto;bottom:calc(100% + 4px);left:0;right:auto}
