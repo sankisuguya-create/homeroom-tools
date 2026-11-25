@@ -131,7 +131,7 @@
 .bigs3>.big:hover{z-index:4}
 .bigs3 .bsplit{background:var(--soft)}
 .bigs3 .big b{font-size:1.5rem}
-.mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mchips{display:flex;flex-wrap:nowrap;overflow:hidden;gap:6px;margin-top:6px;min-height:22px} /* 札が無くても同じ高さを取り、機能の名前の位置を変えない */
 .mchip{font-style:normal;font-size:.8rem;border:1px solid var(--line);border-radius:10px;padding:1px 9px;color:var(--sub);background:var(--panel)}
 .mchip.red{border-color:var(--alert);color:var(--alert)}
 .mrecent{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px}

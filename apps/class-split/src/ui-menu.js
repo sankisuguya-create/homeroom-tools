@@ -10,16 +10,16 @@
   App.menuSummary = function (d, v) {
     var esc = App.esc, C = g.CONFIG, FY = d.fy, from = FY + '-04-01', mon = new Date().toISOString().slice(0, 7);
     var chip = function (t, red) { return '<i class="mchip' + (red ? ' red' : '') + '">' + esc(t) + '</i>'; };
-    var wrap = function (h) { return h ? '<span class="mchips">' + h + '</span>' : ''; };
+    var wrap = function (h) { return '<span class="mchips">' + h + '</span>'; }; // 札が無くても行の場所は取る（名前の位置を変えない）
     var y = (d.years || []).filter(function (x) { return x.fy === FY; })[0], care = 0;
     if (y) y.rows.forEach(function (r) { if (C.ATTRS.some(function (at) { return +r.a[at.k] > 0; })) care++; });
     var incs = (d.incidents || []).filter(function (x) { return x.date >= from; });
     var open = incs.filter(function (x) { return ((x.report || {}).status || 'open') === 'open'; }).length, month = incs.filter(function (x) { return x.date.slice(0, 7) === mon; }).length;
     var np = ((d.plans || {}).plans || []).length;
     var chips = {
-      rost: v.rost ? wrap(care ? chip('配慮あり ' + care + '人') : '') : '',
-      inc: v.inc ? wrap((open ? chip('対応中 ' + open + '件', true) : '') + (month ? chip('今月 ' + month + '件') : '')) : '',
-      split: v.split ? wrap(d.decision ? chip('決定済み') : chip('未決定') + (np ? chip('案 ' + np + 'つ') : '')) : ''
+      rost: !v.rost ? wrap('') : wrap(care ? chip('配慮あり ' + care + '人') : ''),
+      inc: !v.inc ? wrap('') : wrap((open ? chip('対応中 ' + open + '件', true) : '') + (month ? chip('今月 ' + month + '件') : '')),
+      split: !v.split ? wrap('') : wrap(d.decision ? chip('決定済み') : chip('未決定') + (np ? chip('案 ' + np + 'つ') : ''))
     };
     var me = String((App.me && App.me.email) || '').toLowerCase(), day = function (s) { return String(s || '').slice(5, 10).replace('-', '/').replace(/^0/, ''); };
     var items = (d.incidents || []).filter(function (x) { return v.others || String(x.by || '').toLowerCase() === me; }).map(function (x) {
@@ -40,7 +40,7 @@
       var warn = (App.adminWarnings || []).map(function (w) { return '<div class="warnbox" role="alert">' + App.esc(w.text) + (w.kind === 'purge' ? ' <button class="btn" data-go="settings">設定を開く</button>' : '') + '</div>'; }).join('');
       var v = App.myView(), d = now && App.bootCached ? App.bootCached(st.grade) : null, sm = d ? App.menuSummary(d, v) : null;
       var EMPTY = '<div class="big bslot" aria-hidden="true"></div>'; // 無い機能の場所は空けておく（ほかのボタンの幅と位置を変えない）
-      var chips = sm ? sm.chips : { rost: '', inc: '', split: '' };
+      var NOCHIP = '<span class="mchips"></span>', chips = sm ? sm.chips : { rost: NOCHIP, inc: NOCHIP, split: NOCHIP };
       var recent = sm && v.recent ? '<section class="mrecent"><h2>最近の記録</h2>' + (sm.recent.length ? sm.recent.join('') : '<p class="note">まだありません</p>') + '</section>' : '';
       App.$('main').innerHTML = '<div class="menu">' + warn +
         '<section><h2>学年を選ぶ ' + yearSel + '</h2>' + (now ? '' : '<p class="note">' + vfy + '年度の名簿を見ています。' + (off > 0 ? 'クラス替えを決定した学年だけが入っています。' : '') + 'クラス分けは今年度だけです。</p>') + '<div class="grades">' + st.grades.map(function (x) {
@@ -48,7 +48,7 @@
         }).join('') + '</div></section>' +
         '<section><h2>' + App.viewLabel() + 'で</h2><div class="bigs bigs3">' +
         // 名簿が0人の学年は、名簿を貼る入口を先頭に出す（名簿の画面を開くと、すぐ貼る窓が開く）
-        (cur && !cur.count && now ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b></button>'
+        (cur && !cur.count && now ? '<button class="big" data-go="roster" data-paste="1"><b>名簿を貼る</b><span class="mchips"></span></button>'
           : '<button class="big" data-go="roster"><b>名簿を見る</b>' + chips.rost + '</button>') +
         (st.grade <= 0 ? EMPTY : '<button class="big" data-go="incidents"><b>事案管理</b>' + chips.inc + '</button>') + // 新1年は入学前なので事案は無い
         (st.grade >= 6 || !now ? EMPTY : '<button class="big bsplit" data-go="split"><b>クラス分けをする</b>' + chips.split + '</button>') + // 6年は卒業するのでクラス分けは無い
