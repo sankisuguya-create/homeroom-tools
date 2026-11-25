@@ -781,6 +781,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const w5 = (await p.locator('.bigs3 [data-go="roster"]').boundingBox()).width;
   await p.click('[data-g="6"]'); await p.waitForSelector('.bigs3 .bslot', { state: 'attached' });
   ok(await p.locator('.bigs3 [data-go="split"]').count() === 0 && Math.abs((await p.locator('.bigs3 [data-go="roster"]').boundingBox()).width - w5) < 1, '6年はクラス分けの場所を空け、名簿のボタンの幅は変えない');
+  { const hs = await p.locator('.bigs3 > *').evaluateAll(es => es.map(e => e.getBoundingClientRect().height)); ok(hs.every(h => Math.abs(h - bx[0].height) < 1), '6年でもボタンの高さは5年と同じ（' + hs.map(Math.round).join('・') + '）'); }
   await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
   await mclick(p, '#mv-recent'); ok(await p.locator('.mrecent').count() === 0, '表示で最近の記録を消せる');
   await mclick(p, '#mv-inc'); ok(await p.locator('[data-go="incidents"] .mchips').count() === 0, '表示で事案の件数を消せる');

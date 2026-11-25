@@ -896,7 +896,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .fp-back{position:sticky;top:0;z-index:1;max-width:760px;margin:0 auto 10px;background:rgba(20,20,20,.78);color:#fff;text-align:center;padding:6px 10px;border-radius:6px;font-size:14px}
 /* メニュー：3つの機能を同じ大きさで少し重ねる（アイコンの3つの S と同じ並び。左ほど手前） */
 .bigs.bigs3{display:flex;gap:0;align-items:stretch}
-.bigs3>.big{flex:1 1 0;min-width:0;min-height:8.5em;border-radius:14px;padding:20px 22px;justify-content:center;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.bigs3>.big{flex:1 1 0;min-width:0;min-height:128px;border-radius:14px;padding:20px 22px;justify-content:center;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.06)}
 .bigs3>.big+.big{margin-left:-14px;padding-left:34px}
 .bigs3>.big:nth-child(1){z-index:3}.bigs3>.big:nth-child(2){z-index:2}.bigs3>.big:nth-child(3){z-index:1}
 .bigs3>.big:hover{z-index:4}
@@ -915,13 +915,13 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .mfoot .sp{flex:1}
 @media (max-width:560px){.bigs.bigs3{flex-direction:column}.bigs3>.big+.big{margin:-10px 0 0;padding-left:22px}}
-.bigs.bigs3>.big[data-go]{padding:20px 22px;min-height:8.5em;justify-content:center}
+.bigs.bigs3>.big[data-go]{padding:20px 22px;min-height:128px;justify-content:center}
 .bigs.bigs3>.big[data-go] b{font-size:1.5rem}
 .bigs.bigs3>.big+.big[data-go]{padding-left:34px}
 /* 移動中：画面の中央に大きく重ねる */
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
 #busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
-.bigs.bigs3>.bslot{visibility:hidden;pointer-events:none}
+.bigs.bigs3>.bslot{visibility:hidden;pointer-events:none;box-sizing:border-box} /* div は content-box なので、ボタン（border-box）と高さを揃える */
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
