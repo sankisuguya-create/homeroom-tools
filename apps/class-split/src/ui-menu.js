@@ -58,7 +58,7 @@
         '<span class="sp"></span><span class="note" id="mfull">' + App.esc(App.fullName || 'SSS（児童理解支援システム）') + '</span>' +
         '<button class="linkbtn" data-go="suggest">目安箱</button><span class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</span></section></div>'; // 貼った版を GitHub の dist と照らす
       // 件数と最近の記録は、学年のデータ（先読み）が届いてから出す
-      if (now && !sm && App.bootCached && st.grade != null) { var g0 = st.grade; App.preload(g0, function () { if (App.st.screen === 'menu' && App.st.grade === g0 && !App.viewOff()) App.screens.menu.render(); }); }
+      if (now && !sm && App.bootCached && st.grade != null) { var g0 = st.grade; App.preload(g0, function () { if (App.st.screen === 'menu' && App.st.grade === g0 && !App.viewOff() && App.bootCached(g0)) App.screens.menu.render(); }); } // 届いた分が使える時だけ描き直す（間に保存があれば描き直さず、読み直しも起こさない）
     },
     input: function (t) { if (t.id === 'mfy') { App.st.viewFy = +t.value; App.$('main').innerHTML = '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>'; App.go('menu'); } }, // 読み直す間は古い一覧を押させない // 年度を変えたら、その年度の学年の一覧を読み直す
     click: function (t) {
