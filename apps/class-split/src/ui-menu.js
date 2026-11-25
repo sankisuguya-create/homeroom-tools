@@ -21,11 +21,12 @@
       inc: !v.inc ? wrap('') : wrap((open ? chip('対応中 ' + open + '件', true) : '') + (month ? chip('今月 ' + month + '件') : '')),
       split: !v.split ? wrap('') : wrap(d.decision ? chip('決定済み') : chip('未決定') + (np ? chip('案 ' + np + 'つ') : ''))
     };
-    var me = String((App.me && App.me.email) || '').toLowerCase(), day = function (s) { return String(s || '').slice(5, 10).replace('-', '/').replace(/^0/, ''); };
+    var me = String((App.me && App.me.email) || '').toLowerCase(), md = function (s) { var m = String(s || '').match(/^\d{4}-(\d{2})-(\d{2})/); return '<span class="md"><i>' + (m ? +m[1] : '') + '</i>/<i>' + (m ? +m[2] : '') + '</i></span>'; }, // 月と日の間の / を縦に揃える
+      day = function (s) { return String(s || '').slice(5, 10).split('-').map(Number).join('/'); }; // 11/1 の形（0 を付けない）
     var items = (d.incidents || []).filter(function (x) { return v.others || String(x.by || '').toLowerCase() === me; }).map(function (x) {
-      return { at: String(x.rev || ''), h: '<button class="mrow" data-rinc="' + x.id + '"><span class="tg t3">事案</span>' + esc(day(x.date) + ' ' + (x.title || '（題なし）')) + '<span class="note">' + esc(day(x.rev) + (String(x.by || '').toLowerCase() === me ? ' 自分' : ' ' + String(x.by || '').split('@')[0])) + '</span></button>' };
+      return { at: String(x.rev || ''), h: '<button class="mrow" data-rinc="' + x.id + '"><span class="tg t3">事案</span>' + md(x.date) + '<span class="mt">' + esc(String(x.title || '（題なし）').replace(/^\s*\d{1,2}月\d{1,2}日\s*/, '') || '（題なし）') + '</span>' + '<span class="note">' + esc(day(x.rev) + (String(x.by || '').toLowerCase() === me ? ' 自分' : ' ' + String(x.by || '').split('@')[0])) + '</span></button>' };
     });
-    if (d.decision && v.others) items.push({ at: String(d.decision.at), h: '<button class="mrow" data-go="split"><span class="tg t1">クラス分け</span>決定<span class="note">' + esc(day(d.decision.at)) + '</span></button>' });
+    if (d.decision && v.others) items.push({ at: String(d.decision.at), h: '<button class="mrow" data-go="split"><span class="tg t1">クラス分け</span>' + md(String(d.decision.at).slice(0, 10)) + '<span class="mt">決定した</span><span class="note">' + esc(day(d.decision.at)) + '</span></button>' });
     items.sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
     return { chips: chips, recent: items.slice(0, 5).map(function (x) { return x.h; }) };
   };

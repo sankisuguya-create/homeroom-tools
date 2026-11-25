@@ -910,7 +910,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .mrow{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--soft);padding:7px 2px;font:inherit;cursor:pointer;min-height:34px}
 .mrow:first-of-type{border-top:0}.mrow:hover{background:var(--soft)}
 .mrow .note{margin-left:auto}
-.mrow .tg{font-size:.75rem;padding:1px 7px;border-radius:9px;border:1.5px solid;white-space:nowrap}
+.mrow .tg{font-size:.75rem;padding:1px 7px;border-radius:9px;border:1.5px solid;white-space:nowrap;min-width:5.5em;text-align:center;box-sizing:border-box}
 .mrow .tg.t3{color:var(--alert)}.mrow .tg.t1{color:var(--link)}
 .mfoot{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .mfoot .sp{flex:1}
@@ -922,6 +922,11 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
 #busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
 .bigs.bigs3>.bslot{visibility:hidden;pointer-events:none;box-sizing:border-box} /* div は content-box なので、ボタン（border-box）と高さを揃える */
+/* 最近の記録：日付の / と題名の1文字目を縦に揃える */
+.mrow .md{flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mrow .md i{font-style:normal;display:inline-block;width:2ch}
+.mrow .md i:first-child{text-align:right}
+.mrow .mt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
@@ -2709,7 +2714,7 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_b8820a87cdef';
+  var PAGE_BUILD = 'BUILD_86a7ab10885f';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -3257,11 +3262,12 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
       inc: !v.inc ? wrap('') : wrap((open ? chip('対応中 ' + open + '件', true) : '') + (month ? chip('今月 ' + month + '件') : '')),
       split: !v.split ? wrap('') : wrap(d.decision ? chip('決定済み') : chip('未決定') + (np ? chip('案 ' + np + 'つ') : ''))
     };
-    var me = String((App.me && App.me.email) || '').toLowerCase(), day = function (s) { return String(s || '').slice(5, 10).replace('-', '/').replace(/^0/, ''); };
+    var me = String((App.me && App.me.email) || '').toLowerCase(), md = function (s) { var m = String(s || '').match(/^\d{4}-(\d{2})-(\d{2})/); return '<span class="md"><i>' + (m ? +m[1] : '') + '</i>/<i>' + (m ? +m[2] : '') + '</i></span>'; }, // 月と日の間の / を縦に揃える
+      day = function (s) { return String(s || '').slice(5, 10).split('-').map(Number).join('/'); }; // 11/1 の形（0 を付けない）
     var items = (d.incidents || []).filter(function (x) { return v.others || String(x.by || '').toLowerCase() === me; }).map(function (x) {
-      return { at: String(x.rev || ''), h: '<button class="mrow" data-rinc="' + x.id + '"><span class="tg t3">事案</span>' + esc(day(x.date) + ' ' + (x.title || '（題なし）')) + '<span class="note">' + esc(day(x.rev) + (String(x.by || '').toLowerCase() === me ? ' 自分' : ' ' + String(x.by || '').split('@')[0])) + '</span></button>' };
+      return { at: String(x.rev || ''), h: '<button class="mrow" data-rinc="' + x.id + '"><span class="tg t3">事案</span>' + md(x.date) + '<span class="mt">' + esc(String(x.title || '（題なし）').replace(/^\s*\d{1,2}月\d{1,2}日\s*/, '') || '（題なし）') + '</span>' + '<span class="note">' + esc(day(x.rev) + (String(x.by || '').toLowerCase() === me ? ' 自分' : ' ' + String(x.by || '').split('@')[0])) + '</span></button>' };
     });
-    if (d.decision && v.others) items.push({ at: String(d.decision.at), h: '<button class="mrow" data-go="split"><span class="tg t1">クラス分け</span>決定<span class="note">' + esc(day(d.decision.at)) + '</span></button>' });
+    if (d.decision && v.others) items.push({ at: String(d.decision.at), h: '<button class="mrow" data-go="split"><span class="tg t1">クラス分け</span>' + md(String(d.decision.at).slice(0, 10)) + '<span class="mt">決定した</span><span class="note">' + esc(day(d.decision.at)) + '</span></button>' });
     items.sort(function (a, b) { return a.at < b.at ? 1 : a.at > b.at ? -1 : 0; });
     return { chips: chips, recent: items.slice(0, 5).map(function (x) { return x.h; }) };
   };
