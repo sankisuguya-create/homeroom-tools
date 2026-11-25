@@ -383,7 +383,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  await p.evaluate(() => { App.saveGen++; /* 先読みした分を使わせない */ const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); });
+  await p.evaluate(() => { App.saveGen++; /* 先読みした分を使わせない */ const pf = App.pf(), b = pf.boot; let n = 0; pf.boot = g => (App.st.screen !== 'roster' || n++ ? b.call(pf, g) : Promise.reject(new Error('時間切れ'))); }); // メニューの先読みは失敗させず、名簿を開く読み込みだけを1回失敗させる
   await p.click('[data-go="roster"]'); await p.waitForSelector('#reloadBtn');
   ok(/時間切れ/.test(await p.textContent('#main')), '読み込めない時は理由と「もう一度」を出す');
   await p.click('#reloadBtn'); await p.waitForSelector('td.nm');
