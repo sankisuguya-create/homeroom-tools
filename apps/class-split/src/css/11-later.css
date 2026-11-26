@@ -149,7 +149,7 @@
 .bigs.bigs3>.big+.big[data-go]{padding-left:34px}
 /* 移動中：画面の中央に大きく重ねる */
 #busy{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(238,241,244,.55);cursor:progress}
-#busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:1.6rem;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+#busy>div{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:22px 40px;font-size:2rem;padding:28px 56px;font-weight:700;box-shadow:0 6px 24px rgba(0,0,0,.12)}
 .bigs.bigs3>.bslot{visibility:hidden;pointer-events:none;box-sizing:border-box} /* div は content-box なので、ボタン（border-box）と高さを揃える */
 /* 最近の記録：日付の / と題名の1文字目を縦に揃える */
 .mrow .md{flex:none;font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -158,3 +158,5 @@
 .mrow .mt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* メニューの一番下の「表示 ▾」は上へ開く（メニューを1画面に収めたまま、スクロールさせない） */
 .mfoot .ddpop{top:auto;bottom:calc(100% + 4px);left:0;right:auto}
+body.busywait{cursor:progress}
+body.busywait #app,body.busywait .dlg,body.busywait .dlgback{pointer-events:none}

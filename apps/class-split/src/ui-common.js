@@ -195,9 +195,11 @@
       QUEUE[key] = run.then(null, function () {});
       return run;
     }
-    return App.saveNow(fn, key, id);
+    // 名前の無い保存（ボタンで決める保存）は、終わるまで画面の中央に「保存中」を重ね、押させない。名前つきの保存（盤面・下書きの裏の保存）は重ねない
+    var off = App.busyOn('保存中');
+    return App.saveNow(fn, key, id, off).then(function (r) { off(); return r; }, function (e) { off(); throw e; });
   };
-  App.saveNow = function (fn, key, id) {
+  App.saveNow = function (fn, key, id, offBusy) {
     PENDING++;
     var done = function () { PENDING = Math.max(0, PENDING - 1); };
     var stale = function () { return key && LATEST[key] !== id; };
@@ -205,6 +207,7 @@
       App.saveState('saving');
       return fn().then(function (r) { done(); if (!stale()) App.saveState('ok'); return r; }, function (e) {
         App.saveState('err', e && e.message);
+        if (offBusy) offBusy(); // 失敗したら「保存中」を外して知らせを読めるようにする（再試行は裏で続ける）
         // 直しようのない誤り（権限・凍結・同時保存など）は再試行せず、知らせて止める
         if (e && e.noRetry) { done(); App.toast(e.message, null, true); return new Promise(function () {}); } // 後の処理（画面の更新など）に進ませない
         if (stale()) { done(); return new Promise(function () {}); } // 新しい保存に任せる
