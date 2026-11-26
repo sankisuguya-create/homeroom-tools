@@ -93,8 +93,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 入れ替え：2人を選ぶと確認の枠、Enterで実行、Ctrl+Zで戻る
   const pair = await p.evaluate(() => {
     const S = App.screens.split.state(), asg = S.plans[S.active].asg;
-    const a = [...asg.keys()].find(i => Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length);
-    const b = [...asg.keys()].find(i => asg[i] !== asg[a] && Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length);
+    // 特別支援学級の児童は盤面のカードではなく別の欄に出るので選ばない（選ぶとカードが見つからず止まる。案によって時々起きていた）
+    const ok1 = i => !S.ctx.SP[i] && Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length;
+    const a = [...asg.keys()].find(ok1);
+    const b = [...asg.keys()].find(i => asg[i] !== asg[a] && ok1(i));
     return [a, b, asg[a], asg[b]];
   });
   await p.click(`.board .chip[data-i="${pair[0]}"]`);
