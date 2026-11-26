@@ -436,8 +436,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
 
     // 名前・よみ・組・番号を直す（児童IDは変えない）
     // 一覧表の保存：まとめて直す
-    const uk = call('apiUpdateKids', FY, 4, [{ id: 'SB2', name: '一覧 名前', kana: 'いちらん', cls: 0, no: 71, addr: '一覧町1' }]);
-    assert.ok(uk.ok && uk.v.n === 1, uk.err);
+    const ukl = call('apiUpdateKids', FY, 4, [{ id: 'SB2', name: '一覧 名前', kana: 'いちらん', cls: 0, no: 71, addr: '一覧町1' }]);
+    assert.ok(ukl.ok && ukl.v.n === 1, ukl.err);
     assert.equal(call('apiBoot', 4).v.kids.SB2.name, '一覧 名前');
     assert.equal(call('apiUpdateKids', FY, 4, [{ id: 'SB2', name: '', cls: 0, no: 71 }]).ok, false, '名前が空なら断る');
     const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });
