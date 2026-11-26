@@ -1,10 +1,11 @@
 /* 名簿・クラス分けの黒い背景 */
 /* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
-body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
-body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
+body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC;--sub:#ECECEC}
+body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#ECECEC}
 body[data-screen="split"] .hint{color:#ECECEC}
-:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
-body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp,table.r,.nonebox,.spbox,#printbox){color:var(--ink);--sub:#1A1A1A}
+body[data-screen] :is(.dlg,.nonebox,.spbox,table.r,.pane,.col) :is(.rbar,.bar,.legend,.top){--sub:#1A1A1A} /* 白い板の中の帯は黒い字 */
+body[data-screen="split"] .cmpwrap>.note{color:#ECECEC}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
 .col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0;background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
