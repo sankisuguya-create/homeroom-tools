@@ -89,9 +89,10 @@
   };
   App.busy = function (text) {
     var el = document.getElementById('busy');
+    document.body.classList.toggle('busyshow', !!text); // 中央に出している間は、上の「保存中」を隠す（二重に出さない）
     if (!text) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'busy'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
-    el.innerHTML = '<div>' + App.esc(text) + '<span class="dots"></span></div>';
+    el.innerHTML = '<div>' + App.esc(text) + '<span class="ldots" aria-hidden="true"></span></div>';
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 

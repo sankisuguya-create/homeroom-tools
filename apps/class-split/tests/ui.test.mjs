@@ -614,6 +614,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#min');
   await p.waitForFunction(() => /転入として登録しました/.test(document.getElementById('toast').textContent));
   ok((await p.locator('table.r tbody').textContent()).includes('転入 ハナ'), '転入した児童を名簿の画面から足せる（児童IDなし）');
+  await p.waitForSelector('#mtx'); await p.keyboard.press('Escape'); // 続けて開く備考・兄弟の窓を閉じる
   // 特別支援学級の児童の交流級を、児童登録/削除の窓で振り分ける
   await mclick(p, '#moveB'); await p.click('[data-mtab="sp"]');
   if (await p.locator('[data-msp]').count()) {
@@ -716,10 +717,17 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('[data-g="4"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
   ok(await oneRow('#main .rbar'), '1093px でも名簿の帯は1段');
   ok(await p.locator('.rbar [data-scope="school"]').count() === 0 && await p.locator('.rbar > #acadB').count() === 0, '名簿の帯に「学力」「全校の事案」のボタンは無い（学力は名簿の管理の中）');
-  await mclick(p, '#trB'); await p.waitForSelector('#trn');
-  await p.fill('#trn', '転入 タロウ'); await p.fill('#trk', 'てんにゅう たろう'); await p.click('#tradd');
+  await mclick(p, '#trB'); await p.waitForSelector('#mfn');
+  await p.fill('#mfn', '転入 タロウ'); await p.fill('#mfk', 'てんにゅう たろう'); await p.click('#min');
   await p.waitForFunction(() => /転入予定に足しました/.test(document.getElementById('toast').textContent));
   ok((await p.locator('.nonebox').textContent()).includes('転入 タロウ'), '転入予定の児童を「クラスなし」で足せる');
+  // 今年度の組に転入：生年月日・住所まで入れ、続けて備考・兄弟の窓が開く
+  await mclick(p, '#trB'); await p.waitForSelector('#mfn');
+  await p.click('[data-mfc="1"]'); await p.fill('#mfn', '転入 ハナコ'); await p.fill('#mfk', 'てんにゅう はなこ'); await p.fill('#mfb', '2016/6/1'); await p.fill('#mfa', '大阪府西市中央一丁目1-1');
+  await p.click('#min'); await p.waitForSelector('#mtx');
+  const tk = await p.evaluate(() => { const d = App.st.data, y = d.years.find(y => y.fy === d.fy), r = y.rows.find(r => d.kids[r.id].name === '転入 ハナコ'); return r && [r.cls, d.kids[r.id].birth, d.kids[r.id].addr]; });
+  ok(tk && tk[0] === 1 && tk[1] === '2016/6/1' && /中央一丁目/.test(tk[2]), '転入児童を今年度の2組に、生年月日・住所つきで足せ、続けて備考・兄弟の窓が開く');
+  await p.keyboard.press('Escape');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
   ok(await oneRow('.bar') && await p.locator('#trans').count() === 0, '1093px でもクラス分けの帯は1段・「転入生」のボタンは無い');
   ok(await p.locator('.board .chip', { hasText: '転入 タロウ' }).count() === 1, '「クラスなし」で足した転入予定の児童が盤面に入る');
@@ -738,7 +746,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await cell.click(); await cell.click(); await cell.click();
   ok(await p.evaluate(() => window.__calls) === 0 && /保存（1件）/.test(await p.textContent('#rsave')), '欄を押しても送らず、「保存（1件）」にためる');
   await p.click('#rsave'); await p.waitForSelector('#busy', { timeout: 2000 });
-  ok(/保存中/.test(await p.textContent('#busy')), '保存を押すと、画面の中央に「保存中」を重ねる');
+  ok(/保存中/.test(await p.textContent('#busy')) && await p.locator('#busy .ldots').count() === 1, '保存を押すと、画面の中央に「保存中」と回る点を重ねる');
+  ok(!(await p.locator('#save').isVisible()) || !/保存中/.test(await p.textContent('#save')) || await p.evaluate(() => getComputedStyle(document.getElementById('save')).visibility === 'hidden'), '中央に出している間、上の「保存中」は出さない（二重にしない）');
   await p.waitForFunction(() => !document.getElementById('busy'), null, { timeout: 5000 });
   const id = await cell.getAttribute('data-cell');
   const kept = await p.evaluate(id => { const d = App.st.data, r = d.years.find(y => y.fy === d.fy).rows.find(x => x.id === id); return r.a.k2 | 0; }, id);
