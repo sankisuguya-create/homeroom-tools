@@ -29,6 +29,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++
 const intoSplit = async (p) => {
   await p.waitForSelector('.board .chip, #okbtn');
   if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); }
+  await p.waitForFunction(() => !document.body.classList.contains('busywait')); // 作った案の保存が終わるまで待つ
 };
 
 for (const [w, h] of [[1366, 768], [1920, 1080]]) {
@@ -102,6 +103,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.keyboard.press('Enter');
   const swapped = await p.evaluate(([a, b]) => { const S = App.screens.split.state(), q = S.plans[S.active].asg; return [q[a], q[b]]; }, pair);
   ok(swapped[0] === pair[3] && swapped[1] === pair[2], `${w}x${h} 入れ替わった`);
+  { const sent0 = await p.evaluate(() => { window.__plansSent = 0; const pf = App.pf(), f = pf.savePlans; pf.savePlans = function () { window.__plansSent++; return f.apply(pf, arguments); }; return 0; });
+    ok(/保存（\d+件）/.test(await p.textContent('#ssave')) && await p.evaluate(() => window.__plansSent) === 0, `${w}x${h} 盤面を動かしても送らず、帯の「保存」にためる`);
+    await p.click('#ssave'); await p.waitForFunction(() => /保存済み/.test(document.getElementById('ssave').textContent) && !document.getElementById('busy'));
+    ok(await p.evaluate(() => window.__plansSent) === 1, `${w}x${h} 「保存」で案を1回送る`); }
   await p.keyboard.press('Control+z');
   const back = await p.evaluate(([a]) => { const S = App.screens.split.state(); return S.plans[S.active].asg[a]; }, pair);
   ok(back === pair[2], `${w}x${h} Ctrl+Z で戻る`);

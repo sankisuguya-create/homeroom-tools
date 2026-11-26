@@ -82,7 +82,7 @@
         try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
         var locked = keep ? (function () { var m = new Map(); p.locks.forEach(function (i) { m.set(i, p.asg[i]); }); return m; })() : new Map();
         var r = addGenerated(gen, locked, keep ? '案' + p.letter + 'の固定' : null);
-        render(); persist(); deal();
+        render(); persist(); flush(); deal();
         App.toast(planName(r.p) + 'を作りました（' + r.ms + 'ms）');
       }
     });
@@ -106,7 +106,7 @@
           '<input type="text" id="rnm" value="' + App.esc(p.name || p.auto) + '"><div class="note">空にすると自動の名前（' + App.esc(p.auto) + '）に戻ります</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">変える<kbd>Enter</kbd></button></div></div></div>';
       },
-      onOk: function () { var v = App.$('rnm').value.trim(); p.name = v === p.auto ? '' : v; App.closeDlg(); render(); persist(); }
+      onOk: function () { var v = App.$('rnm').value.trim(); p.name = v === p.auto ? '' : v; App.closeDlg(); render(); persist(); flush(); }
     });
   }
 

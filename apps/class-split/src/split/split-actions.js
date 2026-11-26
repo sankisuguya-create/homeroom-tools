@@ -54,10 +54,10 @@
         var at = S.plans.indexOf(p); if (at < 0) return;
         S.plans.splice(at, 1);
         if (S.active >= S.plans.length) S.active = S.plans.length - 1; else if (S.active > at) S.active--;
-        S.sel = -1; S.follow = null; render(); persist();
+        S.sel = -1; S.follow = null; render(); persist(); flush(); // 案の削除・複製・作成・名前はボタンで決めるので、すぐ保存する
         App.toast(nm + 'を削除しました', function () {
           if (S.decision || S.plans.indexOf(p) >= 0) return;
-          S.plans.splice(Math.min(at, S.plans.length), 0, p); S.active = S.plans.indexOf(p); S.view = 'plan'; render(); persist();
+          S.plans.splice(Math.min(at, S.plans.length), 0, p); S.active = S.plans.indexOf(p); S.view = 'plan'; render(); persist(); flush();
         });
       }
     });
@@ -66,7 +66,7 @@
     if (S.view !== 'plan' || S.decision) return;
     var p = S.plans[S.active];
     var q = { letter: LET[S.letIdx++ % 26], name: p.name, auto: p.auto, gen: JSON.parse(JSON.stringify(p.gen)), asg: Int8Array.from(p.asg), locks: new Set(p.locks), hist: [], fut: [], edits: 0, from: '案' + p.letter };
-    S.plans.push(q); S.active = S.plans.length - 1; S.sel = -1; S.follow = null; render(); persist();
+    S.plans.push(q); S.active = S.plans.length - 1; S.sel = -1; S.follow = null; render(); persist(); flush();
     App.toast('案' + p.letter + 'を複製して案' + q.letter + 'を作りました');
   }
   function fullscreen() {

@@ -3687,7 +3687,7 @@ body.busyshow .save{visibility:hidden}
     var d = D(), esc = App.esc, key = R.fy + ':' + Y.grade, edit = R.fy === editableFy() && !LOCK;
     if (!LEFT[key]) {
       LEFT[key] = 'loading';
-      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
+      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; var box = document.querySelector('.nonebox'); if (App.st.screen === 'roster' && R.cls === -1 && box) box.outerHTML = noneExtra(Y); }, function () { LEFT[key] = []; }); // 届いたら「クラスなし」の欄だけ差し替える（表全体を描き直すと、開いているメニューや入力中の欄が閉じる）
     }
     var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
     return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込み中<span class="ldots" aria-hidden="true"></span></div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
@@ -5370,17 +5370,20 @@ body.busyshow .save{visibility:hidden}
       return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
-  // 案の保存は少し待ってまとめる。学年と中身は呼んだ時点で決め（待つ間に学年を変えても、元の学年に保存する）、画面を離れる時はすぐ送る
-  var saveT = 0, pend = null;
-  function persist() {
-    clearTimeout(saveT);
-    App.saveState('saving');
-    var grade = App.st.grade, S0 = S;
-    pend = function () { pend = null; var cur = S; S = S0; var data = serialize(); S = cur; App.save(function () { return App.pf().savePlans(grade, data); }, 'plans:' + grade); };
-    saveT = setTimeout(function () { if (pend) pend(); }, 1200);
+  // 案の保存は「保存」ボタンで送る（盤面を動かすたびには送らない）。学年と中身は最後に動かした時点で決める
+  var pend = null, PN = 0;
+  function saveBtn() {
+    var b = App.$('ssave'); if (!b) return;
+    b.disabled = !pend; b.classList.toggle('primary', !!pend); b.textContent = pend ? '保存（' + PN + '件）' : '保存済み';
   }
-  function flush() { clearTimeout(saveT); if (pend) pend(); }
-  App.unsavedHooks.push(function () { return !!pend; }); // 盤面を動かして1.2秒以内に閉じようとした時も確かめる
+  function persist() {
+    var grade = App.st.grade, S0 = S; PN++;
+    pend = function () { pend = null; PN = 0; saveBtn(); var cur = S; S = S0; var data = serialize(); S = cur; return App.save(function () { return App.pf().savePlans(grade, data); }); };
+    saveBtn();
+  }
+  function flush() { return pend ? pend() : Promise.resolve(); }
+  // 画面を離れる時は、押し忘れで変更を失わないよう、保存してから移る（「保存中」を重ねる）
+  App.unsavedHooks.push(function () { return !!pend; }); // 保存していない盤面の変更があれば、閉じる時に確かめる
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
@@ -5466,7 +5469,7 @@ body.busyshow .save{visibility:hidden}
     });
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '" title="' + S.plans.length + '案を比べる（0 キー）">比較</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
-    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
+    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><button class="btn' + (pend ? ' primary' : '') + '" id="ssave"' + (pend ? '' : ' disabled') + ' title="盤面の変更をまとめて保存する">' + (pend ? '保存（' + PN + '件）' : '保存済み') + '</button><span class="save" id="save2" aria-live="polite"></span>';
     // ボタンは「その他」の窓に隠さず、作業の順に帯に並べる：直す → 条件 → 見せ方 → 出す → 決める
     var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '" aria-label="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
     // 並び順と印刷はアイコンだけ（説明はカーソルで）
@@ -5715,7 +5718,7 @@ body.busyshow .save{visibility:hidden}
         try { localStorage.setItem('classSplit.order', JSON.stringify(ORDER)); } catch (e) { /* 覚えられなくても今の画面には効く */ }
         var locked = keep ? (function () { var m = new Map(); p.locks.forEach(function (i) { m.set(i, p.asg[i]); }); return m; })() : new Map();
         var r = addGenerated(gen, locked, keep ? '案' + p.letter + 'の固定' : null);
-        render(); persist(); deal();
+        render(); persist(); flush(); deal();
         App.toast(planName(r.p) + 'を作りました（' + r.ms + 'ms）');
       }
     });
@@ -5739,7 +5742,7 @@ body.busyshow .save{visibility:hidden}
           '<input type="text" id="rnm" value="' + App.esc(p.name || p.auto) + '"><div class="note">空にすると自動の名前（' + App.esc(p.auto) + '）に戻ります</div>' +
           '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" data-act="ok">変える<kbd>Enter</kbd></button></div></div></div>';
       },
-      onOk: function () { var v = App.$('rnm').value.trim(); p.name = v === p.auto ? '' : v; App.closeDlg(); render(); persist(); }
+      onOk: function () { var v = App.$('rnm').value.trim(); p.name = v === p.auto ? '' : v; App.closeDlg(); render(); persist(); flush(); }
     });
   }
 
@@ -5900,7 +5903,8 @@ body.busyshow .save{visibility:hidden}
     // 足す・消すの前に、手元の案を保存してから読み直す（案の入れ替えを失わない）
     var run = function (fn) {
       if (busy) return; busy = true;
-      clearTimeout(saveT);
+      
+      pend = null; PN = 0; // 案も一緒に送るので、ためた盤面の変更は保存済みになる
       App.save(function () { return App.pf().savePlans(grade, serialize()); })
         .then(function () { return App.save(fn); })
         .then(function () { App.closeDlg(); return App.reload(); }).then(function () { transDialog(); });
@@ -5939,7 +5943,7 @@ body.busyshow .save{visibility:hidden}
     App.pairsDialog({
       kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old, tr: !!s.tr }; }), nc: S.P.nc, pre: '旧',
       // 案を先に保存してから読み込み直す（案は残る）
-      save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
+      save: function (list) { var grade = App.st.grade, data = serialize(); pend = null; PN = 0; return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
     });
   }
 
@@ -6105,10 +6109,10 @@ body.busyshow .save{visibility:hidden}
         var at = S.plans.indexOf(p); if (at < 0) return;
         S.plans.splice(at, 1);
         if (S.active >= S.plans.length) S.active = S.plans.length - 1; else if (S.active > at) S.active--;
-        S.sel = -1; S.follow = null; render(); persist();
+        S.sel = -1; S.follow = null; render(); persist(); flush(); // 案の削除・複製・作成・名前はボタンで決めるので、すぐ保存する
         App.toast(nm + 'を削除しました', function () {
           if (S.decision || S.plans.indexOf(p) >= 0) return;
-          S.plans.splice(Math.min(at, S.plans.length), 0, p); S.active = S.plans.indexOf(p); S.view = 'plan'; render(); persist();
+          S.plans.splice(Math.min(at, S.plans.length), 0, p); S.active = S.plans.indexOf(p); S.view = 'plan'; render(); persist(); flush();
         });
       }
     });
@@ -6117,7 +6121,7 @@ body.busyshow .save{visibility:hidden}
     if (S.view !== 'plan' || S.decision) return;
     var p = S.plans[S.active];
     var q = { letter: LET[S.letIdx++ % 26], name: p.name, auto: p.auto, gen: JSON.parse(JSON.stringify(p.gen)), asg: Int8Array.from(p.asg), locks: new Set(p.locks), hist: [], fut: [], edits: 0, from: '案' + p.letter };
-    S.plans.push(q); S.active = S.plans.length - 1; S.sel = -1; S.follow = null; render(); persist();
+    S.plans.push(q); S.active = S.plans.length - 1; S.sel = -1; S.follow = null; render(); persist(); flush();
     App.toast('案' + p.letter + 'を複製して案' + q.letter + 'を作りました');
   }
   function fullscreen() {
@@ -6285,6 +6289,7 @@ body.busyshow .save{visibility:hidden}
     state: function () { return S; },
     click: function (t, e) {
       var x;
+      if (t.closest('#ssave')) { flush(); return true; }
       if (t.closest('#zreset')) { zoomReset(); return true; }
       if (t.closest('#xlsOut')) { exportExcel(); return true; }
       if ((x = t.closest('[data-spx]'))) { // 特別支援学級の児童の交流級を選ぶ

@@ -61,17 +61,20 @@
       return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
-  // 案の保存は少し待ってまとめる。学年と中身は呼んだ時点で決め（待つ間に学年を変えても、元の学年に保存する）、画面を離れる時はすぐ送る
-  var saveT = 0, pend = null;
-  function persist() {
-    clearTimeout(saveT);
-    App.saveState('saving');
-    var grade = App.st.grade, S0 = S;
-    pend = function () { pend = null; var cur = S; S = S0; var data = serialize(); S = cur; App.save(function () { return App.pf().savePlans(grade, data); }, 'plans:' + grade); };
-    saveT = setTimeout(function () { if (pend) pend(); }, 1200);
+  // 案の保存は「保存」ボタンで送る（盤面を動かすたびには送らない）。学年と中身は最後に動かした時点で決める
+  var pend = null, PN = 0;
+  function saveBtn() {
+    var b = App.$('ssave'); if (!b) return;
+    b.disabled = !pend; b.classList.toggle('primary', !!pend); b.textContent = pend ? '保存（' + PN + '件）' : '保存済み';
   }
-  function flush() { clearTimeout(saveT); if (pend) pend(); }
-  App.unsavedHooks.push(function () { return !!pend; }); // 盤面を動かして1.2秒以内に閉じようとした時も確かめる
+  function persist() {
+    var grade = App.st.grade, S0 = S; PN++;
+    pend = function () { pend = null; PN = 0; saveBtn(); var cur = S; S = S0; var data = serialize(); S = cur; return App.save(function () { return App.pf().savePlans(grade, data); }); };
+    saveBtn();
+  }
+  function flush() { return pend ? pend() : Promise.resolve(); }
+  // 画面を離れる時は、押し忘れで変更を失わないよう、保存してから移る（「保存中」を重ねる）
+  App.unsavedHooks.push(function () { return !!pend; }); // 保存していない盤面の変更があれば、閉じる時に確かめる
 
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
@@ -157,6 +160,7 @@
     state: function () { return S; },
     click: function (t, e) {
       var x;
+      if (t.closest('#ssave')) { flush(); return true; }
       if (t.closest('#zreset')) { zoomReset(); return true; }
       if (t.closest('#xlsOut')) { exportExcel(); return true; }
       if ((x = t.closest('[data-spx]'))) { // 特別支援学級の児童の交流級を選ぶ

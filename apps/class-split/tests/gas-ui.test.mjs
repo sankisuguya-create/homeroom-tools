@@ -32,6 +32,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++
 const intoSplit = async (p) => {
   await p.waitForSelector('.board .chip, #okbtn');
   if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); }
+  await p.waitForFunction(() => !document.body.classList.contains('busywait')); // 作った案の保存が終わるまで待つ
 };
 const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
 const browser = await chromium.launch(exe);

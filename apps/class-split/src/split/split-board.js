@@ -37,7 +37,7 @@
     });
     h += '<span class="tab cmp" role="tab" tabindex="0" data-cmp="1" aria-selected="' + (S.view === 'cmp') + '" title="' + S.plans.length + '案を比べる（0 キー）">比較</span></div>';
     var p = S.plans[S.active], ro = !!S.decision;
-    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><span class="save" id="save2" aria-live="polite"></span>';
+    h += '<button class="vio" id="vbtn"' + (S.view === 'cmp' ? ' hidden' : '') + '></button><span class="hint" id="hint"></span><button class="btn' + (pend ? ' primary' : '') + '" id="ssave"' + (pend ? '' : ' disabled') + ' title="盤面の変更をまとめて保存する">' + (pend ? '保存（' + PN + '件）' : '保存済み') + '</button><span class="save" id="save2" aria-live="polite"></span>';
     // ボタンは「その他」の窓に隠さず、作業の順に帯に並べる：直す → 条件 → 見せ方 → 出す → 決める
     var np = S.view !== 'plan', b = function (id, label, title, cls, off) { return '<button class="btn' + (cls ? ' ' + cls : '') + '" id="' + id + '"' + (title ? ' title="' + title + '" aria-label="' + title + '"' : '') + (off ? ' disabled' : '') + '>' + label + '</button>'; };
     // 並び順と印刷はアイコンだけ（説明はカーソルで）

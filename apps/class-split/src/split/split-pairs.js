@@ -9,7 +9,8 @@
     // 足す・消すの前に、手元の案を保存してから読み直す（案の入れ替えを失わない）
     var run = function (fn) {
       if (busy) return; busy = true;
-      clearTimeout(saveT);
+      
+      pend = null; PN = 0; // 案も一緒に送るので、ためた盤面の変更は保存済みになる
       App.save(function () { return App.pf().savePlans(grade, serialize()); })
         .then(function () { return App.save(fn); })
         .then(function () { App.closeDlg(); return App.reload(); }).then(function () { transDialog(); });
@@ -48,7 +49,7 @@
     App.pairsDialog({
       kids: S.P.kids.map(function (s) { return { id: s.id, name: s.name, kana: s.kana, no: s.no, cls: s.old, tr: !!s.tr }; }), nc: S.P.nc, pre: '旧',
       // 案を先に保存してから読み込み直す（案は残る）
-      save: function (list) { var grade = App.st.grade, data = serialize(); clearTimeout(saveT); return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
+      save: function (list) { var grade = App.st.grade, data = serialize(); pend = null; PN = 0; return App.pf().savePlans(grade, data).then(function () { return App.pf().savePairs(grade, list); }); }
     });
   }
 

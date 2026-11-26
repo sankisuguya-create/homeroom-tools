@@ -456,7 +456,7 @@
     var d = D(), esc = App.esc, key = R.fy + ':' + Y.grade, edit = R.fy === editableFy() && !LOCK;
     if (!LEFT[key]) {
       LEFT[key] = 'loading';
-      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
+      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; var box = document.querySelector('.nonebox'); if (App.st.screen === 'roster' && R.cls === -1 && box) box.outerHTML = noneExtra(Y); }, function () { LEFT[key] = []; }); // 届いたら「クラスなし」の欄だけ差し替える（表全体を描き直すと、開いているメニューや入力中の欄が閉じる）
     }
     var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
     return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込み中<span class="ldots" aria-hidden="true"></span></div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
