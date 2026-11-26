@@ -66,6 +66,12 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;
     assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2);
+    // 名簿の「保存」：ためた変更をまとめて1回で書く。誤りのある件で止めて断る（その前の件は書かれる）
+    const ms = call('apiSetAttrs', [{ fy: FY, grade: 4, id: '40000011', k: 'k2', v: 1 }, { fy: FY, grade: 4, id: '40000012', k: 'memo', v: 1, text: 'まとめて' }]);
+    assert.ok(ms.ok && ms.v.n === 2, ms.err);
+    const mr = call('apiBoot', 4).v.years[0].rows;
+    assert.equal(mr.find(r => r.id === '40000011').a.k2, 1); assert.equal(mr.find(r => r.id === '40000012').a.memo, 'まとめて');
+    assert.equal(call('apiSetAttrs', [{ fy: FY, grade: 4, id: '40000011', k: 'kX', v: 1 }]).ok, false);
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'kX', 1).ok, false);
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k3', 3).ok, false, '程度は2（アイコン＋）まで');
     assert.equal(call('apiSetAttr', FY, 4, '40000011', 'k5', 2).ok, false, 'ア・身・通は有無だけ');

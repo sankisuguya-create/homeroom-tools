@@ -297,6 +297,7 @@
       S.transfers[grade] = (S.transfers[grade] || []).filter(function (t) { return t.id !== id; });
       return later({ ok: true });
     },
+    setAttrs: function (list) { var self = this; return list.reduce(function (p, x) { return p.then(function () { return self.setAttr(x.fy, x.grade, x.id, x.k, x.v, x.text, x.incs); }); }, Promise.resolve()).then(function () { return { ok: true, n: list.length }; }); },
     setAttr: function (fy, grade, id, k, v, text, incs) { gen();
       var r = yearRows(fy, grade).filter(function (x) { return x.id === id; })[0];
       if (!r) return Promise.reject(new Error('児童が見つかりません'));

@@ -872,8 +872,8 @@ var apiSetScores_ = api_(function (fy, grade, v) {
   });
 });
 
-var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
-  var by = requireTeacher_();
+// 配慮項目などの1件を書く（呼ぶ側でロックを取る）
+function setAttrIn_(by, fy, grade, id, k, v, text, incs) {
   fy = +fy; grade = +grade; v = +v;
   if (k === 'memo') { text = String(text == null ? '' : text).trim(); v = text ? 1 : 0; }
   if (k === 'sib') { text = JSON.stringify(CONFIG.normSibs(text)); v = text === '[]' ? 0 : 1; }
@@ -881,7 +881,7 @@ var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
   if (!at) throw userError_('項目が違います');
   if (!(v >= 0 && v <= at.max)) throw userError_('値が違います');
   var FY = CONFIG.fiscalYear(), cohortGrade = grade - (fy - FY);
-  return withLock_(function () {
+  (function () {
     var dec = decisionOf_(FY, cohortGrade), editable = dec ? FY + 1 : FY; // 決定と同時の保存でも、決定の後は書かない
     if (fy !== editable) throw userError_(fy === FY && dec ? 'クラス替えを決定したので、今年度の値は直せません。準備中の年度を直してください' : 'この年度は直せません');
     var name = 'attrs_' + fy;
@@ -899,6 +899,23 @@ var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
     if (row) { writeCell_(t, row, k, v); if (tk) writeCell_(t, row, tk, tv); if (ik) writeCell_(t, row, ik, iv); }
     else { var o = { id8: String(id) }; o[k] = v; if (tk) o[tk] = tv; if (ik) o[ik] = iv; append_(name, attrsHead_(), [o]); }
     return { ok: true, by: by };
+  })();
+  return { ok: true, by: by };
+}
+
+
+var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
+  var by = requireTeacher_();
+  return withLock_(function () { return setAttrIn_(by, fy, grade, id, k, v, text, incs); });
+});
+// 名簿の画面の「保存」：ためた変更をまとめて1回で書く（1件ずつ送ると、そのたびにサーバーを待つため）
+var apiSetAttrs_ = api_(function (list) {
+  var by = requireTeacher_();
+  if (!Array.isArray(list) || list.length > 2000) throw userError_('保存する内容が違います');
+  return withLock_(function () {
+    list.forEach(function (x) { setAttrIn_(by, x.fy, x.grade, x.id, x.k, x.v, x.text, x.incs); });
+    log_(by, 'setAttrs', list.length);
+    return { ok: true, n: list.length };
   });
 });
 
@@ -1531,3 +1548,4 @@ function apiTrashList() { return apiTrashList_.apply(null, arguments); }
 function apiRestoreIncident() { return apiRestoreIncident_.apply(null, arguments); }
 function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }
 function apiSaveMyView() { return apiSaveMyView_.apply(null, arguments); }
+function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }

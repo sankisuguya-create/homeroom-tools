@@ -4,6 +4,38 @@
   'use strict';
   var App = g.App, C = g.CONFIG, E = g.Engine;
   var R = { fy: 0, cls: 0, scope: 'cls', kid: null, form: null, school: null, col: null };
+  // 名簿の欄の変更は、押すたびには送らず、ためて「保存」でまとめて送る（1件ごとにサーバーを待たせない）
+  var PEND = {}, PN = 0;
+  function stage(fy, grade, id, k, v, text, incs) {
+    var key = fy + ':' + id + ':' + k;
+    if (!PEND[key]) PN++;
+    PEND[key] = { fy: fy, grade: grade, id: id, k: k, v: v, text: text, incs: incs };
+    saveBtn();
+  }
+  function saveBtn() {
+    var b = document.getElementById('rsave'); if (!b) return;
+    b.disabled = !PN; b.classList.toggle('primary', !!PN); b.textContent = PN ? '保存（' + PN + '件）' : '保存済み';
+  }
+  function savePending() {
+    if (!PN) return Promise.resolve();
+    var list = Object.keys(PEND).map(function (k) { return PEND[k]; });
+    return App.save(function () { return App.pf().setAttrs(list); }).then(function () { PEND = {}; PN = 0; saveBtn(); App.toast('保存しました（' + list.length + '件）'); });
+  }
+  // 保存せずに離れる時（App.go が確かめた後）：ためた変更を捨て、学年のデータを読み直させる
+  function dropPending() { if (PN) { PEND = {}; PN = 0; App.saveGen++; } }
+  App.unsavedHooks.push(function () { return PN > 0; });
+  // 読み直した名簿に、まだ保存していない変更を重ねる（読み直しで画面の値が戻らないように）
+  function reapplyPending() {
+    Object.keys(PEND).forEach(function (key) {
+      var x = PEND[key], y = (D().years || []).filter(function (yy) { return yy.fy === x.fy; })[0];
+      var r = y && y.rows.filter(function (rr) { return rr.id === x.id; })[0]; if (!r) return;
+      if (x.k === 'k7') r.a.k7m = x.v;
+      else if (x.k === 'memo') { if (x.text) r.a.memo = x.text; else delete r.a.memo; }
+      else if (x.k === 'sib') { var sb = x.v ? JSON.parse(x.text) : []; if (sb.length) r.a.sib = sb; else delete r.a.sib; }
+      else if (x.k === 'sp') { if (x.v) r.a.sp = 1; else delete r.a.sp; }
+      else { r.a[x.k] = x.v; if (x.text !== undefined) { if (x.v && x.text) r.a[x.k + '_t'] = x.text; else delete r.a[x.k + '_t']; } if (x.incs !== undefined) { if (x.v && x.incs.length) r.a[x.k + '_i'] = x.incs; else delete r.a[x.k + '_i']; } }
+    });
+  }
 
   function D() { return App.st.data; }
   // ロック：名簿の表の編集（配慮項目・備考・つける離す・名前・組・番号）を止める。端末ごとに覚える（初めはロック）
@@ -77,11 +109,11 @@
         if (t.closest('[data-rank]')) { App.closeDlg(); rankDialog(Y); return true; }
         var x = t.closest('[data-lvset]'); if (!x) return false;
         var v = +x.dataset.lvset;
-        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'k7', v); }, 'attr:' + r.id + ':' + 'k7'); return true; }
+        if (at.k === 'k7') { r.a.k7m = v; App.applyScores(D()); App.closeDlg(); render(); stage(fy, grade, r.id, 'k7', v); return true; }
         if (at.k === 'sp') { if (v) r.a.sp = 1; else delete r.a.sp; cell.innerHTML = v ? '<span class="spb">支</span>' : ''; }
         else { r.a[at.k] = v; cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : ''; }
         App.closeDlg();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v); }, 'attr:' + r.id + ':' + at.k);
+        stage(fy, grade, r.id, at.k, v);
         return true;
       }
     });
@@ -117,7 +149,7 @@
         if (incs.length) r.a[at.k + '_i'] = incs; else delete r.a[at.k + '_i'];
         App.closeDlg();
         cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, text, incs); }, 'attr:' + r.id + ':' + at.k);
+        stage(fy, grade, r.id, at.k, v, text, incs);
       }
     });
   }
@@ -328,8 +360,8 @@
         if (text) r.a.memo = text; else delete r.a.memo;
         if (sb.length) r.a.sib = sb; else delete r.a.sib;
         App.closeDlg(); render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'memo', text ? 1 : 0, text); }, 'attr:' + r.id + ':' + 'memo');
-        if (changedSib) App.save(function () { return App.pf().setAttr(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb)); });
+        stage(fy, grade, r.id, 'memo', text ? 1 : 0, text);
+        if (changedSib) stage(fy, grade, r.id, 'sib', sb.length ? 1 : 0, JSON.stringify(sb));
       }
     });
   }
@@ -400,7 +432,7 @@
     var years = d.years.map(function (y) { return y.fy; }).sort(function (a, b) { return b - a; });
     // 名簿の管理（まれに使う操作をまとめる）：名簿を貼る・児童登録/削除・転入予定の児童・学力（点数・順位）
     var canTr = R.fy === d.fy && !d.decision && d.grade < 6;
-    h += '<span class="sp"></span>' + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
+    h += '<span class="sp"></span>' + (R.scope !== 'school' ? '<button class="btn' + (PN ? ' primary' : '') + '" id="rsave"' + (PN ? '' : ' disabled') + ' title="変えた欄をまとめて保存する">' + (PN ? '保存（' + PN + '件）' : '保存済み') + '</button>' : '') + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
       (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
       (canTr ? App.ddItem('trB', '転入予定の児童…', '来年度に転入する児童を足す（クラスなしの画面）') : '') +
       App.ddItem('rprint', '個人票を印刷…', R.scope === 'grade' ? '学年の全員の個人票を、組ごとに印刷する' : 'この組の個人票を印刷する') +
@@ -442,7 +474,7 @@
       App.closeDlg();
       cell.innerHTML = v ? App.mark(at, v, r.a[at.k + '_t']) : '';
       if (R.kid === r.id) render();
-      App.save(function () { return App.pf().setAttr(fy, grade, r.id, at.k, v, v ? text : ''); }, 'attr:' + r.id + ':' + at.k);
+      stage(fy, grade, r.id, at.k, v, v ? text : '');
     };
     App.openDlg({
       focus: 'ntx',
@@ -688,7 +720,10 @@
     var spKey = function (x) { return x.id || x.name; };
     // 特別支援学級の児童に交流級を当てる：選んだ組、まだなら組を順に回して仮に当てる（画面で直せる）
     var applySp = function (r) {
-      var nc = 1; r.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
+      // 選べる組：貼った表の組と、その学年の今の名簿の学級の多いほう（表に組が無くても、名簿の全学級から選べる）
+      var nc = 1; r.rows.forEach(function (x) { if (!x.sp && x.cls + 1 > nc) nc = x.cls + 1; });
+      var yy = (d.years || []).filter(function (y0) { return y0.fy === fy; })[0] || (d.years || []).filter(function (y0) { return y0.fy === d.fy; })[0];
+      if (yy) yy.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
       P.nc = Math.max(nc, 1);
       var rr = 0;
       r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= -1 && P.sa[k] < 9)) P.sa[k] = -1; }); // 初めはクラスなし（あとで名簿の「児童登録/削除」で振り分けてもよい）
@@ -945,11 +980,14 @@
   function refocus(id, pos) { var el = App.$(id); if (el) { el.focus(); if (pos != null && el.setSelectionRange) el.setSelectionRange(pos, pos); } }
 
   App.screens.roster = {
-    enter: function () { reset(); var vf = App.st.viewFy; if (vf && yearOf(vf)) R.fy = vf; if (App.st.openSchool) { App.st.openSchool = false; R.scope = 'school'; R.school = null; } render(); }, // メニューで年度を選んでいれば、その年度の名簿を開く
+    enter: function () { reapplyPending(); reset(); var vf = App.st.viewFy; if (vf && yearOf(vf)) R.fy = vf; if (App.st.openSchool) { App.st.openSchool = false; R.scope = 'school'; R.school = null; } render(); }, // メニューで年度を選んでいれば、その年度の名簿を開く
     render: render,
+    dirty: function () { return PN > 0; },
+    leave: function (to) { if (to !== 'roster') dropPending(); },
     selectKid: function (id) { R.kid = id; render(); },
     click: function (t, e) {
       var d = D(), x;
+      if (t.closest('#rsave')) { savePending(); return true; }
       if (t.closest('#rlock')) { setLock(!LOCK); render(); App.toast(LOCK ? 'ロックしました（名簿は変わりません）' : 'ロックを外しました（名簿を編集できます）'); return true; }
       if ((x = t.closest('[data-kedit]'))) { kidEditDialog(x.dataset.kedit); return true; }
       // ロック中は、表の欄を押しても値を変えない（見るだけ）
@@ -976,7 +1014,7 @@
           var sv = r.a.sp ? 0 : 1, sfy = R.fy, sg = Y.grade;
           if (sv) r.a.sp = 1; else delete r.a.sp;
           x.innerHTML = sv ? '<span class="spb">支</span>' : '';
-          App.save(function () { return App.pf().setAttr(sfy, sg, r.id, 'sp', sv); }, 'attr:' + r.id + ':' + 'sp');
+          stage(sfy, sg, r.id, 'sp', sv);
           return true;
         }
         var at = C.ATTRS.filter(function (a) { return a.k === k; })[0];
@@ -985,7 +1023,7 @@
         var v = k === 'k7' ? r.a.k7m : r.a[k], fy = R.fy, grade = Y.grade;
         x.innerHTML = r.a[k] ? App.mark(at, r.a[k]) : ''; x.classList.toggle('auto', !!(k === 'k7' && r.a.k7s)); // そのマスだけ書き換える（表を作り直さない）
         if (R.kid === r.id) render();
-        App.save(function () { return App.pf().setAttr(fy, grade, r.id, k, v); }, 'attr:' + r.id + ':' + k);
+        stage(fy, grade, r.id, k, v);
         return true;
       }
       if (t.closest('td.ji')) return true; // 事案の欄は角から開く

@@ -17,9 +17,9 @@
   App.viewOff = function () { var FY0 = App.pf().fiscalYear; return (App.st.viewFy || FY0) - FY0; };
   App.viewLabel = function () { var off = App.viewOff(); return (off ? (App.pf().fiscalYear + off) + '年度 ' : '') + g.CONFIG.gradeLabel(App.st.grade + off); };
   App.go = function (screen, grade) {
-    var st = App.st, prev = App.screens[st.screen];
+    var st = App.st, prev = App.screens[st.screen], from = st.screen;
     if (prev && prev.dirty && st.screen !== screen && prev.dirty() && !confirm('保存していない変更があります。保存せずに移りますか？')) return Promise.resolve(); // 設定を直して保存せずにメニューへ、など
-    if (prev && prev.leave) prev.leave();
+    if (prev && prev.leave) prev.leave(screen); // 行き先を渡す（同じ画面の読み直しでは、ためた変更を捨てない）
     var pb = document.getElementById('printbox'); if (pb) { pb.remove(); document.body.classList.remove('printing'); } // 名簿から開いた個人票の印刷も閉じる
     App.closeDlg();
     if (grade) st.grade = grade;
@@ -31,9 +31,9 @@
       var FY0 = App.pf().fiscalYear, vfy = st.viewFy || FY0;
       // 一度読んだ学年の一覧があれば、背景と同時にすぐメニューを出し、届いた新しい一覧で描き直す（戻る時に背景だけ先に変わらない）
       var quick = st.grades && st.gradesFy === vfy && App.me;
-      if (quick) App.screens.menu.render(); else App.busy('移動中');
+      var offM = quick ? function () {} : App.busyOn('移動中'); if (quick) App.screens.menu.render();
       return Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]).then(function (r) {
-        App.busy(false);
+        offM();
         if (App.st.screen !== 'menu') return; // 待つ間にほかの画面へ移っていたら描かない
         st.grades = r[0]; st.years = r[2]; st.gradesFy = vfy;
         App.applySettings(r[1].settings); App.me = r[1].me;
@@ -44,12 +44,13 @@
           App.adminChecked = true;
           App.pf().adminStatus().then(function (a) { App.adminWarnings = a.warnings || []; if (App.adminWarnings.length && App.st.screen === 'menu') App.screens.menu.render(); }, function () {});
         }
-      }, loadFailed);
+      }, function (e) { offM(); loadFailed(e); });
     }
     if (screen === 'settings') { App.screens.settings.enter(); return Promise.resolve(); }
     if (screen === 'suggest') { App.screens.suggest.enter(); return Promise.resolve(); }
-    App.$('main').innerHTML = '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>';
-    return bootFor(st.grade).then(function (d) { if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, loadFailed);
+    if (from !== screen) App.$('main').innerHTML = '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>'; // 同じ画面の読み直しは、今の画面を残して「読み込み中」を重ねる
+    var offL = App.busyOn('読み込み中');
+    return bootFor(st.grade).then(function (d) { offL(); if (st.screen !== screen) return; st.data = d; App.applyScores(d); App.screens[screen].enter(); }, function (e) { offL(); loadFailed(e); });
   };
   // 学年のデータを使い回す：同じ学年を開き直す時、その間に保存が1つも無ければサーバーに聞かない（保存したら読み直す）。
   // メニューで学年を選んだ時に先読みもする（App.preload）。見本・試行と本番は別に持つ
@@ -69,7 +70,6 @@
   App.bootCached = function (grade) { var key = (App.mode || '') + ':' + grade, c = BOOT[key]; return c && c.gen === App.saveGen && READY[key] && READY[key].p === c.p ? READY[key].d : null; };
   // 読み込めなかった時：「読み込んでいます…」のまま止めず、理由と「もう一度」を出す
   function loadFailed(e) {
-    App.busy(false);
     if (e && e.device) {
       App.$('main').innerHTML = '<div class="menu"><section><h2>この端末では開けません</h2><p>' + App.esc(e.message) + '</p>' +
         '<p class="note">校務用のパソコンを登録するには、管理者に設定の「端末」で「10分間 登録を受け付ける」を押してもらい、その間にこのページを開き直してください。</p><button class="btn primary" id="reloadBtn">開き直す</button></section></div>';
@@ -79,6 +79,14 @@
       '<p class="note">通信が不安定な時に起こります。少し待ってから押してください。</p><button class="btn primary" id="reloadBtn">もう一度読み込む</button> <button class="btn" data-go="menu">メニューへ</button></section></div>';
   }
   // 画面の中央に大きく「移動中…」を重ねる（読み込みを待つ間、押しても効かないことを示す）
+  // 重ねる表示を数で持つ（保存と読み込みが重なっても、全部終わるまで消さない）。0.15秒より早く終われば出さない（ちらつかせない）
+  var BUSY = [];
+  App.busyOn = function (text) {
+    var o = { text: text, shown: false }; BUSY.push(o);
+    o.t = setTimeout(function () { o.shown = true; if (BUSY.indexOf(o) >= 0) App.busy(BUSY[BUSY.length - 1].text); }, 150);
+    document.body.classList.add('busywait'); // 待つ間は押させない（表示が出る前の0.15秒も）
+    return function () { clearTimeout(o.t); var i = BUSY.indexOf(o); if (i < 0) return; BUSY.splice(i, 1); if (BUSY.length) { if (BUSY.some(function (b) { return b.shown; })) App.busy(BUSY[BUSY.length - 1].text); } else { App.busy(false); document.body.classList.remove('busywait'); } };
+  };
   App.busy = function (text) {
     var el = document.getElementById('busy');
     if (!text) { if (el) el.remove(); return; }

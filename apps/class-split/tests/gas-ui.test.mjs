@@ -53,7 +53,8 @@ ok(await p.locator('[role=alert]').count() === 0, '版が一致（警告なし�
 await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
 ok(await p.locator('table.r tbody tr').count() === 30, '名簿：1組30人');
 await p.locator('td.cell[data-k="k3"]').first().click();
-await p.waitForFunction(() => document.getElementById('save').textContent === '保存済み');
+await p.click('#rsave'); // 欄の変更はためて「保存」で送る
+await p.waitForFunction(() => document.getElementById('rsave').textContent === '保存済み' && !document.getElementById('busy'));
 const row = gas.db().getSheetByName('attrs_' + FY).data.find(r => r[0] === '50000101');
 ok(row && row[3] === 1, '配慮項目がシートに保存された');
 
@@ -76,7 +77,8 @@ await p.waitForFunction(() => document.body.classList.contains('trying'));
 ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
 ok(/版：BUILD_[0-9a-f]{12}（試行中）/.test(await p.textContent('#mbuild')), '試行中でもメニューに本番の画面の版が出る');
 await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
-await p.locator('td.cell').first().click();
+await p.locator('td.cell').first().click(); await p.click('#rsave');
+await p.waitForFunction(() => !document.getElementById('busy'));
 await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
 ok(await p.locator('.bar .trial[aria-pressed="true"]').count() === 1, '試行：クラス分けの帯にも試行中の表示');
 ok(JSON.stringify(gas.db().sheets) === before, '試行中の操作はサーバーに送らない');

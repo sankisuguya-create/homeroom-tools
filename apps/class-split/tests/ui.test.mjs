@@ -733,14 +733,19 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
   await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell[data-k="k2"]');
-  await p.evaluate(() => { const pf = App.pf(), f = pf.setAttr; window.__sent = []; let n = 0; pf.setAttr = function (fy, g, id, k, v) { window.__sent.push(v); const d = [300, 50, 10][n++ % 3]; return new Promise(r => setTimeout(r, d)).then(() => f.apply(pf, arguments)); }; });
+  await p.evaluate(() => { const pf = App.pf(), f = pf.setAttrs; window.__calls = 0; window.__list = null; pf.setAttrs = function (list) { window.__calls++; window.__list = list; return new Promise(r => setTimeout(r, 600)).then(() => f.call(pf, list)); }; });
   const cell = p.locator('td.cell[data-k="k2"]').first();
   await cell.click(); await cell.click(); await cell.click();
-  ok(/保存中/.test(await p.textContent('#save')) && await p.locator('#save .ldots').count() === 1, '保存中は「保存中」と点が回る');
-  await p.waitForFunction(() => /保存済み/.test(document.getElementById('save').textContent), null, { timeout: 5000 });
-  const sent = await p.evaluate(() => window.__sent), id = await cell.getAttribute('data-cell');
+  ok(await p.evaluate(() => window.__calls) === 0 && /保存（1件）/.test(await p.textContent('#rsave')), '欄を押しても送らず、「保存（1件）」にためる');
+  await p.click('#rsave'); await p.waitForSelector('#busy', { timeout: 2000 });
+  ok(/保存中/.test(await p.textContent('#busy')), '保存を押すと、画面の中央に「保存中」を重ねる');
+  await p.waitForFunction(() => !document.getElementById('busy'), null, { timeout: 5000 });
+  const id = await cell.getAttribute('data-cell');
   const kept = await p.evaluate(id => { const d = App.st.data, r = d.years.find(y => y.fy === d.fy).rows.find(x => x.id === id); return r.a.k2 | 0; }, id);
-  ok(sent[sent.length - 1] === kept && sent.length <= 3, '3回押しても、最後の値で保存される（送ったのは ' + sent.join('→') + '）');
+  const L = await p.evaluate(() => window.__list);
+  ok(await p.evaluate(() => window.__calls) === 1 && L.length === 1 && L[0].v === kept && /保存済み/.test(await p.textContent('#rsave')), '3回押しても1回で、最後の値を送る');
+  await cell.click(); p.once('dialog', d => d.dismiss()); await p.click('[data-go="menu"]:visible');
+  ok(await p.locator('#rsave').count() === 1, '保存していない変更があると、離れる前に確かめる（キャンセルで残る）');
   await p.close();
 }
 // 誤操作の守り：打った後に窓の外・Esc で閉じかけたら確かめる。設定を保存せずに離れる時も確かめる。番号は2桁を続けて打てる
@@ -764,6 +769,19 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   p.once('dialog', d => d.dismiss()); await p.click('[data-go="menu"]:visible'); await p.waitForTimeout(200);
   ok(await p.locator('[data-al="k1"]').count() === 1, '設定を保存せずに離れようとすると確かめ、「キャンセル」なら残る');
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
+// 交流級：貼った表に組の列が無くても、その学年の名簿の全学級とクラスなしから選べる
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="4"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  const ncls = await p.evaluate(() => { const d = App.st.data, y = d.years.find(y => y.fy === d.fy); return Math.max(...y.rows.map(r => r.cls)) + 1; });
+  await mclick(p, '#paste'); await p.waitForSelector('#ptxt');
+  await p.fill('#ptxt', ['児童ID\t学年\t組\t番号\t名前\tよみ\t性別', '49990001\t4\tひまわり\t1\t特支 ハナ\tとくし はな\t女'].join('\n'));
+  await p.waitForSelector('.spbox');
+  const opts = await p.locator('.spbox [data-spa]').allTextContents();
+  ok(opts.length === ncls + 1 && opts[opts.length - 1] === 'クラスなし', '交流級は名簿の全学級（' + ncls + '）とクラスなしから選べる：' + opts.join('・'));
   await p.close();
 }
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
