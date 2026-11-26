@@ -798,6 +798,33 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(opts.length === ncls + 1 && opts[opts.length - 1] === 'クラスなし', '交流級は名簿の全学級（' + ncls + '）とクラスなしから選べる：' + opts.join('・'));
   await p.close();
 }
+// 組の数：名簿の帯で空の組を足し・減らす。案を作る窓で組の数を選び、3組の案と4組の案を並べて持てる
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  const tabs0 = await p.locator('#main .rbar [data-cls]').count();
+  await mclick(p, '#ncPlus'); await p.waitForFunction(() => /組にしました/.test(document.getElementById('toast').textContent));
+  ok(await p.locator('#main .rbar [data-cls]').count() === tabs0 + 1, '名簿の帯で組を1つ増やすと、空の組の見出しが増える');
+  await mclick(p, '#ncMinus'); await p.waitForFunction(n => document.querySelectorAll('#main .rbar [data-cls]').length === n, tabs0);
+  ok(true, '空の最後の組は減らせる');
+  ok(await p.evaluate(() => document.getElementById('ncMinus').disabled), '児童のいる組は減らせない（ボタンが押せない）');
+  await mclick(p, '#ncPlus'); await p.waitForFunction(() => /組にしました/.test(document.getElementById('toast').textContent));
+  await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('[data-gnc]');
+  ok(await p.locator('[data-gnc="4"][aria-pressed="true"]').count() === 1, '案を作る窓の組の数は、名簿の組の数（4組）から始まる');
+  await p.click('[data-gnc="3"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
+  await p.waitForFunction(() => !document.body.classList.contains('busywait'));
+  ok(await p.locator('.board .col').count() === 3, '3組の案を作れる');
+  await p.click('#gen'); await p.waitForSelector('[data-gnc]'); await p.click('[data-gnc="4"]'); await p.click('#okbtn');
+  await p.waitForFunction(() => !document.body.classList.contains('busywait') && document.querySelectorAll('.board .col').length === 4);
+  ok(true, '4組の案も作れ、案ごとに組の数を持つ');
+  await p.keyboard.press('Control+ArrowLeft').catch(() => {});
+  const ncs = await p.evaluate(() => App.screens.split.state().plans.map(q => q.nc));
+  ok(ncs.join(',') === '3,4', '案の組の数：' + ncs.join(','));
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
 {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });

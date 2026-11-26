@@ -380,7 +380,7 @@ var apiListGrades_ = api_(function (fy0) {
     var g = by[r.grade] = by[r.grade] || { grade: r.grade, count: 0, classes: 0, decided: false };
     g.count++; if (r.cls + 1 > g.classes) g.classes = r.cls + 1;
   });
-  Object.keys(by).forEach(function (g) { by[g].decided = fy === FY && !!decisionOf_(fy, +g); });
+  Object.keys(by).forEach(function (g) { by[g].decided = fy === FY && !!decisionOf_(fy, +g); by[g].classes = Math.max(by[g].classes, +getSetting_('ncls_' + fy + '_' + g, 0) || 0); });
   var out = [];
   CONFIG.GRADES.forEach(function (g) { if (g === 0 && fy !== FY) return; out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
@@ -413,9 +413,10 @@ var apiBoot_ = api_(function (grade) {
   var nowG = {}; rosterRows_(FY).forEach(function (r) { nowG[r.id] = r; });
   years.forEach(function (y) { y.rows.forEach(function (r) { (r.a.sib || []).forEach(function (s) { var k = s.id && nowG[s.id]; if (k) { s.g = k.grade + (y.fy - FY); s.n = String(k.name).replace(/[<>&"'`]/g, '').slice(0, 20); } }); }); });
   var incs = incidents_().filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); });
-  var dec = decisionOf_(FY, grade);
+  var dec = decisionOf_(FY, grade), ncls = {};
+  years.forEach(function (y) { ncls[y.fy] = +getSetting_('ncls_' + y.fy + '_' + y.grade, 0) || 0; }); // 名簿の帯で決めた組の数（空の組を作れる）
   return {
-    fy: FY, grade: grade, years: years, kids: kids, incidents: incs,
+    fy: FY, grade: grade, years: years, kids: kids, incidents: incs, ncls: ncls,
     pairs: pairs_(FY, grade),
     carry: carry_(FY, grade, idset),
     transfers: transfers_(FY, grade),
@@ -919,6 +920,20 @@ var apiSetAttrs_ = api_(function (list) {
   });
 });
 
+// 組の数（名簿の帯で増減）。児童のいる組は減らせない。直せる年度だけ
+var apiSetClassCount_ = api_(function (fy, grade, n) {
+  var by = requireTeacher_();
+  fy = +fy; grade = +grade; n = +n;
+  if (!(n >= 1 && n <= CONFIG.MAX_CLASSES && n === Math.floor(n))) throw userError_('組の数は1〜' + CONFIG.MAX_CLASSES + 'です');
+  var FY = CONFIG.fiscalYear(), dec = decisionOf_(FY, grade - (fy - FY)), editable = dec ? FY + 1 : FY;
+  if (fy !== editable) throw userError_('この年度の組の数は変えられません');
+  return withLock_(function () {
+    var used = 0; rosterRows_(fy).forEach(function (r) { if (r.grade === grade && r.cls + 1 > used) used = r.cls + 1; });
+    if (n < used) throw userError_('児童のいる組は減らせません（' + used + '組まで児童がいます）');
+    setSetting_('ncls_' + fy + '_' + grade, n); log_(by, 'classCount', n);
+    return { n: n };
+  });
+});
 // 案は学年ごとに1つの値（版つき）。他の人が先に保存していたら上書きせずに知らせる
 var apiSavePlans_ = api_(function (grade, plans, baseVer) {
   var by = requireTeacher_();
@@ -1549,3 +1564,4 @@ function apiRestoreIncident() { return apiRestoreIncident_.apply(null, arguments
 function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }
 function apiSaveMyView() { return apiSaveMyView_.apply(null, arguments); }
 function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }
+function apiSetClassCount() { return apiSetClassCount_.apply(null, arguments); }

@@ -259,6 +259,7 @@
       for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
         var rows = yearRows(fy, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+        nc = Math.max(nc, (S.ncls || {})[fy + '_' + grade] | 0);
         out.push({ grade: grade, count: rows.length, classes: nc, decided: fy === FY && !!S.decisions[grade] });
       }
       return later(out);
@@ -273,12 +274,17 @@
       var kids = {};
       Object.keys(idset).forEach(function (id) { kids[id] = S.kids[id]; });
       return later({
-        fy: FY, grade: grade, years: years, kids: kids,
+        fy: FY, grade: grade, years: years, kids: kids, ncls: years.reduce(function (o, y) { o[y.fy] = (S.ncls || {})[y.fy + '_' + y.grade] | 0; return o; }, {}),
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
         pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
         transfers: clone(S.transfers[grade] || []),
         scores: clone((S.scores || {})[grade] || {})
       });
+    },
+    setClassCount: function (fy, grade, n) { gen();
+      var used = 0; yearRows(fy, grade).forEach(function (r) { if (r.cls + 1 > used) used = r.cls + 1; });
+      if (n < used) return Promise.reject(Object.assign(new Error('児童のいる組は減らせません（' + used + '組まで児童がいます）'), { noRetry: true }));
+      (S.ncls = S.ncls || {})[fy + '_' + grade] = n; return later({ n: n });
     },
     addTransfer: function (grade, x) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));

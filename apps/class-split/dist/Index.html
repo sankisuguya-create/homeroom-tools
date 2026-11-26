@@ -2500,6 +2500,7 @@ body.busyshow .save{visibility:hidden}
       for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
         var rows = yearRows(fy, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+        nc = Math.max(nc, (S.ncls || {})[fy + '_' + grade] | 0);
         out.push({ grade: grade, count: rows.length, classes: nc, decided: fy === FY && !!S.decisions[grade] });
       }
       return later(out);
@@ -2514,12 +2515,17 @@ body.busyshow .save{visibility:hidden}
       var kids = {};
       Object.keys(idset).forEach(function (id) { kids[id] = S.kids[id]; });
       return later({
-        fy: FY, grade: grade, years: years, kids: kids,
+        fy: FY, grade: grade, years: years, kids: kids, ncls: years.reduce(function (o, y) { o[y.fy] = (S.ncls || {})[y.fy + '_' + y.grade] | 0; return o; }, {}),
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
         pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
         transfers: clone(S.transfers[grade] || []),
         scores: clone((S.scores || {})[grade] || {})
       });
+    },
+    setClassCount: function (fy, grade, n) { gen();
+      var used = 0; yearRows(fy, grade).forEach(function (r) { if (r.cls + 1 > used) used = r.cls + 1; });
+      if (n < used) return Promise.reject(Object.assign(new Error('児童のいる組は減らせません（' + used + '組まで児童がいます）'), { noRetry: true }));
+      (S.ncls = S.ncls || {})[fy + '_' + grade] = n; return later({ n: n });
     },
     addTransfer: function (grade, x) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
@@ -3238,6 +3244,8 @@ body.busyshow .save{visibility:hidden}
   'use strict';
   var App = g.App, C = g.CONFIG, E = g.Engine;
   var R = { fy: 0, cls: 0, scope: 'cls', kid: null, form: null, school: null, col: null };
+  // 組の数：名簿の児童の組と、名簿の帯で決めた組の数（空の組を作れる）の多いほう
+  function yearNc(Y, min) { var n = min || 0; if (!Y) return Math.max(n, 1); Y.rows.forEach(function (r) { if (r.cls + 1 > n) n = r.cls + 1; }); var st = (D().ncls || {})[Y.fy] | 0; return Math.max(n, st); }
   // 名簿の欄の変更は、押すたびには送らず、ためて「保存」でまとめて送る（1件ごとにサーバーを待たせない）
   var PEND = {}, PN = 0;
   function stage(fy, grade, id, k, v, text, incs) {
@@ -3645,7 +3653,7 @@ body.busyshow .save{visibility:hidden}
     }
     // 開いた時、どの組にも児童がいなくてクラスなしにだけいれば、クラスなしを開く（空の1組を見せない）
     if (R.clsFix) { R.clsFix = false; if (R.scope === 'cls' && !Y.rows.some(function (r) { return r.cls >= 0; }) && Y.rows.some(function (r) { return r.cls < 0; })) R.cls = -1; }
-    var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var nc = yearNc(Y);
     // 上の帯：編集中に使う「組・学年」の切り替えと、いまの状態（既定と違う時だけ）だけを出す。ほかは「その他…」の窓へ
     var h = '<div class="rbar">';
     // 決定の後の準備中の年度：組の番号が仮の間は、どの新しい組かを添える
@@ -3669,6 +3677,7 @@ body.busyshow .save{visibility:hidden}
     h += '<span class="sp"></span>' + (R.scope !== 'school' ? '<button class="btn' + (PN ? ' primary' : '') + '" id="rsave"' + (PN ? '' : ' disabled') + ' title="変えた欄をまとめて保存する">' + (PN ? '保存（' + PN + '件）' : '保存済み') + '</button>' : '') + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
       (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
       (edit ? App.ddItem('trB', '転入児童を登録…', '転入した児童を今年度の組に足す、または来年度の転入予定（クラスなし）に足す') : '') +
+      (edit ? App.ddItem('ncPlus', '組を増やす（' + (nc + 1) + '組にする）', '空の組を足す（クラス分けの基にもなる）', nc >= C.MAX_CLASSES) + App.ddItem('ncMinus', '最後の組を減らす（' + Math.max(1, nc - 1) + '組にする）', '児童のいない最後の組だけ減らせる', nc <= 1 || Y.rows.some(function (r) { return r.cls === nc - 1; })) : '') +
       App.ddItem('rprint', '個人票を印刷…', R.scope === 'grade' ? '学年の全員の個人票を、組ごとに印刷する' : 'この組の個人票を印刷する') +
       App.ddItem('acadB', '学力（点数・順位）…', 'クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）') +
       (edit ? '' : '<div class="note" style="padding:6px 10px">名簿を貼る・児童登録は、ロックを外すと出ます</div>')) : '');
@@ -3957,7 +3966,7 @@ body.busyshow .save{visibility:hidden}
       // 選べる組：貼った表の組と、その学年の今の名簿の学級の多いほう（表に組が無くても、名簿の全学級から選べる）
       var nc = 1; r.rows.forEach(function (x) { if (!x.sp && x.cls + 1 > nc) nc = x.cls + 1; });
       var yy = (d.years || []).filter(function (y0) { return y0.fy === fy; })[0] || (d.years || []).filter(function (y0) { return y0.fy === d.fy; })[0];
-      if (yy) yy.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
+      if (yy) nc = Math.max(nc, yearNc(yy));
       P.nc = Math.max(nc, 1);
       var rr = 0;
       r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= -1 && P.sa[k] < 9)) P.sa[k] = -1; }); // 初めはクラスなし（あとで名簿の「児童登録/削除」で振り分けてもよい）
@@ -4020,7 +4029,7 @@ body.busyshow .save{visibility:hidden}
   function kidEditDialog(id) {
     var d = D(), fy = editableFy(), Y = yearOf(fy), r = Y && Y.rows.filter(function (y) { return y.id === id; })[0], s = d.kids[id], esc = App.esc;
     if (!r || !s) return;
-    var nc = 1; Y.rows.forEach(function (y) { if (y.cls + 1 > nc) nc = y.cls + 1; });
+    var nc = yearNc(Y, 1);
     var F = { name: s.name, kana: s.kana || '', male: !!s.male, cls: r.cls, no: r.no, birth: s.birth || '', addr: s.addr || '', area: s.area || '', sp: !!(r.a && r.a.sp), spn: (r.a && r.a.spn) || '' };
     var dupOf = function () { return Y.rows.filter(function (y) { return y.id !== id && y.cls === F.cls && y.no === F.no; }).map(function (y) { return (d.kids[y.id] || {}).name; })[0]; };
     var dupHtml = function () { var dup = dupOf(); return dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : ''; };
@@ -4072,7 +4081,7 @@ body.busyshow .save{visibility:hidden}
   // 転入・転出・削除：名簿の画面で、1人を足す・選んだ児童を外す
   function moveDialog(tab0, cls0) {
     var d = D(), fy = editableFy(), Y = yearOf(fy), grade = Y ? Y.grade : (fy === d.fy ? d.grade : d.grade + 1), esc = App.esc;
-    var rows = Y ? Y.rows.slice() : [], nc = 1; rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var rows = Y ? Y.rows.slice() : [], nc = yearNc(Y, 1);
     var M = { tab: tab0 || 'in', scope: 'cls', cls: R.cls < nc ? R.cls : 0, pick: {}, reason: 'leave', f: { name: '', kana: '', male: true, cls: cls0 != null ? cls0 : R.cls >= 0 && R.cls < nc ? R.cls : 0, id: '', birth: '', addr: '' } };
     var canTr = fy === d.fy && !d.decision && d.grade < 6; // 来年度の転入予定（クラスなし）に足せる時
     if (M.f.cls === -1 && !canTr) M.f.cls = 0;
@@ -4239,6 +4248,11 @@ body.busyshow .save{visibility:hidden}
     click: function (t, e) {
       var d = D(), x;
       if (t.closest('#rsave')) { savePending(); return true; }
+      if ((x = t.closest('#ncPlus, #ncMinus'))) {
+        var Yc = yearOf(R.fy), nc0 = yearNc(Yc), nn = x.id === 'ncPlus' ? nc0 + 1 : nc0 - 1;
+        App.save(function () { return App.pf().setClassCount(R.fy, Yc.grade, nn); }).then(function () { return App.reload(); }).then(function () { if (R.cls >= nn) R.cls = nn - 1; render(); App.toast(nn + '組にしました'); });
+        return true;
+      }
       if (t.closest('#rlock')) { setLock(!LOCK); render(); App.toast(LOCK ? 'ロックしました（名簿は変わりません）' : 'ロックを外しました（名簿を編集できます）'); return true; }
       if ((x = t.closest('[data-kedit]'))) { kidEditDialog(x.dataset.kedit); return true; }
       // ロック中は、表の欄を押しても値を変えない（見るだけ）
@@ -5342,35 +5356,43 @@ body.busyshow .save{visibility:hidden}
     var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }), src: x }; })
       .filter(function (x) { return x.kids.length; });
     var oldN = 0; kids.forEach(function (s) { if (s.old + 1 > oldN) oldN = s.old + 1; });
-    var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN));
+    var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN, (d.ncls || {})[d.fy] | 0)); // 名簿の帯で決めた組の数も入れる
     var P = { kids: kids, pairs: pairs, inc: inc, nc: nc, cap: C.CAP };
     var ji = kids.map(function () { return 0; }), jv = kids.map(function () { return 0; });
     inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; if (App.isVictim(x.src, kids[i].id)) jv[i]++; }); });
     inc.forEach(function (x) { delete x.src; });
-    S = { P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
+    S = { base: nc, P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
       decision: d.decision };
     S.ctx = E.prepare(P, S.lastGen);
     // 保存済みの案を戻す
     (d.plans || []).forEach(function (sp) {
       var asg = new Int8Array(kids.length);
-      var miss = [], sz = new Array(nc).fill(0);
-      kids.forEach(function (s, i) { if (s.id in sp.assign) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
+      var pnc = Math.min(C.MAX_CLASSES, Math.max(2, sp.nc | 0 || nc)), miss = [], sz = new Array(pnc).fill(0);
+      kids.forEach(function (s, i) { if (s.id in sp.assign && (sp.assign[s.id] | 0) < pnc) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
       // 案を作った後に足した転入生は、その案でいちばん人数の少ない組に入れる
       miss.forEach(function (i) { var k = sz.indexOf(Math.min.apply(null, sz)); asg[i] = k; sz[k]++; });
       var locks = new Set((sp.locks || []).filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }));
-      S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
+      S.plans.push({ nc: pnc, letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
     });
     // 案がまだ無い時は、いきなり作らず、重み付けと並び順を決めてから作る（enter で設定の窓を開く）
   }
 
-  function ctxFor(gen) { return E.prepare(S.P, gen); }
+  // 組の数は案ごとに持つ（3組の案と4組の案を並べて持てる）。案を開くたびに、その組の数に合わせて計算の下ごしらえを作り直す
+  function ncOf(p) { return (p && p.nc) || S.base; }
+  function ctxFor(gen) { return E.prepare(Object.assign({}, S.P, { nc: (gen && gen.nc) || S.base }), gen); }
+  function ctxOf(p) {
+    var n = ncOf(p); if (n === S.P.nc) return S.ctx;
+    S.ctxs = S.ctxs || {}; if (!S.ctxs[n]) S.ctxs[n] = E.prepare(Object.assign({}, S.P, { nc: n }), S.lastGen);
+    return S.ctxs[n];
+  }
+  function syncNc() { var n = ncOf(S.plans[S.active]); if (S.P.nc !== n) { S.P.nc = n; S.ctx = E.prepare(S.P, S.lastGen); S.ctxs = {}; } }
   function planName(p) { return '案' + p.letter + '（' + (p.name || p.auto) + '）'; }
 
   function serialize() {
     return S.plans.map(function (p) {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
-      return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
+      return { nc: ncOf(p), letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
   // 案の保存は「保存」ボタンで送る（盤面を動かすたびには送らない）。学年と中身は最後に動かした時点で決める
@@ -5391,8 +5413,9 @@ body.busyshow .save{visibility:hidden}
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
     var cur = S.plans[S.active]; if (cur) S.P.kids.forEach(function (s, i) { if (ctx.SP[i]) s.home = cur.asg[i]; }); // 新しい案でも、特別支援学級の児童の交流級は今の案のまま
+    locked = new Map(Array.from(locked || []).filter(function (e) { return e[1] < ctx.nc; })); // 組を減らした時、無くなる組への固定は外す
     var asg = E.optimize(ctx, locked, (Date.now() & 0xffff) * 7919 + S.letIdx);
-    var p = { letter: LET[S.letIdx++ % 26], name: '', auto: E.autoName(gen, locked.size), gen: JSON.parse(JSON.stringify(gen)), asg: asg,
+    var p = { nc: ctx.nc, letter: LET[S.letIdx++ % 26], name: '', auto: E.autoName(gen, locked.size), gen: JSON.parse(JSON.stringify(gen)), asg: asg,
       locks: new Set(locked.keys()), hist: [], fut: [], edits: 0, from: from };
     S.plans.push(p); S.active = S.plans.length - 1; S.view = 'plan'; S.sel = -1; S.follow = null;
     return { p: p, ms: Math.round(performance.now() - t0) };
@@ -5463,7 +5486,7 @@ body.busyshow .save{visibility:hidden}
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + g.CONFIG.gradeLabel(App.st.grade) + '</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
-      var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
+      var a = E.analyze(ctxOf(p), p.asg), v = a.bad.length;
       // タブは「案A」だけ。名前・違反と偏りの数・近道はカーソルで出す（違反がある案は字を赤く）
       var tip = planName(p) + '\n違反 ' + v + '・偏り△ ' + a.warn.length + (pi < 9 ? '\n切り替え：' + (pi + 1) + ' キー' : '') + '\nダブルクリックで名前を変える';
       h += '<span class="tab' + (v ? ' vbad' : '') + '" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="' + App.esc(tip) + '" aria-label="' + App.esc(planName(p) + '。違反' + v + '・偏り' + a.warn.length) + '">' +
@@ -5500,6 +5523,7 @@ body.busyshow .save{visibility:hidden}
       '<button class="btn primary big" id="gen">重み付けと並び順を決めて、案を作る…</button> <button class="btn" data-go="menu">メニューに戻る</button></section></div>';
   }
   function render() {
+    syncNc(); // 開いている案の組の数に合わせる
     if (!S.plans.length) { renderSetup(); return; }
     App.$('main').innerHTML = renderBar() + '<div id="spstrip"></div><div id="board" class="board"></div><div class="legend" id="legend"></div>';
     App.saveState(); App.paintTrial();
@@ -5608,8 +5632,9 @@ body.busyshow .save{visibility:hidden}
   }
 
   function renderCmp() {
-    var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
+    var A = S.plans.map(function (p) { return E.analyze(ctxOf(p), p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
+      { lab: '組の数', f: function (p) { return ncOf(p) + '組'; }, txt: true },
       { lab: '違反（離す・つける・固定・上限・必）', f: function (p, a) { return a.bad.length; }, bad: true },
       { lab: '人数の差', f: function (p, a) { return E.spread(a.c, M); } },
       { lab: '男の数の差', f: function (p, a) { return E.spread(a.c, 0); } }
@@ -5682,6 +5707,7 @@ body.busyshow .save{visibility:hidden}
 
   function genDialog() {
     var gen = JSON.parse(JSON.stringify(S.lastGen)), p = S.plans[S.active], O = ORDER.slice();
+    gen.nc = ncOf(p); // 組の数（案ごと）。今の案の組の数から始める
     var keep = !!(p && S.view === 'plan' && p.locks.size);
     App.openDlg({
       focus: 'okbtn',
@@ -5692,6 +5718,7 @@ body.busyshow .save{visibility:hidden}
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
+          '<div class="rbar"><span class="lab">組の数</span>' + Array.from({ length: C.MAX_CLASSES - 1 }, function (_, i) { var n = i + 2; return '<button class="lv" data-gnc="' + n + '" aria-pressed="' + (gen.nc === n) + '">' + n + '組</button>'; }).join('') + '<span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
           '<div><b>必ず守る条件</b>（押すと外す／戻す）<div class="toggles" style="margin-top:6px">' + C.HARD.map(function (h) {
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
@@ -5709,10 +5736,11 @@ body.busyshow .save{visibility:hidden}
       },
       click: function (t) {
         var x;
+        if ((x = t.closest('[data-gnc]'))) { gen.nc = +x.dataset.gnc; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); if (+x.dataset.lv === C.MUST) App.toast(C.MUST_WARN); return true; }
         if ((x = t.closest('[data-gord]'))) { var gp = x.dataset.gord.split(':'); O[+gp[0]] = gp[1]; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-hard]'))) { gen.hard[x.dataset.hard] = !gen.hard[x.dataset.hard]; App.refreshDlg(); return true; }
-        if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); App.refreshDlg(); return true; }
+        if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); gen.nc = ncOf(p); App.refreshDlg(); return true; }
         return false;
       },
       onOk: function () {

@@ -43,6 +43,7 @@
 
   function genDialog() {
     var gen = JSON.parse(JSON.stringify(S.lastGen)), p = S.plans[S.active], O = ORDER.slice();
+    gen.nc = ncOf(p); // 組の数（案ごと）。今の案の組の数から始める
     var keep = !!(p && S.view === 'plan' && p.locks.size);
     App.openDlg({
       focus: 'okbtn',
@@ -53,6 +54,7 @@
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
+          '<div class="rbar"><span class="lab">組の数</span>' + Array.from({ length: C.MAX_CLASSES - 1 }, function (_, i) { var n = i + 2; return '<button class="lv" data-gnc="' + n + '" aria-pressed="' + (gen.nc === n) + '">' + n + '組</button>'; }).join('') + '<span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
           '<div><b>必ず守る条件</b>（押すと外す／戻す）<div class="toggles" style="margin-top:6px">' + C.HARD.map(function (h) {
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
@@ -70,10 +72,11 @@
       },
       click: function (t) {
         var x;
+        if ((x = t.closest('[data-gnc]'))) { gen.nc = +x.dataset.gnc; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-w]'))) { gen.w[x.dataset.w] = +x.dataset.lv; App.refreshDlg(); if (+x.dataset.lv === C.MUST) App.toast(C.MUST_WARN); return true; }
         if ((x = t.closest('[data-gord]'))) { var gp = x.dataset.gord.split(':'); O[+gp[0]] = gp[1]; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-hard]'))) { gen.hard[x.dataset.hard] = !gen.hard[x.dataset.hard]; App.refreshDlg(); return true; }
-        if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); App.refreshDlg(); return true; }
+        if (t.closest('[data-act="reset"]')) { gen = E.defaultGen(); gen.nc = ncOf(p); App.refreshDlg(); return true; }
         return false;
       },
       onOk: function () {

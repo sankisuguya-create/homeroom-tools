@@ -28,7 +28,7 @@
   function renderBar() {
     var h = '<button class="btn trial"></button><button class="btn" data-go="menu" title="メニューに戻る">← ' + g.CONFIG.gradeLabel(App.st.grade) + '</button><div class="tabs" role="tablist">';
     S.plans.forEach(function (p, pi) {
-      var a = E.analyze(S.ctx, p.asg), v = a.bad.length;
+      var a = E.analyze(ctxOf(p), p.asg), v = a.bad.length;
       // タブは「案A」だけ。名前・違反と偏りの数・近道はカーソルで出す（違反がある案は字を赤く）
       var tip = planName(p) + '\n違反 ' + v + '・偏り△ ' + a.warn.length + (pi < 9 ? '\n切り替え：' + (pi + 1) + ' キー' : '') + '\nダブルクリックで名前を変える';
       h += '<span class="tab' + (v ? ' vbad' : '') + '" role="tab" tabindex="0" data-p="' + pi + '" aria-selected="' + (S.view === 'plan' && pi === S.active) + '" title="' + App.esc(tip) + '" aria-label="' + App.esc(planName(p) + '。違反' + v + '・偏り' + a.warn.length) + '">' +
@@ -65,6 +65,7 @@
       '<button class="btn primary big" id="gen">重み付けと並び順を決めて、案を作る…</button> <button class="btn" data-go="menu">メニューに戻る</button></section></div>';
   }
   function render() {
+    syncNc(); // 開いている案の組の数に合わせる
     if (!S.plans.length) { renderSetup(); return; }
     App.$('main').innerHTML = renderBar() + '<div id="spstrip"></div><div id="board" class="board"></div><div class="legend" id="legend"></div>';
     App.saveState(); App.paintTrial();
@@ -173,8 +174,9 @@
   }
 
   function renderCmp() {
-    var A = S.plans.map(function (p) { return E.analyze(S.ctx, p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
+    var A = S.plans.map(function (p) { return E.analyze(ctxOf(p), p.asg); }), ref = S.plans[S.active], M = S.ctx.M;
     var rows = [
+      { lab: '組の数', f: function (p) { return ncOf(p) + '組'; }, txt: true },
       { lab: '違反（離す・つける・固定・上限・必）', f: function (p, a) { return a.bad.length; }, bad: true },
       { lab: '人数の差', f: function (p, a) { return E.spread(a.c, M); } },
       { lab: '男の数の差', f: function (p, a) { return E.spread(a.c, 0); } }

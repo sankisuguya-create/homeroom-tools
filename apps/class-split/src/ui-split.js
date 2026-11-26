@@ -30,35 +30,43 @@
     var inc = d.incidents.map(function (x) { return { kids: x.ids.filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }), src: x }; })
       .filter(function (x) { return x.kids.length; });
     var oldN = 0; kids.forEach(function (s) { if (s.old + 1 > oldN) oldN = s.old + 1; });
-    var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN));
+    var nc = Math.min(C.MAX_CLASSES, Math.max(2, oldN, (d.ncls || {})[d.fy] | 0)); // 名簿の帯で決めた組の数も入れる
     var P = { kids: kids, pairs: pairs, inc: inc, nc: nc, cap: C.CAP };
     var ji = kids.map(function () { return 0; }), jv = kids.map(function () { return 0; });
     inc.forEach(function (x) { x.kids.forEach(function (i) { ji[i]++; if (App.isVictim(x.src, kids[i].id)) jv[i]++; }); });
     inc.forEach(function (x) { delete x.src; });
-    S = { P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
+    S = { base: nc, P: P, idx: idx, ji: ji, jv: jv, plans: [], active: 0, view: 'plan', sel: -1, follow: null, lastGen: E.defaultGen(), letIdx: 0,
       decision: d.decision };
     S.ctx = E.prepare(P, S.lastGen);
     // 保存済みの案を戻す
     (d.plans || []).forEach(function (sp) {
       var asg = new Int8Array(kids.length);
-      var miss = [], sz = new Array(nc).fill(0);
-      kids.forEach(function (s, i) { if (s.id in sp.assign) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
+      var pnc = Math.min(C.MAX_CLASSES, Math.max(2, sp.nc | 0 || nc)), miss = [], sz = new Array(pnc).fill(0);
+      kids.forEach(function (s, i) { if (s.id in sp.assign && (sp.assign[s.id] | 0) < pnc) { asg[i] = sp.assign[s.id] | 0; sz[asg[i]]++; } else miss.push(i); });
       // 案を作った後に足した転入生は、その案でいちばん人数の少ない組に入れる
       miss.forEach(function (i) { var k = sz.indexOf(Math.min.apply(null, sz)); asg[i] = k; sz[k]++; });
       var locks = new Set((sp.locks || []).filter(function (id) { return id in idx; }).map(function (id) { return idx[id]; }));
-      S.plans.push({ letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
+      S.plans.push({ nc: pnc, letter: sp.letter, name: sp.name, auto: sp.auto, gen: sp.gen || E.defaultGen(), asg: asg, locks: locks, hist: [], fut: [], edits: sp.edits | 0, from: sp.from || null });
       var li = LET.indexOf(sp.letter); if (li + 1 > S.letIdx) S.letIdx = li + 1;
     });
     // 案がまだ無い時は、いきなり作らず、重み付けと並び順を決めてから作る（enter で設定の窓を開く）
   }
 
-  function ctxFor(gen) { return E.prepare(S.P, gen); }
+  // 組の数は案ごとに持つ（3組の案と4組の案を並べて持てる）。案を開くたびに、その組の数に合わせて計算の下ごしらえを作り直す
+  function ncOf(p) { return (p && p.nc) || S.base; }
+  function ctxFor(gen) { return E.prepare(Object.assign({}, S.P, { nc: (gen && gen.nc) || S.base }), gen); }
+  function ctxOf(p) {
+    var n = ncOf(p); if (n === S.P.nc) return S.ctx;
+    S.ctxs = S.ctxs || {}; if (!S.ctxs[n]) S.ctxs[n] = E.prepare(Object.assign({}, S.P, { nc: n }), S.lastGen);
+    return S.ctxs[n];
+  }
+  function syncNc() { var n = ncOf(S.plans[S.active]); if (S.P.nc !== n) { S.P.nc = n; S.ctx = E.prepare(S.P, S.lastGen); S.ctxs = {}; } }
   function planName(p) { return '案' + p.letter + '（' + (p.name || p.auto) + '）'; }
 
   function serialize() {
     return S.plans.map(function (p) {
       var assign = {}; S.P.kids.forEach(function (s, i) { assign[s.id] = p.asg[i]; });
-      return { letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
+      return { nc: ncOf(p), letter: p.letter, name: p.name || '', auto: p.auto, gen: p.gen, assign: assign, locks: Array.from(p.locks).map(function (i) { return S.P.kids[i].id; }), edits: p.edits, from: p.from };
     });
   }
   // 案の保存は「保存」ボタンで送る（盤面を動かすたびには送らない）。学年と中身は最後に動かした時点で決める
@@ -79,8 +87,9 @@
   function addGenerated(gen, locked, from) {
     var ctx = ctxFor(gen), t0 = performance.now();
     var cur = S.plans[S.active]; if (cur) S.P.kids.forEach(function (s, i) { if (ctx.SP[i]) s.home = cur.asg[i]; }); // 新しい案でも、特別支援学級の児童の交流級は今の案のまま
+    locked = new Map(Array.from(locked || []).filter(function (e) { return e[1] < ctx.nc; })); // 組を減らした時、無くなる組への固定は外す
     var asg = E.optimize(ctx, locked, (Date.now() & 0xffff) * 7919 + S.letIdx);
-    var p = { letter: LET[S.letIdx++ % 26], name: '', auto: E.autoName(gen, locked.size), gen: JSON.parse(JSON.stringify(gen)), asg: asg,
+    var p = { nc: ctx.nc, letter: LET[S.letIdx++ % 26], name: '', auto: E.autoName(gen, locked.size), gen: JSON.parse(JSON.stringify(gen)), asg: asg,
       locks: new Set(locked.keys()), hist: [], fut: [], edits: 0, from: from };
     S.plans.push(p); S.active = S.plans.length - 1; S.view = 'plan'; S.sel = -1; S.follow = null;
     return { p: p, ms: Math.round(performance.now() - t0) };
