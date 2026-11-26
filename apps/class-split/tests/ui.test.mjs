@@ -883,8 +883,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  ok(await p.title() === 'SSS' && (await p.textContent('#appname')) === 'SSS', 'タブと左上の名前は SSS');
-  ok((await p.textContent('#mfull')) === 'SSS（児童理解支援システム）', 'メニューの下に正式な名前');
+  ok(await p.title() === 'CSS' && (await p.textContent('#appname')) === 'CSS', 'タブと左上の名前は CSS');
+  ok((await p.textContent('#mfull')) === 'CSS（児童理解支援システム）', 'メニューの下に正式な名前');
   // メニュー：3つのボタンに件数、下に最近の記録。表示は先生ごとに切り替える
   await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
   ok(await p.locator('.bigs3 > .big').count() === 3 && await p.locator('.bigs3 .big span:not(.mchips)').count() === 0, '3つのボタンに説明文は無い');

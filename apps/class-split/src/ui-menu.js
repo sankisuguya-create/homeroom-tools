@@ -56,7 +56,7 @@
         '</div></section>' + recent +
         '<section class="mfoot"><button class="btn" data-go="settings">⚙ 設定</button><button class="btn" data-go="roster" data-school="1" title="全校の事案と、関わった児童の一覧">全校の事案</button>' +
         App.ddMenu('mview', '表示', VIEW_KEYS.map(function (k) { return App.ddItem('mv-' + k[0], (v[k[0]] ? '☑ ' : '☐ ') + k[1], '', false, ' role="menuitemcheckbox" aria-checked="' + !!v[k[0]] + '"'); }).join(''), 'メニューに出すものを選ぶ（先生ごとに覚える）') +
-        '<span class="sp"></span><span class="note" id="mfull">' + App.esc(App.fullName || 'SSS（児童理解支援システム）') + '</span>' +
+        '<span class="sp"></span><span class="note" id="mfull">' + App.esc(App.fullName || 'CSS（児童理解支援システム）') + '</span>' +
         '<button class="linkbtn" data-go="suggest">目安箱</button><span class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</span></section></div>'; // 貼った版を GitHub の dist と照らす
       // 件数と最近の記録は、学年のデータ（先読み）が届いてから出す
       if (now && !sm && App.bootCached && st.grade != null) { var g0 = st.grade; App.preload(g0, function () { if (App.st.screen === 'menu' && App.st.grade === g0 && !App.viewOff() && App.bootCached(g0)) App.screens.menu.render(); }); } // 届いた分が使える時だけ描き直す（間に保存があれば描き直さず、読み直しも起こさない）

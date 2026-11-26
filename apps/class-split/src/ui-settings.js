@@ -15,7 +15,7 @@
   App.applySettings = function (s) {
     App.settings = s;
     if (App.st && App.st.data && App.normKids) App.normKids(App.st.data); // 外字の置き換え表を直したら、開いている学年の名前にもすぐ効かせる
-    var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
+    var an = safe(s.appName || 'CSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     App.fullName = an + '（' + safe(s.formalName || '児童理解支援システム') + '）';
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
@@ -61,8 +61,8 @@
     } else if (T.tab === 'types') {
       h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
-        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
-          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'CSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「CSS」（Child Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
+          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'CSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
         '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、画面では〓になります。下の一覧は、今年度・来年度の名簿に出てくる外字と、使っている児童です。右の欄に画面に出す字を入れて、設定を保存してください。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
           gaijiFound(s) +
           '<details style="margin-top:6px"><summary class="note">登録した置き換えをまとめて見る・直す（外字=字 を1行に1つ）</summary><textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea></details>' +

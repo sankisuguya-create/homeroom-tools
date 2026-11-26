@@ -509,7 +509,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'sato@edu.nishi.or.jp'; const et = call('apiEmptyTrash', [incT]); env.user = 'tanaka@edu.nishi.or.jp';
     assert.equal(et.ok, false, '完全に消すのは管理者だけ');
     assert.ok(call('apiEmptyTrash', [incT]).v.n === 1 && !call('apiTrashList').v.length, '管理者は完全に消せる');
-    assert.equal(call('apiSettings').v.settings.appName, 'SSS', 'アプリの名前の既定は SSS');
+    assert.equal(call('apiSettings').v.settings.appName, 'CSS', 'アプリの名前の既定は CSS');
+    assert.ok(call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { appName: 'SSS' })).ok);
+    assert.equal(call('apiSettings').v.settings.appName, 'CSS', '前の既定の SSS のままなら CSS にする');
 
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');
