@@ -795,7 +795,8 @@
     var E0 = {}, E = {}; // E0：開いた時の値、E：直した値（児童ID → 項目）
     rows.forEach(function (r) { var s = d.kids[r.id] || {}; E0[r.id] = { cls: r.cls, no: r.no, name: s.name || '', kana: s.kana || '', male: !!s.male, addr: s.addr || '' }; E[r.id] = Object.assign({}, E0[r.id]); });
     var changed = function () { return rows.filter(function (r) { return JSON.stringify(E[r.id]) !== JSON.stringify(E0[r.id]); }); };
-    var dups = function () { var seen = {}, out = []; rows.forEach(function (r) { var e = E[r.id]; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k]) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
+    // 番号の重なり：表に出していない組の児童とも比べる（ほかの組へ移した時に、移した先の番号と重ならないか）
+    var dups = function () { var seen = {}, out = []; Y.rows.forEach(function (r) { var e = E[r.id] || { cls: r.cls, no: r.no }; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k] && out.indexOf((e.cls + 1) + '組' + e.no + '番') < 0) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
     var info = function () { var n = changed().length, dp = dups(); return (dp.length ? '<span class="warnbox" style="font-weight:400;display:inline-block">番号が重なっています：' + esc(dp.join('、')) + '</span> ' : '') + '<span class="note">直した児童 ' + n + '人</span>'; };
     var clsOpt = function (cur) { var h = ''; for (var k = 0; k < nc; k++) h += '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + (k + 1) + '組</option>'; return h + '<option value="-1"' + (cur < 0 ? ' selected' : '') + '>クラスなし</option>'; };
     App.openDlg({
