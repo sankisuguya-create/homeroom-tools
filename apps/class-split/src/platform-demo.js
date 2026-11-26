@@ -281,6 +281,7 @@
         scores: clone((S.scores || {})[grade] || {})
       });
     },
+    gaijiFound: function () { var out = {}; Object.keys(S.kids).forEach(function (id) { var k = S.kids[id]; Array.from(String(k.name || '') + String(k.kana || '')).forEach(function (ch) { var c = ch.codePointAt(0); if (c < 0xE000 || c > 0xF8FF) return; var f = out[ch] = out[ch] || { ch: ch, code: 'U+' + c.toString(16).toUpperCase(), n: 0, who: [] }; f.n++; if (f.who.length < 3) f.who.push({ name: k.name, fy: FY, grade: 0, cls: 0 }); }); }); return later(Object.keys(out).map(function (k) { return out[k]; })); },
     setClassCount: function (fy, grade, n) { gen();
       var used = 0; yearRows(fy, grade).forEach(function (r) { if (r.cls + 1 > used) used = r.cls + 1; });
       if (n < used) return Promise.reject(Object.assign(new Error('児童のいる組は減らせません（' + used + '組まで児童がいます）'), { noRetry: true }));

@@ -862,6 +862,18 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(r[3] === '\uE001木 葛\uDB40\uDD00子' && r[4] === '高木 葛子', '名前を直していなければ元の字で保存し、直したらその字で保存する');
   await p.close();
 }
+// 外字の一覧：名簿に出てくる外字と使っている児童を並べ、右の欄に入れた字が置き換え表に入る
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.evaluate(() => { App.pf().gaijiFound = () => Promise.resolve([{ ch: '\uE001', code: 'U+E001', n: 2, who: [{ name: '\uE001木 ハナ', fy: 2026, grade: 3, cls: 1 }] }]); });
+  await p.click('[data-go="settings"]'); await p.click('[data-stab="types"]'); await p.waitForSelector('.gjfound');
+  ok(/〓木 ハナ（2026年度 3年2組）/.test(await p.textContent('.gjfound')), '外字の一覧に、使っている児童と学年・組が出る');
+  await p.fill('[data-gj="U+E001"]', '髙'); await p.click('#ssave');
+  await p.waitForFunction(() => App.settings && App.settings.gaiji && App.settings.gaiji['\uE001'] === '髙', null, { timeout: 5000 });
+  ok(true, '右の欄に入れた字が、置き換え表に保存される');
+  await p.close();
+}
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
 {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });

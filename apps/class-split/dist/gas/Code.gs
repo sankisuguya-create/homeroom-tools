@@ -1075,7 +1075,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_d7610058c7fd';
+var SERVER_BUILD = 'BUILD_0ca82d175204';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -2470,6 +2470,21 @@ function gaijiMap_(m) {
   });
   return out;
 }
+// 名簿に出てくる外字を集める（管理者が置き換え表を埋めるため）。今年度・来年度の名簿の名前・よみから、外字1字ごとに使っている児童を3人まで
+var apiGaijiFound_ = api_(function () {
+  requireAdmin_();
+  var FY = CONFIG.fiscalYear(), found = {};
+  [FY, FY + 1].forEach(function (fy) {
+    rosterRows_(fy).forEach(function (r) {
+      Array.from(String(r.name || '') + String(r.kana || '')).forEach(function (ch) {
+        var c = ch.codePointAt(0); if (!(c >= 0xE000 && c <= 0xF8FF)) return;
+        var f = found[ch] = found[ch] || { ch: ch, code: 'U+' + c.toString(16).toUpperCase(), n: 0, who: [] };
+        f.n++; if (f.who.length < 3) f.who.push({ name: String(r.name), fy: fy, grade: r.grade, cls: r.cls });
+      });
+    });
+  });
+  return Object.keys(found).map(function (k) { return found[k]; }).sort(function (a, b) { return b.n - a.n; });
+});
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
 var apiSaveSettings_ = api_(function (s) {
@@ -2657,3 +2672,4 @@ function apiSaveMyView() { return apiSaveMyView_.apply(null, arguments); }
 function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }
 function apiSetClassCount() { return apiSetClassCount_.apply(null, arguments); }
 function apiUpdateKids() { return apiUpdateKids_.apply(null, arguments); }
+function apiGaijiFound() { return apiGaijiFound_.apply(null, arguments); }
