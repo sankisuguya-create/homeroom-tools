@@ -955,7 +955,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var CONFIG = {
-    MAX_CLASSES: 4,   // 1学年の学級数の上限
+    MAX_CLASSES: 99,  // 1学年の学級数：上限は設けない（利用者の判断）。値は保存の検査と、割り当て（Int8Array）に収める範囲として持つ
     CAP: 36,          // 1学級の人数の上限
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
@@ -1400,14 +1400,21 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     })([], Array.from({ length: n }, function (_, i) { return i; }));
     return out;
   }
+  // 2つの案で所属が違う児童の数（組の名前の付け替えは同じとみなす）。組の数が違う案どうしでも数える
+  // 組が7つまでは全部の付け替えを試す。それより多い時は、重なりの大きい組から順に対にする（近い値）
   function diffCount(ctx, a, b) {
-    var best = ctx.N;
-    perms(ctx.nc).forEach(function (pm) {
-      var d = 0;
-      for (var i = 0; i < ctx.N; i++) if (pm[a[i]] !== b[i]) d++;
-      if (d < best) best = d;
-    });
-    return best;
+    var N = Math.min(a.length, b.length), K = 0, i, x, y;
+    for (i = 0; i < N; i++) { if (a[i] + 1 > K) K = a[i] + 1; if (b[i] + 1 > K) K = b[i] + 1; }
+    var M = []; for (x = 0; x < K; x++) M.push(new Array(K).fill(0));
+    for (i = 0; i < N; i++) if (a[i] >= 0 && b[i] >= 0) M[a[i]][b[i]]++;
+    var best = 0;
+    if (K <= 7) perms(K).forEach(function (pm) { var s = 0; for (var q = 0; q < K; q++) s += M[q][pm[q]]; if (s > best) best = s; });
+    else {
+      var cells = []; for (x = 0; x < K; x++) for (y = 0; y < K; y++) cells.push([M[x][y], x, y]);
+      cells.sort(function (p, q) { return q[0] - p[0]; });
+      var ux = {}, uy = {}; cells.forEach(function (c) { if (!ux[c[1]] && !uy[c[2]]) { ux[c[1]] = uy[c[2]] = 1; best += c[0]; } });
+    }
+    return N - best;
   }
 
   // ===== 入れ替え =====
@@ -2738,7 +2745,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_9bb72e3eb461';
+  var PAGE_BUILD = 'BUILD_1eeb62d2e066';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4193,7 +4200,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var E0 = {}, E = {}; // E0：開いた時の値、E：直した値（児童ID → 項目）
     rows.forEach(function (r) { var s = d.kids[r.id] || {}; E0[r.id] = { cls: r.cls, no: r.no, name: s.name || '', kana: s.kana || '', male: !!s.male, addr: s.addr || '' }; E[r.id] = Object.assign({}, E0[r.id]); });
     var changed = function () { return rows.filter(function (r) { return JSON.stringify(E[r.id]) !== JSON.stringify(E0[r.id]); }); };
-    var dups = function () { var seen = {}, out = []; rows.forEach(function (r) { var e = E[r.id]; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k]) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
+    // 番号の重なり：表に出していない組の児童とも比べる（ほかの組へ移した時に、移した先の番号と重ならないか）
+    var dups = function () { var seen = {}, out = []; Y.rows.forEach(function (r) { var e = E[r.id] || { cls: r.cls, no: r.no }; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k] && out.indexOf((e.cls + 1) + '組' + e.no + '番') < 0) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
     var info = function () { var n = changed().length, dp = dups(); return (dp.length ? '<span class="warnbox" style="font-weight:400;display:inline-block">番号が重なっています：' + esc(dp.join('、')) + '</span> ' : '') + '<span class="note">直した児童 ' + n + '人</span>'; };
     var clsOpt = function (cur) { var h = ''; for (var k = 0; k < nc; k++) h += '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + (k + 1) + '組</option>'; return h + '<option value="-1"' + (cur < 0 ? ' selected' : '') + '>クラスなし</option>'; };
     App.openDlg({
@@ -5932,7 +5940,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
-          '<div class="rbar"><span class="lab">組の数</span>' + Array.from({ length: C.MAX_CLASSES - 1 }, function (_, i) { var n = i + 2; return '<button class="lv" data-gnc="' + n + '" aria-pressed="' + (gen.nc === n) + '">' + n + '組</button>'; }).join('') + '<span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
+          '<div class="rbar"><span class="lab">組の数</span><button class="lv" data-gnc="' + Math.max(2, gen.nc - 1) + '"' + (gen.nc <= 2 ? ' disabled' : '') + ' aria-label="組を減らす">−</button><b id="gncv" style="min-width:3em;text-align:center">' + gen.nc + '組</b><button class="lv" data-gnc="' + (gen.nc + 1) + '" aria-label="組を増やす">＋</button><span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
           '<div><b>必ず守る条件</b>（押すと外す／戻す）<div class="toggles" style="margin-top:6px">' + C.HARD.map(function (h) {
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
@@ -6618,6 +6626,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
+    if (App.st && App.st.data && App.normKids) App.normKids(App.st.data); // 外字の置き換え表を直したら、開いている学年の名前にもすぐ効かせる
     var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     App.fullName = an + '（' + safe(s.formalName || '児童理解支援システム') + '）';
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });

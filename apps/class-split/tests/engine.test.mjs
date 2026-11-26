@@ -136,6 +136,10 @@ test('組の番号の付け替えは「違い」に数えない', () => {
   const a = E.optimize(ctx, new Map(), 1);
   const b = Int8Array.from(a, k => (k + 1) % 4);
   assert.equal(E.diffCount(ctx, a, b), 0);
+  // 組の数が違う案どうし・組が多い案でも数えられる（上限を設けないため、組の付け替えを全部は試さない）
+  assert.equal(E.diffCount(ctx, Int8Array.from([0, 0, 1, 1, 2, 2]), Int8Array.from([1, 1, 0, 0, 0, 0])), 2);
+  const big = Int8Array.from({ length: 90 }, (_, i) => i % 9), shifted = Int8Array.from(big, k => (k + 1) % 9);
+  assert.equal(E.diffCount(ctx, big, shifted), 0, '9組でも、組の名前の付け替えだけなら違いは0');
 });
 
 test('決定：新しい番号は組ごとの男女混合の五十音順で、値は写される', () => {

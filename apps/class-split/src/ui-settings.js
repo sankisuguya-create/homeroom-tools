@@ -14,6 +14,7 @@
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
+    if (App.st && App.st.data && App.normKids) App.normKids(App.st.data); // 外字の置き換え表を直したら、開いている学年の名前にもすぐ効かせる
     var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     App.fullName = an + '（' + safe(s.formalName || '児童理解支援システム') + '）';
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });

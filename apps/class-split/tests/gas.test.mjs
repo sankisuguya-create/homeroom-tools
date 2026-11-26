@@ -81,7 +81,7 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.equal(call('apiListGrades').v.find(x => x.grade === 4).classes, 3);
     assert.equal(call('apiBoot', 4).v.ncls[FY], 3);
     assert.equal(call('apiSetClassCount', FY, 4, 1).ok, false, '2組に児童がいるので1組にはできない');
-    assert.equal(call('apiSetClassCount', FY, 4, 9).ok, false, '上限を超える数は断る');
+    assert.equal(call('apiSetClassCount', FY, 4, 0).ok, false, '0組は断る'); assert.ok(call('apiSetClassCount', FY, 4, 9).ok, '上限は設けない（9組も作れる）');
     assert.ok(call('apiSetClassCount', FY, 4, 2).ok);
     // 名簿の「保存」：ためた変更をまとめて1回で書く。誤りのある件で止めて断る（その前の件は書かれる）
     const ms = call('apiSetAttrs', [{ fy: FY, grade: 4, id: '40000011', k: 'k2', v: 1 }, { fy: FY, grade: 4, id: '40000012', k: 'memo', v: 1, text: 'まとめて' }]);
