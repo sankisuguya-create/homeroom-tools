@@ -91,7 +91,7 @@
     var el = document.getElementById('busy');
     if (!text) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'busy'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
-    el.innerHTML = '<div>' + App.esc(text) + '<span class="dots"></span></div>';
+    el.innerHTML = '<div>' + App.esc(text) + '<span class="ldots" aria-hidden="true"></span></div>';
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 

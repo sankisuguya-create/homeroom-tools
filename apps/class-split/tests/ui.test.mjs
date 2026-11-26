@@ -738,7 +738,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await cell.click(); await cell.click(); await cell.click();
   ok(await p.evaluate(() => window.__calls) === 0 && /保存（1件）/.test(await p.textContent('#rsave')), '欄を押しても送らず、「保存（1件）」にためる');
   await p.click('#rsave'); await p.waitForSelector('#busy', { timeout: 2000 });
-  ok(/保存中/.test(await p.textContent('#busy')), '保存を押すと、画面の中央に「保存中」を重ねる');
+  ok(/保存中/.test(await p.textContent('#busy')) && await p.locator('#busy .ldots').count() === 1, '保存を押すと、画面の中央に「保存中」と回る点を重ねる');
   await p.waitForFunction(() => !document.getElementById('busy'), null, { timeout: 5000 });
   const id = await cell.getAttribute('data-cell');
   const kept = await p.evaluate(id => { const d = App.st.data, r = d.years.find(y => y.fy === d.fy).rows.find(x => x.id === id); return r.a.k2 | 0; }, id);

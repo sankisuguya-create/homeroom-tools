@@ -2719,7 +2719,7 @@ body.busywait #app,body.busywait .dlg,body.busywait .dlgback{pointer-events:none
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_77368b083c60';
+  var PAGE_BUILD = 'BUILD_823215160bf6';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -6872,7 +6872,7 @@ body.busywait #app,body.busywait .dlg,body.busywait .dlgback{pointer-events:none
     var el = document.getElementById('busy');
     if (!text) { if (el) el.remove(); return; }
     if (!el) { el = document.createElement('div'); el.id = 'busy'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
-    el.innerHTML = '<div>' + App.esc(text) + '<span class="dots"></span></div>';
+    el.innerHTML = '<div>' + App.esc(text) + '<span class="ldots" aria-hidden="true"></span></div>';
   };
   App.reload = function () { return App.go(App.st.screen, App.st.grade); };
 
