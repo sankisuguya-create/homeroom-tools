@@ -146,8 +146,9 @@ gas.drive.share(DBID, { editors: ['leak@edu.nishi.or.jp'] });
 await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.warnbox[role=alert]');
 ok((await p.locator('.warnbox[role=alert]').textContent()).includes('leak@'), '共有されると管理者のメニューに警告');
 gas.drive.share(DBID, { editors: [] });
-await p.click('[data-go="settings"]'); await p.click('[data-stab="log"]'); await p.waitForSelector('table.ro');
-ok((await p.locator('table.ro').textContent()).includes('開いた（学年）'), '記録のタブに開いた履歴');
+await p.click('[data-go="settings"]'); await p.click('[data-stab="log"]'); await p.waitForSelector('table.ro:not(.perf)');
+ok((await p.locator('table.ro:not(.perf)').textContent()).includes('開いた（学年）'), '記録のタブに開いた履歴');
+await p.waitForSelector('table.perf'); ok(/学年を開く/.test(await p.textContent('table.perf')), '記録のタブに、操作ごとのサーバーの処理時間');
 
 // 端末の登録（仮実装）：Windows の端末で受付を開くと、その端末が登録される。Linux（この試験の環境＝Android のPC版表示と同じ扱い）は締め出される
 const winCtx = await browser.newContext({ viewport: { width: 1280, height: 720 }, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36' });

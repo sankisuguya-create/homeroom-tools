@@ -73,6 +73,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const gjf = call('apiGaijiFound').v.find(x => x.code === 'U+E001');
     assert.ok(gjf && gjf.n === 1 && gjf.who[0].name === '\uE001木 ハナ');
     assert.ok(call('apiRemoveKids', FY, 4, ['GJ1'], 'mistake').ok); // ほかの試験の人数を変えない
+    // メニューの3つを1回で返す。処理時間は操作ごとに数える（管理者だけが見られる）
+    const mn = call('apiMenu', FY); assert.ok(mn.ok, mn.err); assert.ok(mn.v.grades.length && mn.v.settings.me && mn.v.years.includes(FY));
+    const pf = call('apiPerf').v; assert.ok(pf.apiMenu && pf.apiMenu[0] >= 1 && pf.apiListGrades);
     // 組の数：空の組を足せ、児童のいる組は減らせない。学年の一覧と名簿の読み込みに出る
     assert.ok(call('apiSetClassCount', FY, 4, 3).ok);
     assert.equal(call('apiListGrades').v.find(x => x.grade === 4).classes, 3);

@@ -137,13 +137,13 @@ function registerDevice_(email, info, how) {
   });
   DEV_NEW_ = t; // 画面がこれを端末に保存する（返すのはこの1回だけ）
 }
-var apiDevices_ = api_(function () {
+var apiDevices_ = api_('apiDevices', function () {
   requireAdmin_();
   var w = deviceWindow_();
   return { list: devices_().filter(function (x) { return !x.revoked; }).map(function (x) { return { id: x.id, by: x.by, at: x.at, last: x.last, os: x.os, touch: x.touch, screen: x.screen, how: x.how }; }),
     window: w ? { until: w.until, by: w.by, role: w.role || 'user' } : null, mine: DEV_ && DEV_.t ? (devices_().filter(function (x) { return x.h === hashHex_(DEV_.t); })[0] || {}).id || '' : '' };
 });
-var apiOpenDeviceWindow_ = api_(function (role) {
+var apiOpenDeviceWindow_ = api_('apiOpenDeviceWindow', function (role) {
   var by = requireAdmin_();
   role = role === 'admin' ? 'admin' : 'user';
   var h0 = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
@@ -158,12 +158,12 @@ var apiOpenDeviceWindow_ = api_(function (role) {
   if (!devices_().some(function (x) { return h && x.h === h && !x.revoked; })) registerDevice_(by, devInfo_(), 'admin');
   return { until: deviceWindow_().until };
 });
-var apiCloseDeviceWindow_ = api_(function () {
+var apiCloseDeviceWindow_ = api_('apiCloseDeviceWindow', function () {
   var by = requireAdmin_();
   withLock_(function () { setSetting_('devwin', null); log_(by, 'closeDeviceWindow', 0); });
   return { ok: true };
 });
-var apiRevokeDevice_ = api_(function (id) {
+var apiRevokeDevice_ = api_('apiRevokeDevice', function (id) {
   var by = requireAdmin_();
   withLock_(function () {
     var l = devices_().filter(function (x) { return x.id !== String(id); });
@@ -310,12 +310,31 @@ function withLock_(fn) {
 }
 function log_(by, action, n) { append_('log', TABLES_[5].head, [{ at: new Date(), by: by, action: action, n: n }]); }
 
+// 処理の時間を、操作ごとに数・合計・最大で数える（6時間。管理者の「記録」で見る）。数えるのに失敗しても処理は止めない
+function perf_(name, ms) {
+  try {
+    var c = CacheService.getScriptCache(), m = JSON.parse(c.get('perf') || '{}'), e = m[name] = m[name] || [0, 0, 0];
+    e[0]++; e[1] += ms; if (ms > e[2]) e[2] = ms;
+    if (!m._since) m._since = new Date().toISOString();
+    c.put('perf', JSON.stringify(m), 21600);
+  } catch (e2) { /* 数えられなくてもよい */ }
+}
+var apiPerf_ = api_('apiPerf', function () { requireAdmin_(); try { return JSON.parse(CacheService.getScriptCache().get('perf') || '{}'); } catch (e) { return {}; } });
+// 学校の設定（利用者の一覧を含む）は、問い合わせのたびに読むので2分覚える。書いたら捨てる
+var SET_CACHE_ = { app: 1 };
 function getSetting_(key, def) {
+  if (SET_CACHE_[key]) { try { var hit = CacheService.getScriptCache().get('set_' + key); if (hit) return JSON.parse(hit); } catch (e) { /* 覚えが使えなければ表を読む */ } }
+  var v = getSettingNow_(key, def);
+  if (SET_CACHE_[key]) { try { var js = JSON.stringify(v); if (js.length < 90000) CacheService.getScriptCache().put('set_' + key, js, 120); } catch (e) { /* 覚えられなくてもよい */ } }
+  return v;
+}
+function getSettingNow_(key, def) {
   var t = read_('settings');
   for (var i = 0; i < t.rows.length; i++) if (t.rows[i].key === key) { try { return JSON.parse(t.rows[i].json); } catch (e) { return def; } }
   return def;
 }
 function setSetting_(key, value) {
+  if (SET_CACHE_[key]) { try { CacheService.getScriptCache().remove('set_' + key); } catch (e) { /* 覚えは2分で消える */ } }
   if (value === null) { removeRows_('settings', function (r) { return r.key === key; }); return; } // 空にする時は行ごと消す（行が増え続けない）
   var t = read_('settings');
   for (var i = 0; i < t.rows.length; i++) if (t.rows[i].key === key) { writeCell_(t, t.rows[i], 'json', JSON.stringify(value)); return; }
@@ -357,14 +376,14 @@ function decisionOf_(fy, grade) {
 // ===== 画面から呼ぶ関数（platform-gas.js と同じ名前と形） =====
 // 画面は呼び出しの最後に端末の情報 { __dev: { t: 合い言葉, os, mobile, touch, screen } } を添える（端末の登録）。ここで外して DEV_ に置く
 var DEV_ = null, DEV_NEW_ = '';
-function api_(fn) {
+function api_(name, fn) {
   return function () {
     var args = Array.prototype.slice.call(arguments);
     var last = args[args.length - 1];
     DEV_ = last && typeof last === 'object' && last.__dev ? args.pop().__dev : null; DEV_NEW_ = ''; DEVICE_CHECKED_ = '';
     forget_();
     var t0 = Date.now();
-    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: Date.now() - t0 }); } // ms：サーバーでかかった時間（遅い時の手がかり）
+    try { var v = fn.apply(null, args), ms = Date.now() - t0; perf_(name, ms); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: ms }); } // ms：サーバーでかかった時間（遅い時の手がかり）
     catch (e) {
       var m = String(e && e.message || e), dev = m.indexOf('USER:DEVICE:') === 0;
       return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, device: dev, err: m.replace(/^USER:(DEVICE:)?/, ''), dev: DEV_NEW_ || undefined }); // 登録の後で失敗しても、合い言葉は端末に渡す
@@ -373,7 +392,7 @@ function api_(fn) {
 }
 
 // fy：見る年度（省略は今年度）。今年度は新1年〜6年、ほかの年度は1〜6年。決定の印は今年度だけ
-var apiListGrades_ = api_(function (fy0) {
+var apiListGrades_ = api_('apiListGrades', function (fy0) {
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), fy = +fy0 || FY, by = {};
   rosterRows_(fy).forEach(function (r) {
@@ -385,15 +404,23 @@ var apiListGrades_ = api_(function (fy0) {
   CONFIG.GRADES.forEach(function (g) { if (g === 0 && fy !== FY) return; out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
 });
+// メニューを開く時の3つ（学年の一覧・設定・年度の一覧）を1回で返す（問い合わせの数を減らす）
+var apiMenu_ = api_('apiMenu', function (fy) {
+  var dv = DEV_ ? { __dev: DEV_ } : undefined; // 端末の合い言葉を中の3つにも渡す
+  var a = JSON.parse(apiListGrades_(fy || 0, dv)), b = JSON.parse(apiSettings_(dv)), c = JSON.parse(apiRosterYears_(dv));
+  DEV_ = dv ? dv.__dev : null; DEV_NEW_ = a.dev || b.dev || c.dev || '';
+  [a, b, c].forEach(function (r) { if (!r.ok) throw r.device ? userError_('DEVICE:' + r.err) : r.user ? userError_(r.err) : new Error(r.err); });
+  return { grades: a.v, settings: b.v, years: c.v };
+});
 // メニューで選べる年度：名簿のある年度と、今年度・来年度
-var apiRosterYears_ = api_(function () {
+var apiRosterYears_ = api_('apiRosterYears', function () {
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), set = {}; set[FY] = 1; set[FY + 1] = 1;
   rosterSheets_().forEach(function (fy) { set[fy] = 1; });
   return Object.keys(set).map(Number).sort();
 });
 
-var apiBoot_ = api_(function (grade) {
+var apiBoot_ = api_('apiBoot', function (grade) {
   readLog_('boot', +grade);
   requireTeacher_();
   grade = +grade;
@@ -432,7 +459,7 @@ function transfers_(fy, grade) {
   });
 }
 // 転入生を足す：児童IDが分からなければ仮のID（T＋数字）。名簿の児童IDと重なれば断る
-var apiAddTransfer_ = api_(function (grade, x) {
+var apiAddTransfer_ = api_('apiAddTransfer', function (grade, x) {
   var by = requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -450,7 +477,7 @@ var apiAddTransfer_ = api_(function (grade, x) {
     return { id: id };
   });
 });
-var apiRemoveTransfer_ = api_(function (grade, id) {
+var apiRemoveTransfer_ = api_('apiRemoveTransfer', function (grade, id) {
   requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -492,7 +519,7 @@ function carry_(FY, grade, idset) {
 
 // つける・離す・組に固定を、学年ごとにまとめて置き換える
 // 版つき（案と同じ）：読み込んだ時の版と違えば、ほかの先生が先に保存したので上書きしない
-var apiSavePairs_ = api_(function (grade, pairs, baseVer) {
+var apiSavePairs_ = api_('apiSavePairs', function (grade, pairs, baseVer) {
   var by = requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade, vkey = 'pairsver_' + FY + '_' + grade;
@@ -512,7 +539,7 @@ var apiSavePairs_ = api_(function (grade, pairs, baseVer) {
 
 // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ（消さない）
 // opt.dry：書かずに差分だけ返す（取り込む前の確認）。書く時は直前にデータの控えを取る
-var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
+var apiImportRoster_ = api_('apiImportRoster', function (fy, grade, rows, opt) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; opt = opt || {};
   var FY = CONFIG.fiscalYear();
@@ -617,7 +644,7 @@ function replaceIds_(fy, map) {
 
 // 名簿から外す：転出した児童（配慮項目・経緯は過年度の記録として残し、年度替わりで消す）と、誤って登録した児童（その年度の配慮項目も消す）。
 // 直せる年度（決定前は今年度、決定後は来年度）だけ。外す前に控えを取る
-var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
+var apiRemoveKids_ = api_('apiRemoveKids', function (fy, grade, ids, reason) {
   var by = reason === 'mistake' ? requireAdmin_() : requireTeacher_(); // 誤登録の削除（配慮項目も消える）は管理者だけ
   fy = +fy; grade = +grade; ids = (ids || []).map(String).filter(Boolean);
   if (!ids.length) throw userError_('外す児童を選んでください');
@@ -648,9 +675,9 @@ function leftOf_(fy, grade) {
     return { id: String(r.id8), name: String(r.name), kana: String(r.kana), male: String(r.sex) === '男', leftFy: +r.fy, leftGrade: +r.grade, cls: +r.cls - 1, no: +r.no, at: String(r.at) };
   });
 }
-var apiLeftKids_ = api_(function (fy, grade) { requireTeacher_(); return leftOf_(+fy, +grade); });
+var apiLeftKids_ = api_('apiLeftKids', function (fy, grade) { requireTeacher_(); return leftOf_(+fy, +grade); });
 // 出戻り：転出児童を、同じ児童IDで名簿に戻す（番号は組の最後）。戻す年度に配慮項目の行が無ければ、転出した年度の行を写す
-var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
+var apiRestoreKid_ = api_('apiRestoreKid', function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
   if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
@@ -708,19 +735,19 @@ function updateKidIn_(by, fy, grade, id, x) {
   })();
   return { ok: true };
 }
-var apiUpdateKid_ = api_(function (fy, grade, id, x) {
+var apiUpdateKid_ = api_('apiUpdateKid', function (fy, grade, id, x) {
   var by = requireTeacher_();
   return withLock_(function () { var r = updateKidIn_(by, fy, grade, id, x); log_(by, 'updateKid', 1); return r; });
 });
 // 名簿の一覧表の「保存」：直した児童をまとめて1回で書く
-var apiUpdateKids_ = api_(function (fy, grade, list) {
+var apiUpdateKids_ = api_('apiUpdateKids', function (fy, grade, list) {
   var by = requireTeacher_();
   if (!Array.isArray(list) || list.length > 300) throw userError_('保存する内容が違います');
   return withLock_(function () { list.forEach(function (x) { updateKidIn_(by, fy, grade, x.id, x); }); log_(by, 'updateKids', list.length); return { ok: true, n: list.length }; });
 });
 
 // 組を移す（特別支援学級の児童の交流級を振り分ける）：番号はその組の最後。直せる年度だけ
-var apiSetKidClass_ = api_(function (fy, grade, id, cls) {
+var apiSetKidClass_ = api_('apiSetKidClass', function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
   if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
@@ -762,7 +789,7 @@ function importDiff_(fy, grade, rows) {
 // ===== 事案のゴミ箱 =====
 // ゴミ箱へ：deleted に「trash:日時:誰」を書く（一覧・名簿・クラス分けから消える）。戻すと元どおり。完全に消すのは管理者だけ
 // （年度替わりの削除で消えた事案の deleted は日時だけなので、ゴミ箱には出ない）
-var apiTrashIncident_ = api_(function (id) {
+var apiTrashIncident_ = api_('apiTrashIncident', function (id) {
   var by = requireTeacher_(); id = +id;
   return withLock_(function () {
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
@@ -773,11 +800,11 @@ var apiTrashIncident_ = api_(function (id) {
   });
 });
 function trashRows_() { return read_('incidents').rows.filter(function (r) { return String(r.deleted).indexOf('trash:') === 0; }); }
-var apiTrashList_ = api_(function () {
+var apiTrashList_ = api_('apiTrashList', function () {
   requireTeacher_();
   return trashRows_().map(function (r) { var p = String(r.deleted).split(':'); return { id: +r.inc_id, title: String(r.title || ''), date: isoDate_(r.date), type: String(r.type || ''), at: p.slice(1, 4).join(':'), by: p.slice(4).join(':') }; });
 });
-var apiRestoreIncident_ = api_(function (id) {
+var apiRestoreIncident_ = api_('apiRestoreIncident', function (id) {
   var by = requireTeacher_(); id = +id;
   return withLock_(function () {
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && String(r.deleted).indexOf('trash:') === 0; })[0];
@@ -787,7 +814,7 @@ var apiRestoreIncident_ = api_(function (id) {
     return { ok: true };
   });
 });
-var apiEmptyTrash_ = api_(function (ids) {
+var apiEmptyTrash_ = api_('apiEmptyTrash', function (ids) {
   var by = requireAdmin_();
   return withLock_(function () {
     var set = {}; trashRows_().forEach(function (r) { if (!ids || !ids.length || ids.map(Number).indexOf(+r.inc_id) >= 0) set[+r.inc_id] = 1; });
@@ -862,7 +889,7 @@ function scoresOf_(years) {
   years.forEach(function (y) { var v = getSetting_('scores_' + y.fy + '_' + y.grade, null); if (v) out[y.fy] = v; });
   return out;
 }
-var apiSetScores_ = api_(function (fy, grade, v) {
+var apiSetScores_ = api_('apiSetScores', function (fy, grade, v) {
   requireTeacher_();
   fy = +fy; grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -914,12 +941,12 @@ function setAttrIn_(by, fy, grade, id, k, v, text, incs) {
 }
 
 
-var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
+var apiSetAttr_ = api_('apiSetAttr', function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   return withLock_(function () { return setAttrIn_(by, fy, grade, id, k, v, text, incs); });
 });
 // 名簿の画面の「保存」：ためた変更をまとめて1回で書く（1件ずつ送ると、そのたびにサーバーを待つため）
-var apiSetAttrs_ = api_(function (list) {
+var apiSetAttrs_ = api_('apiSetAttrs', function (list) {
   var by = requireTeacher_();
   if (!Array.isArray(list) || list.length > 2000) throw userError_('保存する内容が違います');
   return withLock_(function () {
@@ -930,7 +957,7 @@ var apiSetAttrs_ = api_(function (list) {
 });
 
 // 組の数（名簿の帯で増減）。児童のいる組は減らせない。直せる年度だけ
-var apiSetClassCount_ = api_(function (fy, grade, n) {
+var apiSetClassCount_ = api_('apiSetClassCount', function (fy, grade, n) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; n = +n;
   if (!(n >= 1 && n <= CONFIG.MAX_CLASSES && n === Math.floor(n))) throw userError_('組の数は1〜' + CONFIG.MAX_CLASSES + 'です');
@@ -944,7 +971,7 @@ var apiSetClassCount_ = api_(function (fy, grade, n) {
   });
 });
 // 案は学年ごとに1つの値（版つき）。他の人が先に保存していたら上書きせずに知らせる
-var apiSavePlans_ = api_(function (grade, plans, baseVer) {
+var apiSavePlans_ = api_('apiSavePlans', function (grade, plans, baseVer) {
   var by = requireTeacher_();
   var key = 'plans_' + CONFIG.fiscalYear() + '_' + (+grade);
   return withLock_(function () {
@@ -967,9 +994,9 @@ function titleOf_(url) {
   if (!id) return '';
   try { return DriveApp.getFileById(id).getName(); } catch (e) { return ''; }
 }
-var apiFetchTitle_ = api_(function (url) { requireTeacher_(); return { title: titleOf_(url) }; });
+var apiFetchTitle_ = api_('apiFetchTitle', function (url) { requireTeacher_(); return { title: titleOf_(url) }; });
 
-var apiAddIncident_ = api_(function (x) {
+var apiAddIncident_ = api_('apiAddIncident', function (x) {
   var by = requireTeacher_();
   var v = incidentInput_(x);
   var title = plainText_(String(x.title || '').trim() || (v.url ? titleOf_(v.url) : ''), 200);
@@ -986,7 +1013,7 @@ var apiAddIncident_ = api_(function (x) {
 });
 
 // 事案を直す（関係図・文書・日付・種別）。関係する児童は関係図から入れ直す
-var apiUpdateIncident_ = api_(function (id, x, baseRev) {
+var apiUpdateIncident_ = api_('apiUpdateIncident', function (id, x, baseRev) {
   var by = requireTeacher_();
   id = +id;
   var v = incidentInput_(x);
@@ -1009,7 +1036,7 @@ var apiUpdateIncident_ = api_(function (id, x, baseRev) {
 // 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
 // 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
 // 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
-var apiExportReport_ = api_(function (kind, values, incId, seq) {
+var apiExportReport_ = api_('apiExportReport', function (kind, values, incId, seq) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -1048,7 +1075,7 @@ var apiExportReport_ = api_(function (kind, values, incId, seq) {
 // 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
 // 中身は入力中の記録そのもの（氏名が入りうる）。登録するか「やめる」で消える
 function draftKey_(email, grade) { return 'incdraft_' + String(email).toLowerCase() + '_' + (+grade); }
-var apiSaveDraft_ = api_(function (grade, draft) {
+var apiSaveDraft_ = api_('apiSaveDraft', function (grade, draft) {
   var by = requireTeacher_(), key = draftKey_(by, grade);
   return withLock_(function () {
     if (!draft) { setSetting_(key, null); return { ok: true }; }
@@ -1058,13 +1085,13 @@ var apiSaveDraft_ = api_(function (grade, draft) {
     return { ok: true };
   });
 });
-var apiLoadDraft_ = api_(function (grade) {
+var apiLoadDraft_ = api_('apiLoadDraft', function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
 });
 
 // 全校の事案（事案の一覧で、ほかの学年を探す時）
-var apiAllIncidents_ = api_(function () {
+var apiAllIncidents_ = api_('apiAllIncidents', function () {
   readLog_('allIncidents', 0);
   requireTeacher_();
   return incidents_();
@@ -1072,7 +1099,7 @@ var apiAllIncidents_ = api_(function () {
 
 // 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
 // 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
-var apiSchoolKids_ = api_(function () {
+var apiSchoolKids_ = api_('apiSchoolKids', function () {
   readLog_('schoolKids', 0);
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
@@ -1085,7 +1112,7 @@ var apiSchoolKids_ = api_(function () {
   });
 });
 
-var apiSchoolIncidents_ = api_(function () {
+var apiSchoolIncidents_ = api_('apiSchoolIncidents', function () {
   readLog_('schoolIncidents', 0);
   requireTeacher_();
   var cur = {};
@@ -1099,7 +1126,7 @@ var apiSchoolIncidents_ = api_(function () {
 });
 
 // 決定：来年度の名簿（新しい組・番号）と配慮項目の写しを作り、つける・離すを持ち越しの候補にする
-var apiDecide_ = api_(function (grade, plan) {
+var apiDecide_ = api_('apiDecide', function (grade, plan) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   if (grade >= 6) throw userError_('6年は決定しません');
@@ -1141,7 +1168,7 @@ var apiDecide_ = api_(function (grade, plan) {
 });
 
 // 取り消し：4/1まで（年度が変わったら決定は確定）。来年度の名簿と写した値・持ち越しの候補を消す
-var apiUndoDecide_ = api_(function (grade) {
+var apiUndoDecide_ = api_('apiUndoDecide', function (grade) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -1170,7 +1197,7 @@ function namesOf_(dec, FY, grade) {
   return out;
 }
 // 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
-var apiSetClassNames_ = api_(function (grade, names) {
+var apiSetClassNames_ = api_('apiSetClassNames', function (grade, names) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -1226,7 +1253,7 @@ function allRosterNames_() {
   return out;
 }
 function allRosterIds_() { var out = []; rosterSheets_().forEach(function (fy) { rosterRows_(fy).forEach(function (r) { out.push(r.id); }); }); return out; }
-var apiSuggest_ = api_(function (text, screen) {
+var apiSuggest_ = api_('apiSuggest', function (text, screen) {
   requireTeacher_();
   text = String(text == null ? '' : text).trim();
   if (!text) throw userError_('意見を書いてください');
@@ -1239,7 +1266,7 @@ var apiSuggest_ = api_(function (text, screen) {
   });
   return { ok: true };
 });
-var apiSuggestions_ = api_(function () {
+var apiSuggestions_ = api_('apiSuggestions', function () {
   requireAdmin_();
   return read_('suggestions').rows.map(function (r) { return { at: String(r.at), screen: String(r.screen), text: String(r.text).replace(/^'/, '') }; });
 });
@@ -1253,7 +1280,7 @@ function readLog_(action, n) {
   try { log_(by, action, n); c.put(key, '1', 600); } catch (e) { /* 記録に失敗しても読み出しは止めない */ }
   return by;
 }
-var apiReadLog_ = api_(function () {
+var apiReadLog_ = api_('apiReadLog', function () {
   requireAdmin_();
   var rows = read_('log').rows;
   return rows.slice(-200).reverse().map(function (r) { return { at: r.at instanceof Date ? r.at.toISOString() : String(r.at), by: String(r.by), action: String(r.action), n: String(r.n) }; });
@@ -1329,9 +1356,9 @@ function pruneLog_() {
   var limit = Date.now() - LOG_KEEP_DAYS * 86400000;
   return withLock_(function () { return removeRows_('log', function (r) { var t = new Date(r.at).getTime(); return t && t < limit; }); });
 }
-var apiPruneLog_ = api_(function () { var by = requireAdmin_(); var n = pruneLog_(); log_(by, 'pruneLog', n); return { n: n }; });
+var apiPruneLog_ = api_('apiPruneLog', function () { var by = requireAdmin_(); var n = pruneLog_(); log_(by, 'pruneLog', n); return { n: n }; });
 // 目安箱の意見を消す（読んでコピーした後に、管理者が消す）
-var apiClearSuggestions_ = api_(function () {
+var apiClearSuggestions_ = api_('apiClearSuggestions', function () {
   var by = requireAdmin_();
   var n = withLock_(function () { return removeRows_('suggestions', function () { return true; }); });
   log_(by, 'clearSuggestions', n);
@@ -1340,7 +1367,7 @@ var apiClearSuggestions_ = api_(function () {
 
 // ===== 管理者への知らせ =====
 // データ・スクリプト・控えのフォルダが所有者以外に共有されていないか。4〜5月は年度替わりの消し忘れも
-var apiAdminStatus_ = api_(function () {
+var apiAdminStatus_ = api_('apiAdminStatus', function () {
   var email = requireTeacher_();
   if (!accessOf_(email).admin) return { warnings: [] };
   var w = [], id = PropertiesService.getScriptProperties().getProperty(DB_PROP);
@@ -1375,14 +1402,14 @@ function settings_() {
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
     slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム'), gaiji: s.gaiji || {} };
 }
-var apiSettings_ = api_(function () {
+var apiSettings_ = api_('apiSettings', function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
   s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
   me.view = getSetting_('view_' + email, {});
   return { settings: s, me: me };
 });
 // 先生ごとのメニューの表示（出す・出さないだけ）
-var apiSaveMyView_ = api_(function (v) {
+var apiSaveMyView_ = api_('apiSaveMyView', function (v) {
   var email = requireTeacher_(), o = {};
   ['rost', 'inc', 'split', 'recent', 'others'].forEach(function (k) { o[k] = !(v && v[k] === false); });
   withLock_(function () { setSetting_('view_' + email, o); });
@@ -1398,7 +1425,7 @@ function gaijiMap_(m) {
   return out;
 }
 // 名簿に出てくる外字を集める（管理者が置き換え表を埋めるため）。今年度・来年度の名簿の名前・よみから、外字1字ごとに使っている児童を3人まで
-var apiGaijiFound_ = api_(function () {
+var apiGaijiFound_ = api_('apiGaijiFound', function () {
   requireAdmin_();
   var FY = CONFIG.fiscalYear(), found = {};
   [FY, FY + 1].forEach(function (fy) {
@@ -1414,7 +1441,7 @@ var apiGaijiFound_ = api_(function () {
 });
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
-var apiSaveSettings_ = api_(function (s) {
+var apiSaveSettings_ = api_('apiSaveSettings', function (s) {
   var by = requireAdmin_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
@@ -1449,7 +1476,7 @@ function rosterSheets_() {
     .map(function (n) { return +n.slice(7); }).sort();
 }
 // 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
-var apiLeaveCandidates_ = api_(function () { requireAdmin_(); return leaveCandidates_(); });
+var apiLeaveCandidates_ = api_('apiLeaveCandidates', function () { requireAdmin_(); return leaveCandidates_(); });
 function leaveCandidates_() {
   var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
@@ -1465,7 +1492,7 @@ function leaveCandidates_() {
 }
 // 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
 // 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
-var apiPurge_ = api_(function (ids) {
+var apiPurge_ = api_('apiPurge', function (ids) {
   var by = requireAdmin_();
   if (!ids || !ids.length) throw userError_('消す児童を選んでください');
   var bkErr = tryBackup_('記録を消す前');
@@ -1600,3 +1627,5 @@ function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }
 function apiSetClassCount() { return apiSetClassCount_.apply(null, arguments); }
 function apiUpdateKids() { return apiUpdateKids_.apply(null, arguments); }
 function apiGaijiFound() { return apiGaijiFound_.apply(null, arguments); }
+function apiMenu() { return apiMenu_.apply(null, arguments); }
+function apiPerf() { return apiPerf_.apply(null, arguments); }

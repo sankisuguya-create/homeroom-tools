@@ -32,7 +32,8 @@
       // 一度読んだ学年の一覧があれば、背景と同時にすぐメニューを出し、届いた新しい一覧で描き直す（戻る時に背景だけ先に変わらない）
       var quick = st.grades && st.gradesFy === vfy && App.me;
       var offM = quick ? function () {} : App.busyOn('移動中'); if (quick) App.screens.menu.render();
-      return Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]).then(function (r) {
+      var q = App.pf().menu ? App.pf().menu(vfy).then(function (m) { return [m.grades, m.settings, m.years]; }) : Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]);
+      return q.then(function (r) {
         offM();
         if (App.st.screen !== 'menu') return; // 待つ間にほかの画面へ移っていたら描かない
         st.grades = r[0]; st.years = r[2]; st.gradesFy = vfy;

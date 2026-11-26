@@ -55,6 +55,8 @@
     fiscalYear: C.fiscalYear(),
     listGrades: function (fy) { return call('apiListGrades', fy || 0); },
     rosterYears: function () { return call('apiRosterYears'); },
+    menu: function (fy) { return call('apiMenu', fy || 0); }, // 学年の一覧・設定・年度の一覧を1回で
+    perf: function () { return call('apiPerf'); },
     boot: function (grade) {
       return call('apiBoot', grade).then(function (d) {
         planVer[grade] = d.plans.ver || 0; pairsVer[grade] = d.pairsVer || 0;
