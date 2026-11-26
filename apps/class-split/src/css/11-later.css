@@ -161,3 +161,8 @@
 body.busywait{cursor:progress}
 body.busywait #app,body.busywait .dlg,body.busywait .dlgback{pointer-events:none}
 body.busyshow .save{visibility:hidden}
+/* 名簿の一覧表で直す */
+.bulkdlg{max-width:min(1200px,96vw)}
+.bulkwrap{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
+table.bulk td{padding:3px 4px}
+table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;min-height:30px;box-sizing:border-box}

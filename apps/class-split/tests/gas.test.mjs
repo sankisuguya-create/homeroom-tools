@@ -66,6 +66,20 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;
     assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2);
+    // 外字の置き換え表：私用の文字1字 → 1〜2字だけ残す
+    assert.equal(JSON.stringify(ctx.gaijiMap_({ '\uE001': '髙', 'あ': '亜', '\uE002': '', '\uE003': '<b>' })), JSON.stringify({ '\uE001': '髙', '\uE003': 'b' }));
+    // 名簿に出てくる外字を集める（管理者だけ）
+    assert.ok(call('apiImportRoster', FY, 4, [{ id: 'GJ1', name: '\uE001木 ハナ', kana: 'たかぎ はな', male: false, cls: 0, no: 88 }]).ok);
+    const gjf = call('apiGaijiFound').v.find(x => x.code === 'U+E001');
+    assert.ok(gjf && gjf.n === 1 && gjf.who[0].name === '\uE001木 ハナ');
+    assert.ok(call('apiRemoveKids', FY, 4, ['GJ1'], 'mistake').ok); // ほかの試験の人数を変えない
+    // 組の数：空の組を足せ、児童のいる組は減らせない。学年の一覧と名簿の読み込みに出る
+    assert.ok(call('apiSetClassCount', FY, 4, 3).ok);
+    assert.equal(call('apiListGrades').v.find(x => x.grade === 4).classes, 3);
+    assert.equal(call('apiBoot', 4).v.ncls[FY], 3);
+    assert.equal(call('apiSetClassCount', FY, 4, 1).ok, false, '2組に児童がいるので1組にはできない');
+    assert.equal(call('apiSetClassCount', FY, 4, 9).ok, false, '上限を超える数は断る');
+    assert.ok(call('apiSetClassCount', FY, 4, 2).ok);
     // 名簿の「保存」：ためた変更をまとめて1回で書く。誤りのある件で止めて断る（その前の件は書かれる）
     const ms = call('apiSetAttrs', [{ fy: FY, grade: 4, id: '40000011', k: 'k2', v: 1 }, { fy: FY, grade: 4, id: '40000012', k: 'memo', v: 1, text: 'まとめて' }]);
     assert.ok(ms.ok && ms.v.n === 2, ms.err);
@@ -428,6 +442,11 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetKidClass', FY, 4, 'SB2', 1).ok);
 
     // 名前・よみ・組・番号を直す（児童IDは変えない）
+    // 一覧表の保存：まとめて直す
+    const ukl = call('apiUpdateKids', FY, 4, [{ id: 'SB2', name: '一覧 名前', kana: 'いちらん', cls: 0, no: 71, addr: '一覧町1' }]);
+    assert.ok(ukl.ok && ukl.v.n === 1, ukl.err);
+    assert.equal(call('apiBoot', 4).v.kids.SB2.name, '一覧 名前');
+    assert.equal(call('apiUpdateKids', FY, 4, [{ id: 'SB2', name: '', cls: 0, no: 71 }]).ok, false, '名前が空なら断る');
     const upd = call('apiUpdateKid', FY, 4, 'SB2', { name: '直した 名前', kana: 'なおした なまえ', cls: 0, no: 70 });
     assert.ok(upd.ok, upd.err);
     const upr = call('apiBoot', 4).v; const upk = upr.years.find(y => y.fy === FY).rows.find(r => r.id === 'SB2');

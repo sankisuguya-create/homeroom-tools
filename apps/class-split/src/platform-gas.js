@@ -65,6 +65,9 @@
     },
     setAttr: function (fy, grade, id, k, v, text, incs) { return call('apiSetAttr', fy, grade, id, k, v, text, incs); },
     setAttrs: function (list) { return call('apiSetAttrs', list); },
+    updateKids: function (fy, grade, list) { return call('apiUpdateKids', fy, grade, list); },
+    gaijiFound: function () { return call('apiGaijiFound'); },
+    setClassCount: function (fy, grade, n) { return call('apiSetClassCount', fy, grade, n); },
     savePlans: function (grade, plans) {
       return call('apiSavePlans', grade, plans, planVer[grade] || 0).then(function (r) {
         if (r.conflict) {

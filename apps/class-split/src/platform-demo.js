@@ -259,6 +259,7 @@
       for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
         var rows = yearRows(fy, grade), nc = 0;
         rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+        nc = Math.max(nc, (S.ncls || {})[fy + '_' + grade] | 0);
         out.push({ grade: grade, count: rows.length, classes: nc, decided: fy === FY && !!S.decisions[grade] });
       }
       return later(out);
@@ -273,12 +274,18 @@
       var kids = {};
       Object.keys(idset).forEach(function (id) { kids[id] = S.kids[id]; });
       return later({
-        fy: FY, grade: grade, years: years, kids: kids,
+        fy: FY, grade: grade, years: years, kids: kids, ncls: years.reduce(function (o, y) { o[y.fy] = (S.ncls || {})[y.fy + '_' + y.grade] | 0; return o; }, {}),
         incidents: S.inc.filter(function (x) { return x.ids.some(function (id) { return idset[id]; }); }),
         pairs: S.pairs[grade] || [], carry: carryOf(grade), plans: S.plans[grade] || [], decision: S.decisions[grade] || null,
         transfers: clone(S.transfers[grade] || []),
         scores: clone((S.scores || {})[grade] || {})
       });
+    },
+    gaijiFound: function () { var out = {}; Object.keys(S.kids).forEach(function (id) { var k = S.kids[id]; Array.from(String(k.name || '') + String(k.kana || '')).forEach(function (ch) { var c = ch.codePointAt(0); if (c < 0xE000 || c > 0xF8FF) return; var f = out[ch] = out[ch] || { ch: ch, code: 'U+' + c.toString(16).toUpperCase(), n: 0, who: [] }; f.n++; if (f.who.length < 3) f.who.push({ name: k.name, fy: FY, grade: 0, cls: 0 }); }); }); return later(Object.keys(out).map(function (k) { return out[k]; })); },
+    setClassCount: function (fy, grade, n) { gen();
+      var used = 0; yearRows(fy, grade).forEach(function (r) { if (r.cls + 1 > used) used = r.cls + 1; });
+      if (n < used) return Promise.reject(Object.assign(new Error('児童のいる組は減らせません（' + used + '組まで児童がいます）'), { noRetry: true }));
+      (S.ncls = S.ncls || {})[fy + '_' + grade] = n; return later({ n: n });
     },
     addTransfer: function (grade, x) { gen();
       if (S.decisions[grade]) return Promise.reject(new Error('決定済みです。決定を取り消してから足してください'));
@@ -400,6 +407,7 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    updateKids: function (fy, grade, list) { var self = this; return list.reduce(function (pr, x) { return pr.then(function () { return self.updateKid(fy, grade, x.id, x); }); }, Promise.resolve()).then(function () { return { ok: true, n: list.length }; }); },
     updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; var k = S.kids[id]; k.name = x.name; k.kana = x.kana; if (x.male !== undefined) k.male = x.male; ['birth', 'addr', 'area'].forEach(function (f) { if (x[f] !== undefined) k[f] = x[f]; }); if (x.sp !== undefined) { if (x.sp) { r.a.sp = 1; r.a.spn = x.spn || ''; } else { delete r.a.sp; delete r.a.spn; } } return later({ ok: true }); },
     setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
     leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },

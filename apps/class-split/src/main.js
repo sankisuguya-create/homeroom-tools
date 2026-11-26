@@ -58,7 +58,7 @@
   function bootFor(grade) {
     var key = (App.mode || '') + ':' + grade, c = BOOT[key];
     if (c && c.gen === App.saveGen && Date.now() - c.at < BOOT_TTL) return c.p; // 5分たったら読み直す（ほかの先生の入力を見るため）
-    var p = App.pf().boot(grade);
+    var p = App.pf().boot(grade).then(App.normKids); // 外字・異体字は画面では普通の字で出す
     BOOT[key] = { gen: App.saveGen, p: p, at: Date.now() };
     p.then(function (d) { READY[key] = { p: p, d: d }; }, function () {});
     p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない

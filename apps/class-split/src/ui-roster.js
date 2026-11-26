@@ -4,6 +4,8 @@
   'use strict';
   var App = g.App, C = g.CONFIG, E = g.Engine;
   var R = { fy: 0, cls: 0, scope: 'cls', kid: null, form: null, school: null, col: null };
+  // 組の数：名簿の児童の組と、名簿の帯で決めた組の数（空の組を作れる）の多いほう
+  function yearNc(Y, min) { var n = min || 0; if (!Y) return Math.max(n, 1); Y.rows.forEach(function (r) { if (r.cls + 1 > n) n = r.cls + 1; }); var st = (D().ncls || {})[Y.fy] | 0; return Math.max(n, st); }
   // 名簿の欄の変更は、押すたびには送らず、ためて「保存」でまとめて送る（1件ごとにサーバーを待たせない）
   var PEND = {}, PN = 0;
   function stage(fy, grade, id, k, v, text, incs) {
@@ -411,7 +413,7 @@
     }
     // 開いた時、どの組にも児童がいなくてクラスなしにだけいれば、クラスなしを開く（空の1組を見せない）
     if (R.clsFix) { R.clsFix = false; if (R.scope === 'cls' && !Y.rows.some(function (r) { return r.cls >= 0; }) && Y.rows.some(function (r) { return r.cls < 0; })) R.cls = -1; }
-    var nc = 0; Y.rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var nc = yearNc(Y);
     // 上の帯：編集中に使う「組・学年」の切り替えと、いまの状態（既定と違う時だけ）だけを出す。ほかは「その他…」の窓へ
     var h = '<div class="rbar">';
     // 決定の後の準備中の年度：組の番号が仮の間は、どの新しい組かを添える
@@ -435,6 +437,8 @@
     h += '<span class="sp"></span>' + (R.scope !== 'school' ? '<button class="btn' + (PN ? ' primary' : '') + '" id="rsave"' + (PN ? '' : ' disabled') + ' title="変えた欄をまとめて保存する">' + (PN ? '保存（' + PN + '件）' : '保存済み') + '</button>' : '') + (R.scope !== 'school' ? App.ddMenu('rmenu', '名簿の管理',
       (edit ? App.ddItem('paste', '名簿を貼る…', '既存の名簿（Excel・スプレッドシート）の範囲をコピーして貼り、児童を登録・更新する') + App.ddItem('moveB', '児童登録/削除…', '児童を足す・名簿から外す・特別支援学級の交流級・転出した児童') : '') +
       (edit ? App.ddItem('trB', '転入児童を登録…', '転入した児童を今年度の組に足す、または来年度の転入予定（クラスなし）に足す') : '') +
+      (edit ? App.ddItem('ncPlus', '組を増やす（' + (nc + 1) + '組にする）', '空の組を足す（クラス分けの基にもなる）', nc >= C.MAX_CLASSES) + App.ddItem('ncMinus', '最後の組を減らす（' + Math.max(1, nc - 1) + '組にする）', '児童のいない最後の組だけ減らせる', nc <= 1 || Y.rows.some(function (r) { return r.cls === nc - 1; })) : '') +
+      (edit ? App.ddItem('bulkB', '一覧表で直す…', '組・番号・名前・よみ・性別・住所を表で直す（兄弟は窓）') : '') +
       App.ddItem('rprint', '個人票を印刷…', R.scope === 'grade' ? '学年の全員の個人票を、組ごとに印刷する' : 'この組の個人票を印刷する') +
       App.ddItem('acadB', '学力（点数・順位）…', 'クラス分けテストの点数・学力の順位（「賢い」と学力の段を決める）') +
       (edit ? '' : '<div class="note" style="padding:6px 10px">名簿を貼る・児童登録は、ロックを外すと出ます</div>')) : '');
@@ -456,7 +460,7 @@
     var d = D(), esc = App.esc, key = R.fy + ':' + Y.grade, edit = R.fy === editableFy() && !LOCK;
     if (!LEFT[key]) {
       LEFT[key] = 'loading';
-      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; if (App.st.screen === 'roster' && R.cls === -1) { var ae = document.activeElement, aid = ae && ae.id, pos = ae && ae.selectionStart; render(); var el = aid && App.$(aid); if (el) { el.focus(); try { el.setSelectionRange(pos, pos); } catch (e) { } } } }, function () { LEFT[key] = []; }); // 描き直しても入力中の欄のカーソルを保つ
+      App.pf().leftKids(R.fy, Y.grade).then(function (l) { LEFT[key] = l; var box = document.querySelector('.nonebox'); if (App.st.screen === 'roster' && R.cls === -1 && box) box.outerHTML = noneExtra(Y); }, function () { LEFT[key] = []; }); // 届いたら「クラスなし」の欄だけ差し替える（表全体を描き直すと、開いているメニューや入力中の欄が閉じる）
     }
     var lf = Array.isArray(LEFT[key]) ? LEFT[key] : null, tr = d.transfers || [], trEdit = R.fy === d.fy && !d.decision && d.grade < 6;
     return '<div class="nonebox"><h3>転出済みの児童</h3>' + (lf === null ? '<div class="note">読み込み中<span class="ldots" aria-hidden="true"></span></div>' : lf.length ? '<ul>' + lf.map(function (x) { return '<li>' + esc(x.name) + '<span class="note">（' + x.leftFy + '年度 ' + esc(C.gradeLabel(x.leftGrade)) + (x.cls + 1) + '組で転出）</span></li>'; }).join('') + '</ul>' + (edit ? '<button class="btn" id="noneLeft">名簿に戻す…</button>' : '') : '<div class="note">いません</div>') +
@@ -723,7 +727,7 @@
       // 選べる組：貼った表の組と、その学年の今の名簿の学級の多いほう（表に組が無くても、名簿の全学級から選べる）
       var nc = 1; r.rows.forEach(function (x) { if (!x.sp && x.cls + 1 > nc) nc = x.cls + 1; });
       var yy = (d.years || []).filter(function (y0) { return y0.fy === fy; })[0] || (d.years || []).filter(function (y0) { return y0.fy === d.fy; })[0];
-      if (yy) yy.rows.forEach(function (x) { if (x.cls + 1 > nc) nc = x.cls + 1; });
+      if (yy) nc = Math.max(nc, yearNc(yy));
       P.nc = Math.max(nc, 1);
       var rr = 0;
       r.rows.forEach(function (x) { if (!x.sp) return; var k = spKey(x); if (!(P.sa[k] >= -1 && P.sa[k] < 9)) P.sa[k] = -1; }); // 初めはクラスなし（あとで名簿の「児童登録/削除」で振り分けてもよい）
@@ -783,10 +787,64 @@
     });
   }
   // 児童の情報を直す（ロックを外した時の ✎）：名前・よみ・性別・組・番号・生年月日・住所・町名・特別支援学級。兄弟と備考は備考の窓へ
+  // 名簿を一覧表で直す：組・番号・名前・よみ・性別・住所を表のマスで直し、「保存」でまとめて送る。兄弟は窓を開く
+  function bulkDialog() {
+    var d = D(), fy = editableFy(), Y = yearOf(fy), esc = App.esc; if (!Y) return;
+    var nc = yearNc(Y, 1), scope = R.scope === 'cls' ? R.cls : null;
+    var rows = Y.rows.filter(function (r) { return scope == null || r.cls === scope; }).sort(function (a, b) { return a.cls - b.cls || a.no - b.no; });
+    var E0 = {}, E = {}; // E0：開いた時の値、E：直した値（児童ID → 項目）
+    rows.forEach(function (r) { var s = d.kids[r.id] || {}; E0[r.id] = { cls: r.cls, no: r.no, name: s.name || '', kana: s.kana || '', male: !!s.male, addr: s.addr || '' }; E[r.id] = Object.assign({}, E0[r.id]); });
+    var changed = function () { return rows.filter(function (r) { return JSON.stringify(E[r.id]) !== JSON.stringify(E0[r.id]); }); };
+    var dups = function () { var seen = {}, out = []; rows.forEach(function (r) { var e = E[r.id]; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k]) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
+    var info = function () { var n = changed().length, dp = dups(); return (dp.length ? '<span class="warnbox" style="font-weight:400;display:inline-block">番号が重なっています：' + esc(dp.join('、')) + '</span> ' : '') + '<span class="note">直した児童 ' + n + '人</span>'; };
+    var clsOpt = function (cur) { var h = ''; for (var k = 0; k < nc; k++) h += '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + (k + 1) + '組</option>'; return h + '<option value="-1"' + (cur < 0 ? ' selected' : '') + '>クラスなし</option>'; };
+    App.openDlg({
+      focus: null,
+      html: function () {
+        return '<div class="pop" data-close="1"><div class="dlg bulkdlg" role="dialog" aria-modal="true" aria-label="一覧表で直す"><h2>' + fy + '年度 ' + C.gradeLabel(Y.grade) + (scope == null ? '（学年）' : scope < 0 ? '（クラスなし）' : '（' + (scope + 1) + '組）') + '：一覧表で直す</h2>' +
+          '<p class="note">マスを直して「保存」を押すと、まとめて送ります。兄弟は「兄弟…」で窓を開きます（先に保存してください）。</p>' +
+          '<div class="bulkwrap"><table class="r bulk"><thead><tr><th>組</th><th>番号</th><th>名前</th><th>よみ</th><th>性別</th><th>住所</th><th>兄弟</th></tr></thead><tbody>' +
+          rows.map(function (r) { var e = E[r.id], a = r.a || {}; return '<tr data-bkr="' + esc(r.id) + '">' +
+            '<td><select data-bk="' + esc(r.id) + ':cls">' + clsOpt(e.cls) + '</select></td>' +
+            '<td><input data-bk="' + esc(r.id) + ':no" type="number" min="1" max="99" value="' + e.no + '" style="width:4em"></td>' +
+            '<td><input data-bk="' + esc(r.id) + ':name" value="' + esc(e.name) + '" maxlength="40" style="width:9em"></td>' +
+            '<td><input data-bk="' + esc(r.id) + ':kana" value="' + esc(e.kana) + '" maxlength="60" style="width:10em"></td>' +
+            '<td><select data-bk="' + esc(r.id) + ':male"><option value="1"' + (e.male ? ' selected' : '') + '>男</option><option value="0"' + (e.male ? '' : ' selected') + '>女</option></select></td>' +
+            '<td><input data-bk="' + esc(r.id) + ':addr" value="' + esc(e.addr) + '" maxlength="200" style="width:18em"></td>' +
+            '<td><button class="btn" data-bks="' + esc(r.id) + '" title="兄弟・備考の窓を開く">兄弟…</button><span class="note"> ' + esc(a.sib && a.sib.length ? C.sibText(a.sib) : '') + '</span></td></tr>'; }).join('') +
+          '</tbody></table></div><div id="bkinfo" class="rbar">' + info() + '</div>' +
+          '<div class="acts"><button class="btn" data-act="close">やめる<kbd>Esc</kbd></button><button class="btn primary" id="bksave">保存</button></div></div></div>';
+      },
+      input: function (t) {
+        var k = t.dataset && t.dataset.bk; if (!k) return;
+        var i = k.lastIndexOf(':'), id = k.slice(0, i), f = k.slice(i + 1), e = E[id]; if (!e) return;
+        if (f === 'cls') e.cls = +t.value; else if (f === 'no') e.no = Math.max(1, Math.min(99, +t.value || 1)); else if (f === 'male') e.male = t.value === '1'; else e[f] = t.value;
+        App.dlgDirty = changed().length > 0; var bi = App.$('bkinfo'); if (bi) bi.innerHTML = info(); // 打つたびに表を作り直さない（入力中の欄が切れないように）
+      },
+      click: function (t) {
+        var x;
+        if ((x = t.closest('[data-bks]'))) {
+          if (changed().length) { App.toast('直した所を先に保存してください'); return true; }
+          var r = rows.filter(function (q) { return q.id === x.dataset.bks; })[0]; App.closeDlg(); if (r) memoDialog(Y, r); return true;
+        }
+        if (t.closest('#bksave')) {
+          var ch = changed(), dp = dups();
+          if (dp.length) { App.toast('番号が重なっています：' + dp.join('、')); return true; }
+          if (ch.some(function (r) { return !E[r.id].name.trim(); })) { App.toast('名前が空の児童がいます'); return true; }
+          if (!ch.length) { App.closeDlg(); return true; }
+          var list = ch.map(function (r) { var e = E[r.id], sk = d.kids[r.id]; return { id: r.id, name: App.rawIf(sk, 'name', e.name.trim()), kana: App.rawIf(sk, 'kana', e.kana.trim()), male: e.male, cls: e.cls, no: e.no, addr: e.addr.trim() }; });
+          App.dlgDirty = false; App.closeDlg();
+          App.save(function () { return App.pf().updateKids(fy, Y.grade, list); }).then(function () { return App.reload(); }).then(function () { render(); App.toast(list.length + '人の名簿を直しました'); });
+          return true;
+        }
+        return false;
+      }
+    });
+  }
   function kidEditDialog(id) {
     var d = D(), fy = editableFy(), Y = yearOf(fy), r = Y && Y.rows.filter(function (y) { return y.id === id; })[0], s = d.kids[id], esc = App.esc;
     if (!r || !s) return;
-    var nc = 1; Y.rows.forEach(function (y) { if (y.cls + 1 > nc) nc = y.cls + 1; });
+    var nc = yearNc(Y, 1);
     var F = { name: s.name, kana: s.kana || '', male: !!s.male, cls: r.cls, no: r.no, birth: s.birth || '', addr: s.addr || '', area: s.area || '', sp: !!(r.a && r.a.sp), spn: (r.a && r.a.spn) || '' };
     var dupOf = function () { return Y.rows.filter(function (y) { return y.id !== id && y.cls === F.cls && y.no === F.no; }).map(function (y) { return (d.kids[y.id] || {}).name; })[0]; };
     var dupHtml = function () { var dup = dupOf(); return dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : ''; };
@@ -824,7 +882,7 @@
       },
       onOk: function () {
         if (!F.name.trim()) { App.toast('名前を入れてください'); return; }
-        var x = { name: F.name.trim(), kana: F.kana.trim(), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
+        var x = { name: App.rawIf(s, 'name', F.name.trim()), kana: App.rawIf(s, 'kana', F.kana.trim()), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
         App.closeDlg();
         App.save(function () { return App.pf().updateKid(fy, Y.grade, id, x); }).then(function () {
           s.name = x.name; s.kana = x.kana; s.male = x.male; s.birth = x.birth; s.addr = x.addr; s.area = x.area; r.cls = x.cls; r.no = x.no;
@@ -838,7 +896,7 @@
   // 転入・転出・削除：名簿の画面で、1人を足す・選んだ児童を外す
   function moveDialog(tab0, cls0) {
     var d = D(), fy = editableFy(), Y = yearOf(fy), grade = Y ? Y.grade : (fy === d.fy ? d.grade : d.grade + 1), esc = App.esc;
-    var rows = Y ? Y.rows.slice() : [], nc = 1; rows.forEach(function (r) { if (r.cls + 1 > nc) nc = r.cls + 1; });
+    var rows = Y ? Y.rows.slice() : [], nc = yearNc(Y, 1);
     var M = { tab: tab0 || 'in', scope: 'cls', cls: R.cls < nc ? R.cls : 0, pick: {}, reason: 'leave', f: { name: '', kana: '', male: true, cls: cls0 != null ? cls0 : R.cls >= 0 && R.cls < nc ? R.cls : 0, id: '', birth: '', addr: '' } };
     var canTr = fy === d.fy && !d.decision && d.grade < 6; // 来年度の転入予定（クラスなし）に足せる時
     if (M.f.cls === -1 && !canTr) M.f.cls = 0;
@@ -1005,6 +1063,12 @@
     click: function (t, e) {
       var d = D(), x;
       if (t.closest('#rsave')) { savePending(); return true; }
+      if (t.closest('#bulkB')) { if (PN) { App.toast('先に名簿の欄の変更を保存してください'); return true; } bulkDialog(); return true; }
+      if ((x = t.closest('#ncPlus, #ncMinus'))) {
+        var Yc = yearOf(R.fy), nc0 = yearNc(Yc), nn = x.id === 'ncPlus' ? nc0 + 1 : nc0 - 1;
+        App.save(function () { return App.pf().setClassCount(R.fy, Yc.grade, nn); }).then(function () { return App.reload(); }).then(function () { if (R.cls >= nn) R.cls = nn - 1; render(); App.toast(nn + '組にしました'); });
+        return true;
+      }
       if (t.closest('#rlock')) { setLock(!LOCK); render(); App.toast(LOCK ? 'ロックしました（名簿は変わりません）' : 'ロックを外しました（名簿を編集できます）'); return true; }
       if ((x = t.closest('[data-kedit]'))) { kidEditDialog(x.dataset.kedit); return true; }
       // ロック中は、表の欄を押しても値を変えない（見るだけ）

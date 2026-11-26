@@ -62,6 +62,9 @@
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
         '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
           '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、画面では〓になります。下の一覧は、今年度・来年度の名簿に出てくる外字と、使っている児童です。右の欄に画面に出す字を入れて、設定を保存してください。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
+          gaijiFound(s) +
+          '<details style="margin-top:6px"><summary class="note">登録した置き換えをまとめて見る・直す（外字=字 を1行に1つ）</summary><textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea></details>' +
         '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
         '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
         '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
@@ -118,6 +121,20 @@
         return '<tr><td>' + esc(x.os) + (x.id === D.mine ? '<br><b>この端末</b>' : '') + '</td><td>' + esc(x.screen) + '</td><td style="text-align:left">' + esc(x.by) + '</td><td>' + fmt(x.at) + '</td><td>' + fmt(x.last) + '</td><td>' + (x.how === 'admin' ? '受付を開いた端末' : x.how === 'window-admin' ? '受付の間（管理者）' : '受付の間') + '</td>' +
           '<td><button class="btn" data-drev="' + esc(x.id) + '">取り消す</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">登録された端末はありません（制限なし）</div>');
+  }
+
+  // 名簿に出てくる外字の一覧：使っている児童を添えて並べ、右の欄に画面に出す字を入れてもらう
+  function gaijiFound(s) {
+    var esc = App.esc;
+    if (!T.gj) {
+      if (App.pf().gaijiFound && App.me && App.me.admin) App.pf().gaijiFound().then(function (l) { T.gj = l; if (App.st.screen === 'settings') render(); }, function () { T.gj = []; });
+      return '<div class="note">名簿の外字を探しています<span class="ldots" aria-hidden="true"></span></div>';
+    }
+    if (!T.gj.length) return '<div class="note">今年度・来年度の名簿に外字はありません。</div>';
+    return '<table class="r ro gjfound"><thead><tr><th>外字</th><th style="text-align:left">使っている児童</th><th>画面に出す字</th></tr></thead><tbody>' + T.gj.map(function (f) {
+      return '<tr><td>〓<small class="note">（' + esc(f.code) + '・' + f.n + '人）</small></td><td style="text-align:left">' + f.who.map(function (w) { return esc(App.gaijiDisp(w.name)) + '<small class="note">（' + w.fy + '年度 ' + esc(C.gradeLabel(w.grade)) + (w.cls >= 0 ? (w.cls + 1) + '組' : '') + '）</small>'; }).join('、') + '</td>' +
+        '<td><input data-gj="' + esc(f.code) + '" value="' + esc((s.gaiji || {})[f.ch] || '') + '" maxlength="2" style="width:4em" placeholder="例：髙"></td></tr>';
+    }).join('') + '</tbody></table>';
   }
 
   // 目安箱：集まった意見。年度末に「まとめてコピー」して AI に渡し、改善の材料にする（送った人は記録していない）
@@ -191,7 +208,7 @@
   function set(fn) { fn(); T.dirty = true; }
   App.screens.settings = {
     enter: function () {
-      T.tab = 'attrs'; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
+      T.tab = 'attrs'; T.gj = null; T.cand = null; T.log = null; T.dev = null; T.sugg = null; T.dirty = false;
       App.$('main').innerHTML = '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>';
       App.pf().settings().then(function (r) { T.s = clone(r.settings); App.me = r.me; render(); });
     },
@@ -256,6 +273,8 @@
       else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
       else if (t.id === 'appnm') set(function () { s.appName = t.value.trim(); });
       else if (t.id === 'appfn') set(function () { s.formalName = t.value.trim(); });
+      else if (t.dataset.gj) set(function () { var ch = String.fromCodePoint(parseInt(t.dataset.gj.slice(2), 16)), v = t.value.trim(); s.gaiji = s.gaiji || {}; if (v) s.gaiji[ch] = v; else delete s.gaiji[ch]; });
+      else if (t.id === 'gaiji') set(function () { var m = {}; t.value.split('\n').forEach(function (ln) { var i = ln.indexOf('='); if (i < 1) return; var k = ln.slice(0, i).trim(), v = ln.slice(i + 1).trim(); if (Array.from(k).length === 1 && v) m[k] = v; }); s.gaiji = m; });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;
