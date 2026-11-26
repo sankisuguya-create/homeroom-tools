@@ -1373,7 +1373,7 @@ function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
-    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム') };
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム'), gaiji: s.gaiji || {} };
 }
 var apiSettings_ = api_(function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
@@ -1388,6 +1388,15 @@ var apiSaveMyView_ = api_(function (v) {
   withLock_(function () { setSetting_('view_' + email, o); });
   return o;
 });
+// 外字の置き換え表：外字（私用の文字 U+E000〜U+F8FF）1字 → 画面に出す字（1〜2字）。最大200組
+function gaijiMap_(m) {
+  var out = {}, n = 0;
+  Object.keys(m || {}).forEach(function (k) {
+    var c = k.codePointAt(0); if (n >= 200 || k.length !== 1 || !(c >= 0xE000 && c <= 0xF8FF)) return;
+    var v = safeText_(m[k], 2); if (v) { out[k] = v; n++; }
+  });
+  return out;
+}
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
 var apiSaveSettings_ = api_(function (s) {
@@ -1395,7 +1404,7 @@ var apiSaveSettings_ = api_(function (s) {
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
-    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム' };
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム', gaiji: gaijiMap_(s.gaiji) };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {

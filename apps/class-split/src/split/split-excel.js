@@ -11,7 +11,7 @@
     var clsOf = function (c) { if (named) return c + 1; var k = names.indexOf(c + 1); return C.newClass(k >= 0 ? k : c); }; // 番号を決める前は A組・B組…で
     return nxt.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; }).map(function (r) {
       var s = d.kids[r.id] || {}, o = now[r.id], a = (o && o.a) || {};
-      return [String(r.id), o ? d.grade : '', o ? o.cls + 1 : '', o ? o.no : '', d.grade + 1, clsOf(r.cls), r.no, s.name || '', s.kana || '', s.male ? '男' : '女', a.sp ? '○' : '', '', '', '', ''];
+      return [String(r.id), o ? d.grade : '', o ? o.cls + 1 : '', o ? o.no : '', d.grade + 1, clsOf(r.cls), r.no, s.nameRaw || s.name || '', s.kanaRaw || s.kana || '', s.male ? '男' : '女', a.sp ? '○' : '', '', '', '', ''];
     });
   }
   function xmlEsc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

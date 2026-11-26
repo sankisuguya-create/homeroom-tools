@@ -66,6 +66,8 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     assert.ok(call('apiSetAttr', FY, 4, '40000011', 'k3', 2).ok);
     b = call('apiBoot', 4).v;
     assert.equal(b.years[0].rows.find(r => r.id === '40000011').a.k3, 2);
+    // 外字の置き換え表：私用の文字1字 → 1〜2字だけ残す
+    assert.equal(JSON.stringify(ctx.gaijiMap_({ '\uE001': '髙', 'あ': '亜', '\uE002': '', '\uE003': '<b>' })), JSON.stringify({ '\uE001': '髙', '\uE003': 'b' }));
     // 組の数：空の組を足せ、児童のいる組は減らせない。学年の一覧と名簿の読み込みに出る
     assert.ok(call('apiSetClassCount', FY, 4, 3).ok);
     assert.equal(call('apiListGrades').v.find(x => x.grade === 4).classes, 3);

@@ -832,7 +832,7 @@
           if (dp.length) { App.toast('番号が重なっています：' + dp.join('、')); return true; }
           if (ch.some(function (r) { return !E[r.id].name.trim(); })) { App.toast('名前が空の児童がいます'); return true; }
           if (!ch.length) { App.closeDlg(); return true; }
-          var list = ch.map(function (r) { var e = E[r.id]; return { id: r.id, name: e.name.trim(), kana: e.kana.trim(), male: e.male, cls: e.cls, no: e.no, addr: e.addr.trim() }; });
+          var list = ch.map(function (r) { var e = E[r.id], sk = d.kids[r.id]; return { id: r.id, name: App.rawIf(sk, 'name', e.name.trim()), kana: App.rawIf(sk, 'kana', e.kana.trim()), male: e.male, cls: e.cls, no: e.no, addr: e.addr.trim() }; });
           App.dlgDirty = false; App.closeDlg();
           App.save(function () { return App.pf().updateKids(fy, Y.grade, list); }).then(function () { return App.reload(); }).then(function () { render(); App.toast(list.length + '人の名簿を直しました'); });
           return true;
@@ -882,7 +882,7 @@
       },
       onOk: function () {
         if (!F.name.trim()) { App.toast('名前を入れてください'); return; }
-        var x = { name: F.name.trim(), kana: F.kana.trim(), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
+        var x = { name: App.rawIf(s, 'name', F.name.trim()), kana: App.rawIf(s, 'kana', F.kana.trim()), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
         App.closeDlg();
         App.save(function () { return App.pf().updateKid(fy, Y.grade, id, x); }).then(function () {
           s.name = x.name; s.kana = x.kana; s.male = x.male; s.birth = x.birth; s.addr = x.addr; s.area = x.area; r.cls = x.cls; r.no = x.no;

@@ -2958,6 +2958,26 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0 || App.unsavedHooks.some(function (f) { return f(); })) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
+  // ===== 外字・異体字を画面では普通の字で出す（元の字は nameRaw・kanaRaw に残し、書き出しと保存では元の字を使う） =====
+  // 異体字：字形を選ぶ記号（U+FE00〜FE0F、U+E0100〜E01EF）を外す。外字（U+E000〜F8FF）：設定の置き換え表の字、無ければ〓
+  App.gaijiDisp = function (t) {
+    var map = (App.settings && App.settings.gaiji) || {};
+    return Array.from(String(t == null ? '' : t)).map(function (ch) {
+      var c = ch.codePointAt(0);
+      if ((c >= 0xFE00 && c <= 0xFE0F) || (c >= 0xE0100 && c <= 0xE01EF)) return '';
+      if (c >= 0xE000 && c <= 0xF8FF) return map[ch] || '〓';
+      return ch;
+    }).join('');
+  };
+  App.normKids = function (d) {
+    Object.keys((d && d.kids) || {}).forEach(function (id) {
+      var s = d.kids[id];
+      ['name', 'kana'].forEach(function (f) { var raw = s[f + 'Raw'] != null ? s[f + 'Raw'] : s[f], v = App.gaijiDisp(raw); if (v !== raw) { s[f + 'Raw'] = raw; s[f] = v; } else { delete s[f + 'Raw']; s[f] = raw; } });
+    });
+    return d;
+  };
+  // 保存に送る名前：画面の名前のまま直していなければ元の字（外字・異体字）を送る
+  App.rawIf = function (s, f, v) { return s && s[f + 'Raw'] != null && v === s[f] ? s[f + 'Raw'] : v; };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 /* ▲ src/ui-common.js ここまで ▲ */
 /* ▼ src/ui-diagram.js から。直すのは src のほう ▼ */
@@ -4078,7 +4098,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
           if (dp.length) { App.toast('番号が重なっています：' + dp.join('、')); return true; }
           if (ch.some(function (r) { return !E[r.id].name.trim(); })) { App.toast('名前が空の児童がいます'); return true; }
           if (!ch.length) { App.closeDlg(); return true; }
-          var list = ch.map(function (r) { var e = E[r.id]; return { id: r.id, name: e.name.trim(), kana: e.kana.trim(), male: e.male, cls: e.cls, no: e.no, addr: e.addr.trim() }; });
+          var list = ch.map(function (r) { var e = E[r.id], sk = d.kids[r.id]; return { id: r.id, name: App.rawIf(sk, 'name', e.name.trim()), kana: App.rawIf(sk, 'kana', e.kana.trim()), male: e.male, cls: e.cls, no: e.no, addr: e.addr.trim() }; });
           App.dlgDirty = false; App.closeDlg();
           App.save(function () { return App.pf().updateKids(fy, Y.grade, list); }).then(function () { return App.reload(); }).then(function () { render(); App.toast(list.length + '人の名簿を直しました'); });
           return true;
@@ -4128,7 +4148,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       },
       onOk: function () {
         if (!F.name.trim()) { App.toast('名前を入れてください'); return; }
-        var x = { name: F.name.trim(), kana: F.kana.trim(), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
+        var x = { name: App.rawIf(s, 'name', F.name.trim()), kana: App.rawIf(s, 'kana', F.kana.trim()), male: F.male, cls: F.cls, no: F.no, birth: F.birth.trim(), addr: F.addr.trim(), area: F.area.trim(), sp: F.sp, spn: F.sp ? F.spn.trim() : '' };
         App.closeDlg();
         App.save(function () { return App.pf().updateKid(fy, Y.grade, id, x); }).then(function () {
           s.name = x.name; s.kana = x.kana; s.male = x.male; s.birth = x.birth; s.addr = x.addr; s.area = x.area; r.cls = x.cls; r.no = x.no;
@@ -6310,7 +6330,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var clsOf = function (c) { if (named) return c + 1; var k = names.indexOf(c + 1); return C.newClass(k >= 0 ? k : c); }; // 番号を決める前は A組・B組…で
     return nxt.rows.slice().sort(function (a, b) { return a.cls - b.cls || a.no - b.no; }).map(function (r) {
       var s = d.kids[r.id] || {}, o = now[r.id], a = (o && o.a) || {};
-      return [String(r.id), o ? d.grade : '', o ? o.cls + 1 : '', o ? o.no : '', d.grade + 1, clsOf(r.cls), r.no, s.name || '', s.kana || '', s.male ? '男' : '女', a.sp ? '○' : '', '', '', '', ''];
+      return [String(r.id), o ? d.grade : '', o ? o.cls + 1 : '', o ? o.no : '', d.grade + 1, clsOf(r.cls), r.no, s.nameRaw || s.name || '', s.kanaRaw || s.kana || '', s.male ? '男' : '女', a.sp ? '○' : '', '', '', '', ''];
     });
   }
   function xmlEsc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
@@ -6514,6 +6534,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
         '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
           '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、この画面では〓になります。外字の字を貼り、「=」の右に画面に出す字を書いてください（1行に1字。例：〓=髙）。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
+          '<textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea>' +
         '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
         '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
         '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
@@ -6708,6 +6730,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
       else if (t.id === 'appnm') set(function () { s.appName = t.value.trim(); });
       else if (t.id === 'appfn') set(function () { s.formalName = t.value.trim(); });
+      else if (t.id === 'gaiji') set(function () { var m = {}; t.value.split('\n').forEach(function (ln) { var i = ln.indexOf('='); if (i < 1) return; var k = ln.slice(0, i).trim(), v = ln.slice(i + 1).trim(); if (Array.from(k).length === 1 && v) m[k] = v; }); s.gaiji = m; });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;
@@ -6822,7 +6845,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   function bootFor(grade) {
     var key = (App.mode || '') + ':' + grade, c = BOOT[key];
     if (c && c.gen === App.saveGen && Date.now() - c.at < BOOT_TTL) return c.p; // 5分たったら読み直す（ほかの先生の入力を見るため）
-    var p = App.pf().boot(grade);
+    var p = App.pf().boot(grade).then(App.normKids); // 外字・異体字は画面では普通の字で出す
     BOOT[key] = { gen: App.saveGen, p: p, at: Date.now() };
     p.then(function (d) { READY[key] = { p: p, d: d }; }, function () {});
     p.catch(function () { if (BOOT[key] && BOOT[key].p === p) delete BOOT[key]; }); // 失敗は覚えない

@@ -62,6 +62,8 @@
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
         '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
           '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、この画面では〓になります。外字の字を貼り、「=」の右に画面に出す字を書いてください（1行に1字。例：〓=髙）。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
+          '<textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea>' +
         '<h3>市教委への報告書</h3><label class="setrow">学校名（様式の「学校名」の欄）<input id="school" value="' + esc(s.school || '') + '" maxlength="40" placeholder="例：高木北小"></label>' +
         '<label class="setrow">様式のファイル（ドライブに置いた .xlsx のURL）<input id="tmpl" value="' + esc(s.template || '') + '" placeholder="drive.google.com/file/d/… を貼る" style="width:100%"></label>' +
         '<p class="note">市教委から配られた Excel を、<b>スプレッドシートに変換せずに</b>ドライブに置き、そのURLを貼ります。様式が変わったら、新しいファイルのURLに貼り替えます（セルの位置が変わった時は、プログラムの設定 config.js の REPORT を直す必要があります）。</p>';
@@ -256,6 +258,7 @@
       else if (t.id === 'tmpl') set(function () { s.template = t.value.trim(); });
       else if (t.id === 'appnm') set(function () { s.appName = t.value.trim(); });
       else if (t.id === 'appfn') set(function () { s.formalName = t.value.trim(); });
+      else if (t.id === 'gaiji') set(function () { var m = {}; t.value.split('\n').forEach(function (ln) { var i = ln.indexOf('='); if (i < 1) return; var k = ln.slice(0, i).trim(), v = ln.slice(i + 1).trim(); if (Array.from(k).length === 1 && v) m[k] = v; }); s.gaiji = m; });
       else if (t.id === 'pall') { T.cand.forEach(function (x) { T.pick[x.id] = t.checked; }); render(); return; }
       else if (t.dataset.pp) { T.pick[t.dataset.pp] = t.checked; render(); return; }
       else return;

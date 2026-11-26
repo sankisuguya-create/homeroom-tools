@@ -847,6 +847,21 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 外字・異体字：画面では普通の字（外字は設定の置き換え表、無ければ〓）。元の字は残し、直していなければ元の字で保存する
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  const r = await p.evaluate(() => {
+    App.settings.gaiji = { '\uE001': '髙' };
+    const d = { kids: { a: { name: '\uE001木 葛\uDB40\uDD00子', kana: 'たかぎ' }, b: { name: '\uE002田', kana: '' } } };
+    App.normKids(d);
+    return [d.kids.a.name, d.kids.a.nameRaw, d.kids.b.name, App.rawIf(d.kids.a, 'name', '髙木 葛子'), App.rawIf(d.kids.a, 'name', '高木 葛子')];
+  });
+  ok(r[0] === '髙木 葛子' && r[1] === '\uE001木 葛\uDB40\uDD00子', '外字は置き換え表の字、異体字は普通の字で出し、元の字は残す：' + r[0]);
+  ok(r[2] === '〓田', '置き換え表に無い外字は〓');
+  ok(r[3] === '\uE001木 葛\uDB40\uDD00子' && r[4] === '高木 葛子', '名前を直していなければ元の字で保存し、直したらその字で保存する');
+  await p.close();
+}
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
 {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });

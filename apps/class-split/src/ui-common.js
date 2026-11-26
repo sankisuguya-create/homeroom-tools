@@ -227,4 +227,24 @@
   g.addEventListener && g.addEventListener('beforeunload', function (e) { if (PENDING > 0 || App.unsavedHooks.some(function (f) { return f(); })) { e.preventDefault(); e.returnValue = ''; } });
 
   g.App = App;
+  // ===== 外字・異体字を画面では普通の字で出す（元の字は nameRaw・kanaRaw に残し、書き出しと保存では元の字を使う） =====
+  // 異体字：字形を選ぶ記号（U+FE00〜FE0F、U+E0100〜E01EF）を外す。外字（U+E000〜F8FF）：設定の置き換え表の字、無ければ〓
+  App.gaijiDisp = function (t) {
+    var map = (App.settings && App.settings.gaiji) || {};
+    return Array.from(String(t == null ? '' : t)).map(function (ch) {
+      var c = ch.codePointAt(0);
+      if ((c >= 0xFE00 && c <= 0xFE0F) || (c >= 0xE0100 && c <= 0xE01EF)) return '';
+      if (c >= 0xE000 && c <= 0xF8FF) return map[ch] || '〓';
+      return ch;
+    }).join('');
+  };
+  App.normKids = function (d) {
+    Object.keys((d && d.kids) || {}).forEach(function (id) {
+      var s = d.kids[id];
+      ['name', 'kana'].forEach(function (f) { var raw = s[f + 'Raw'] != null ? s[f + 'Raw'] : s[f], v = App.gaijiDisp(raw); if (v !== raw) { s[f + 'Raw'] = raw; s[f] = v; } else { delete s[f + 'Raw']; s[f] = raw; } });
+    });
+    return d;
+  };
+  // 保存に送る名前：画面の名前のまま直していなければ元の字（外字・異体字）を送る
+  App.rawIf = function (s, f, v) { return s && s[f + 'Raw'] != null && v === s[f] ? s[f + 'Raw'] : v; };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
