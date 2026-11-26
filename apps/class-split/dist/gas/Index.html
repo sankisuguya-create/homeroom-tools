@@ -14,7 +14,7 @@
    色分けは投影と色覚検証を白地で行ったため、明るい配色1種に固定する（docs/design.md §5） */
 :root{
   color-scheme:light;
-  --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#616870; --line:#c9d1d9; --soft:#F1F3F5;
+  --bg:#eef1f4; --panel:#ffffff; --ink:#1A1A1A; --sub:#1A1A1A; --line:#c9d1d9; --soft:#F1F3F5;
   --link:#0F5EA8; --alert:#C0330A; --alert-soft:#fbe7e1; --fill:#D7E8F8; --fill-b:#FBE3B4;
   /* 校務PC(Windows)・Chromebook・Mac の順。入っていない名前が続くと探す処理で描画が重くなる */
   --f:"BIZ UDPGothic","Yu Gothic UI","Yu Gothic","Meiryo","Noto Sans CJK JP","Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP","IPAexGothic","IPAGothic",sans-serif;
@@ -374,11 +374,12 @@ table.cmp td.small{font-size:.8rem;white-space:normal;max-width:14em;text-align:
 /* ▼ css/06-dark.css から ▼ */
 /* 名簿・クラス分けの黒い背景 */
 /* ===== 名簿・クラス分け：背景を黒に（板や表の中は白地のまま。色分けの検証は白地で行ったため） ===== */
-body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC}
-body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#B9C1C9}
+body[data-screen="split"],body[data-screen="roster"]{background:#111;color:#ECECEC;--sub:#ECECEC}
+body[data-screen="split"] :is(.top,.bar,.legend),body[data-screen="roster"] :is(.top,.rbar,.legend){--sub:#ECECEC}
 body[data-screen="split"] .hint{color:#ECECEC}
-:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp){color:var(--ink);--sub:#616870}
-body[data-screen="split"] .cmpwrap>.note{color:#B9C1C9}
+:is(.btn,.tab,.lv,.frozen,.col,.tw,.pane,.dlg,.tip,table.cmp,table.r,.nonebox,.spbox,#printbox){color:var(--ink);--sub:#1A1A1A}
+body[data-screen] :is(.dlg,.nonebox,.spbox,table.r,.pane,.col) :is(.rbar,.bar,.legend,.top){--sub:#1A1A1A} /* 白い板の中の帯は黒い字 */
+body[data-screen="split"] .cmpwrap>.note{color:#ECECEC}
 /* 新しい組の枠の中は、その組の色をさらに薄くした地（カードの地＝旧学級の色より薄い） */
 .col{container-type:inline-size;background:var(--panel);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;min-width:0;min-height:0;background:#F7F8FA}
 /* 新しい組の枠：旧学級の色（カードの地）と混ざらないよう、色相を持たない灰の濃淡を交互に。組の名前は黒地に白で示す */
@@ -767,6 +768,8 @@ table.icopy td:nth-child(2),table.icopy th{white-space:nowrap}
 .pbar .pnote{font-size:.85rem;color:#B00020;font-weight:700}
 .pc-famline{margin-top:auto;padding-top:.5mm;border-top:.2mm dashed #666} /* 備考の欄のいちばん下に置く */
 .pc-addr{font-size:6.5pt;line-height:1.15;color:#333;overflow:hidden;max-height:2.4em;word-break:break-all}
+/* 個人票：女子の名前は赤（男子は黒のまま） */
+.pc.f .pc-name{color:#C8102E}
 /* ▲ css/10-print.css ここまで ▲ */
 /* ▼ css/11-later.css から ▼ */
 /* 後から足した規則（事案の一覧・点数・知らせなど） */
@@ -2720,7 +2723,7 @@ body.busyshow .save{visibility:hidden}
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_c378117f6bc6';
+  var PAGE_BUILD = 'BUILD_7e19c14cd9ff';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };

@@ -833,6 +833,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.keyboard.press('Escape');
   await mclick(p, '#rprint'); await p.waitForSelector('#printbox .pc');
   ok(await p.locator('#printbox .pp').count() >= 1 && /年度 3年 1組/.test(await p.locator('#printbox .pp-h').first().textContent()), '名簿の画面から、その組の個人票を印刷できる');
+  ok(await p.evaluate(() => { const f = document.querySelector('#printbox .pc.f .pc-name'), m = document.querySelector('#printbox .pc.m .pc-name'); return f && m && getComputedStyle(f).color === 'rgb(200, 16, 46)' && getComputedStyle(m).color === 'rgb(0, 0, 0)'; }), '個人票の名前は、女子は赤・男子は黒');
   await p.click('#pclose');
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="incidents"]'); await p.waitForSelector('.icard');
   const n0 = await p.locator('.icard').count();
