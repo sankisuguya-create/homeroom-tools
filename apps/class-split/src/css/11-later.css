@@ -160,3 +160,4 @@
 .mfoot .ddpop{top:auto;bottom:calc(100% + 4px);left:0;right:auto}
 body.busywait{cursor:progress}
 body.busywait #app,body.busywait .dlg,body.busywait .dlgback{pointer-events:none}
+body.busyshow .save{visibility:hidden}
