@@ -825,6 +825,28 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
   await p.close();
 }
+// 名簿を一覧表で直す：表のマスで直して、まとめて保存。番号が重なると保存しない
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.nm');
+  await mclick(p, '#bulkB'); await p.waitForSelector('table.bulk');
+  const ids = await p.locator('table.bulk tr[data-bkr]').evaluateAll(es => es.slice(0, 2).map(e => e.dataset.bkr));
+  await p.fill(`[data-bk="${ids[0]}:name"]`, '一覧 タロウ'); await p.fill(`[data-bk="${ids[0]}:addr"]`, '大阪府西市一覧町1-1');
+  await p.selectOption(`[data-bk="${ids[1]}:male"]`, '0');
+  const no0 = await p.inputValue(`[data-bk="${ids[0]}:no"]`); await p.fill(`[data-bk="${ids[1]}:no"]`, no0);
+  await p.click('#bksave');
+  ok(await p.locator('table.bulk').count() === 1 && /番号が重なっています/.test(await p.textContent('#bkinfo')), '一覧表：番号が重なると保存しない');
+  await p.fill(`[data-bk="${ids[1]}:no"]`, '77'); await p.click('#bksave');
+  await p.waitForFunction(() => /人の名簿を直しました/.test(document.getElementById('toast').textContent));
+  const got = await p.evaluate(ids => { const d = App.st.data; return [d.kids[ids[0]].name, d.kids[ids[0]].addr, d.kids[ids[1]].male, d.years.find(y => y.fy === d.fy).rows.find(r => r.id === ids[1]).no]; }, ids);
+  ok(got[0] === '一覧 タロウ' && /一覧町/.test(got[1]) && got[2] === false && got[3] === 77, '一覧表で名前・住所・性別・番号をまとめて直せる');
+  await mclick(p, '#bulkB'); await p.waitForSelector('table.bulk'); await p.click(`[data-bks="${ids[0]}"]`); await p.waitForSelector('#mtx');
+  ok(true, '一覧表の「兄弟…」で兄弟・備考の窓が開く'); await p.keyboard.press('Escape');
+  ok(!errs.length, '画面のエラーなし ' + errs.join(' / '));
+  await p.close();
+}
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
 {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });

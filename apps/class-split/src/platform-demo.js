@@ -406,6 +406,7 @@
     closeDeviceWindow: function () { return later({ ok: true }); },
     revokeDevice: function () { return later({ ok: true }); },
     readLog: function () { return later([{ at: new Date().toISOString(), by: 'demo@' + C.TEACHER_DOMAIN, action: 'boot', n: '5' }]); },
+    updateKids: function (fy, grade, list) { var self = this; return list.reduce(function (pr, x) { return pr.then(function () { return self.updateKid(fy, grade, x.id, x); }); }, Promise.resolve()).then(function () { return { ok: true, n: list.length }; }); },
     updateKid: function (fy, grade, id, x) { gen(); var r = yearRows(fy, grade).filter(function (y) { return y.id === id; })[0]; if (!r) return Promise.reject(new Error('名簿にいない児童です')); r.cls = x.cls; r.no = x.no; var k = S.kids[id]; k.name = x.name; k.kana = x.kana; if (x.male !== undefined) k.male = x.male; ['birth', 'addr', 'area'].forEach(function (f) { if (x[f] !== undefined) k[f] = x[f]; }); if (x.sp !== undefined) { if (x.sp) { r.a.sp = 1; r.a.spn = x.spn || ''; } else { delete r.a.sp; delete r.a.spn; } } return later({ ok: true }); },
     setKidClass: function (fy, grade, id, cls) { gen(); var cur = yearRows(fy, grade), max = 0, row = null; cur.forEach(function (r) { if (r.id === id) row = r; else if (r.cls === cls && r.no > max) max = r.no; }); if (row && row.cls !== cls) { row.cls = cls; row.no = max + 1; } return later({ cls: cls }); },
     leftKids: function (fy, grade) { gen(); return later((S.left || []).filter(function (x) { return x.leftGrade + (fy - x.leftFy) === grade; })); },

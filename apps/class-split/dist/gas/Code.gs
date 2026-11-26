@@ -1075,7 +1075,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_9957e56da091';
+var SERVER_BUILD = 'BUILD_1dd16f7ff4d0';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1751,8 +1751,8 @@ var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
 });
 
 // 名前・よみ・組・番号を直す（名簿の画面の ✎）。直せる年度だけ。児童IDは変えない
-var apiUpdateKid_ = api_(function (fy, grade, id, x) {
-  var by = requireTeacher_();
+// 1人分を直す（呼ぶ側でロックを取る）
+function updateKidIn_(by, fy, grade, id, x) {
   fy = +fy; grade = +grade; id = String(id); x = x || {};
   var name = String(x.name || '').trim(), cls = +x.cls, no = +x.no;
   if (!name) throw userError_('名前を入れてください');
@@ -1760,7 +1760,7 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
   if (!(no >= 1 && no <= 99)) throw userError_('出席番号は1〜99にしてください');
   var FY = CONFIG.fiscalYear(), cohort = grade - (fy - FY);
   if (fy !== (decisionOf_(FY, cohort) ? FY + 1 : FY)) throw userError_('この年度の名簿は直せません');
-  return withLock_(function () {
+  (function () {
     var t = read_('roster_' + fy), row = null;
     t.rows.forEach(function (r) { if (+r.grade === grade && String(r.id8) === id) row = r; });
     if (!row) throw userError_('名簿にいない児童です');
@@ -1778,9 +1778,18 @@ var apiUpdateKid_ = api_(function (fy, grade, id, x) {
       if (ar) { if (String(ar.sp || '') !== String(sp)) writeCell_(at, ar, 'sp', sp); if (String(ar.spn || '') !== spn) writeCell_(at, ar, 'spn', spn); }
       else if (sp) append_('attrs_' + fy, attrsHead_(), [{ id8: id, sp: 1, spn: spn }]);
     }
-    log_(by, 'updateKid', 1);
-    return { ok: true };
-  });
+  })();
+  return { ok: true };
+}
+var apiUpdateKid_ = api_(function (fy, grade, id, x) {
+  var by = requireTeacher_();
+  return withLock_(function () { var r = updateKidIn_(by, fy, grade, id, x); log_(by, 'updateKid', 1); return r; });
+});
+// 名簿の一覧表の「保存」：直した児童をまとめて1回で書く
+var apiUpdateKids_ = api_(function (fy, grade, list) {
+  var by = requireTeacher_();
+  if (!Array.isArray(list) || list.length > 300) throw userError_('保存する内容が違います');
+  return withLock_(function () { list.forEach(function (x) { updateKidIn_(by, fy, grade, x.id, x); }); log_(by, 'updateKids', list.length); return { ok: true, n: list.length }; });
 });
 
 // 組を移す（特別支援学級の児童の交流級を振り分ける）：番号はその組の最後。直せる年度だけ
@@ -2638,3 +2647,4 @@ function apiEmptyTrash() { return apiEmptyTrash_.apply(null, arguments); }
 function apiSaveMyView() { return apiSaveMyView_.apply(null, arguments); }
 function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }
 function apiSetClassCount() { return apiSetClassCount_.apply(null, arguments); }
+function apiUpdateKids() { return apiUpdateKids_.apply(null, arguments); }
