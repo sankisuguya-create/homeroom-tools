@@ -4,3 +4,6 @@
 .bulkwrap{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
 table.bulk td{padding:3px 4px}
 table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;min-height:30px;box-sizing:border-box}
+/* 児童の情報の窓：外字の置き換え */
+.gjbox{border:1px solid #E3B341;background:#FFF8E1;border-radius:6px;padding:8px 10px;margin:6px 0;font-size:.9rem}
+.gjbox .rbar{flex-wrap:wrap;gap:10px;margin-top:6px}

@@ -880,6 +880,20 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(true, '右の欄に入れた字が、置き換え表に保存される');
   await p.close();
 }
+// 外字：児童の情報の窓（名前を直す所）からも、外字の置き換えを決められる
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-kedit]');
+  const id = await p.locator('[data-kedit]').first().getAttribute('data-kedit');
+  await p.evaluate(id => { const k = App.st.data.kids[id]; k.name = '\uE005田 ハナ'; delete k.nameRaw; App.normKids(App.st.data); }, id);
+  await p.click(`[data-kedit="${id}"]`); await p.waitForSelector('.gjbox');
+  ok(/〓/.test(await p.textContent('.gjbox')) && (await p.inputValue('#kename')).startsWith('〓'), '名前に外字があると、児童の情報の窓に外字の欄が出る');
+  await p.fill('[data-kgj="U+E005"]', '濵'); await p.click('#kgjsave');
+  await p.waitForFunction(() => /外字を置き換えました/.test(document.getElementById('toast').textContent));
+  ok((await p.inputValue('#kename')) === '濵田 ハナ' && await p.evaluate(id => App.st.data.kids[id].name === '濵田 ハナ' && App.settings.gaiji['\uE005'] === '濵', id), '窓から置き換えると、名前の表示と置き換え表の両方に入る');
+  await p.close();
+}
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
 {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
