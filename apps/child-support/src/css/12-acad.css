@@ -1,0 +1,22 @@
+/* 学力の窓（点数・順位） */
+/* 学力の順位の窓：1行に1人。太い線より上が「賢い」。⠿ を押して上下に動かす */
+.rklist{flex:1 0 auto;height:min(56vh,520px);min-height:min(50vh,360px);overflow:auto;border:1px solid var(--line);border-radius:6px;touch-action:none}
+/* 順位の窓：画面が低くても（拡大表示でも）一覧が潰れないよう、上の部分を詰め、一覧に高さを確保する（足りなければ窓ごと流す） */
+.dlg.rkdlg{gap:8px}
+.dlg.rkdlg>*{flex-shrink:0}
+.dlg.rkdlg .note{margin:0}
+.rktabs .tab{padding:2px 8px;font-size:.85rem}
+.rkrow{display:flex;align-items:center;gap:8px;padding:3px 8px;border-bottom:1px solid var(--line);background:var(--panel)}
+.rkrow.top{background:#E3F4EA}
+.rkrow.cut{border-bottom:3px solid #009E73}
+.rkrow.drag{outline:2px solid var(--link);position:relative;z-index:1}
+.rkn{width:4.2em}
+.rkh{flex:1;cursor:grab;user-select:none;padding:4px 2px}
+.rkh small{margin-left:8px;color:var(--sub)}
+.rkrow.tierend{border-bottom:2px solid #9AA3AB}
+.rkt{font-size:.75rem;color:var(--sub);width:2.6em;text-align:right}
+.rkrow.top .rkt{color:#007A57;font-weight:700}
+/* 学力の窓の上：点数・順位の切り替えと「賢い」の決め方 */
+.acadtabs{align-items:center;flex-wrap:wrap}
+.acaduse{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:.9rem}
+.acadman{margin:-4px 0 8px;font-size:.88rem}.acadman summary{cursor:pointer;color:var(--sub)}
