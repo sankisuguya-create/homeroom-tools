@@ -1,5 +1,5 @@
 // サーバー（dist/gas/Code.gs）を、GAS の各サービスを真似た部品の上で動かして確かめる。
-//   node --test apps/class-split/tests/gas.test.mjs
+//   node --test apps/child-support/tests/gas.test.mjs
 // GAS はコメントを消して配ることがある（principles/gas-javascript-notes.md §2）ので、
 // 「そのまま」と「コメントを消した形」の両方で同じ確かめをする。実機の GAS とは別物なので、
 // 実機でしか分からないこと（権限の範囲・DriveApp の挙動・ロックの待ち）は docs/design.md に未確認として残す。

@@ -1,6 +1,6 @@
 // 本番の画面（dist/gas/Index.html）と、模擬の GAS 上のサーバー（dist/gas/Code.gs）をつないで動かす。
 // google.script.run を、Playwright の exposeFunction 経由でサーバーの関数呼び出しに置き換える。
-//   node apps/class-split/tests/gas-ui.test.mjs
+//   node apps/child-support/tests/gas-ui.test.mjs
 import fs from 'node:fs';
 import vm from 'node:vm';
 import path from 'node:path';

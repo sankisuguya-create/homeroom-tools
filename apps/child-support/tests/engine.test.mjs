@@ -1,5 +1,5 @@
 // 計算の正本（src/engine.js）と見本の Platform 層を Node で確かめる。
-//   node --test apps/class-split/tests/
+//   node --test apps/child-support/tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

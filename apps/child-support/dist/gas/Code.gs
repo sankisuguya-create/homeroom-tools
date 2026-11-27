@@ -1,4 +1,4 @@
-/* apps/class-split/src/ の config.js・engine.js・report.js・server.gs をつないで
+/* apps/child-support/src/ の config.js・engine.js・report.js・server.gs をつないで
    scripts/build.py が作る。正本を直すこと。 */
 
 /* ==================== config.js ==================== */
@@ -1082,7 +1082,7 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_36e61f17cba6';
+var SERVER_BUILD = 'BUILD_174900aab7a6';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====

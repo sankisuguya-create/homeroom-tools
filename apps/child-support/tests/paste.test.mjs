@@ -1,4 +1,4 @@
-// 名簿の貼り付けの読み取り（src/paste.js）。  node --test apps/class-split/tests/paste.test.mjs
+// 名簿の貼り付けの読み取り（src/paste.js）。  node --test apps/child-support/tests/paste.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

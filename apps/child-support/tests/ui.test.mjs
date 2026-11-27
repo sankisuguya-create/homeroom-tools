@@ -1,5 +1,5 @@
 // 画面の確かめ（Playwright）。dist/Index.html を開き、主な流れを操作する。
-//   node apps/class-split/tests/ui.test.mjs
+//   node apps/child-support/tests/ui.test.mjs
 // Playwright が無い環境では何もせずに終わる。
 import fs from 'node:fs';
 import path from 'node:path';

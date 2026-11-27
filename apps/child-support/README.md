@@ -1,6 +1,6 @@
-# クラス替え
+# CSS（児童理解支援システム）
 
-学年の名簿（配慮項目・事案・経年の記録）とクラス替え（案を作る・入れ替える・比べる・決める）を1つにした職員用の道具。
+学年の名簿（配慮項目・事案・経年の記録）、事案と市教委への報告書、クラス替え（案を作る・入れ替える・比べる・決める）を1つにした職員用の道具。
 
 - 見本（架空の児童・ブラウザだけで動く）：`dist/Index.html` をブラウザで開く
 - 本番（GAS）：`dist/gas/` の3つを貼る（下の手順）
@@ -37,11 +37,11 @@
 
 ```bash
 python3 scripts/build.py                               # src → dist/Index.html（見本）と dist/gas/（本番）
-node --test apps/class-split/tests/engine.test.mjs     # 計算・見本のデータ
-node --test apps/class-split/tests/paste.test.mjs      # 名簿の貼り付けの読み取り
-node --test apps/class-split/tests/gas.test.mjs        # サーバー（模擬の GAS 上。コメントを消した形でも）
-node apps/class-split/tests/ui.test.mjs                # 見本の画面（Playwright。無ければ飛ばす）
-node apps/class-split/tests/gas-ui.test.mjs            # 本番の画面＋模擬の GAS（Playwright）
+node --test apps/child-support/tests/engine.test.mjs     # 計算・見本のデータ
+node --test apps/child-support/tests/paste.test.mjs      # 名簿の貼り付けの読み取り
+node --test apps/child-support/tests/gas.test.mjs        # サーバー（模擬の GAS 上。コメントを消した形でも）
+node apps/child-support/tests/ui.test.mjs                # 見本の画面（Playwright。無ければ飛ばす）
+node apps/child-support/tests/gas-ui.test.mjs            # 本番の画面＋模擬の GAS（Playwright）
 ```
 
 `dist/` は直接直さない。`src/` を直して生成する。

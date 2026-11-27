@@ -49,14 +49,14 @@ jobs:
           node apps/icon-maker/tests/test-app.mjs
           node apps/note-assessment/gas/scripts/localcheck.js
       - name: 計算とサーバーのテスト
-        run: node --test apps/class-split/tests/engine.test.mjs apps/class-split/tests/gas.test.mjs apps/class-split/tests/paste.test.mjs apps/classroom-clock/tests/core.test.mjs apps/group-maker/tests/core.test.mjs
+        run: node --test apps/child-support/tests/engine.test.mjs apps/child-support/tests/gas.test.mjs apps/child-support/tests/paste.test.mjs apps/classroom-clock/tests/core.test.mjs apps/group-maker/tests/core.test.mjs
       - name: Playwright を入れる
         run: |
           npm install -g playwright@1.56.1
           npx -y playwright@1.56.1 install --with-deps chromium
       - name: 画面のテスト
         run: |
-          node apps/class-split/tests/ui.test.mjs
-          node --test apps/class-split/tests/gas-ui.test.mjs
+          node apps/child-support/tests/ui.test.mjs
+          node --test apps/child-support/tests/gas-ui.test.mjs
           node apps/classroom-clock/tests/ui.test.mjs
           node apps/group-maker/tests/ui.test.mjs
