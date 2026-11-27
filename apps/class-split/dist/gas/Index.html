@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SSS</title>
+<title>CSS</title>
 <style>
 /* ▼ src/app.css から。直すのは src のほう ▼ */
 /* class-split の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
@@ -943,7 +943,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 /* ▲ css/11-later.css ここまで ▲ */
 /* ▲ src/app.css ここまで ▲ */
 </style>
-<div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1 id="appname">SSS</h1><span class="crumb" id="crumb"></span><span class="toptools" id="toptools"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
+<div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1 id="appname">CSS</h1><span class="crumb" id="crumb"></span><span class="toptools" id="toptools"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo" hidden></span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
 <div id="layer"></div>
 <div id="idle" hidden aria-label="画面を隠しています（押すと戻る）"></div>
@@ -955,7 +955,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var CONFIG = {
-    MAX_CLASSES: 4,   // 1学年の学級数の上限
+    MAX_CLASSES: 99,  // 1学年の学級数：上限は設けない（利用者の判断）。値は保存の検査と、割り当て（Int8Array）に収める範囲として持つ
     CAP: 36,          // 1学級の人数の上限
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
@@ -1400,14 +1400,21 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     })([], Array.from({ length: n }, function (_, i) { return i; }));
     return out;
   }
+  // 2つの案で所属が違う児童の数（組の名前の付け替えは同じとみなす）。組の数が違う案どうしでも数える
+  // 組が7つまでは全部の付け替えを試す。それより多い時は、重なりの大きい組から順に対にする（近い値）
   function diffCount(ctx, a, b) {
-    var best = ctx.N;
-    perms(ctx.nc).forEach(function (pm) {
-      var d = 0;
-      for (var i = 0; i < ctx.N; i++) if (pm[a[i]] !== b[i]) d++;
-      if (d < best) best = d;
-    });
-    return best;
+    var N = Math.min(a.length, b.length), K = 0, i, x, y;
+    for (i = 0; i < N; i++) { if (a[i] + 1 > K) K = a[i] + 1; if (b[i] + 1 > K) K = b[i] + 1; }
+    var M = []; for (x = 0; x < K; x++) M.push(new Array(K).fill(0));
+    for (i = 0; i < N; i++) if (a[i] >= 0 && b[i] >= 0) M[a[i]][b[i]]++;
+    var best = 0;
+    if (K <= 7) perms(K).forEach(function (pm) { var s = 0; for (var q = 0; q < K; q++) s += M[q][pm[q]]; if (s > best) best = s; });
+    else {
+      var cells = []; for (x = 0; x < K; x++) for (y = 0; y < K; y++) cells.push([M[x][y], x, y]);
+      cells.sort(function (p, q) { return q[0] - p[0]; });
+      var ux = {}, uy = {}; cells.forEach(function (c) { if (!ux[c[1]] && !uy[c[2]]) { ux[c[1]] = uy[c[2]] = 1; best += c[0]; } });
+    }
+    return N - best;
   }
 
   // ===== 入れ替え =====
@@ -2500,6 +2507,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     name: 'demo',
     fiscalYear: FY,
     rosterYears: function () { gen(); var ys = {}; ys[FY] = 1; ys[FY + 1] = 1; Object.keys(S.years).forEach(function (y) { if (Object.keys(S.years[y]).some(function (g) { return S.years[y][g].length; })) ys[y] = 1; }); return later(Object.keys(ys).map(Number).sort()); },
+    menu: function (fy) { var self = this; return Promise.all([self.listGrades(fy), self.settings(), self.rosterYears ? self.rosterYears() : Promise.resolve([FY])]).then(function (r) { return { grades: r[0], settings: r[1], years: r[2] }; }); },
+    perf: function () { return later({}); },
     listGrades: function (fy0) { gen();
       var out = [], fy = +fy0 || FY;
       for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）
@@ -2736,7 +2745,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_0ca82d175204';
+  var PAGE_BUILD = 'BUILD_36e61f17cba6';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -2787,6 +2796,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     fiscalYear: C.fiscalYear(),
     listGrades: function (fy) { return call('apiListGrades', fy || 0); },
     rosterYears: function () { return call('apiRosterYears'); },
+    menu: function (fy) { return call('apiMenu', fy || 0); }, // 学年の一覧・設定・年度の一覧を1回で
+    perf: function () { return call('apiPerf'); },
     boot: function (grade) {
       return call('apiBoot', grade).then(function (d) {
         planVer[grade] = d.plans.ver || 0; pairsVer[grade] = d.pairsVer || 0;
@@ -3346,7 +3357,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
         '</div></section>' + recent +
         '<section class="mfoot"><button class="btn" data-go="settings">⚙ 設定</button><button class="btn" data-go="roster" data-school="1" title="全校の事案と、関わった児童の一覧">全校の事案</button>' +
         App.ddMenu('mview', '表示', VIEW_KEYS.map(function (k) { return App.ddItem('mv-' + k[0], (v[k[0]] ? '☑ ' : '☐ ') + k[1], '', false, ' role="menuitemcheckbox" aria-checked="' + !!v[k[0]] + '"'); }).join(''), 'メニューに出すものを選ぶ（先生ごとに覚える）') +
-        '<span class="sp"></span><span class="note" id="mfull">' + App.esc(App.fullName || 'SSS（児童理解支援システム）') + '</span>' +
+        '<span class="sp"></span><span class="note" id="mfull">' + App.esc(App.fullName || 'CSS（児童理解支援システム）') + '</span>' +
         '<button class="linkbtn" data-go="suggest">目安箱</button><span class="note" id="mbuild">版：' + App.esc(App.buildLabel()) + '</span></section></div>'; // 貼った版を GitHub の dist と照らす
       // 件数と最近の記録は、学年のデータ（先読み）が届いてから出す
       if (now && !sm && App.bootCached && st.grade != null) { var g0 = st.grade; App.preload(g0, function () { if (App.st.screen === 'menu' && App.st.grade === g0 && !App.viewOff() && App.bootCached(g0)) App.screens.menu.render(); }); } // 届いた分が使える時だけ描き直す（間に保存があれば描き直さず、読み直しも起こさない）
@@ -4189,7 +4200,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var E0 = {}, E = {}; // E0：開いた時の値、E：直した値（児童ID → 項目）
     rows.forEach(function (r) { var s = d.kids[r.id] || {}; E0[r.id] = { cls: r.cls, no: r.no, name: s.name || '', kana: s.kana || '', male: !!s.male, addr: s.addr || '' }; E[r.id] = Object.assign({}, E0[r.id]); });
     var changed = function () { return rows.filter(function (r) { return JSON.stringify(E[r.id]) !== JSON.stringify(E0[r.id]); }); };
-    var dups = function () { var seen = {}, out = []; rows.forEach(function (r) { var e = E[r.id]; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k]) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
+    // 番号の重なり：表に出していない組の児童とも比べる（ほかの組へ移した時に、移した先の番号と重ならないか）
+    var dups = function () { var seen = {}, out = []; Y.rows.forEach(function (r) { var e = E[r.id] || { cls: r.cls, no: r.no }; if (e.cls < 0) return; var k = e.cls + ':' + e.no; if (seen[k] && out.indexOf((e.cls + 1) + '組' + e.no + '番') < 0) out.push((e.cls + 1) + '組' + e.no + '番'); seen[k] = 1; }); return out; };
     var info = function () { var n = changed().length, dp = dups(); return (dp.length ? '<span class="warnbox" style="font-weight:400;display:inline-block">番号が重なっています：' + esc(dp.join('、')) + '</span> ' : '') + '<span class="note">直した児童 ' + n + '人</span>'; };
     var clsOpt = function (cur) { var h = ''; for (var k = 0; k < nc; k++) h += '<option value="' + k + '"' + (cur === k ? ' selected' : '') + '>' + (k + 1) + '組</option>'; return h + '<option value="-1"' + (cur < 0 ? ' selected' : '') + '>クラスなし</option>'; };
     App.openDlg({
@@ -5928,7 +5940,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
-          '<div class="rbar"><span class="lab">組の数</span>' + Array.from({ length: C.MAX_CLASSES - 1 }, function (_, i) { var n = i + 2; return '<button class="lv" data-gnc="' + n + '" aria-pressed="' + (gen.nc === n) + '">' + n + '組</button>'; }).join('') + '<span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
+          '<div class="rbar"><span class="lab">組の数</span><button class="lv" data-gnc="' + Math.max(2, gen.nc - 1) + '"' + (gen.nc <= 2 ? ' disabled' : '') + ' aria-label="組を減らす">−</button><b id="gncv" style="min-width:3em;text-align:center">' + gen.nc + '組</b><button class="lv" data-gnc="' + (gen.nc + 1) + '" aria-label="組を増やす">＋</button><span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
           '<div><b>必ず守る条件</b>（押すと外す／戻す）<div class="toggles" style="margin-top:6px">' + C.HARD.map(function (h) {
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
@@ -6614,7 +6626,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
-    var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
+    if (App.st && App.st.data && App.normKids) App.normKids(App.st.data); // 外字の置き換え表を直したら、開いている学年の名前にもすぐ効かせる
+    var an = safe(s.appName || 'CSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     App.fullName = an + '（' + safe(s.formalName || '児童理解支援システム') + '）';
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
@@ -6660,8 +6673,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     } else if (T.tab === 'types') {
       h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
-        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
-          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'CSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「CSS」（Child Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
+          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'CSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
         '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、画面では〓になります。下の一覧は、今年度・来年度の名簿に出てくる外字と、使っている児童です。右の欄に画面に出す字を入れて、設定を保存してください。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
           gaijiFound(s) +
           '<details style="margin-top:6px"><summary class="note">登録した置き換えをまとめて見る・直す（外字=字 を1行に1つ）</summary><textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea></details>' +
@@ -6690,13 +6703,25 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 
   // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
   var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', pruneLog: '古い記録を消した（件数）', clearSuggestions: '目安箱の意見を消した（件数）', addUserByWindow: '受付で一般ユーザーに登録された', addAdminByWindow: '受付で管理者に登録された', openAdminWindow: '管理者の受付を開いた（分）', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
+  // サーバーの処理時間（操作ごと・直近6時間）。遅い操作から直すための手がかり
+  var PERF_LABEL = { apiMenu: 'メニューを開く', apiBoot: '学年を開く', apiSetAttrs: '名簿の保存', apiSavePlans: '案の保存', apiUpdateKids: '一覧表の保存', apiSettings: '設定を読む', apiListGrades: '学年の一覧', apiAddIncident: '事案の登録', apiUpdateIncident: '事案の更新', apiSavePairs: 'つける・離すの保存', apiDecide: '決定' };
+  function perfBox() {
+    var esc = App.esc;
+    if (!T.perf) { if (App.pf().perf) App.pf().perf().then(function (m) { T.perf = m || {}; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function () { T.perf = {}; }); return ''; }
+    var ks = Object.keys(T.perf).filter(function (k) { return k[0] !== '_'; }).sort(function (a, b) { return T.perf[b][1] / T.perf[b][0] - T.perf[a][1] / T.perf[a][0]; });
+    if (!ks.length) return '<p class="note">処理時間の記録はまだありません（直近6時間の分を数えます）。</p>';
+    return '<h3>サーバーの処理時間（直近6時間）</h3><table class="r ro perf"><thead><tr><th style="text-align:left">操作</th><th>回数</th><th>平均</th><th>最大</th></tr></thead><tbody>' + ks.map(function (k) {
+      var e = T.perf[k], avg = e[1] / e[0];
+      return '<tr><td style="text-align:left">' + esc(PERF_LABEL[k] || k) + '</td><td>' + e[0] + '</td><td' + (avg > 3000 ? ' style="color:var(--alert);font-weight:700"' : '') + '>' + (avg / 1000).toFixed(1) + '秒</td><td>' + (e[2] / 1000).toFixed(1) + '秒</td></tr>';
+    }).join('') + '</tbody></table><p class="note">平均が3秒を超える操作は赤で出します。サーバーの中でかかった時間で、通信の時間は含みません。</p>';
+  }
   function logTab() {
     var esc = App.esc;
     if (!T.log) {
       App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
       return '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>';
     }
-    return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
+    return perfBox() + '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
       (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
         var d = new Date(r.at), at = isNaN(d) ? r.at : d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
         return '<tr><td>' + esc(at) + '</td><td style="text-align:left">' + esc(r.by) + '</td><td style="text-align:left">' + esc(LOG_NAMES[r.action] || r.action) + '</td><td>' + esc(r.n) + '</td></tr>';
@@ -6818,7 +6843,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') { T.log = null; T.perf = null; } if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }
@@ -6963,7 +6988,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       // 一度読んだ学年の一覧があれば、背景と同時にすぐメニューを出し、届いた新しい一覧で描き直す（戻る時に背景だけ先に変わらない）
       var quick = st.grades && st.gradesFy === vfy && App.me;
       var offM = quick ? function () {} : App.busyOn('移動中'); if (quick) App.screens.menu.render();
-      return Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]).then(function (r) {
+      var q = App.pf().menu ? App.pf().menu(vfy).then(function (m) { return [m.grades, m.settings, m.years]; }) : Promise.all([App.pf().listGrades(vfy), App.pf().settings(), App.pf().rosterYears ? App.pf().rosterYears() : Promise.resolve([FY0])]);
+      return q.then(function (r) {
         offM();
         if (App.st.screen !== 'menu') return; // 待つ間にほかの画面へ移っていたら描かない
         st.grades = r[0]; st.years = r[2]; st.gradesFy = vfy;

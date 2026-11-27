@@ -228,14 +228,21 @@
     })([], Array.from({ length: n }, function (_, i) { return i; }));
     return out;
   }
+  // 2つの案で所属が違う児童の数（組の名前の付け替えは同じとみなす）。組の数が違う案どうしでも数える
+  // 組が7つまでは全部の付け替えを試す。それより多い時は、重なりの大きい組から順に対にする（近い値）
   function diffCount(ctx, a, b) {
-    var best = ctx.N;
-    perms(ctx.nc).forEach(function (pm) {
-      var d = 0;
-      for (var i = 0; i < ctx.N; i++) if (pm[a[i]] !== b[i]) d++;
-      if (d < best) best = d;
-    });
-    return best;
+    var N = Math.min(a.length, b.length), K = 0, i, x, y;
+    for (i = 0; i < N; i++) { if (a[i] + 1 > K) K = a[i] + 1; if (b[i] + 1 > K) K = b[i] + 1; }
+    var M = []; for (x = 0; x < K; x++) M.push(new Array(K).fill(0));
+    for (i = 0; i < N; i++) if (a[i] >= 0 && b[i] >= 0) M[a[i]][b[i]]++;
+    var best = 0;
+    if (K <= 7) perms(K).forEach(function (pm) { var s = 0; for (var q = 0; q < K; q++) s += M[q][pm[q]]; if (s > best) best = s; });
+    else {
+      var cells = []; for (x = 0; x < K; x++) for (y = 0; y < K; y++) cells.push([M[x][y], x, y]);
+      cells.sort(function (p, q) { return q[0] - p[0]; });
+      var ux = {}, uy = {}; cells.forEach(function (c) { if (!ux[c[1]] && !uy[c[2]]) { ux[c[1]] = uy[c[2]] = 1; best += c[0]; } });
+    }
+    return N - best;
   }
 
   // ===== 入れ替え =====

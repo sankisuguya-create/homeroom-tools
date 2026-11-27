@@ -254,6 +254,8 @@
     name: 'demo',
     fiscalYear: FY,
     rosterYears: function () { gen(); var ys = {}; ys[FY] = 1; ys[FY + 1] = 1; Object.keys(S.years).forEach(function (y) { if (Object.keys(S.years[y]).some(function (g) { return S.years[y][g].length; })) ys[y] = 1; }); return later(Object.keys(ys).map(Number).sort()); },
+    menu: function (fy) { var self = this; return Promise.all([self.listGrades(fy), self.settings(), self.rosterYears ? self.rosterYears() : Promise.resolve([FY])]).then(function (r) { return { grades: r[0], settings: r[1], years: r[2] }; }); },
+    perf: function () { return later({}); },
     listGrades: function (fy0) { gen();
       var out = [], fy = +fy0 || FY;
       for (var grade = fy === FY ? 0 : 1; grade <= 6; grade++) { // 0 は新1年（見本では名簿なしから始める。今年度だけ）

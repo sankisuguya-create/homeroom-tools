@@ -84,7 +84,7 @@ export function makeGas(src) {
       WeekDay: { SUNDAY: 'SUNDAY' },
       newTrigger: h => { const b = { timeBased: () => b, everyWeeks: () => b, onWeekDay: () => b, atHour: () => b, create: () => { drive.triggers.push(h); return b; } }; return b; }
     },
-    CacheService: { getScriptCache: () => ({ get: k => cache[k] || null, put: (k, v) => { cache[k] = v; } }) },
+    CacheService: { getScriptCache: () => ({ get: k => cache[k] || null, put: (k, v) => { cache[k] = v; }, remove: k => { delete cache[k]; } }) },
     Utilities: {
       formatDate: d => d.toISOString().slice(0, 10),
       getUuid: () => crypto.randomUUID(),

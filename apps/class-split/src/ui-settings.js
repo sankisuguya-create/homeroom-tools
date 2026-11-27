@@ -14,7 +14,8 @@
   var safe = function (v) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, ''); };
   App.applySettings = function (s) {
     App.settings = s;
-    var an = safe(s.appName || 'SSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
+    if (App.st && App.st.data && App.normKids) App.normKids(App.st.data); // 外字の置き換え表を直したら、開いている学年の名前にもすぐ効かせる
+    var an = safe(s.appName || 'CSS'), h = document.getElementById('appname'); if (h) h.textContent = an; document.title = an; // 画面の左上とタブの名前
     App.fullName = an + '（' + safe(s.formalName || '児童理解支援システム') + '）';
     C.ATTRS.forEach(function (at) { var x = s.attrs && s.attrs[at.k]; if (x) { at.label = safe(x.label); at.s = safe(x.s); at.w = +x.w; } at.help = helpOf(at, x).map(safe); });
     if (s.types && s.types.length) C.INCIDENT_TYPES = s.types.map(safe).filter(Boolean);
@@ -60,8 +61,8 @@
     } else if (T.tab === 'types') {
       h += '<div class="setcols"><div><h3>事案の種別</h3><p class="note">1行に1つ。事案を登録する時の選択肢になります。</p><textarea id="types" rows="8" style="width:16em;font:inherit;padding:6px">' + esc(s.types.join('\n')) + '</textarea></div>' +
         '<div><h3>時間帯（学校の時程）</h3><p class="note">1行に1つ、上から時刻の順に。記録の行の左で選びます。</p><textarea id="slots" rows="12" style="width:12em;font:inherit;padding:6px">' + esc((s.slots || C.TIME_SLOTS).join('\n')) + '</textarea></div></div>' +
-        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'SSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「SSS」（Student Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
-          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'SSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
+        '<h3>アプリの名前</h3><label class="setrow">タブと画面の左上に出す名前（12文字まで）<input id="appnm" value="' + esc(s.appName || 'CSS') + '" maxlength="12" style="width:10em"></label><p class="note">既定は「CSS」（Child Support System）。児童の目を引かない略称にしています。変えると、次に開いた時からタブの名前も変わります。</p>' +
+          '<label class="setrow">正式な名前（30文字まで。メニューの下とこの画面に出す）<input id="appfn" value="' + esc(s.formalName || '児童理解支援システム') + '" maxlength="30" style="width:16em"></label><p class="note" id="appfull">' + esc((s.appName || 'CSS') + '（' + (s.formalName || '児童理解支援システム') + '）') + '</p>' +
         '<h3>外字の置き換え</h3><p class="note">Excel の名簿の外字は、画面では〓になります。下の一覧は、今年度・来年度の名簿に出てくる外字と、使っている児童です。右の欄に画面に出す字を入れて、設定を保存してください。元の字はそのまま残り、Excel に書き出すと元の外字に戻ります。異体字は、何もしなくても普通の字で出ます。</p>' +
           gaijiFound(s) +
           '<details style="margin-top:6px"><summary class="note">登録した置き換えをまとめて見る・直す（外字=字 を1行に1つ）</summary><textarea id="gaiji" rows="4" style="width:100%;box-sizing:border-box;font:inherit" placeholder="（外字）=髙">' + esc(Object.keys(s.gaiji || {}).map(function (k) { return k + '=' + s.gaiji[k]; }).join('\n')) + '</textarea></details>' +
@@ -90,13 +91,25 @@
 
   // 記録：誰がいつ何をしたか（開いた学年・書き込み・書き出し）。新しい順に200件
   var LOG_NAMES = { boot: '開いた（学年）', schoolKids: '全校の児童を見た', schoolIncidents: '全校の事案を見た', allIncidents: '事案の一覧を見た', exportReport: '報告書を書き出した（事案）', importRoster: '名簿を取り込んだ（人数）', saveSettings: '設定を保存した', purge: '記録を消した（人数）', addIncident: '事案を登録した（児童の数）', updateIncident: '事案を直した（児童の数）', decide: 'クラス替えを決めた（人数）', undoDecide: '決定を取り消した', pruneLog: '古い記録を消した（件数）', clearSuggestions: '目安箱の意見を消した（件数）', addUserByWindow: '受付で一般ユーザーに登録された', addAdminByWindow: '受付で管理者に登録された', openAdminWindow: '管理者の受付を開いた（分）', classNames: '組の番号を決めた', registerDevice: '端末を登録した（台数）', openDeviceWindow: '端末の登録の受付を開いた（分）', closeDeviceWindow: '端末の登録の受付を閉じた', revokeDevice: '端末の登録を取り消した（残りの台数）', resetDevices: '端末の登録をすべて消した' };
+  // サーバーの処理時間（操作ごと・直近6時間）。遅い操作から直すための手がかり
+  var PERF_LABEL = { apiMenu: 'メニューを開く', apiBoot: '学年を開く', apiSetAttrs: '名簿の保存', apiSavePlans: '案の保存', apiUpdateKids: '一覧表の保存', apiSettings: '設定を読む', apiListGrades: '学年の一覧', apiAddIncident: '事案の登録', apiUpdateIncident: '事案の更新', apiSavePairs: 'つける・離すの保存', apiDecide: '決定' };
+  function perfBox() {
+    var esc = App.esc;
+    if (!T.perf) { if (App.pf().perf) App.pf().perf().then(function (m) { T.perf = m || {}; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function () { T.perf = {}; }); return ''; }
+    var ks = Object.keys(T.perf).filter(function (k) { return k[0] !== '_'; }).sort(function (a, b) { return T.perf[b][1] / T.perf[b][0] - T.perf[a][1] / T.perf[a][0]; });
+    if (!ks.length) return '<p class="note">処理時間の記録はまだありません（直近6時間の分を数えます）。</p>';
+    return '<h3>サーバーの処理時間（直近6時間）</h3><table class="r ro perf"><thead><tr><th style="text-align:left">操作</th><th>回数</th><th>平均</th><th>最大</th></tr></thead><tbody>' + ks.map(function (k) {
+      var e = T.perf[k], avg = e[1] / e[0];
+      return '<tr><td style="text-align:left">' + esc(PERF_LABEL[k] || k) + '</td><td>' + e[0] + '</td><td' + (avg > 3000 ? ' style="color:var(--alert);font-weight:700"' : '') + '>' + (avg / 1000).toFixed(1) + '秒</td><td>' + (e[2] / 1000).toFixed(1) + '秒</td></tr>';
+    }).join('') + '</tbody></table><p class="note">平均が3秒を超える操作は赤で出します。サーバーの中でかかった時間で、通信の時間は含みません。</p>';
+  }
   function logTab() {
     var esc = App.esc;
     if (!T.log) {
       App.pf().readLog().then(function (l) { T.log = l; if (App.st.screen === 'settings' && T.tab === 'log') render(); }, function (e) { App.toast(String(e && e.message || e)); });
       return '<div class="empty">読み込み中<span class="ldots" aria-hidden="true"></span></div>';
     }
-    return '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
+    return perfBox() + '<p class="note">このアプリで誰がいつ何をしたかの記録です（新しい順に200件）。同じ人が同じ学年を開き直した時は10分に1回だけ残します。見覚えのない人や時刻があれば、利用者の一覧を見直してください。</p>' +
       (T.log.length ? '<table class="r ro"><thead><tr><th>日時</th><th style="text-align:left">教員</th><th style="text-align:left">したこと</th><th>数</th></tr></thead><tbody>' + T.log.map(function (r) {
         var d = new Date(r.at), at = isNaN(d) ? r.at : d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
         return '<tr><td>' + esc(at) + '</td><td style="text-align:left">' + esc(r.by) + '</td><td style="text-align:left">' + esc(LOG_NAMES[r.action] || r.action) + '</td><td>' + esc(r.n) + '</td></tr>';
@@ -218,7 +231,7 @@
     reloadSettings: function () { App.pf().settings().then(function (r) { if (!T.dirty) T.s = clone(r.settings); App.me = r.me; render(); }); },
     click: function (t) {
       var x, s = T.s;
-      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') T.log = null; if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
+      if ((x = t.closest('[data-stab]'))) { T.tab = x.dataset.stab; if (T.tab === 'log') { T.log = null; T.perf = null; } if (T.tab === 'devices') T.dev = null; if (T.tab === 'sugg') T.sugg = null; render(); return true; }
       if ((x = t.closest('[data-isz]'))) { App.setIconScale(+x.dataset.isz); render(); App.toast('アイコンの大きさを「' + x.textContent + '」にしました'); return true; }
       if ((x = t.closest('[data-aw]'))) { var p = x.dataset.aw.split(':'); set(function () { s.attrs[p[0]].w = +p[1]; }); render(); if (+p[1] === C.MUST) App.toast(C.MUST_WARN); return true; }
       if (t.closest('#tadd')) { set(function () { s.teachers.push({ email: '', grade: 0, cls: 0, admin: false }); }); render(); return true; }

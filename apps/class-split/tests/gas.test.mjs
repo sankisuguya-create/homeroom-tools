@@ -73,12 +73,15 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     const gjf = call('apiGaijiFound').v.find(x => x.code === 'U+E001');
     assert.ok(gjf && gjf.n === 1 && gjf.who[0].name === '\uE001木 ハナ');
     assert.ok(call('apiRemoveKids', FY, 4, ['GJ1'], 'mistake').ok); // ほかの試験の人数を変えない
+    // メニューの3つを1回で返す。処理時間は操作ごとに数える（管理者だけが見られる）
+    const mn = call('apiMenu', FY); assert.ok(mn.ok, mn.err); assert.ok(mn.v.grades.length && mn.v.settings.me && mn.v.years.includes(FY));
+    const pf = call('apiPerf').v; assert.ok(pf.apiMenu && pf.apiMenu[0] >= 1 && pf.apiListGrades);
     // 組の数：空の組を足せ、児童のいる組は減らせない。学年の一覧と名簿の読み込みに出る
     assert.ok(call('apiSetClassCount', FY, 4, 3).ok);
     assert.equal(call('apiListGrades').v.find(x => x.grade === 4).classes, 3);
     assert.equal(call('apiBoot', 4).v.ncls[FY], 3);
     assert.equal(call('apiSetClassCount', FY, 4, 1).ok, false, '2組に児童がいるので1組にはできない');
-    assert.equal(call('apiSetClassCount', FY, 4, 9).ok, false, '上限を超える数は断る');
+    assert.equal(call('apiSetClassCount', FY, 4, 0).ok, false, '0組は断る'); assert.ok(call('apiSetClassCount', FY, 4, 9).ok, '上限は設けない（9組も作れる）');
     assert.ok(call('apiSetClassCount', FY, 4, 2).ok);
     // 名簿の「保存」：ためた変更をまとめて1回で書く。誤りのある件で止めて断る（その前の件は書かれる）
     const ms = call('apiSetAttrs', [{ fy: FY, grade: 4, id: '40000011', k: 'k2', v: 1 }, { fy: FY, grade: 4, id: '40000012', k: 'memo', v: 1, text: 'まとめて' }]);
@@ -506,7 +509,9 @@ for (const [label, src] of [['そのまま', CODE], ['コメントを消した�
     env.user = 'sato@edu.nishi.or.jp'; const et = call('apiEmptyTrash', [incT]); env.user = 'tanaka@edu.nishi.or.jp';
     assert.equal(et.ok, false, '完全に消すのは管理者だけ');
     assert.ok(call('apiEmptyTrash', [incT]).v.n === 1 && !call('apiTrashList').v.length, '管理者は完全に消せる');
-    assert.equal(call('apiSettings').v.settings.appName, 'SSS', 'アプリの名前の既定は SSS');
+    assert.equal(call('apiSettings').v.settings.appName, 'CSS', 'アプリの名前の既定は CSS');
+    assert.ok(call('apiSaveSettings', Object.assign(call('apiSettings').v.settings, { appName: 'SSS' })).ok);
+    assert.equal(call('apiSettings').v.settings.appName, 'CSS', '前の既定の SSS のままなら CSS にする');
 
     // 目安箱：名簿の名前・番号があれば送らずに語を返す。送った人は残さない。読めるのは管理者だけ
     const sb = call('apiSuggest', '児童11の配慮項目の入力が分かりにくい', 'menu');

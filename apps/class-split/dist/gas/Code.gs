@@ -7,7 +7,7 @@
 (function (g) {
   'use strict';
   var CONFIG = {
-    MAX_CLASSES: 4,   // 1学年の学級数の上限
+    MAX_CLASSES: 99,  // 1学年の学級数：上限は設けない（利用者の判断）。値は保存の検査と、割り当て（Int8Array）に収める範囲として持つ
     CAP: 36,          // 1学級の人数の上限
     NAME_CHARS: 6,    // クラス分けのカードに出す名前の文字数（空白を含む）。全部は名前にカーソルで出る
     PAIR_TAGS: ['家庭希望', '担任判断', '前担任から', '事案による', '学年で協議', '管理職の判断'], // つける・離すの定型の理由
@@ -452,14 +452,21 @@
     })([], Array.from({ length: n }, function (_, i) { return i; }));
     return out;
   }
+  // 2つの案で所属が違う児童の数（組の名前の付け替えは同じとみなす）。組の数が違う案どうしでも数える
+  // 組が7つまでは全部の付け替えを試す。それより多い時は、重なりの大きい組から順に対にする（近い値）
   function diffCount(ctx, a, b) {
-    var best = ctx.N;
-    perms(ctx.nc).forEach(function (pm) {
-      var d = 0;
-      for (var i = 0; i < ctx.N; i++) if (pm[a[i]] !== b[i]) d++;
-      if (d < best) best = d;
-    });
-    return best;
+    var N = Math.min(a.length, b.length), K = 0, i, x, y;
+    for (i = 0; i < N; i++) { if (a[i] + 1 > K) K = a[i] + 1; if (b[i] + 1 > K) K = b[i] + 1; }
+    var M = []; for (x = 0; x < K; x++) M.push(new Array(K).fill(0));
+    for (i = 0; i < N; i++) if (a[i] >= 0 && b[i] >= 0) M[a[i]][b[i]]++;
+    var best = 0;
+    if (K <= 7) perms(K).forEach(function (pm) { var s = 0; for (var q = 0; q < K; q++) s += M[q][pm[q]]; if (s > best) best = s; });
+    else {
+      var cells = []; for (x = 0; x < K; x++) for (y = 0; y < K; y++) cells.push([M[x][y], x, y]);
+      cells.sort(function (p, q) { return q[0] - p[0]; });
+      var ux = {}, uy = {}; cells.forEach(function (c) { if (!ux[c[1]] && !uy[c[2]]) { ux[c[1]] = uy[c[2]] = 1; best += c[0]; } });
+    }
+    return N - best;
   }
 
   // ===== 入れ替え =====
@@ -1075,21 +1082,21 @@
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_0ca82d175204';
+var SERVER_BUILD = 'BUILD_36e61f17cba6';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
-// タブに出す名前（設定の「アプリの名前」。既定は SSS＝Student Support System。児童の目を引かない略称）
-function appName_() { try { return settings_().appName || 'SSS'; } catch (e) { return 'SSS'; } }
+// タブに出す名前（設定の「アプリの名前」。既定は CSS＝Child Support System。前の既定の SSS のままなら CSS にする。児童の目を引かない略称）
+function appName_() { try { return settings_().appName || 'CSS'; } catch (e) { return 'CSS'; } }
 // タブのアイコン：GAS は画像を返せないので、所有者のドライブに PNG を置き、その URL を渡す（GitHub など外部の置き場は使わない）
 // 画像はこのコードの中に持つ。setup・selfTest が作り、ID を ICON_ID に覚える
-var ICON_PNG_B64 = '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';
+var ICON_PNG_B64 = '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';
 function ensureIcon_() {
   var props = PropertiesService.getScriptProperties(), id = props.getProperty('ICON_ID');
   var ver = String(ICON_PNG_B64.length) + ICON_PNG_B64.slice(-16); // 画像を替えた版を貼ったら作り直す
   if (id && props.getProperty('ICON_VER') === ver) { try { DriveApp.getFileById(id); return id; } catch (e) { /* 消されていたら作り直す */ } }
   if (id) { try { DriveApp.getFileById(id).setTrashed(true); } catch (e) { /* 前の画像が無くても続ける */ } }
-  var f = DriveApp.createFile(Utilities.newBlob(Utilities.base64Decode(ICON_PNG_B64), 'image/png', 'SSS-icon.png'));
+  var f = DriveApp.createFile(Utilities.newBlob(Utilities.base64Decode(ICON_PNG_B64), 'image/png', 'CSS-icon.png'));
   try { f.setSharing(DriveApp.Access.DOMAIN_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); }
   props.setProperty('ICON_ID', f.getId()); props.setProperty('ICON_VER', ver);
   return f.getId();
@@ -1210,13 +1217,13 @@ function registerDevice_(email, info, how) {
   });
   DEV_NEW_ = t; // 画面がこれを端末に保存する（返すのはこの1回だけ）
 }
-var apiDevices_ = api_(function () {
+var apiDevices_ = api_('apiDevices', function () {
   requireAdmin_();
   var w = deviceWindow_();
   return { list: devices_().filter(function (x) { return !x.revoked; }).map(function (x) { return { id: x.id, by: x.by, at: x.at, last: x.last, os: x.os, touch: x.touch, screen: x.screen, how: x.how }; }),
     window: w ? { until: w.until, by: w.by, role: w.role || 'user' } : null, mine: DEV_ && DEV_.t ? (devices_().filter(function (x) { return x.h === hashHex_(DEV_.t); })[0] || {}).id || '' : '' };
 });
-var apiOpenDeviceWindow_ = api_(function (role) {
+var apiOpenDeviceWindow_ = api_('apiOpenDeviceWindow', function (role) {
   var by = requireAdmin_();
   role = role === 'admin' ? 'admin' : 'user';
   var h0 = DEV_ && DEV_.t ? hashHex_(DEV_.t) : '';
@@ -1231,12 +1238,12 @@ var apiOpenDeviceWindow_ = api_(function (role) {
   if (!devices_().some(function (x) { return h && x.h === h && !x.revoked; })) registerDevice_(by, devInfo_(), 'admin');
   return { until: deviceWindow_().until };
 });
-var apiCloseDeviceWindow_ = api_(function () {
+var apiCloseDeviceWindow_ = api_('apiCloseDeviceWindow', function () {
   var by = requireAdmin_();
   withLock_(function () { setSetting_('devwin', null); log_(by, 'closeDeviceWindow', 0); });
   return { ok: true };
 });
-var apiRevokeDevice_ = api_(function (id) {
+var apiRevokeDevice_ = api_('apiRevokeDevice', function (id) {
   var by = requireAdmin_();
   withLock_(function () {
     var l = devices_().filter(function (x) { return x.id !== String(id); });
@@ -1383,12 +1390,31 @@ function withLock_(fn) {
 }
 function log_(by, action, n) { append_('log', TABLES_[5].head, [{ at: new Date(), by: by, action: action, n: n }]); }
 
+// 処理の時間を、操作ごとに数・合計・最大で数える（6時間。管理者の「記録」で見る）。数えるのに失敗しても処理は止めない
+function perf_(name, ms) {
+  try {
+    var c = CacheService.getScriptCache(), m = JSON.parse(c.get('perf') || '{}'), e = m[name] = m[name] || [0, 0, 0];
+    e[0]++; e[1] += ms; if (ms > e[2]) e[2] = ms;
+    if (!m._since) m._since = new Date().toISOString();
+    c.put('perf', JSON.stringify(m), 21600);
+  } catch (e2) { /* 数えられなくてもよい */ }
+}
+var apiPerf_ = api_('apiPerf', function () { requireAdmin_(); try { return JSON.parse(CacheService.getScriptCache().get('perf') || '{}'); } catch (e) { return {}; } });
+// 学校の設定（利用者の一覧を含む）は、問い合わせのたびに読むので2分覚える。書いたら捨てる
+var SET_CACHE_ = { app: 1 };
 function getSetting_(key, def) {
+  if (SET_CACHE_[key]) { try { var hit = CacheService.getScriptCache().get('set_' + key); if (hit) return JSON.parse(hit); } catch (e) { /* 覚えが使えなければ表を読む */ } }
+  var v = getSettingNow_(key, def);
+  if (SET_CACHE_[key]) { try { var js = JSON.stringify(v); if (js.length < 90000) CacheService.getScriptCache().put('set_' + key, js, 120); } catch (e) { /* 覚えられなくてもよい */ } }
+  return v;
+}
+function getSettingNow_(key, def) {
   var t = read_('settings');
   for (var i = 0; i < t.rows.length; i++) if (t.rows[i].key === key) { try { return JSON.parse(t.rows[i].json); } catch (e) { return def; } }
   return def;
 }
 function setSetting_(key, value) {
+  if (SET_CACHE_[key]) { try { CacheService.getScriptCache().remove('set_' + key); } catch (e) { /* 覚えは2分で消える */ } }
   if (value === null) { removeRows_('settings', function (r) { return r.key === key; }); return; } // 空にする時は行ごと消す（行が増え続けない）
   var t = read_('settings');
   for (var i = 0; i < t.rows.length; i++) if (t.rows[i].key === key) { writeCell_(t, t.rows[i], 'json', JSON.stringify(value)); return; }
@@ -1430,14 +1456,14 @@ function decisionOf_(fy, grade) {
 // ===== 画面から呼ぶ関数（platform-gas.js と同じ名前と形） =====
 // 画面は呼び出しの最後に端末の情報 { __dev: { t: 合い言葉, os, mobile, touch, screen } } を添える（端末の登録）。ここで外して DEV_ に置く
 var DEV_ = null, DEV_NEW_ = '';
-function api_(fn) {
+function api_(name, fn) {
   return function () {
     var args = Array.prototype.slice.call(arguments);
     var last = args[args.length - 1];
     DEV_ = last && typeof last === 'object' && last.__dev ? args.pop().__dev : null; DEV_NEW_ = ''; DEVICE_CHECKED_ = '';
     forget_();
     var t0 = Date.now();
-    try { var v = fn.apply(null, args); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: Date.now() - t0 }); } // ms：サーバーでかかった時間（遅い時の手がかり）
+    try { var v = fn.apply(null, args), ms = Date.now() - t0; perf_(name, ms); return JSON.stringify({ ok: true, build: SERVER_BUILD, v: v, dev: DEV_NEW_ || undefined, ms: ms }); } // ms：サーバーでかかった時間（遅い時の手がかり）
     catch (e) {
       var m = String(e && e.message || e), dev = m.indexOf('USER:DEVICE:') === 0;
       return JSON.stringify({ ok: false, build: SERVER_BUILD, user: m.indexOf('USER:') === 0, device: dev, err: m.replace(/^USER:(DEVICE:)?/, ''), dev: DEV_NEW_ || undefined }); // 登録の後で失敗しても、合い言葉は端末に渡す
@@ -1446,7 +1472,7 @@ function api_(fn) {
 }
 
 // fy：見る年度（省略は今年度）。今年度は新1年〜6年、ほかの年度は1〜6年。決定の印は今年度だけ
-var apiListGrades_ = api_(function (fy0) {
+var apiListGrades_ = api_('apiListGrades', function (fy0) {
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), fy = +fy0 || FY, by = {};
   rosterRows_(fy).forEach(function (r) {
@@ -1458,15 +1484,23 @@ var apiListGrades_ = api_(function (fy0) {
   CONFIG.GRADES.forEach(function (g) { if (g === 0 && fy !== FY) return; out.push(by[g] || { grade: g, count: 0, classes: 0, decided: false }); });
   return out;
 });
+// メニューを開く時の3つ（学年の一覧・設定・年度の一覧）を1回で返す（問い合わせの数を減らす）
+var apiMenu_ = api_('apiMenu', function (fy) {
+  var dv = DEV_ ? { __dev: DEV_ } : undefined; // 端末の合い言葉を中の3つにも渡す
+  var a = JSON.parse(apiListGrades_(fy || 0, dv)), b = JSON.parse(apiSettings_(dv)), c = JSON.parse(apiRosterYears_(dv));
+  DEV_ = dv ? dv.__dev : null; DEV_NEW_ = a.dev || b.dev || c.dev || '';
+  [a, b, c].forEach(function (r) { if (!r.ok) throw r.device ? userError_('DEVICE:' + r.err) : r.user ? userError_(r.err) : new Error(r.err); });
+  return { grades: a.v, settings: b.v, years: c.v };
+});
 // メニューで選べる年度：名簿のある年度と、今年度・来年度
-var apiRosterYears_ = api_(function () {
+var apiRosterYears_ = api_('apiRosterYears', function () {
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), set = {}; set[FY] = 1; set[FY + 1] = 1;
   rosterSheets_().forEach(function (fy) { set[fy] = 1; });
   return Object.keys(set).map(Number).sort();
 });
 
-var apiBoot_ = api_(function (grade) {
+var apiBoot_ = api_('apiBoot', function (grade) {
   readLog_('boot', +grade);
   requireTeacher_();
   grade = +grade;
@@ -1505,7 +1539,7 @@ function transfers_(fy, grade) {
   });
 }
 // 転入生を足す：児童IDが分からなければ仮のID（T＋数字）。名簿の児童IDと重なれば断る
-var apiAddTransfer_ = api_(function (grade, x) {
+var apiAddTransfer_ = api_('apiAddTransfer', function (grade, x) {
   var by = requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -1523,7 +1557,7 @@ var apiAddTransfer_ = api_(function (grade, x) {
     return { id: id };
   });
 });
-var apiRemoveTransfer_ = api_(function (grade, id) {
+var apiRemoveTransfer_ = api_('apiRemoveTransfer', function (grade, id) {
   requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -1565,7 +1599,7 @@ function carry_(FY, grade, idset) {
 
 // つける・離す・組に固定を、学年ごとにまとめて置き換える
 // 版つき（案と同じ）：読み込んだ時の版と違えば、ほかの先生が先に保存したので上書きしない
-var apiSavePairs_ = api_(function (grade, pairs, baseVer) {
+var apiSavePairs_ = api_('apiSavePairs', function (grade, pairs, baseVer) {
   var by = requireTeacher_();
   grade = +grade;
   var FY = CONFIG.fiscalYear(), name = 'pairs_' + FY + '_' + grade, vkey = 'pairsver_' + FY + '_' + grade;
@@ -1585,7 +1619,7 @@ var apiSavePairs_ = api_(function (grade, pairs, baseVer) {
 
 // 名簿を入れる：同じ児童IDは上書き（配慮項目の値は残す）、新しいIDは足す。貼った中にいない児童は知らせるだけ（消さない）
 // opt.dry：書かずに差分だけ返す（取り込む前の確認）。書く時は直前にデータの控えを取る
-var apiImportRoster_ = api_(function (fy, grade, rows, opt) {
+var apiImportRoster_ = api_('apiImportRoster', function (fy, grade, rows, opt) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; opt = opt || {};
   var FY = CONFIG.fiscalYear();
@@ -1690,7 +1724,7 @@ function replaceIds_(fy, map) {
 
 // 名簿から外す：転出した児童（配慮項目・経緯は過年度の記録として残し、年度替わりで消す）と、誤って登録した児童（その年度の配慮項目も消す）。
 // 直せる年度（決定前は今年度、決定後は来年度）だけ。外す前に控えを取る
-var apiRemoveKids_ = api_(function (fy, grade, ids, reason) {
+var apiRemoveKids_ = api_('apiRemoveKids', function (fy, grade, ids, reason) {
   var by = reason === 'mistake' ? requireAdmin_() : requireTeacher_(); // 誤登録の削除（配慮項目も消える）は管理者だけ
   fy = +fy; grade = +grade; ids = (ids || []).map(String).filter(Boolean);
   if (!ids.length) throw userError_('外す児童を選んでください');
@@ -1721,9 +1755,9 @@ function leftOf_(fy, grade) {
     return { id: String(r.id8), name: String(r.name), kana: String(r.kana), male: String(r.sex) === '男', leftFy: +r.fy, leftGrade: +r.grade, cls: +r.cls - 1, no: +r.no, at: String(r.at) };
   });
 }
-var apiLeftKids_ = api_(function (fy, grade) { requireTeacher_(); return leftOf_(+fy, +grade); });
+var apiLeftKids_ = api_('apiLeftKids', function (fy, grade) { requireTeacher_(); return leftOf_(+fy, +grade); });
 // 出戻り：転出児童を、同じ児童IDで名簿に戻す（番号は組の最後）。戻す年度に配慮項目の行が無ければ、転出した年度の行を写す
-var apiRestoreKid_ = api_(function (fy, grade, id, cls) {
+var apiRestoreKid_ = api_('apiRestoreKid', function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
   if (!(cls >= 0 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います');
@@ -1781,19 +1815,19 @@ function updateKidIn_(by, fy, grade, id, x) {
   })();
   return { ok: true };
 }
-var apiUpdateKid_ = api_(function (fy, grade, id, x) {
+var apiUpdateKid_ = api_('apiUpdateKid', function (fy, grade, id, x) {
   var by = requireTeacher_();
   return withLock_(function () { var r = updateKidIn_(by, fy, grade, id, x); log_(by, 'updateKid', 1); return r; });
 });
 // 名簿の一覧表の「保存」：直した児童をまとめて1回で書く
-var apiUpdateKids_ = api_(function (fy, grade, list) {
+var apiUpdateKids_ = api_('apiUpdateKids', function (fy, grade, list) {
   var by = requireTeacher_();
   if (!Array.isArray(list) || list.length > 300) throw userError_('保存する内容が違います');
   return withLock_(function () { list.forEach(function (x) { updateKidIn_(by, fy, grade, x.id, x); }); log_(by, 'updateKids', list.length); return { ok: true, n: list.length }; });
 });
 
 // 組を移す（特別支援学級の児童の交流級を振り分ける）：番号はその組の最後。直せる年度だけ
-var apiSetKidClass_ = api_(function (fy, grade, id, cls) {
+var apiSetKidClass_ = api_('apiSetKidClass', function (fy, grade, id, cls) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; cls = +cls; id = String(id);
   if (!(cls >= -1 && cls < CONFIG.MAX_CLASSES)) throw userError_('組が違います'); // -1＝クラスなし
@@ -1835,7 +1869,7 @@ function importDiff_(fy, grade, rows) {
 // ===== 事案のゴミ箱 =====
 // ゴミ箱へ：deleted に「trash:日時:誰」を書く（一覧・名簿・クラス分けから消える）。戻すと元どおり。完全に消すのは管理者だけ
 // （年度替わりの削除で消えた事案の deleted は日時だけなので、ゴミ箱には出ない）
-var apiTrashIncident_ = api_(function (id) {
+var apiTrashIncident_ = api_('apiTrashIncident', function (id) {
   var by = requireTeacher_(); id = +id;
   return withLock_(function () {
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && !r.deleted; })[0];
@@ -1846,11 +1880,11 @@ var apiTrashIncident_ = api_(function (id) {
   });
 });
 function trashRows_() { return read_('incidents').rows.filter(function (r) { return String(r.deleted).indexOf('trash:') === 0; }); }
-var apiTrashList_ = api_(function () {
+var apiTrashList_ = api_('apiTrashList', function () {
   requireTeacher_();
   return trashRows_().map(function (r) { var p = String(r.deleted).split(':'); return { id: +r.inc_id, title: String(r.title || ''), date: isoDate_(r.date), type: String(r.type || ''), at: p.slice(1, 4).join(':'), by: p.slice(4).join(':') }; });
 });
-var apiRestoreIncident_ = api_(function (id) {
+var apiRestoreIncident_ = api_('apiRestoreIncident', function (id) {
   var by = requireTeacher_(); id = +id;
   return withLock_(function () {
     var t = read_('incidents'), row = t.rows.filter(function (r) { return +r.inc_id === id && String(r.deleted).indexOf('trash:') === 0; })[0];
@@ -1860,7 +1894,7 @@ var apiRestoreIncident_ = api_(function (id) {
     return { ok: true };
   });
 });
-var apiEmptyTrash_ = api_(function (ids) {
+var apiEmptyTrash_ = api_('apiEmptyTrash', function (ids) {
   var by = requireAdmin_();
   return withLock_(function () {
     var set = {}; trashRows_().forEach(function (r) { if (!ids || !ids.length || ids.map(Number).indexOf(+r.inc_id) >= 0) set[+r.inc_id] = 1; });
@@ -1935,7 +1969,7 @@ function scoresOf_(years) {
   years.forEach(function (y) { var v = getSetting_('scores_' + y.fy + '_' + y.grade, null); if (v) out[y.fy] = v; });
   return out;
 }
-var apiSetScores_ = api_(function (fy, grade, v) {
+var apiSetScores_ = api_('apiSetScores', function (fy, grade, v) {
   requireTeacher_();
   fy = +fy; grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -1987,12 +2021,12 @@ function setAttrIn_(by, fy, grade, id, k, v, text, incs) {
 }
 
 
-var apiSetAttr_ = api_(function (fy, grade, id, k, v, text, incs) {
+var apiSetAttr_ = api_('apiSetAttr', function (fy, grade, id, k, v, text, incs) {
   var by = requireTeacher_();
   return withLock_(function () { return setAttrIn_(by, fy, grade, id, k, v, text, incs); });
 });
 // 名簿の画面の「保存」：ためた変更をまとめて1回で書く（1件ずつ送ると、そのたびにサーバーを待つため）
-var apiSetAttrs_ = api_(function (list) {
+var apiSetAttrs_ = api_('apiSetAttrs', function (list) {
   var by = requireTeacher_();
   if (!Array.isArray(list) || list.length > 2000) throw userError_('保存する内容が違います');
   return withLock_(function () {
@@ -2003,7 +2037,7 @@ var apiSetAttrs_ = api_(function (list) {
 });
 
 // 組の数（名簿の帯で増減）。児童のいる組は減らせない。直せる年度だけ
-var apiSetClassCount_ = api_(function (fy, grade, n) {
+var apiSetClassCount_ = api_('apiSetClassCount', function (fy, grade, n) {
   var by = requireTeacher_();
   fy = +fy; grade = +grade; n = +n;
   if (!(n >= 1 && n <= CONFIG.MAX_CLASSES && n === Math.floor(n))) throw userError_('組の数は1〜' + CONFIG.MAX_CLASSES + 'です');
@@ -2017,7 +2051,7 @@ var apiSetClassCount_ = api_(function (fy, grade, n) {
   });
 });
 // 案は学年ごとに1つの値（版つき）。他の人が先に保存していたら上書きせずに知らせる
-var apiSavePlans_ = api_(function (grade, plans, baseVer) {
+var apiSavePlans_ = api_('apiSavePlans', function (grade, plans, baseVer) {
   var by = requireTeacher_();
   var key = 'plans_' + CONFIG.fiscalYear() + '_' + (+grade);
   return withLock_(function () {
@@ -2040,9 +2074,9 @@ function titleOf_(url) {
   if (!id) return '';
   try { return DriveApp.getFileById(id).getName(); } catch (e) { return ''; }
 }
-var apiFetchTitle_ = api_(function (url) { requireTeacher_(); return { title: titleOf_(url) }; });
+var apiFetchTitle_ = api_('apiFetchTitle', function (url) { requireTeacher_(); return { title: titleOf_(url) }; });
 
-var apiAddIncident_ = api_(function (x) {
+var apiAddIncident_ = api_('apiAddIncident', function (x) {
   var by = requireTeacher_();
   var v = incidentInput_(x);
   var title = plainText_(String(x.title || '').trim() || (v.url ? titleOf_(v.url) : ''), 200);
@@ -2059,7 +2093,7 @@ var apiAddIncident_ = api_(function (x) {
 });
 
 // 事案を直す（関係図・文書・日付・種別）。関係する児童は関係図から入れ直す
-var apiUpdateIncident_ = api_(function (id, x, baseRev) {
+var apiUpdateIncident_ = api_('apiUpdateIncident', function (id, x, baseRev) {
   var by = requireTeacher_();
   id = +id;
   var v = incidentInput_(x);
@@ -2082,7 +2116,7 @@ var apiUpdateIncident_ = api_(function (id, x, baseRev) {
 // 報告書のExcel：設定の様式ファイル（xlsxのまま置いたもの）を複製し、該当するシートのセルにだけ値を書く。
 // 元のファイルは変えない。xlsx の中の XML を直接書き換えるので、罫線・結合・入力規則は元のまま。
 // 複製は様式のファイルと同じフォルダに置く（名前に児童の氏名は入れない）
-var apiExportReport_ = api_(function (kind, values, incId, seq) {
+var apiExportReport_ = api_('apiExportReport', function (kind, values, incId, seq) {
   var by = requireTeacher_(), R = CONFIG.REPORT;
   if (!R.sheets[kind]) throw userError_('様式が分かりません');
   var ok = {}; Report.allowedCells(kind).forEach(function (c) { ok[c] = 1; });
@@ -2121,7 +2155,7 @@ var apiExportReport_ = api_(function (kind, values, incId, seq) {
 // 事案の書きかけ（下書き）：教員ごと・学年ごとに1つ。画面を離れても消えないように、入力のたびに少し遅れて保存する
 // 中身は入力中の記録そのもの（氏名が入りうる）。登録するか「やめる」で消える
 function draftKey_(email, grade) { return 'incdraft_' + String(email).toLowerCase() + '_' + (+grade); }
-var apiSaveDraft_ = api_(function (grade, draft) {
+var apiSaveDraft_ = api_('apiSaveDraft', function (grade, draft) {
   var by = requireTeacher_(), key = draftKey_(by, grade);
   return withLock_(function () {
     if (!draft) { setSetting_(key, null); return { ok: true }; }
@@ -2131,13 +2165,13 @@ var apiSaveDraft_ = api_(function (grade, draft) {
     return { ok: true };
   });
 });
-var apiLoadDraft_ = api_(function (grade) {
+var apiLoadDraft_ = api_('apiLoadDraft', function (grade) {
   var by = requireTeacher_(), v = getSetting_(draftKey_(by, grade), null);
   return v && v.draft ? v : null;
 });
 
 // 全校の事案（事案の一覧で、ほかの学年を探す時）
-var apiAllIncidents_ = api_(function () {
+var apiAllIncidents_ = api_('apiAllIncidents', function () {
   readLog_('allIncidents', 0);
   requireTeacher_();
   return incidents_();
@@ -2145,7 +2179,7 @@ var apiAllIncidents_ = api_(function () {
 
 // 全校の今年度の名簿（事案管理で、ほかの学年の児童を関係図に足すため。名前・よみ・性別・学年・組と、配慮項目の程度・内容の文）
 // 備考・経緯への事案の紐付けは渡さない（関係図のアイコンに要らない）
-var apiSchoolKids_ = api_(function () {
+var apiSchoolKids_ = api_('apiSchoolKids', function () {
   readLog_('schoolKids', 0);
   requireTeacher_();
   var FY = CONFIG.fiscalYear(), am = attrsMap_(FY);
@@ -2158,7 +2192,7 @@ var apiSchoolKids_ = api_(function () {
   });
 });
 
-var apiSchoolIncidents_ = api_(function () {
+var apiSchoolIncidents_ = api_('apiSchoolIncidents', function () {
   readLog_('schoolIncidents', 0);
   requireTeacher_();
   var cur = {};
@@ -2172,7 +2206,7 @@ var apiSchoolIncidents_ = api_(function () {
 });
 
 // 決定：来年度の名簿（新しい組・番号）と配慮項目の写しを作り、つける・離すを持ち越しの候補にする
-var apiDecide_ = api_(function (grade, plan) {
+var apiDecide_ = api_('apiDecide', function (grade, plan) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   if (grade >= 6) throw userError_('6年は決定しません');
@@ -2214,7 +2248,7 @@ var apiDecide_ = api_(function (grade, plan) {
 });
 
 // 取り消し：4/1まで（年度が変わったら決定は確定）。来年度の名簿と写した値・持ち越しの候補を消す
-var apiUndoDecide_ = api_(function (grade) {
+var apiUndoDecide_ = api_('apiUndoDecide', function (grade) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -2243,7 +2277,7 @@ function namesOf_(dec, FY, grade) {
   return out;
 }
 // 組の番号を決める（決定の後の別の操作）。来年度の名簿の組の列を付け替える。出席番号は組の中で変わらない
-var apiSetClassNames_ = api_(function (grade, names) {
+var apiSetClassNames_ = api_('apiSetClassNames', function (grade, names) {
   var by = requireAdmin_(); // 決定・取り消し・組の番号は管理者だけ（4/1を過ぎると取り消せないため）
   grade = +grade;
   var FY = CONFIG.fiscalYear();
@@ -2299,7 +2333,7 @@ function allRosterNames_() {
   return out;
 }
 function allRosterIds_() { var out = []; rosterSheets_().forEach(function (fy) { rosterRows_(fy).forEach(function (r) { out.push(r.id); }); }); return out; }
-var apiSuggest_ = api_(function (text, screen) {
+var apiSuggest_ = api_('apiSuggest', function (text, screen) {
   requireTeacher_();
   text = String(text == null ? '' : text).trim();
   if (!text) throw userError_('意見を書いてください');
@@ -2312,7 +2346,7 @@ var apiSuggest_ = api_(function (text, screen) {
   });
   return { ok: true };
 });
-var apiSuggestions_ = api_(function () {
+var apiSuggestions_ = api_('apiSuggestions', function () {
   requireAdmin_();
   return read_('suggestions').rows.map(function (r) { return { at: String(r.at), screen: String(r.screen), text: String(r.text).replace(/^'/, '') }; });
 });
@@ -2326,7 +2360,7 @@ function readLog_(action, n) {
   try { log_(by, action, n); c.put(key, '1', 600); } catch (e) { /* 記録に失敗しても読み出しは止めない */ }
   return by;
 }
-var apiReadLog_ = api_(function () {
+var apiReadLog_ = api_('apiReadLog', function () {
   requireAdmin_();
   var rows = read_('log').rows;
   return rows.slice(-200).reverse().map(function (r) { return { at: r.at instanceof Date ? r.at.toISOString() : String(r.at), by: String(r.by), action: String(r.action), n: String(r.n) }; });
@@ -2402,9 +2436,9 @@ function pruneLog_() {
   var limit = Date.now() - LOG_KEEP_DAYS * 86400000;
   return withLock_(function () { return removeRows_('log', function (r) { var t = new Date(r.at).getTime(); return t && t < limit; }); });
 }
-var apiPruneLog_ = api_(function () { var by = requireAdmin_(); var n = pruneLog_(); log_(by, 'pruneLog', n); return { n: n }; });
+var apiPruneLog_ = api_('apiPruneLog', function () { var by = requireAdmin_(); var n = pruneLog_(); log_(by, 'pruneLog', n); return { n: n }; });
 // 目安箱の意見を消す（読んでコピーした後に、管理者が消す）
-var apiClearSuggestions_ = api_(function () {
+var apiClearSuggestions_ = api_('apiClearSuggestions', function () {
   var by = requireAdmin_();
   var n = withLock_(function () { return removeRows_('suggestions', function () { return true; }); });
   log_(by, 'clearSuggestions', n);
@@ -2413,7 +2447,7 @@ var apiClearSuggestions_ = api_(function () {
 
 // ===== 管理者への知らせ =====
 // データ・スクリプト・控えのフォルダが所有者以外に共有されていないか。4〜5月は年度替わりの消し忘れも
-var apiAdminStatus_ = api_(function () {
+var apiAdminStatus_ = api_('apiAdminStatus', function () {
   var email = requireTeacher_();
   if (!accessOf_(email).admin) return { warnings: [] };
   var w = [], id = PropertiesService.getScriptProperties().getProperty(DB_PROP);
@@ -2446,16 +2480,16 @@ function settings_() {
   var d = defaultSettings_(), s = getSetting_('app', {});
   return { attrs: Object.assign(d.attrs, s.attrs || {}), types: s.types && s.types.length ? s.types : d.types,
     teachers: s.teachers || [], keepYears: s.keepYears == null || s.keepYears === '' ? d.keepYears : +s.keepYears || 0,
-    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName || 'SSS'), formalName: String(s.formalName || '児童理解支援システム'), gaiji: s.gaiji || {} };
+    slots: s.slots && s.slots.length ? s.slots : d.slots, school: String(s.school || ''), template: String(s.template || ''), appName: String(s.appName && s.appName !== 'SSS' ? s.appName : 'CSS'), formalName: String(s.formalName || '児童理解支援システム'), gaiji: s.gaiji || {} };
 }
-var apiSettings_ = api_(function () {
+var apiSettings_ = api_('apiSettings', function () {
   var email = requireTeacher_(), s = settings_(), ac = accessOf_(email), me = { email: email, grade: 0, cls: -1, admin: ac.admin, owner: ac.owner, ownerEmail: ac.admin ? ownerEmail_() : '' };
   s.teachers.forEach(function (t) { if (String(t.email).toLowerCase() === email) { me.grade = +t.grade; me.cls = (+t.cls) - 1; } });
   me.view = getSetting_('view_' + email, {});
   return { settings: s, me: me };
 });
 // 先生ごとのメニューの表示（出す・出さないだけ）
-var apiSaveMyView_ = api_(function (v) {
+var apiSaveMyView_ = api_('apiSaveMyView', function (v) {
   var email = requireTeacher_(), o = {};
   ['rost', 'inc', 'split', 'recent', 'others'].forEach(function (k) { o[k] = !(v && v[k] === false); });
   withLock_(function () { setSetting_('view_' + email, o); });
@@ -2471,7 +2505,7 @@ function gaijiMap_(m) {
   return out;
 }
 // 名簿に出てくる外字を集める（管理者が置き換え表を埋めるため）。今年度・来年度の名簿の名前・よみから、外字1字ごとに使っている児童を3人まで
-var apiGaijiFound_ = api_(function () {
+var apiGaijiFound_ = api_('apiGaijiFound', function () {
   requireAdmin_();
   var FY = CONFIG.fiscalYear(), found = {};
   [FY, FY + 1].forEach(function (fy) {
@@ -2487,12 +2521,12 @@ var apiGaijiFound_ = api_(function () {
 });
 // 設定の文字から HTML の記号を落とす（画面の HTML にそのまま入る所があるため）
 function safeText_(v, n) { return String(v == null ? '' : v).replace(/[<>&"'`]/g, '').trim().slice(0, n); }
-var apiSaveSettings_ = api_(function (s) {
+var apiSaveSettings_ = api_('apiSaveSettings', function (s) {
   var by = requireAdmin_();
   if (!s || !s.attrs) throw userError_('設定が読めません');
   var clean = { attrs: {}, types: [], teachers: [], keepYears: Math.max(0, Math.min(6, +s.keepYears || 0)),
     slots: (s.slots || []).map(function (t) { return safeText_(t, 20); }).filter(Boolean).slice(0, 30),
-    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'SSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム', gaiji: gaijiMap_(s.gaiji) };
+    school: String(s.school || '').trim().slice(0, 40), template: String(s.template || '').trim().slice(0, 300), appName: safeText_(s.appName, 12) || 'CSS', formalName: safeText_(s.formalName, 30) || '児童理解支援システム', gaiji: gaijiMap_(s.gaiji) };
   if (!clean.slots.length) clean.slots = CONFIG.TIME_SLOTS.slice();
   if (clean.template && !fileIdOf_(clean.template)) throw userError_('様式のファイルは、ドライブのファイルのURLを貼ってください');
   CONFIG.ATTRS.forEach(function (at) {
@@ -2522,7 +2556,7 @@ function rosterSheets_() {
     .map(function (n) { return +n.slice(7); }).sort();
 }
 // 今年度（と来年度）の名簿にいない児童。最後にいた年度から keepYears 年度を過ぎたものだけ
-var apiLeaveCandidates_ = api_(function () { requireAdmin_(); return leaveCandidates_(); });
+var apiLeaveCandidates_ = api_('apiLeaveCandidates', function () { requireAdmin_(); return leaveCandidates_(); });
 function leaveCandidates_() {
   var FY = CONFIG.fiscalYear(), keep = settings_().keepYears, now = {}, last = {};
   [FY, FY + 1].forEach(function (fy) { rosterRows_(fy).forEach(function (r) { now[r.id] = 1; }); });
@@ -2538,7 +2572,7 @@ function leaveCandidates_() {
 }
 // 消す：名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当てから、その児童の行を消す。
 // 結び付く児童がいなくなった事案は、名前とURLを消して削除済みにする。元に戻せない
-var apiPurge_ = api_(function (ids) {
+var apiPurge_ = api_('apiPurge', function (ids) {
   var by = requireAdmin_();
   if (!ids || !ids.length) throw userError_('消す児童を選んでください');
   var bkErr = tryBackup_('記録を消す前');
@@ -2673,3 +2707,5 @@ function apiSetAttrs() { return apiSetAttrs_.apply(null, arguments); }
 function apiSetClassCount() { return apiSetClassCount_.apply(null, arguments); }
 function apiUpdateKids() { return apiUpdateKids_.apply(null, arguments); }
 function apiGaijiFound() { return apiGaijiFound_.apply(null, arguments); }
+function apiMenu() { return apiMenu_.apply(null, arguments); }
+function apiPerf() { return apiPerf_.apply(null, arguments); }

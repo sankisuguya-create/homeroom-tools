@@ -93,8 +93,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   // 入れ替え：2人を選ぶと確認の枠、Enterで実行、Ctrl+Zで戻る
   const pair = await p.evaluate(() => {
     const S = App.screens.split.state(), asg = S.plans[S.active].asg;
-    const a = [...asg.keys()].find(i => Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length);
-    const b = [...asg.keys()].find(i => asg[i] !== asg[a] && Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length);
+    // 特別支援学級の児童は盤面のカードではなく別の欄に出るので選ばない（選ぶとカードが見つからず止まる。案によって時々起きていた）
+    const ok1 = i => !S.ctx.SP[i] && Engine.nearGroup(S.ctx, asg, i).length === 1 && !S.ctx.relOf[i].length;
+    const a = [...asg.keys()].find(ok1);
+    const b = [...asg.keys()].find(i => asg[i] !== asg[a] && ok1(i));
     return [a, b, asg[a], asg[b]];
   });
   await p.click(`.board .chip[data-i="${pair[0]}"]`);
@@ -812,7 +814,7 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   ok(await p.evaluate(() => document.getElementById('ncMinus').disabled), '児童のいる組は減らせない（ボタンが押せない）');
   await mclick(p, '#ncPlus'); await p.waitForFunction(() => /組にしました/.test(document.getElementById('toast').textContent));
   await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await p.waitForSelector('[data-gnc]');
-  ok(await p.locator('[data-gnc="4"][aria-pressed="true"]').count() === 1, '案を作る窓の組の数は、名簿の組の数（4組）から始まる');
+  ok((await p.textContent('#gncv')) === '4組', '案を作る窓の組の数は、名簿の組の数（4組）から始まる');
   await p.click('[data-gnc="3"]'); await p.click('#okbtn'); await p.waitForSelector('.board .chip');
   await p.waitForFunction(() => !document.body.classList.contains('busywait'));
   ok(await p.locator('.board .col').count() === 3, '3組の案を作れる');
@@ -838,6 +840,10 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const no0 = await p.inputValue(`[data-bk="${ids[0]}:no"]`); await p.fill(`[data-bk="${ids[1]}:no"]`, no0);
   await p.click('#bksave');
   ok(await p.locator('table.bulk').count() === 1 && /番号が重なっています/.test(await p.textContent('#bkinfo')), '一覧表：番号が重なると保存しない');
+  { const other = await p.evaluate(() => { const d = App.st.data, y = d.years.find(y => y.fy === d.fy), r = y.rows.find(r => r.cls === 1); return r.no; });
+    await p.fill(`[data-bk="${ids[1]}:no"]`, String(other)); await p.selectOption(`[data-bk="${ids[1]}:cls"]`, '1');
+    ok(/番号が重なっています/.test(await p.textContent('#bkinfo')), '一覧表：ほかの組へ移した先の番号と重なっても知らせる');
+    await p.selectOption(`[data-bk="${ids[1]}:cls"]`, '0'); }
   await p.fill(`[data-bk="${ids[1]}:no"]`, '77'); await p.click('#bksave');
   await p.waitForFunction(() => /人の名簿を直しました/.test(document.getElementById('toast').textContent));
   const got = await p.evaluate(ids => { const d = App.st.data; return [d.kids[ids[0]].name, d.kids[ids[0]].addr, d.kids[ids[1]].male, d.years.find(y => y.fy === d.fy).rows.find(r => r.id === ids[1]).no]; }, ids);
@@ -879,8 +885,8 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   const p = await newPage({ viewport: { width: 1366, height: 768 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
-  ok(await p.title() === 'SSS' && (await p.textContent('#appname')) === 'SSS', 'タブと左上の名前は SSS');
-  ok((await p.textContent('#mfull')) === 'SSS（児童理解支援システム）', 'メニューの下に正式な名前');
+  ok(await p.title() === 'CSS' && (await p.textContent('#appname')) === 'CSS', 'タブと左上の名前は CSS');
+  ok((await p.textContent('#mfull')) === 'CSS（児童理解支援システム）', 'メニューの下に正式な名前');
   // メニュー：3つのボタンに件数、下に最近の記録。表示は先生ごとに切り替える
   await p.click('[data-g="5"]'); await p.waitForSelector('.mrecent .mrow');
   ok(await p.locator('.bigs3 > .big').count() === 3 && await p.locator('.bigs3 .big span:not(.mchips)').count() === 0, '3つのボタンに説明文は無い');

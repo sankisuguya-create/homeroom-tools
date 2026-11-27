@@ -54,7 +54,7 @@
           }).join('') + '</div></td></tr>';
         };
         return '<div class="pop" data-close="1"><div class="dlg gen" role="dialog" aria-modal="true" aria-label="案を作る"><h2>案を作る</h2>' +
-          '<div class="rbar"><span class="lab">組の数</span>' + Array.from({ length: C.MAX_CLASSES - 1 }, function (_, i) { var n = i + 2; return '<button class="lv" data-gnc="' + n + '" aria-pressed="' + (gen.nc === n) + '">' + n + '組</button>'; }).join('') + '<span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
+          '<div class="rbar"><span class="lab">組の数</span><button class="lv" data-gnc="' + Math.max(2, gen.nc - 1) + '"' + (gen.nc <= 2 ? ' disabled' : '') + ' aria-label="組を減らす">−</button><b id="gncv" style="min-width:3em;text-align:center">' + gen.nc + '組</b><button class="lv" data-gnc="' + (gen.nc + 1) + '" aria-label="組を増やす">＋</button><span class="note">今の名簿は ' + S.base + '組。3組の案と4組の案を並べて比べられます</span></div>' +
           '<div><b>必ず守る条件</b>（押すと外す／戻す）<div class="toggles" style="margin-top:6px">' + C.HARD.map(function (h) {
             return '<button class="tg" data-hard="' + h.k + '" aria-pressed="' + !!gen.hard[h.k] + '">' + h.label + '</button>';
           }).join('') + '</div></div>' +
