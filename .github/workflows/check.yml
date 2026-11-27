@@ -52,6 +52,8 @@ jobs:
         run: node --test apps/child-support/tests/engine.test.mjs apps/child-support/tests/gas.test.mjs apps/child-support/tests/paste.test.mjs apps/classroom-clock/tests/core.test.mjs apps/group-maker/tests/core.test.mjs
       - name: Playwright を入れる
         run: |
+          # 実行環境に入っている Microsoft の配布元は、署名の切れで apt を止めることがある（2026-11 に 403）。使わないので外してから入れる
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli*.list
           npm install -g playwright@1.56.1
           npx -y playwright@1.56.1 install --with-deps chromium
       - name: 画面のテスト
