@@ -26,7 +26,7 @@
 
 ## 直すとき
 
-正本は `src/`（名簿の読み取りは `../class-split/src/paste.js` を共有）。`python3 scripts/build.py` で `dist/Index.html` が出る。
+正本は `src/`（名簿の読み取りは `../child-support/src/paste.js` を共有）。`python3 scripts/build.py` で `dist/Index.html` が出る。
 設計の決定と理由は [docs/design.md](docs/design.md)、個人情報の置き場は [docs/pii-map.md](docs/pii-map.md)。
 
 ```bash

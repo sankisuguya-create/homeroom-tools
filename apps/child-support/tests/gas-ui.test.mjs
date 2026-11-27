@@ -1,0 +1,185 @@
+// 本番の画面（dist/gas/Index.html）と、模擬の GAS 上のサーバー（dist/gas/Code.gs）をつないで動かす。
+// google.script.run を、Playwright の exposeFunction 経由でサーバーの関数呼び出しに置き換える。
+//   node apps/child-support/tests/gas-ui.test.mjs
+import fs from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createRequire } from 'node:module';
+import { execSync } from 'node:child_process';
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const DIST = path.join(HERE, '..', 'dist', 'gas');
+let chromium;
+try {
+  const req = createRequire(import.meta.url);
+  let mod; try { mod = req('playwright'); } catch { mod = req(path.join(execSync('npm root -g').toString().trim(), 'playwright')); }
+  chromium = mod.chromium;
+} catch { console.log('Playwright が無いので飛ばします'); process.exit(0); }
+
+// 模擬の GAS（tests/gas.test.mjs と同じ作り）
+const { makeGas } = await import('./gas-mock.mjs');
+const gas = makeGas(fs.readFileSync(path.join(DIST, 'Code.gs'), 'utf8'));
+gas.ctx.setup();
+const FY = gas.ctx.CONFIG.fiscalYear();
+const rows = [];
+for (let k = 1; k <= 3; k++) for (let n = 1; n <= 30; n++) rows.push([String(50000000 + k * 100 + n), '児童' + k + '-' + n, 'じどう' + String(k * 100 + n), n % 2 ? '男' : '女', 5, k, n]);
+gas.ctx.importRoster(FY, rows);
+
+let fails = 0;
+const ok = (c, m) => { console.log((c ? 'ok   ' : 'NG   ') + m); if (!c) fails++; };
+// クラス分けに入る：案がまだ無ければ、設定の窓で作り、並べる動きを飛ばす
+const intoSplit = async (p) => {
+  await p.waitForSelector('.board .chip, #okbtn');
+  if (await p.locator('#okbtn').count()) { await p.click('#okbtn'); await p.waitForSelector('.board .chip'); }
+  await p.waitForFunction(() => !document.body.classList.contains('busywait')); // 作った案の保存が終わるまで待つ
+};
+const exe = fs.existsSync('/opt/pw-browsers/chromium') ? { executablePath: '/opt/pw-browsers/chromium' } : {};
+const browser = await chromium.launch(exe);
+// 名簿のロックは初めはロック中。試験では、ロックの操作を確かめる所以外はロックを外して始める
+const newPage = async (o) => { const pg = await browser.newPage(o); await pg.addInitScript(() => { try { if (localStorage.getItem('classSplit.rosterLock') == null) localStorage.setItem('classSplit.rosterLock', '0'); } catch (e) { } }); return pg; };
+// 畳んだメニュー（名簿の管理 ▾・その他 ▾）の中の項目は、メニューを開いてから押す
+const mclick = async (p, sel) => { const el = p.locator(sel).first(); if (!(await el.isVisible())) { const id = await p.evaluate(s => { const e = document.querySelector(s), dd = e && e.closest('.ddm'); return dd ? dd.querySelector('[data-dd]').dataset.dd : ''; }, sel); if (id) { await p.click('[data-dd="' + id + '"]'); await el.waitFor({ state: 'visible', timeout: 5000 }); } } await el.click(); };
+const p = await newPage({ viewport: { width: 1366, height: 768 } });
+const errs = []; p.on('pageerror', e => errs.push(e.message));
+await p.exposeFunction('gasCall', (name, args) => gas.ctx[name](...args));
+await p.addInitScript(() => {
+  // google.script.run の形（withSuccessHandler・withFailureHandler・関数名で呼ぶ）を真似る
+  const make = (ok, ng) => new Proxy({}, { get: (_, k) => k === 'withSuccessHandler' ? f => make(f, ng) : k === 'withFailureHandler' ? f => make(ok, f) : (...a) => window.gasCall(k, a).then(ok, ng) });
+  window.google = { script: { run: make(() => {}, () => {}) } };
+});
+await p.goto('file://' + path.join(DIST, 'Index.html'));
+await p.waitForSelector('.gbtn');
+ok(await p.locator('[role=alert]').count() === 0, '版が一致（警告なし）');
+await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('table.r');
+ok(await p.locator('table.r tbody tr').count() === 30, '名簿：1組30人');
+await p.locator('td.cell[data-k="k3"]').first().click();
+await p.click('#rsave'); // 欄の変更はためて「保存」で送る
+await p.waitForFunction(() => document.getElementById('rsave').textContent === '保存済み' && !document.getElementById('busy'));
+const row = gas.db().getSheetByName('attrs_' + FY).data.find(r => r[0] === '50000101');
+ok(row && row[3] === 1, '配慮項目がシートに保存された');
+
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
+ok(await p.locator('.board .chip').count() === 90, 'クラス分け：90人');
+await p.waitForFunction(() => document.getElementById('save2') && document.getElementById('save2').textContent === '保存済み', null, { timeout: 5000 });
+ok(gas.call('apiBoot', 5).v.plans.ver >= 1 && gas.call('apiBoot', 5).v.plans.plans.length === 1, '最初の案がシートに保存された');
+
+// 同時保存：別の人が先に保存すると、この画面の保存は止まって知らせる
+gas.call('apiSavePlans', 5, [], gas.call('apiBoot', 5).v.plans.ver);
+await p.keyboard.press('d');
+await p.waitForFunction(() => /先に保存/.test(document.getElementById('save2').textContent), null, { timeout: 5000 });
+ok(true, '同時保存を検知して止まる');
+
+// 試行：左上のボタンでダミーデータに切り替わり、操作してもサーバーに送らない。やめると本番に戻る
+await p.click('[data-go="menu"]:visible'); await p.waitForSelector('.gbtn');
+const before = JSON.stringify(gas.db().sheets);
+await p.click('.top .trial');
+await p.waitForFunction(() => document.body.classList.contains('trying'));
+ok(await p.waitForSelector('.gbtn small:has-text("138人")', { timeout: 3000 }).then(() => true, () => false), '試行：ダミーデータの学年が出る');
+ok(/版：BUILD_[0-9a-f]{12}（試行中）/.test(await p.textContent('#mbuild')), '試行中でもメニューに本番の画面の版が出る');
+await p.click('[data-g="6"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('td.cell');
+await p.locator('td.cell').first().click(); await p.click('#rsave');
+await p.waitForFunction(() => !document.getElementById('busy'));
+await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+ok(await p.locator('.bar .trial[aria-pressed="true"]').count() === 1, '試行：クラス分けの帯にも試行中の表示');
+ok(JSON.stringify(gas.db().sheets) === before, '試行中の操作はサーバーに送らない');
+await p.click('.bar .trial');
+await p.waitForFunction(() => !document.body.classList.contains('trying'));
+await p.waitForSelector('.gbtn');
+ok(await p.locator('.gbtn small', { hasText: '90人' }).count() === 1, '試行をやめると本番のデータに戻る');
+ok(/^版：BUILD_[0-9a-f]{12}$/.test((await p.textContent('#mbuild')).trim()), '本番ではメニューに版が出る');
+
+// 名簿を貼る（本番）：見出しで読み、取り込むとシートに入る
+await p.click('[data-g="5"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('#rfy');
+await mclick(p, '#paste'); // 名簿の上の帯から
+await p.fill('#ptxt', '児童ID\t名前\tよみ\t性別\t組\t番号\n50000101\t児童1-1\tじどう101\t男\t1\t1\n50000401\t転入 さん\tてんにゅう\t女\t1\t31');
+await p.waitForSelector('#okbtn:not([disabled])');
+ok((await p.locator('#psum').textContent()).includes('2人'), '貼ると読み取った人数が出る');
+await p.keyboard.press('Control+Enter');
+await p.waitForSelector('[aria-label="取り込む前の確認"]');
+const conf = await p.locator('[aria-label="取り込む前の確認"]').textContent();
+ok(conf.includes('追加 1人') && !conf.includes('上書きする'), '取り込む前に差分を見せる（疑いが無ければ語の入力は要らない）');
+ok(!gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), '確認の前は書かない');
+await p.click('[aria-label="取り込む前の確認"] [data-act="ok"]');
+await p.waitForFunction(() => /取り込みました/.test(document.getElementById('toast').textContent));
+ok(gas.db().getSheetByName('roster_' + FY).data.some(r => r[0] === '50000401'), '名簿がシートに入った');
+ok(await p.locator('table.r tbody tr').count() === 31, '1組が31人に');
+
+// つける・離す（本番）：追加して保存すると、読み込み直して違反の判定に入る
+await p.click('[data-go="menu"]:visible'); await p.click('[data-go="split"]'); await intoSplit(p);
+await p.keyboard.press('p'); await p.waitForSelector('#qa');
+await p.fill('#qa', '児童1-1'); await p.click('[data-pk="a:50000101"]');
+await p.fill('#qb', '児童1-3'); await p.click('[data-pk="b:50000103"]');
+await p.click('#padd');
+await p.click('#okbtn');
+await p.waitForFunction(() => /保存しました/.test(document.getElementById('toast').textContent));
+ok(gas.call('apiBoot', 5).v.pairs.length === 1, 'つける・離すがシートに入った');
+ok(await p.locator('#gen').count() === 1, '保存後もクラス分けの画面のまま');
+
+// 版ずれの警告
+const p2 = await newPage();
+await p2.exposeFunction('gasCall', (name, args) => JSON.stringify({ ...JSON.parse(gas.ctx[name](...args)), build: 'BUILD_old' }));
+await p2.addInitScript(() => {
+  const make = (ok, ng) => new Proxy({}, { get: (_, k) => k === 'withSuccessHandler' ? f => make(f, ng) : k === 'withFailureHandler' ? f => make(ok, f) : (...a) => window.gasCall(k, a).then(ok, ng) });
+  window.google = { script: { run: make(() => {}, () => {}) } };
+});
+await p2.goto('file://' + path.join(DIST, 'Index.html'));
+await p2.waitForSelector('[role=alert]');
+ok(true, '版がずれると警告');
+
+// 管理者：管理者でない教員の設定は「表示」だけ
+const st0 = gas.call('apiSettings').v.settings;
+gas.call('apiSaveSettings', { ...st0, teachers: [{ email: 'sato@edu.nishi.or.jp', grade: 5, cls: 1 }] });
+gas.env.user = 'sato@edu.nishi.or.jp';
+await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.gbtn');
+await p.click('[data-go="settings"]'); await p.waitForSelector('[data-stab="view"]');
+ok(await p.locator('[data-stab="attrs"], [data-stab="year"], #ssave').count() === 0, '管理者でない教員には学校の設定と年度替わりを出さない');
+await p.click('[data-go="menu"]:visible'); await p.click('[data-g="5"]'); await p.click('[data-go="split"]'); await intoSplit(p);
+ok(await p.locator('#decide[disabled]').count() === 1, '管理者でない教員には「決定」を押させない');
+gas.env.user = 'stranger@edu.nishi.or.jp';
+ok(gas.call('apiListGrades').ok === false, '一覧に無い教員は読めない');
+gas.env.user = gas.env.owner;
+
+// 管理者への知らせと記録：データを共有すると、所有者のメニューに赤い帯。記録のタブに開いた履歴
+const DBID = gas.call('apiAdminStatus') && gas.props.CLASS_SPLIT_DB_ID;
+gas.drive.share(DBID, { editors: ['leak@edu.nishi.or.jp'] });
+await p.goto('file://' + path.join(DIST, 'Index.html')); await p.waitForSelector('.warnbox[role=alert]');
+ok((await p.locator('.warnbox[role=alert]').textContent()).includes('leak@'), '共有されると管理者のメニューに警告');
+gas.drive.share(DBID, { editors: [] });
+await p.click('[data-go="settings"]'); await p.click('[data-stab="log"]'); await p.waitForSelector('table.ro:not(.perf)');
+ok((await p.locator('table.ro:not(.perf)').textContent()).includes('開いた（学年）'), '記録のタブに開いた履歴');
+await p.waitForSelector('table.perf'); ok(/学年を開く/.test(await p.textContent('table.perf')), '記録のタブに、操作ごとのサーバーの処理時間');
+
+// 端末の登録（仮実装）：Windows の端末で受付を開くと、その端末が登録される。Linux（この試験の環境＝Android のPC版表示と同じ扱い）は締め出される
+const winCtx = await browser.newContext({ viewport: { width: 1280, height: 720 }, userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36' });
+const pw = await winCtx.newPage();
+await pw.exposeFunction('gasCall', (name, args) => gas.ctx[name](...args));
+await pw.addInitScript(() => {
+  const make = (ok, ng) => new Proxy({}, { get: (_, k) => k === 'withSuccessHandler' ? f => make(f, ng) : k === 'withFailureHandler' ? f => make(ok, f) : (...a) => window.gasCall(k, a).then(ok, ng) });
+  window.google = { script: { run: make(() => {}, () => {}) } };
+});
+await pw.goto('file://' + path.join(DIST, 'Index.html')); await pw.waitForSelector('.gbtn');
+await pw.click('[data-go="settings"]'); await pw.click('[data-stab="devices"]'); await pw.waitForSelector('[data-dopen="user"]');
+await pw.click('[data-dopen="user"]'); await pw.waitForSelector('#dleft');
+ok((await pw.locator('table.ro').textContent()).includes('この端末'), '受付を開いた Windows の端末が登録される');
+ok(await pw.evaluate(() => !!localStorage.getItem('classSplit.device')), '合い言葉が端末に保存される');
+await pw.click('#dclose'); await pw.waitForSelector('[data-dopen]');
+await p.goto('file://' + path.join(DIST, 'Index.html'));
+await p.waitForSelector('#reloadBtn');
+ok((await p.locator('#main').textContent()).includes('この端末では開けません'), '未登録の端末は締め出される');
+await pw.goto('file://' + path.join(DIST, 'Index.html')); await pw.waitForSelector('.gbtn');
+ok(true, '登録した端末は開き直しても開ける');
+gas.ctx.resetDevices();
+await winCtx.close();
+
+// 放置の覆い：タブが隠れると覆い、押すと戻る
+await p.evaluate(() => { Object.defineProperty(document, 'hidden', { value: true, configurable: true }); document.dispatchEvent(new Event('visibilitychange')); });
+ok((await p.locator('#idle .fp-back').textContent()).includes('クリックで作業に戻る'), '覆いの上に「クリックで作業に戻る」');
+ok(await p.locator('#idle:not([hidden]) .fp-paper').count() === 1, 'ほかのタブに移ると、プリントに見せかけた覆いで画面を隠す');
+await p.click('#idle');
+ok(await p.locator('#idle[hidden]').count() === 1, '押すと戻る');
+
+ok(errs.length === 0, '画面のエラーなし ' + errs.join(' / '));
+await browser.close();
+console.log(fails ? `\n${fails}件 NG` : '\nすべて ok');
+process.exit(fails ? 1 : 0);

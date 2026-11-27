@@ -170,7 +170,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
 </div>
 
 <script>
-/* ▼ src/paste.js から。直すのは src のほう ▼ */
+/* ▼ src/core/paste.js から。直すのは src のほう ▼ */
 // 名簿の貼り付けを読む（画面に依存しない。tests/paste.test.mjs が直接読む）。
 // スプレッドシートからのコピーはタブ区切り。見出しの行があれば名前で列を決め、無ければ値の形から推定する。
 (function (g) {
@@ -347,7 +347,7 @@ table.peek td{border-bottom:1px solid var(--rule);padding:2px 4px}
 
   g.Paste = { parseRoster: parseRoster, LABEL: LABEL };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/paste.js ここまで ▲ */
+/* ▲ src/core/paste.js ここまで ▲ */
 /* ▼ src/core.js から。直すのは src のほう ▼ */
 // グループ分けの計算（画面に依存しない。tests/core.test.mjs が直接読む）。
 (function (g) {

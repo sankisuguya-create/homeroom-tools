@@ -7,19 +7,19 @@
   apps/note-assessment/gas/src/
   apps/dance-count/src/
   apps/collection-check/src/
-  apps/class-split/src/
+  apps/child-support/src/
   apps/classroom-clock/src/
-  apps/group-maker/src/       （名簿の読み取りは class-split/src/paste.js を共有）
+  apps/group-maker/src/       （名簿の読み取りは child-support/src/core/paste.js を共有）
 
 生成物:
   apps/note-assessment/gas/generated/
   apps/note-assessment/gas/dist/
   apps/dance-count/dist/
   apps/collection-check/dist/
-  apps/class-split/dist/
+  apps/child-support/dist/
   apps/classroom-clock/dist/
   apps/group-maker/dist/
-  apps/class-split/dist/gas/   （GAS に貼る3つ：Code.gs・Index.html・appsscript.json）
+  apps/child-support/dist/gas/   （GAS に貼る3つ：Code.gs・Index.html・appsscript.json）
 
   python3 scripts/build.py
   python3 scripts/build.py --check
@@ -41,7 +41,7 @@ COLLECT_DIST = COLLECT / "dist"
 CLOCK = ROOT / "apps" / "classroom-clock"
 CLOCK_SRC = CLOCK / "src"
 CLOCK_DIST = CLOCK / "dist"
-CLASS = ROOT / "apps" / "class-split"
+CLASS = ROOT / "apps" / "child-support"
 CLASS_SRC = CLASS / "src"
 CLASS_DIST = CLASS / "dist"
 CLASS_GAS_DIST = CLASS / "dist" / "gas"
@@ -52,12 +52,12 @@ SHARED_UI = ROOT / "shared" / "ui"
 
 # PAGES の4列目は「外部通信なし」の宣言。True のページは dist から
 # 外部参照（フォント・fetch・画像など）が見つかった時点で生成を止める。
-# 個人情報を扱う collection-check と class-split が対象。dance-count は Google Fonts を
+# 個人情報を扱う collection-check と child-support が対象。dance-count は Google Fonts を
 # 意図的に遅延読み込みする設計（src/Index.html のフォント節を見よ）なので対象外。
 PAGES = [
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
-    (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
+    (CLASS_SRC / "html" / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
     (CLOCK_SRC / "Index.html", CLOCK_DIST / "Index.html", [CLOCK_SRC], True),
     (CLOCK_SRC / "sounds.html", CLOCK_DIST / "sounds.html", [CLOCK_SRC], True),
     (GROUP_SRC / "Index.html", GROUP_DIST / "Index.html", [GROUP_SRC, CLASS_SRC], True),
@@ -228,34 +228,34 @@ def top_selectors(css: str):
     return out
 
 def check_css_dups():
-    """class-split の css/*.css で、同じセレクタの規則が2か所にあれば止める。
+    """child-support の css/*.css で、同じセレクタの規則が2か所にあれば止める。
     後から足した規則が前の規則を黙って上書きし、どちらを直せばよいか分からなくなるため。"""
     seen, dups = {}, []
-    for f in sorted((CLASS_SRC / "css").glob("*.css")):
+    for f in sorted((CLASS_SRC / "css").glob("[0-9]*.css")):
         for sel in top_selectors(f.read_text(encoding="utf-8")):
             if sel in seen:
                 dups.append("%s（%s と %s）" % (sel, seen[sel], f.name))
             else:
                 seen[sel] = f.name
     if dups:
-        raise SystemExit("class-split の css に同じセレクタが2か所あります。1つにまとめてください: " + "、".join(dups))
+        raise SystemExit("child-support の css に同じセレクタが2か所あります。1つにまとめてください: " + "、".join(dups))
 
 def class_gas_targets():
-    """class-split の GAS 一式。Code.gs は config.js・engine.js・report.js・server.gs をこの順につなぐ
+    """child-support の GAS 一式。Code.gs は config.js・engine.js・report.js・server.gs をこの順につなぐ
     （サーバーも画面と同じ計算の正本を使う）。版の印は note-assessment と同じく内容のハッシュ。"""
     parts = []
-    for name in ("config.js", "engine.js", "report.js", "server.gs"):
+    for name in ("core/config.js", "core/engine.js", "core/report.js", "server/server.gs"):
         body = (CLASS_SRC / name).read_text(encoding="utf-8").rstrip("\n")
         parts.append("/* ==================== %s ==================== */\n" % name + body)
-    code = ("/* apps/class-split/src/ の config.js・engine.js・report.js・server.gs をつないで\n"
+    code = ("/* apps/child-support/src/ の config.js・engine.js・report.js・server.gs をつないで\n"
             "   scripts/build.py が作る。正本を直すこと。 */\n\n" + "\n\n".join(parts) + "\n")
-    page = html_doc(render(CLASS_SRC / "Index-gas.html", [CLASS_SRC]))
+    page = html_doc(render(CLASS_SRC / "html" / "Index-gas.html", [CLASS_SRC]))
     hits = external_refs(page)
     if hits:
-        raise SystemExit("class-split の GAS 画面に外部参照があります: " + "、".join(hits))
+        raise SystemExit("child-support の GAS 画面に外部参照があります: " + "、".join(hits))
     yield CLASS_GAS_DIST / "Code.gs", code
     yield CLASS_GAS_DIST / "Index.html", page
-    yield CLASS_GAS_DIST / "appsscript.json", (CLASS_SRC / "appsscript.json").read_text(encoding="utf-8")
+    yield CLASS_GAS_DIST / "appsscript.json", (CLASS_SRC / "server" / "appsscript.json").read_text(encoding="utf-8")
 
 def dist_targets():
     yield GAS_DIST / "Code.gs", merged_code()
@@ -316,7 +316,7 @@ def main():
     for dest, built in stamped:
         write_or_check(dest, built, check, bad)
         if not check:
-            print("  %-18s ← class-split/src（%s）" % (("gas/" + dest.name), build))
+            print("  %-18s ← child-support/src（%s）" % (("gas/" + dest.name), build))
 
     if bad:
         print("\n" + ("正本と一致しない生成物" if check else "作れなかった生成物") + ":\n  " + "\n  ".join(bad))

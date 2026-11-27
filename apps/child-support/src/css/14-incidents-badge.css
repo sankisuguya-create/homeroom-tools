@@ -1,0 +1,8 @@
+/* 事案カードの報告済みのバッジ・順位の窓の下 */
+/* 報告済みのバッジ：カードの右上で枠に重ねる（学年のタグに重なってよい）。金色の丸に「報」、右上に青い✓ */
+.irbadge{position:absolute;right:-9px;top:-9px;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 35% 30%,#FFF1B8 0,#E8C14A 45%,#B8891A 100%);border:1.5px solid #8A6410;color:#3A2600;font-weight:700;font-size:15px;line-height:1;
+  box-shadow:0 1px 2px #0004;z-index:2;pointer-events:none}
+.irbadge svg{position:absolute;right:-7px;top:-8px;width:18px;height:18px}
+.irbadge.sm{position:static;display:inline-flex;width:18px;height:18px;font-size:10px;margin-right:4px;box-shadow:none}
+.dlg.rkdlg .acts{position:sticky;bottom:-18px;background:var(--panel);padding:8px 0 4px;margin-bottom:-4px;z-index:2}

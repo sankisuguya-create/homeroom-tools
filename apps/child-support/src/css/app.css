@@ -1,0 +1,19 @@
+/* child-support の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
+ * 規則を足す時は、その画面のファイルに足す。同じセレクタを2か所に書かない（build.py が確かめる）。 */
+/* @include css/01-base.css */
+/* @include css/02-marks.css */
+/* @include css/03-roster.css */
+/* @include css/04-split.css */
+/* @include css/05-dialogs.css */
+/* @include css/06-dark.css */
+/* @include css/07-roster-wide.css */
+/* @include css/08-diagram.css */
+/* @include css/09-incidents.css */
+/* @include css/10-print.css */
+/* @include css/11-incidents-home.css */
+/* @include css/12-acad.css */
+/* @include css/13-settings-tabs.css */
+/* @include css/14-incidents-badge.css */
+/* @include css/15-idle-cover.css */
+/* @include css/16-menu.css */
+/* @include css/17-roster-bulk.css */
