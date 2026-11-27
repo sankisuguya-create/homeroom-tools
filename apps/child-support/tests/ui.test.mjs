@@ -281,6 +281,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#iadd2nd');
   ok(await p.locator('[data-ty="虞犯"] ruby rt', { hasText: 'ぐはん' }).count() === 1, '事案の種別に「虞犯」（ふりがな付き）');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
+  { const other = await p.evaluate(() => App.pf().schoolKids().then(l => { const g = App.st.data.grade, k = l.find(x => x.grade !== g); return k && [k.name, k.grade]; }));
+    await p.fill('#fQ', other[0].split(' ')[0]); await p.waitForFunction(g => [...document.querySelectorAll('#fSugg [data-pick]')].some(b => b.textContent.startsWith(g + '-')), other[1], { timeout: 8000 });
+    ok(true, '関係する児童の候補に、ほかの学年の児童も出る（設定を変えなくても）'); await p.fill('#fQ', ''); }
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');

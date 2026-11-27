@@ -2765,7 +2765,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_24658e8adf19';
+  var PAGE_BUILD = 'BUILD_e55b3d3ac843';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4733,7 +4733,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）
   var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
   function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
-  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
+  // 関係する児童を探す学年：既定は全学年（ほかの学年の児童が関わる事案も多いため）。検索の設定で絞れる
+  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [1, 2, 3, 4, 5, 6]; }
   function srchDialog() {
     App.openDlg({
       html: function () {
@@ -5249,7 +5250,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var items = pool.filter(function (r) {
       var s = d.kids[r.id]; if (!s) return false;
       return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.name.replace(/\s/g, '').indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 10);
+    }).sort(function (a, b) { return (a.grade !== d.grade) - (b.grade !== d.grade); }).slice(0, 10); // この学年の児童を先に
     var label = function (r) {
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
       return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）

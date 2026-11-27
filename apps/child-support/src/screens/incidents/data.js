@@ -89,7 +89,8 @@
   // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）
   var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
   function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
-  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
+  // 関係する児童を探す学年：既定は全学年（ほかの学年の児童が関わる事案も多いため）。検索の設定で絞れる
+  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [1, 2, 3, 4, 5, 6]; }
   function srchDialog() {
     App.openDlg({
       html: function () {
