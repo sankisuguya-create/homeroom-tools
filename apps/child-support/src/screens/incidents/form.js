@@ -331,7 +331,7 @@
     var items = pool.filter(function (r) {
       var s = d.kids[r.id]; if (!s) return false;
       return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.name.replace(/\s/g, '').indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 10);
+    }).sort(function (a, b) { return (a.grade !== d.grade) - (b.grade !== d.grade); }).slice(0, 10); // この学年の児童を先に
     var label = function (r) {
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
       return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）

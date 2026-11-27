@@ -850,12 +850,22 @@
     var dupOf = function () { return Y.rows.filter(function (y) { return y.id !== id && y.cls === F.cls && y.no === F.no; }).map(function (y) { return (d.kids[y.id] || {}).name; })[0]; };
     var dupHtml = function () { var dup = dupOf(); return dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : ''; };
     var inp = function (lab, idA, val, max, ph, w) { return '<label class="setrow">' + lab + '<input id="' + idA + '" value="' + esc(val) + '" maxlength="' + max + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (w ? ' style="width:' + w + '"' : '') + '></label>'; };
+    // 外字：この児童の名前・よみの外字（画面では〓や置き換えた字）を並べ、管理者はここで置き換える字を決められる（設定の画面まで行かなくてよい）
+    var gjChars = function () { var out = []; Array.from(String(s.nameRaw != null ? s.nameRaw : s.name) + String(s.kanaRaw != null ? s.kanaRaw : s.kana || '')).forEach(function (ch) { var c = ch.codePointAt(0); if (c >= 0xE000 && c <= 0xF8FF && out.indexOf(ch) < 0) out.push(ch); }); return out; };
+    var gaijiBox = function () {
+      var chs = gjChars(); if (!chs.length) return '';
+      var map = (App.settings && App.settings.gaiji) || {}, admin = !!(App.me && App.me.admin);
+      return '<div class="gjbox"><b>外字</b>：この名前には、Excel の外字（画面では〓）があります。' + (admin ? '画面に出す字を入れて「外字を置き換える」を押すと、この学校の名簿のすべての同じ外字に効きます。元の字は残り、Excel に書き出すと元に戻ります。' : '置き換えは管理者ができます（設定の「事案・報告書・名前」でも直せます）。') +
+        '<div class="rbar">' + chs.map(function (ch) { var code = 'U+' + ch.codePointAt(0).toString(16).toUpperCase(); return '<label>〓<small class="note">（' + code + '）</small> → <input data-kgj="' + code + '" value="' + esc(map[ch] || '') + '" maxlength="2" style="width:3.5em" placeholder="例：髙"' + (admin ? '' : ' disabled') + '></label>'; }).join('') +
+        (admin ? '<button class="btn" id="kgjsave">外字を置き換える</button>' : '') + '</div></div>';
+    };
     App.openDlg({
       focus: 'kename',
       html: function () {
         var dup = dupOf();
         return '<div class="pop" data-close="1"><div class="dlg kedlg" role="dialog" aria-modal="true" aria-label="児童の情報" style="max-width:640px"><h2>' + esc(s.name) + '（' + fy + '年度・児童ID ' + esc(id) + '）</h2>' +
           '<div class="kegrid">' + inp('名前', 'kename', F.name, 40) + inp('よみ', 'kekana', F.kana, 60) + '</div>' +
+          gaijiBox() +
           '<div class="rbar"><span class="lab">性別</span><button class="lv" data-kesx="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-kesx="0" aria-pressed="' + !F.male + '">女</button>' +
           '<span class="lab" style="margin-left:14px">組</span>' + Array.from({ length: nc }, function (_, k) { return '<button class="tab" data-kecls="' + k + '" aria-selected="' + (F.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join('') + '<button class="tab" data-kecls="-1" aria-selected="' + (F.cls < 0) + '">クラスなし</button>' +
           '<label style="margin-left:14px">出席番号 <input id="keno" type="number" min="1" max="99" value="' + F.no + '" style="width:4.5em"></label></div>' +
@@ -879,6 +889,17 @@
         if ((x = t.closest('[data-kesx]'))) { F.male = x.dataset.kesx === '1'; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-kesp]'))) { F.sp = x.dataset.kesp === '1'; App.refreshDlg(); return true; }
         if (t.closest('#kememo')) { App.closeDlg(); memoDialog(Y, r); return true; }
+        if (t.closest('#kgjsave')) {
+          var map = Object.assign({}, (App.settings && App.settings.gaiji) || {}), before = s.name;
+          document.querySelectorAll('[data-kgj]').forEach(function (el) { var ch = String.fromCodePoint(parseInt(el.dataset.kgj.slice(2), 16)), v = el.value.trim(); if (v) map[ch] = v; else delete map[ch]; });
+          var next = Object.assign({}, App.settings, { gaiji: map });
+          App.save(function () { return App.pf().saveSettings(next); }).then(function (saved) {
+            App.applySettings(saved && saved.gaiji ? saved : next); // 開いている名簿の名前にもすぐ効かせる
+            if (F.name === before) F.name = s.name; // 名前を打ち直していなければ、新しい表示に合わせる
+            App.refreshDlg(); render(); App.toast('外字を置き換えました');
+          });
+          return true;
+        }
         return false;
       },
       onOk: function () {

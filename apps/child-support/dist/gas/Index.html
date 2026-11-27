@@ -957,6 +957,9 @@ body.busyshow .save{visibility:hidden}
 .bulkwrap{max-height:62vh;overflow:auto;border:1px solid var(--line);border-radius:6px}
 table.bulk td{padding:3px 4px}
 table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;min-height:30px;box-sizing:border-box}
+/* 児童の情報の窓：外字の置き換え */
+.gjbox{border:1px solid #E3B341;background:#FFF8E1;border-radius:6px;padding:8px 10px;margin:6px 0;font-size:.9rem}
+.gjbox .rbar{flex-wrap:wrap;gap:10px;margin-top:6px}
 /* ▲ css/17-roster-bulk.css ここまで ▲ */
 /* ▲ src/css/app.css ここまで ▲ */
 </style>
@@ -2762,7 +2765,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 (function (g) {
   'use strict';
   var C = g.CONFIG;
-  var PAGE_BUILD = 'BUILD_d98aa3c6fae3';
+  var PAGE_BUILD = 'BUILD_e55b3d3ac843';
   var planVer = {}; // 学年 → 読み込んだ時の案の版（同時保存の検知に使う）
   var pairsVer = {}, incRev = {}; // つける・離すの版、事案ごとの版（ほかの先生が先に直していたら上書きしない）
   var conflict = function (who, what) { var e = new Error((who || 'ほかの先生') + ' が' + what + 'を先に保存しました。メニューから開き直してください（この画面の変更は保存されていません）'); e.noRetry = true; return e; };
@@ -4272,12 +4275,22 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var dupOf = function () { return Y.rows.filter(function (y) { return y.id !== id && y.cls === F.cls && y.no === F.no; }).map(function (y) { return (d.kids[y.id] || {}).name; })[0]; };
     var dupHtml = function () { var dup = dupOf(); return dup && F.cls >= 0 ? '<div class="warnbox" style="font-weight:400">' + (F.cls + 1) + '組の' + F.no + '番には、すでに ' + esc(dup) + ' がいます（このまま保存すると同じ番号が2人になります）</div>' : ''; };
     var inp = function (lab, idA, val, max, ph, w) { return '<label class="setrow">' + lab + '<input id="' + idA + '" value="' + esc(val) + '" maxlength="' + max + '"' + (ph ? ' placeholder="' + esc(ph) + '"' : '') + (w ? ' style="width:' + w + '"' : '') + '></label>'; };
+    // 外字：この児童の名前・よみの外字（画面では〓や置き換えた字）を並べ、管理者はここで置き換える字を決められる（設定の画面まで行かなくてよい）
+    var gjChars = function () { var out = []; Array.from(String(s.nameRaw != null ? s.nameRaw : s.name) + String(s.kanaRaw != null ? s.kanaRaw : s.kana || '')).forEach(function (ch) { var c = ch.codePointAt(0); if (c >= 0xE000 && c <= 0xF8FF && out.indexOf(ch) < 0) out.push(ch); }); return out; };
+    var gaijiBox = function () {
+      var chs = gjChars(); if (!chs.length) return '';
+      var map = (App.settings && App.settings.gaiji) || {}, admin = !!(App.me && App.me.admin);
+      return '<div class="gjbox"><b>外字</b>：この名前には、Excel の外字（画面では〓）があります。' + (admin ? '画面に出す字を入れて「外字を置き換える」を押すと、この学校の名簿のすべての同じ外字に効きます。元の字は残り、Excel に書き出すと元に戻ります。' : '置き換えは管理者ができます（設定の「事案・報告書・名前」でも直せます）。') +
+        '<div class="rbar">' + chs.map(function (ch) { var code = 'U+' + ch.codePointAt(0).toString(16).toUpperCase(); return '<label>〓<small class="note">（' + code + '）</small> → <input data-kgj="' + code + '" value="' + esc(map[ch] || '') + '" maxlength="2" style="width:3.5em" placeholder="例：髙"' + (admin ? '' : ' disabled') + '></label>'; }).join('') +
+        (admin ? '<button class="btn" id="kgjsave">外字を置き換える</button>' : '') + '</div></div>';
+    };
     App.openDlg({
       focus: 'kename',
       html: function () {
         var dup = dupOf();
         return '<div class="pop" data-close="1"><div class="dlg kedlg" role="dialog" aria-modal="true" aria-label="児童の情報" style="max-width:640px"><h2>' + esc(s.name) + '（' + fy + '年度・児童ID ' + esc(id) + '）</h2>' +
           '<div class="kegrid">' + inp('名前', 'kename', F.name, 40) + inp('よみ', 'kekana', F.kana, 60) + '</div>' +
+          gaijiBox() +
           '<div class="rbar"><span class="lab">性別</span><button class="lv" data-kesx="1" aria-pressed="' + F.male + '">男</button><button class="lv" data-kesx="0" aria-pressed="' + !F.male + '">女</button>' +
           '<span class="lab" style="margin-left:14px">組</span>' + Array.from({ length: nc }, function (_, k) { return '<button class="tab" data-kecls="' + k + '" aria-selected="' + (F.cls === k) + '"><span class="band" style="background:' + App.classColor(k).c + '"></span>' + (k + 1) + '組</button>'; }).join('') + '<button class="tab" data-kecls="-1" aria-selected="' + (F.cls < 0) + '">クラスなし</button>' +
           '<label style="margin-left:14px">出席番号 <input id="keno" type="number" min="1" max="99" value="' + F.no + '" style="width:4.5em"></label></div>' +
@@ -4301,6 +4314,17 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
         if ((x = t.closest('[data-kesx]'))) { F.male = x.dataset.kesx === '1'; App.refreshDlg(); return true; }
         if ((x = t.closest('[data-kesp]'))) { F.sp = x.dataset.kesp === '1'; App.refreshDlg(); return true; }
         if (t.closest('#kememo')) { App.closeDlg(); memoDialog(Y, r); return true; }
+        if (t.closest('#kgjsave')) {
+          var map = Object.assign({}, (App.settings && App.settings.gaiji) || {}), before = s.name;
+          document.querySelectorAll('[data-kgj]').forEach(function (el) { var ch = String.fromCodePoint(parseInt(el.dataset.kgj.slice(2), 16)), v = el.value.trim(); if (v) map[ch] = v; else delete map[ch]; });
+          var next = Object.assign({}, App.settings, { gaiji: map });
+          App.save(function () { return App.pf().saveSettings(next); }).then(function (saved) {
+            App.applySettings(saved && saved.gaiji ? saved : next); // 開いている名簿の名前にもすぐ効かせる
+            if (F.name === before) F.name = s.name; // 名前を打ち直していなければ、新しい表示に合わせる
+            App.refreshDlg(); render(); App.toast('外字を置き換えました');
+          });
+          return true;
+        }
         return false;
       },
       onOk: function () {
@@ -4709,7 +4733,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   // 関係する児童の検索の設定（開いている間だけ覚える）：探す学年（空＝この学年だけ）
   var SRCH = (function () { try { return JSON.parse(sessionStorage.getItem('classSplit.incSearch') || '{}'); } catch (e) { return {}; } })();
   function saveSrch() { try { sessionStorage.setItem('classSplit.incSearch', JSON.stringify(SRCH)); } catch (e) { /* 今は効く */ } }
-  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [D().grade]; }
+  // 関係する児童を探す学年：既定は全学年（ほかの学年の児童が関わる事案も多いため）。検索の設定で絞れる
+  function srchGrades() { return SRCH.grades && SRCH.grades.length ? SRCH.grades : [1, 2, 3, 4, 5, 6]; }
   function srchDialog() {
     App.openDlg({
       html: function () {
@@ -5225,7 +5250,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var items = pool.filter(function (r) {
       var s = d.kids[r.id]; if (!s) return false;
       return !f.dg.d.nodes.some(function (n) { return n.id === r.id; }) && (s.name.indexOf(q) >= 0 || s.name.replace(/\s/g, '').indexOf(q) >= 0 || s.kana.indexOf(q) >= 0 || r.id.indexOf(q) === 0 || String(r.no) === q);
-    }).slice(0, 10);
+    }).sort(function (a, b) { return (a.grade !== d.grade) - (b.grade !== d.grade); }).slice(0, 10); // この学年の児童を先に
     var label = function (r) {
       var s = d.kids[r.id], gc = r.grade + '-' + (r.cls + 1);
       return gc + ' ' + esc(s.name) + '<small>（' + esc(s.kana) + '）</small>'; // 学年-組・名前・よみ（よみで探した時にも合っているか分かる）

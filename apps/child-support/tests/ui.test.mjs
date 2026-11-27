@@ -281,6 +281,9 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.click('#iadd2nd');
   ok(await p.locator('[data-ty="虞犯"] ruby rt', { hasText: 'ぐはん' }).count() === 1, '事案の種別に「虞犯」（ふりがな付き）');
   ok(await p.locator('.ilist .icard').count() === n0 && await p.locator('.iassist').count() === 1, '作る時は左に事案カードを1列、右に記入補助');
+  { const other = await p.evaluate(() => App.pf().schoolKids().then(l => { const g = App.st.data.grade, k = l.find(x => x.grade !== g); return k && [k.name, k.grade]; }));
+    await p.fill('#fQ', other[0].split(' ')[0]); await p.waitForFunction(g => [...document.querySelectorAll('#fSugg [data-pick]')].some(b => b.textContent.startsWith(g + '-')), other[1], { timeout: 8000 });
+    ok(true, '関係する児童の候補に、ほかの学年の児童も出る（設定を変えなくても）'); await p.fill('#fQ', ''); }
   await p.fill('#fQ', 'さ'); await p.click('#fSugg [data-pick]');
   await p.click('[data-ty="いじめ"]'); await p.waitForSelector('#fFound');
   await p.selectOption('#fFound', { index: 1 }); await p.check('[data-mode="1"]');
@@ -878,6 +881,20 @@ for (const [w, h] of [[1366, 768], [1920, 1080]]) {
   await p.fill('[data-gj="U+E001"]', '髙'); await p.click('#ssave');
   await p.waitForFunction(() => App.settings && App.settings.gaiji && App.settings.gaiji['\uE001'] === '髙', null, { timeout: 5000 });
   ok(true, '右の欄に入れた字が、置き換え表に保存される');
+  await p.close();
+}
+// 外字：児童の情報の窓（名前を直す所）からも、外字の置き換えを決められる
+{
+  const p = await newPage({ viewport: { width: 1366, height: 768 } });
+  await p.goto('file://' + DIST); await p.waitForSelector('.gbtn');
+  await p.click('[data-g="3"]'); await p.click('[data-go="roster"]'); await p.waitForSelector('[data-kedit]');
+  const id = await p.locator('[data-kedit]').first().getAttribute('data-kedit');
+  await p.evaluate(id => { const k = App.st.data.kids[id]; k.name = '\uE005田 ハナ'; delete k.nameRaw; App.normKids(App.st.data); }, id);
+  await p.click(`[data-kedit="${id}"]`); await p.waitForSelector('.gjbox');
+  ok(/〓/.test(await p.textContent('.gjbox')) && (await p.inputValue('#kename')).startsWith('〓'), '名前に外字があると、児童の情報の窓に外字の欄が出る');
+  await p.fill('[data-kgj="U+E005"]', '濵'); await p.click('#kgjsave');
+  await p.waitForFunction(() => /外字を置き換えました/.test(document.getElementById('toast').textContent));
+  ok((await p.inputValue('#kename')) === '濵田 ハナ' && await p.evaluate(id => App.st.data.kids[id].name === '濵田 ハナ' && App.settings.gaiji['\uE005'] === '濵', id), '窓から置き換えると、名前の表示と置き換え表の両方に入る');
   await p.close();
 }
 // SSS：名前・つける離すの今の学年と組・名簿から個人票・事案のゴミ箱
