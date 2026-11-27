@@ -129,12 +129,12 @@
     } });
   }
 
-  /* @include split/split-board.js */
-  /* @include split/split-dialogs.js */
-  /* @include split/split-pairs.js */
-  /* @include split/split-actions.js */
-  /* @include split/split-zoom.js */
-  /* @include split/split-excel.js */
+  /* @include screens/split/board.js */
+  /* @include screens/split/dialogs.js */
+  /* @include screens/split/pairs.js */
+  /* @include screens/split/actions.js */
+  /* @include screens/split/zoom.js */
+  /* @include screens/split/excel.js */
 
   // 名簿の画面から個人票を印刷する：その年度の今の組で並べる（クラスなしの児童は最後の「クラスなし」の頁）。クラス分けの状態は元に戻す
   App.printRosterCards = function (fy, onlyCls) {

@@ -16,7 +16,7 @@ const strip = h => h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm
 
 // 本物の GAS は google.script.run に「function 名前()」の宣言しか出さない。画面が呼ぶ api がすべて宣言されているか（模擬の GAS では分からない差）
 test('画面が呼ぶ api はすべて function で宣言されている', () => {
-  const page = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'platform-gas.js'), 'utf8');
+  const page = fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'platform', 'gas.js'), 'utf8');
   const called = [...new Set([...page.matchAll(/call\('(api[A-Za-z]+)'/g)].map(m => m[1]))];
   assert.ok(called.length > 20);
   const missing = called.filter(n => !new RegExp('^function ' + n + '\\(', 'm').test(CODE));

@@ -63,7 +63,7 @@
 | `log` | at, by, action, n（個人情報を入れない） |
 
 - 児童は8桁の児童ID（6年間変わらない）でつなぐ。年度や組に依存しない。
-- 見本では `src/platform-demo.js` がこの形のデータをメモリ上に持つ。
+- 見本では `src/platform/demo.js` がこの形のデータをメモリ上に持つ。
 
 ### 不変条件（`engine.checkInvariants` とテスト）
 1. 1つの案で、名簿の全児童がちょうど1つの組に入る。
@@ -75,7 +75,7 @@
 
 - 2023年4月から公立学校にも個人情報保護法の開示請求（76条〜）が適用される。学年で共有して使うこのデータは、組織として使う文書とみなされ得る。
 - 経年の記録を残すと決めたので、確定時の消去はしない。代わりに：
-  - シートの列は中立のキー（k1〜k9）。項目の名前は `settings` と `src/config.js` だけ。
+  - シートの列は中立のキー（k1〜k9）。項目の名前は `settings` と `src/core/config.js` だけ。
   - 卒業・転出した児童は、設定の「年度替わり」で削除の候補に出し、選んで確認の語を入れてから消す（`apiPurge`）。消すのは名簿・配慮項目・つける離す・持ち越し・事案との結び付き・案の割り当て。結び付く児童がいなくなった事案は名前・URL・詳細を消して削除済みにする。
   - **保持期間**：卒業・転出から **5年度**（利用者の方針。設定の既定値）。設定で0〜6年度に変えられるが、**事案に関わった児童は設定にかかわらず5年度は候補に出さず、サーバーも消すのを断る**（`CONFIG.purgeable`）。理由：事案はいじめ等の記録を含み、保存の目安が5年とされている（文部科学省の通知と記憶しているが、通知名・年は未確認）。年数の正本は教育委員会の文書管理規程で、未確認。規程が分かったら `CONFIG.INCIDENT_KEEP_YEARS` と既定値を合わせる。
   - 事案の詳細欄・役割（加害・被害など）は開示請求の対象になりうる。詳細は事実を書き、推測や評価を書かない運用にする。中立のキーで項目名を隠す工夫は自由記述には効かない。
@@ -126,20 +126,21 @@ CPU を1/4に落とした Chromium（低性能端末の代わり）、144人の�
 
 | ファイル | 責務 |
 |---|---|
-| `src/config.js` | 設定の正本（項目・色・形・重み・上限・年度の境目） |
-| `src/engine.js` | 計算（案を作る・違反と偏り・入れ替えの組み立て・名前・番号・決定で写す行）。画面に依存しない |
-| `src/platform-demo.js` | 見本・試行の Platform 層（ダミーデータ、本番と同じ非同期 API。初めて使う時に作る） |
-| `src/platform-gas.js` | 本番の Platform 層（google.script.run） |
-| `src/paste.js` | 名簿の貼り付けの読み取り（画面に依存しない） |
-| `src/server.gs` | サーバー（GAS） |
-| `src/ui-common.js` | 共通部品（印・トースト・浮く枠・保存状態） |
-| `src/report.js` | 市教委の様式（簡易・様式Ⅰ・様式Ⅱ）のセルへの対応と、xlsx の中の XML の書き換え（画面とサーバーで共用） |
-| `src/ui-menu.js` / `ui-roster.js` / `ui-settings.js` | メニュー・名簿・設定の画面 |
-| `src/ui-split.js` ＋ `src/split/*.js` | クラス分け。部品（盤面・窓・つける離す・操作・拡大縮小・次年度組編成の Excel）は build.py が ui-split.js の中に差し込む（同じ閉じた範囲） |
-| `src/ui-incidents.js` ＋ `src/incidents/*.js` | 事案管理。部品（読み込みと絞り込み・描く・記入・出力）は同じく差し込む |
-| `src/ui-diagram.js` | 事案の関係図（置く・囲む・矢印・整える） |
-| `src/main.js` | 画面の切り替えと入力の振り分け |
-| `src/Index.html` / `app.css` ＋ `src/css/*.css` | 骨格と見た目。css は順に読む（後の規則が勝つ）。同じセレクタを2か所に書くと build.py が止める |
+| `src/core/config.js` | 設定の正本（項目・色・形・重み・上限・年度の境目） |
+| `src/core/engine.js` | 計算（案を作る・違反と偏り・入れ替えの組み立て・名前・番号・決定で写す行）。画面に依存しない |
+| `src/platform/demo.js` | 見本・試行の Platform 層（ダミーデータ、本番と同じ非同期 API。初めて使う時に作る） |
+| `src/platform/gas.js` | 本番の Platform 層（google.script.run） |
+| `src/core/paste.js` | 名簿の貼り付けの読み取り（画面に依存しない） |
+| `src/server/server.gs` | サーバー（GAS） |
+| `src/app/common.js` | 共通部品（印・トースト・浮く枠・保存状態） |
+| `src/core/report.js` | 市教委の様式（簡易・様式Ⅰ・様式Ⅱ）のセルへの対応と、xlsx の中の XML の書き換え（画面とサーバーで共用） |
+| `src/screens/menu.js` / `screens/roster.js` / `screens/settings.js` | メニュー・名簿・設定の画面 |
+| `src/screens/split.js` ＋ `src/screens/split/*.js` | クラス分け。部品（盤面・窓・つける離す・操作・拡大縮小・次年度組編成の Excel）は build.py が screens/split.js の中に差し込む（同じ閉じた範囲） |
+| `src/screens/incidents.js` ＋ `src/screens/incidents/*.js` | 事案管理。部品（読み込みと絞り込み・描く・記入・出力）は同じく差し込む |
+| `src/screens/diagram.js` | 事案の関係図（置く・囲む・矢印・整える） |
+| `src/app/main.js`・`src/app/fakeprint.js` | 画面の切り替えと入力の振り分け |
+| `src/html/Index.html`・`Index-gas.html` / `src/css/app.css` ＋ `src/css/*.css` | 骨格と見た目。css は順に読む（後の規則が勝つ）。同じセレクタを2か所に書くと build.py が止める |
+| `src/server/appsscript.json` | GAS の設定（権限・公開の範囲） |
 | `dist/Index.html` | `python3 scripts/build.py` が作る1枚。直接直さない |
 
 ## 用語（画面の文はこの言葉にそろえる）

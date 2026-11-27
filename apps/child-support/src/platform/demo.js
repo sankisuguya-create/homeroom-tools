@@ -1,5 +1,5 @@
 // Platform層（見本用）。本番の GAS と同じ形の非同期 API を、メモリ上の架空データで返す。
-// 画面はこの API だけを呼ぶ。PR② で同じ形の platform-gas.js（google.script.run）を足して差し替える。
+// 画面はこの API だけを呼ぶ。PR② で同じ形の platform/gas.js（google.script.run）を足して差し替える。
 // データの形は docs/design.md §3（シート構成）と同じにしてある。
 (function (g) {
   'use strict';

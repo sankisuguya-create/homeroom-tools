@@ -373,7 +373,7 @@ function decisionOf_(fy, grade) {
   return hit;
 }
 
-// ===== 画面から呼ぶ関数（platform-gas.js と同じ名前と形） =====
+// ===== 画面から呼ぶ関数（platform/gas.js と同じ名前と形） =====
 // 画面は呼び出しの最後に端末の情報 { __dev: { t: 合い言葉, os, mobile, touch, screen } } を添える（端末の登録）。ここで外して DEV_ に置く
 var DEV_ = null, DEV_NEW_ = '';
 function api_(name, fn) {

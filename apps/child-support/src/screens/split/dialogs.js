@@ -1,4 +1,4 @@
-/* クラス分け：確認の枠・案を作る窓・個人票の印刷・組の番号・決定。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* クラス分け：確認の枠・案を作る窓・個人票の印刷・組の番号・決定。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 確認の枠 =====
   function chipsSide(ids, from, to, ex) {
     return '<div class="side"><div class="lab"><b>' + C.newClass(from) + '</b> → ' + C.newClass(to) + '</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';

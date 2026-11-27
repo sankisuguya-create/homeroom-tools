@@ -52,10 +52,10 @@
   }
   // 全校の今年度の名簿を1回だけ読み、ほかの学年の児童の名前と学年・組を足す（ほかの学年を検索する時・ほかの学年の児童が関わる事案を見る時）
 
-  /* @include incidents/inc-data.js */
-  /* @include incidents/inc-list.js */
-  /* @include incidents/inc-form.js */
-  /* @include incidents/inc-output.js */
+  /* @include screens/incidents/data.js */
+  /* @include screens/incidents/list.js */
+  /* @include screens/incidents/form.js */
+  /* @include screens/incidents/output.js */
 
   // ゴミ箱：戻す（誰でも）・完全に消す（管理者だけ）
   function trashDialog() {

@@ -1,4 +1,4 @@
-// 計算の正本（src/engine.js）と見本の Platform 層を Node で確かめる。
+// 計算の正本（src/core/engine.js）と見本の Platform 層を Node で確かめる。
 //   node --test apps/child-support/tests/
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SRC = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src');
-for (const f of ['config.js', 'engine.js', 'report.js', 'zip.js', 'platform-demo.js']) {
+for (const f of ['core/config.js', 'core/engine.js', 'core/report.js', 'core/zip.js', 'platform/demo.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(SRC, f), 'utf8'), { filename: f });
 }
 const { CONFIG: C, Engine: E, Report: RP } = globalThis; const PF = globalThis.Platforms.demo;

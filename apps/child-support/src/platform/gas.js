@@ -1,4 +1,4 @@
-// Platform層（本番）。platform-demo.js と同じ名前・同じ形の非同期 API を、google.script.run で GAS に送る。
+// Platform層（本番）。platform/demo.js と同じ名前・同じ形の非同期 API を、google.script.run で GAS に送る。
 // 版の照合：画面の PAGE_BUILD とサーバーの SERVER_BUILD が違えば、貼り忘れとして画面の上に警告を出す
 // （principles/gas-javascript-notes.md §4。値は scripts/build.py が両方に同じものを焼き込む）。
 (function (g) {

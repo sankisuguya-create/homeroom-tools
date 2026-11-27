@@ -9,7 +9,7 @@
   apps/collection-check/src/
   apps/child-support/src/
   apps/classroom-clock/src/
-  apps/group-maker/src/       （名簿の読み取りは child-support/src/paste.js を共有）
+  apps/group-maker/src/       （名簿の読み取りは child-support/src/core/paste.js を共有）
 
 生成物:
   apps/note-assessment/gas/generated/
@@ -57,7 +57,7 @@ SHARED_UI = ROOT / "shared" / "ui"
 PAGES = [
     (DANCE_SRC / "Index.html", DANCE_DIST / "Index.html", [DANCE_SRC, SHARED_UI], False),
     (COLLECT_SRC / "Index.html", COLLECT_DIST / "Index.html", [COLLECT_SRC, SHARED_UI], True),
-    (CLASS_SRC / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
+    (CLASS_SRC / "html" / "Index.html", CLASS_DIST / "Index.html", [CLASS_SRC], True),
     (CLOCK_SRC / "Index.html", CLOCK_DIST / "Index.html", [CLOCK_SRC], True),
     (CLOCK_SRC / "sounds.html", CLOCK_DIST / "sounds.html", [CLOCK_SRC], True),
     (GROUP_SRC / "Index.html", GROUP_DIST / "Index.html", [GROUP_SRC, CLASS_SRC], True),
@@ -231,7 +231,7 @@ def check_css_dups():
     """child-support の css/*.css で、同じセレクタの規則が2か所にあれば止める。
     後から足した規則が前の規則を黙って上書きし、どちらを直せばよいか分からなくなるため。"""
     seen, dups = {}, []
-    for f in sorted((CLASS_SRC / "css").glob("*.css")):
+    for f in sorted((CLASS_SRC / "css").glob("[0-9]*.css")):
         for sel in top_selectors(f.read_text(encoding="utf-8")):
             if sel in seen:
                 dups.append("%s（%s と %s）" % (sel, seen[sel], f.name))
@@ -244,18 +244,18 @@ def class_gas_targets():
     """child-support の GAS 一式。Code.gs は config.js・engine.js・report.js・server.gs をこの順につなぐ
     （サーバーも画面と同じ計算の正本を使う）。版の印は note-assessment と同じく内容のハッシュ。"""
     parts = []
-    for name in ("config.js", "engine.js", "report.js", "server.gs"):
+    for name in ("core/config.js", "core/engine.js", "core/report.js", "server/server.gs"):
         body = (CLASS_SRC / name).read_text(encoding="utf-8").rstrip("\n")
         parts.append("/* ==================== %s ==================== */\n" % name + body)
     code = ("/* apps/child-support/src/ の config.js・engine.js・report.js・server.gs をつないで\n"
             "   scripts/build.py が作る。正本を直すこと。 */\n\n" + "\n\n".join(parts) + "\n")
-    page = html_doc(render(CLASS_SRC / "Index-gas.html", [CLASS_SRC]))
+    page = html_doc(render(CLASS_SRC / "html" / "Index-gas.html", [CLASS_SRC]))
     hits = external_refs(page)
     if hits:
         raise SystemExit("child-support の GAS 画面に外部参照があります: " + "、".join(hits))
     yield CLASS_GAS_DIST / "Code.gs", code
     yield CLASS_GAS_DIST / "Index.html", page
-    yield CLASS_GAS_DIST / "appsscript.json", (CLASS_SRC / "appsscript.json").read_text(encoding="utf-8")
+    yield CLASS_GAS_DIST / "appsscript.json", (CLASS_SRC / "server" / "appsscript.json").read_text(encoding="utf-8")
 
 def dist_targets():
     yield GAS_DIST / "Code.gs", merged_code()

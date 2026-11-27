@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>CSS</title>
 <style>
-/* ▼ src/app.css から。直すのは src のほう ▼ */
+/* ▼ src/css/app.css から。直すのは src のほう ▼ */
 /* child-support の見た目。順に読む（後の規則が前の規則に勝つので、順を変えない）。
  * 規則を足す時は、その画面のファイルに足す。同じセレクタを2か所に書かない（build.py が確かめる）。 */
 /* ▼ css/01-base.css から ▼ */
@@ -941,7 +941,7 @@ body.busyshow .save{visibility:hidden}
 table.bulk td{padding:3px 4px}
 table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;min-height:30px;box-sizing:border-box}
 /* ▲ css/11-later.css ここまで ▲ */
-/* ▲ src/app.css ここまで ▲ */
+/* ▲ src/css/app.css ここまで ▲ */
 </style>
 <div class="top"><button class="btn trial" id="trial" hidden>試行</button><h1 id="appname">CSS</h1><span class="crumb" id="crumb"></span><span class="toptools" id="toptools"></span><span class="save" id="save" aria-live="polite"></span><span class="demo" id="demo">見本：架空の児童。保存は画面を閉じるまで。</span></div>
 <div id="app" lang="ja"><div id="main"></div></div>
@@ -949,7 +949,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 <div id="idle" hidden aria-label="画面を隠しています（押すと戻る）"></div>
 <div class="toast" id="toast" hidden></div>
 <script>
-/* ▼ src/config.js から。直すのは src のほう ▼ */
+/* ▼ src/core/config.js から。直すのは src のほう ▼ */
 // 設定の正本。項目の名前・色・形・重み・学級数の上限はここだけで決める。
 // 保存データの列は中立のキー（k1〜k9）だけで持ち、名前はここにしか書かない（開示請求への配慮。docs/design.md §4）。
 (function (g) {
@@ -1168,8 +1168,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/config.js ここまで ▲ */
-/* ▼ src/engine.js から。直すのは src のほう ▼ */
+/* ▲ src/core/config.js ここまで ▲ */
+/* ▼ src/core/engine.js から。直すのは src のほう ▼ */
 // 計算の正本。画面にもサーバーにも依存しない純粋な関数だけを置く（tests/engine.test.mjs が直接読む）。
 // 用語: asg＝案の割り当て（児童の並び順 i → 新しい組 0..nc-1）。kids[i].old＝旧学級（0始まり）。
 (function (g) {
@@ -1767,8 +1767,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     normDiagram: normDiagram, diagramRoles: diagramRoles, isUnknown: isUnknown, UNKNOWN_NAME: '？', diagramPattern: diagramPattern, tidyDiagram: tidyDiagram, diagramProblems: dgProblems, ROLE_NAMES: ROLE_NAMES, DG_W: DG_W, DG_H: DG_H
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/engine.js ここまで ▲ */
-/* ▼ src/report.js から。直すのは src のほう ▼ */
+/* ▲ src/core/engine.js ここまで ▲ */
+/* ▼ src/core/report.js から。直すのは src のほう ▼ */
 // 市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）を作る計算。画面（コピペ用の表）とサーバー（Excelの書き換え）が同じものを使う。
 // 事案の report の形：{ light, found, modes:[10], other, s1:{ hk, kk, sd }, s2:{ sd, vi, ha, kikan } }
 //   hk・kk・sd・vi・ha は記録の行の並び [{ d:'YYYY-MM-DD', p:'時間帯', t:'本文' }]
@@ -2024,8 +2024,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   g.Report = { addDays: addDays, isHoliday: isHoliday, nextSchoolDay: nextSchoolDay, tidy: tidy, slots: slots, nextSlot: nextSlot, SECTIONS: SECTIONS, SECTIONS2: SECTIONS2, emptyReport: emptyReport, norm: norm, lines: lines, md: md, cells: cells, allowedCells: allowedCells,
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/report.js ここまで ▲ */
-/* ▼ src/paste.js から。直すのは src のほう ▼ */
+/* ▲ src/core/report.js ここまで ▲ */
+/* ▼ src/core/paste.js から。直すのは src のほう ▼ */
 // 名簿の貼り付けを読む（画面に依存しない。tests/paste.test.mjs が直接読む）。
 // スプレッドシートからのコピーはタブ区切り。見出しの行があれば名前で列を決め、無ければ値の形から推定する。
 (function (g) {
@@ -2202,8 +2202,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
 
   g.Paste = { parseRoster: parseRoster, LABEL: LABEL };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/paste.js ここまで ▲ */
-/* ▼ src/zip.js から。直すのは src のほう ▼ */
+/* ▲ src/core/paste.js ここまで ▲ */
+/* ▼ src/core/zip.js から。直すのは src のほう ▼ */
 // xlsx（zip）を画面の中で開き、作り直す（試行の画面で、選んだ様式の Excel に書き込むため）。外の部品は使わない。
 // 読み：中央ディレクトリから各ファイルを取り出し、圧縮（deflate）はブラウザの DecompressionStream でほどく。
 // 書き：圧縮せずに格納する（Excel はそのまま開ける。大きさは少し増える）
@@ -2249,10 +2249,10 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   }
   g.Zip = { read: read, write: write, crc32: crc32 };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/zip.js ここまで ▲ */
-/* ▼ src/platform-demo.js から。直すのは src のほう ▼ */
+/* ▲ src/core/zip.js ここまで ▲ */
+/* ▼ src/platform/demo.js から。直すのは src のほう ▼ */
 // Platform層（見本用）。本番の GAS と同じ形の非同期 API を、メモリ上の架空データで返す。
-// 画面はこの API だけを呼ぶ。PR② で同じ形の platform-gas.js（google.script.run）を足して差し替える。
+// 画面はこの API だけを呼ぶ。PR② で同じ形の platform/gas.js（google.script.run）を足して差し替える。
 // データの形は docs/design.md §3（シート構成）と同じにしてある。
 (function (g) {
   'use strict';
@@ -2737,8 +2737,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/platform-demo.js ここまで ▲ */
-/* ▼ src/ui-common.js から。直すのは src のほう ▼ */
+/* ▲ src/platform/demo.js ここまで ▲ */
+/* ▼ src/app/common.js から。直すのは src のほう ▼ */
 // 画面の共通部品：状態、文字の無害化、印、トースト、浮く枠、保存状態の表示。
 (function (g) {
   'use strict';
@@ -2989,8 +2989,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   // 保存に送る名前：画面の名前のまま直していなければ元の字（外字・異体字）を送る
   App.rawIf = function (s, f, v) { return s && s[f + 'Raw'] != null && v === s[f] ? s[f + 'Raw'] : v; };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-common.js ここまで ▲ */
-/* ▼ src/ui-diagram.js から。直すのは src のほう ▼ */
+/* ▲ src/app/common.js ここまで ▲ */
+/* ▼ src/screens/diagram.js から。直すのは src のほう ▼ */
 // 事案の関係図：児童を置く・グループで囲む・矢印（加害）を引く。役割と型は Engine が矢印から決める。
 // 座標は Engine.DG_W×DG_H の論理座標で持ち、画面の幅に合わせて伸び縮みさせる。
 (function (g) {
@@ -3168,8 +3168,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     return [c[0] + dx * s, c[1] + dy * s];
   }
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-diagram.js ここまで ▲ */
-/* ▼ src/ui-menu.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/diagram.js ここまで ▲ */
+/* ▼ src/screens/menu.js から。直すのは src のほう ▼ */
 // メニュー：学年を選び、「名簿を見る」「事案管理」「クラス分けをする」を選ぶ。
 (function (g) {
   'use strict';
@@ -3272,8 +3272,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     input: function (t) { if (t.id === 'sgtext') SG.text = t.value; }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-menu.js ここまで ▲ */
-/* ▼ src/ui-roster.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/menu.js ここまで ▲ */
+/* ▼ src/screens/roster.js から。直すのは src のほう ▼ */
 // 名簿：年度・組（または学年・全校）を切り替えて見る。編集できる年度は1つだけ
 // （決定前＝今年度、決定後＝次の年度。決定後の今年度は凍結）。児童の名前を押すと、経年の記録と事案を窓で出す。
 (function (g) {
@@ -4415,8 +4415,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-roster.js ここまで ▲ */
-/* ▼ src/ui-incidents.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/roster.js ここまで ▲ */
+/* ▼ src/screens/incidents.js から。直すのは src のほう ▼ */
 // 事案管理：学年の事案の一覧・登録と直す・様式Ⅱ用の追記・市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）の出力。
 // 記録は「発覚・経緯・指導」の欄に、行ごとに［日付・時間帯・本文］で書く。報告書の時系列の欄は、この行から作る。
 (function (g) {
@@ -4471,8 +4471,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   }
   // 全校の今年度の名簿を1回だけ読み、ほかの学年の児童の名前と学年・組を足す（ほかの学年を検索する時・ほかの学年の児童が関わる事案を見る時）
 
-/* ▼ incidents/inc-data.js から ▼ */
-/* 事案管理：全校の名簿・事案の読み込み、一覧の絞り込みと並べ方、検索の設定、被害・加害の児童。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▼ screens/incidents/data.js から ▼ */
+/* 事案管理：全校の名簿・事案の読み込み、一覧の絞り込みと並べ方、検索の設定、被害・加害の児童。screens/incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   var SCHOOL = null;
   function loadSchool() {
     if (SCHOOL) return Promise.resolve(SCHOOL);
@@ -4601,9 +4601,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       return anyRole ? r === 'harm' || r === 'mutual' : true;
     });
   }
-/* ▲ incidents/inc-data.js ここまで ▲ */
-/* ▼ incidents/inc-list.js から ▼ */
-/* 事案管理：描く（左右の欄・初めの画面・事案カード・見る画面）。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/incidents/data.js ここまで ▲ */
+/* ▼ screens/incidents/list.js から ▼ */
+/* 事案管理：描く（左右の欄・初めの画面・事案カード・見る画面）。screens/incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 描く =====
   // 左（事案の一覧）と右（記入補助）は、作る・直す・追記の時だけ出す。一覧は事案の一覧の画面の検索設定（学年・言葉）に合わせる
   function sided() { return I.mode === 'form' || I.mode === 'add2'; }
@@ -4744,9 +4744,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   }
 
   // 欄の見出しは「何を書く欄か」を問いで示す。欄ごとに色の帯を付け、右の記入補助の見出しも同じ色にする
-/* ▲ incidents/inc-list.js ここまで ▲ */
-/* ▼ incidents/inc-form.js から ▼ */
-/* 事案管理：記入（記録の行・記入補助・書きかけ・入力欄のキー・始める）。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/incidents/list.js ここまで ▲ */
+/* ▼ screens/incidents/form.js から ▼ */
+/* 事案管理：記入（記録の行・記入補助・書きかけ・入力欄のキー・始める）。screens/incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   var ASK = { 's1:hk': 'だれが・どうやって知ったか', 's1:kk': 'だれが・だれに・何をしたか', 's1:sd': '学校がしたこと（聴き取り・指導・連絡）',
     's2:sd': 'その後に学校がしたこと', 's2:vi': '被害の児童と保護者の、今の様子', 's2:ha': '加害の児童と保護者の、今の様子' };
   var SEC_NAME = { 's1:hk': '発覚', 's1:kk': '経緯', 's1:sd': '指導', 's2:sd': '指導の経過', 's2:vi': '被害児童・保護者の様子', 's2:ha': '加害児童・保護者の様子' };
@@ -5114,9 +5114,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     var vv = realVictims(x);
     if (vv.length > 1) vv.forEach(function (id) { if (!I.form.rep.s2v[id] || !I.form.rep.s2v[id].length) I.form.rep.s2v[id] = [{ d: today(), p: '', t: '' }]; });
   }
-/* ▲ incidents/inc-form.js ここまで ▲ */
-/* ▼ incidents/inc-output.js から ▼ */
-/* 事案管理：出力（Excel・コピー用の表）、行の追加、戻す。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/incidents/form.js ここまで ▲ */
+/* ▼ screens/incidents/output.js から ▼ */
+/* 事案管理：出力（Excel・コピー用の表）、行の追加、戻す。screens/incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 出力 =====
   var LABELS = null;
   function labels() {
@@ -5243,7 +5243,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     I.focus = null; rerenderPane(); saveDraftSoon(); App.toast('1つ前に戻しました'); return true;
   }
   function closeForm() { HIST = []; I.mode = 'view'; I.form = null; I.focus = null; if (I.sel != null && !incOf(I.sel)) I.sel = null; }
-/* ▲ incidents/inc-output.js ここまで ▲ */
+/* ▲ screens/incidents/output.js ここまで ▲ */
 
   // ゴミ箱：戻す（誰でも）・完全に消す（管理者だけ）
   function trashDialog() {
@@ -5415,8 +5415,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-incidents.js ここまで ▲ */
-/* ▼ src/ui-split.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/incidents.js ここまで ▲ */
+/* ▼ src/screens/split.js から。直すのは src のほう ▼ */
 // クラス分け：全員を1画面に並べ、案をタブに積み、入れ替え・比較・決定する。
 // 計算はすべて Engine。ここは状態と描画と操作だけを持つ。
 (function (g) {
@@ -5548,8 +5548,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     } });
   }
 
-/* ▼ split/split-board.js から ▼ */
-/* クラス分け：描画（児童カード・上の帯・盤面・比較の表）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▼ screens/split/board.js から ▼ */
+/* クラス分け：描画（児童カード・上の帯・盤面・比較の表）。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;
@@ -5753,9 +5753,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     App.$('board').className = 'cmpwrap';
     App.$('board').innerHTML = h + '</tbody></table><p class="note">「所属が違う児童」は組の番号の付け替えを無視して数える。重みの略号：頭文字＋段階（な＝なし）。</p></div>';
   }
-/* ▲ split/split-board.js ここまで ▲ */
-/* ▼ split/split-dialogs.js から ▼ */
-/* クラス分け：確認の枠・案を作る窓・個人票の印刷・組の番号・決定。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/split/board.js ここまで ▲ */
+/* ▼ screens/split/dialogs.js から ▼ */
+/* クラス分け：確認の枠・案を作る窓・個人票の印刷・組の番号・決定。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 確認の枠 =====
   function chipsSide(ids, from, to, ex) {
     return '<div class="side"><div class="lab"><b>' + C.newClass(from) + '</b> → ' + C.newClass(to) + '</div>' + ids.map(function (i) { return chipHTML(i, ex && ex.indexOf(i) >= 0 ? 'extra' : ''); }).join('') + '</div>';
@@ -6014,9 +6014,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       App.save(function () { return App.pf().undoDecide(grade); }).then(function () { return App.reload(); }).then(function () { App.toast('決定を取り消しました'); });
     });
   }
-/* ▲ split/split-dialogs.js ここまで ▲ */
-/* ▼ split/split-pairs.js から ▼ */
-/* クラス分け：つける・離す・転入生・違反の一覧・ショートカット。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/split/dialogs.js ここまで ▲ */
+/* ▼ screens/split/pairs.js から ▼ */
+/* クラス分け：つける・離す・転入生・違反の一覧・ショートカット。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== つける・離す・組に固定 =====
   // 学年全体で1つの表。保存すると読み込み直し、案の違反の判定に反映する（案そのものは変えない）
   var PT = { far: '離す', near: 'つける', fix: '組に固定' };
@@ -6175,9 +6175,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
       onOk: function () { App.closeDlg(); }
     });
   }
-/* ▲ split/split-pairs.js ここまで ▲ */
-/* ▼ split/split-actions.js から ▼ */
-/* クラス分け：操作（入れ替え・戻す・固定・複製・全画面）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/split/pairs.js ここまで ▲ */
+/* ▼ screens/split/actions.js から ▼ */
+/* クラス分け：操作（入れ替え・戻す・固定・複製・全画面）。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 操作 =====
   function apply(p, ch) { ch.forEach(function (x) { p.asg[x[0]] = x[1]; }); }
   function doMove(changes, msg) {
@@ -6254,9 +6254,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     else if (d.documentElement.requestFullscreen) d.documentElement.requestFullscreen().catch(function () { App.toast('この表示では全画面にできません。F11キーを使ってください'); });
   }
   function selectPlan(pi) { S.active = pi; S.view = 'plan'; S.sel = -1; S.follow = null; render(); }
-/* ▲ split/split-actions.js ここまで ▲ */
-/* ▼ split/split-zoom.js から ▼ */
-/* クラス分け：盤面の拡大・縮小。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/split/actions.js ここまで ▲ */
+/* ▼ screens/split/zoom.js から ▼ */
+/* クラス分け：盤面の拡大・縮小。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ホイール（2本指のスクロール）で、カーソルのある所を中心に拡大・縮小する。タッチは2本指で広げる・つまむ。
   // 拡大中は、ドラッグして動かす（5px より動いた時だけ。動かさずに離せば、ふつうの「押す」）。「等倍に戻す」で全員が1画面に収まる元の表示へ。
   // 盤面は描き直しても、同じ倍率と位置を保つ（入れ替えのたびに戻らない）
@@ -6326,9 +6326,9 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   });
   // 動かした後の「押す」は、カードの選択にしない
   document.addEventListener('click', function (e) { if (ZP.pan && App.st.screen === 'split') { e.stopPropagation(); e.preventDefault(); delete ZP.pan; } }, true);
-/* ▲ split/split-zoom.js ここまで ▲ */
-/* ▼ split/split-excel.js から ▼ */
-/* クラス分け：決定した組を Excel（次年度組編成）で出す。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* ▲ screens/split/zoom.js ここまで ▲ */
+/* ▼ screens/split/excel.js から ▼ */
+/* クラス分け：決定した組を Excel（次年度組編成）で出す。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // 列は学校の「次年度組編成」の表に合わせる（児童IDは文字のまま＝先頭の0を落とさない）。
   // 次年度の組・番号は、決定でサーバーが作った来年度の名簿から取る（組の番号を決めた後はその番号、決める前は A組・B組…）。
   // 特別支援学級の番号・仮組と生年月日は、このアプリが持っていないので空にする
@@ -6378,7 +6378,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     document.body.appendChild(a); a.click(); setTimeout(function () { a.remove(); }, 1000); // すぐ外すとファイル名が付かないことがある
     App.toast('Excel を作りました（' + rows.length + '人）。ダウンロードを確かめてください');
   }
-/* ▲ split/split-excel.js ここまで ▲ */
+/* ▲ screens/split/excel.js ここまで ▲ */
 
   // 名簿の画面から個人票を印刷する：その年度の今の組で並べる（クラスなしの児童は最後の「クラスなし」の頁）。クラス分けの状態は元に戻す
   App.printRosterCards = function (fy, onlyCls) {
@@ -6479,8 +6479,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     resize: function () { if (S && S.view === 'plan') render(); }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-split.js ここまで ▲ */
-/* ▼ src/ui-settings.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/split.js ここまで ▲ */
+/* ▼ src/screens/settings.js から。直すのは src のほう ▼ */
 // 設定：年に1回だけ触るもの（配慮項目・担任と学級・事案の種別・年度替わり）。
 // 項目の色と形は位置（k1〜k10）ごとに固定。変えられるのは名前・頭文字・既定の重みだけ（識別の検証を崩さないため）。
 (function (g) {
@@ -6778,8 +6778,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
     }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/ui-settings.js ここまで ▲ */
-/* ▼ src/fakeprint.js から。直すのは src のほう ▼ */
+/* ▲ src/screens/settings.js ここまで ▲ */
+/* ▼ src/app/fakeprint.js から。直すのは src のほう ▼ */
 // 画面を隠す時の見せかけのプリント（算数・国語）。席を離れた間に児童がのぞいても、ありきたりのプリントに見えるようにする。
 // 中身はすべて作りもの（児童の名前は入れない。名前の欄は空のまま）。隠すたびに3種類から順に替える。
 (function (g) {
@@ -6823,8 +6823,8 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   App.fakePrint = function () { var h = PRINTS[next](); next = (next + 1) % PRINTS.length; return '<div class="fp-paper">' + h + '</div>'; };
   App.FAKE_PRINTS = PRINTS.length;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/fakeprint.js ここまで ▲ */
-/* ▼ src/main.js から。直すのは src のほう ▼ */
+/* ▲ src/app/fakeprint.js ここまで ▲ */
+/* ▼ src/app/main.js から。直すのは src のほう ▼ */
 // 入口：画面の切り替えと、クリック・キー・入力の振り分け。
 (function (g) {
   'use strict';
@@ -7028,7 +7028,7 @@ table.bulk input,table.bulk select{font:inherit;font-size:14px;padding:3px 5px;m
   App.paintTrial();
   App.go('menu');
 })(typeof globalThis !== 'undefined' ? globalThis : this);
-/* ▲ src/main.js ここまで ▲ */
+/* ▲ src/app/main.js ここまで ▲ */
 </script>
 </body>
 </html>

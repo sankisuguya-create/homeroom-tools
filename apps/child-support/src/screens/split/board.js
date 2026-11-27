@@ -1,4 +1,4 @@
-/* クラス分け：描画（児童カード・上の帯・盤面・比較の表）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* クラス分け：描画（児童カード・上の帯・盤面・比較の表）。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 描画 =====
   function chipHTML(i, cls, extra) {
     var s = S.P.kids[i], oc = App.classColor(s.old), esc = App.esc;

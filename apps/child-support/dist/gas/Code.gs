@@ -1,7 +1,7 @@
 /* apps/child-support/src/ の config.js・engine.js・report.js・server.gs をつないで
    scripts/build.py が作る。正本を直すこと。 */
 
-/* ==================== config.js ==================== */
+/* ==================== core/config.js ==================== */
 // 設定の正本。項目の名前・色・形・重み・学級数の上限はここだけで決める。
 // 保存データの列は中立のキー（k1〜k9）だけで持ち、名前はここにしか書かない（開示請求への配慮。docs/design.md §4）。
 (function (g) {
@@ -221,7 +221,7 @@
   g.CONFIG = CONFIG;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-/* ==================== engine.js ==================== */
+/* ==================== core/engine.js ==================== */
 // 計算の正本。画面にもサーバーにも依存しない純粋な関数だけを置く（tests/engine.test.mjs が直接読む）。
 // 用語: asg＝案の割り当て（児童の並び順 i → 新しい組 0..nc-1）。kids[i].old＝旧学級（0始まり）。
 (function (g) {
@@ -820,7 +820,7 @@
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-/* ==================== report.js ==================== */
+/* ==================== core/report.js ==================== */
 // 市教委への報告書（簡易報告書・様式Ⅰ・様式Ⅱ）を作る計算。画面（コピペ用の表）とサーバー（Excelの書き換え）が同じものを使う。
 // 事案の report の形：{ light, found, modes:[10], other, s1:{ hk, kk, sd }, s2:{ sd, vi, ha, kikan } }
 //   hk・kk・sd・vi・ha は記録の行の並び [{ d:'YYYY-MM-DD', p:'時間帯', t:'本文' }]
@@ -1077,12 +1077,12 @@
     setCell: setCell, fillSheet: fillSheet, sheetPath: sheetPath, activate: activate, untab: untab };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
-/* ==================== server.gs ==================== */
+/* ==================== server/server.gs ==================== */
 // サーバー（GAS）。scripts/build.py が config.js・engine.js の後ろにつなげて dist/gas/Code.gs を作る。
 // 役目は「読み込み（学年ごとに1回）と保存」だけ。計算と描画はブラウザ側（docs/design.md §5）。
 // コメントは GAS 上で消えることがあるので、意味を持たせない（principles/gas-javascript-notes.md §1）。
 
-var SERVER_BUILD = 'BUILD_174900aab7a6';
+var SERVER_BUILD = 'BUILD_3498821f8c6a';
 var DB_PROP = 'CLASS_SPLIT_DB_ID';
 
 // ===== 画面 =====
@@ -1453,7 +1453,7 @@ function decisionOf_(fy, grade) {
   return hit;
 }
 
-// ===== 画面から呼ぶ関数（platform-gas.js と同じ名前と形） =====
+// ===== 画面から呼ぶ関数（platform/gas.js と同じ名前と形） =====
 // 画面は呼び出しの最後に端末の情報 { __dev: { t: 合い言葉, os, mobile, touch, screen } } を添える（端末の登録）。ここで外して DEV_ に置く
 var DEV_ = null, DEV_NEW_ = '';
 function api_(name, fn) {

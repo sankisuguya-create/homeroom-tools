@@ -1,4 +1,4 @@
-// 名簿の貼り付けの読み取り（src/paste.js）。  node --test apps/child-support/tests/paste.test.mjs
+// 名簿の貼り付けの読み取り（src/core/paste.js）。  node --test apps/child-support/tests/paste.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-vm.runInThisContext(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'paste.js'), 'utf8'));
+vm.runInThisContext(fs.readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'core', 'paste.js'), 'utf8'));
 const { parseRoster } = globalThis.Paste;
 
 test('見出しの名前で列を読む（順番が違っても、言い換えでも）', () => {

@@ -1,4 +1,4 @@
-/* クラス分け：操作（入れ替え・戻す・固定・複製・全画面）。ui-split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* クラス分け：操作（入れ替え・戻す・固定・複製・全画面）。screens/split.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   // ===== 操作 =====
   function apply(p, ch) { ch.forEach(function (x) { p.asg[x[0]] = x[1]; }); }
   function doMove(changes, msg) {

@@ -1,4 +1,4 @@
-/* 事案管理：全校の名簿・事案の読み込み、一覧の絞り込みと並べ方、検索の設定、被害・加害の児童。ui-incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
+/* 事案管理：全校の名簿・事案の読み込み、一覧の絞り込みと並べ方、検索の設定、被害・加害の児童。screens/incidents.js の中に差し込まれる（同じ閉じた範囲の変数を使う）。単独では動かない */
   var SCHOOL = null;
   function loadSchool() {
     if (SCHOOL) return Promise.resolve(SCHOOL);
